@@ -183,6 +183,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // ── Explorateur de fichiers ─────────────────────────────────────────────
     var isFileBrowserOpen by mutableStateOf(false)
     var folderLabel by mutableStateOf("Projet")
+    data class BrowserFilePreview(val path: String, val content: String)
+    var browserFilePreview by mutableStateOf<BrowserFilePreview?>(null)
+        private set
+    var browserFileLoading by mutableStateOf(false)
+        private set
 
     private fun refreshFolderLabel() {
         viewModelScope.launch(Dispatchers.IO) {
@@ -194,16 +199,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     /** Enfants chargés par chemin (".", "app", "app/src"…). */
     val browserChildren = mutableStateMapOf<String, List<FileRepository.Entry>>()
     val expandedDirs = mutableStateMapOf<String, Boolean>()
+    private val loadingDirectories = mutableStateMapOf<String, Boolean>()
     var browserCount by mutableStateOf(0)
     var browserLoading by mutableStateOf(false)
 
     fun ensureLoaded(path: String) {
-        if (browserChildren.containsKey(path)) return
-        val key = path
+        if (browserChildren.containsKey(path) || loadingDirectories.containsKey(path)) return
+        loadingDirectories[path] = true
         viewModelScope.launch(Dispatchers.IO) {
-            val list = getFileRepo().listEntries(key)
+            val result = runCatching { getFileRepo().listEntries(path) }
             withContext(Dispatchers.Main) {
-                browserChildren[key] = list
+                result.onSuccess { browserChildren[path] = it }
+                loadingDirectories.remove(path)
             }
         }
     }
@@ -223,12 +230,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         expandedDirs.clear()
         browserLoading = true
         viewModelScope.launch(Dispatchers.IO) {
-            val repo = getFileRepo()
-            val rootEntries = repo.listEntries(".")
-            val count = repo.listDir(".").lines().count { it.startsWith("[f] ") }
+            val rootEntries = getFileRepo().listEntries(".")
             withContext(Dispatchers.Main) {
                 browserChildren["."] = rootEntries
-                browserCount = count
+                browserCount = rootEntries.count { !it.isDir }
                 browserLoading = false
             }
         }
@@ -247,9 +252,35 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun openBrowserFile(path: String) {
+        if (browserFileLoading) return
+        browserFileLoading = true
+        viewModelScope.launch(Dispatchers.IO) {
+            val content = getFileRepo().readFile(path)
+            withContext(Dispatchers.Main) {
+                browserFileLoading = false
+                if (content.startsWith("Erreur")) statusMessage = content
+                else browserFilePreview = BrowserFilePreview(path, content)
+            }
+        }
+    }
+
+    fun closeBrowserFilePreview() {
+        browserFilePreview = null
+    }
+
     // ── Envoi & boucle agent ────────────────────────────────────────────────
+    private var cachedFileRepoUri: String? = null
+    private var cachedFileRepo: FileRepository? = null
+
+    @Synchronized
     private fun getFileRepo(): FileRepository {
-        return FileRepository(getApplication(), workingFolderUriString)
+        val uri = workingFolderUriString
+        if (cachedFileRepo == null || cachedFileRepoUri != uri) {
+            cachedFileRepo = FileRepository(getApplication(), uri)
+            cachedFileRepoUri = uri
+        }
+        return cachedFileRepo!!
     }
 
     fun sendMessage(userText: String) {
