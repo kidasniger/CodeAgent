@@ -3,23 +3,35 @@ package com.zagent.app.ui.viewmodel
 import android.app.Application
 import android.net.Uri
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateSetOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.zagent.app.data.AgentTools
 import com.zagent.app.data.AiRepository
+import com.zagent.app.data.DiffUtil
 import com.zagent.app.data.FileRepository
 import com.zagent.app.data.SettingsManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 
 data class ChatMessage(
     val role: String,
@@ -27,13 +39,15 @@ data class ChatMessage(
     val toolCalls: List<AiRepository.ToolCallData>? = null,
     val toolCallId: String? = null,
     val name: String? = null,
-    val toolLog: String? = null
+    val toolLog: String? = null,
+    val time: Long = System.currentTimeMillis()
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     val settingsManager = SettingsManager(application)
     private val aiRepository = AiRepository()
 
+    // ── Réglages (miroirs d'état pour l'UI) ─────────────────────────────────
     var apiKeyInput by mutableStateOf(settingsManager.apiKey)
     var modelInput by mutableStateOf(settingsManager.model)
     var baseUrlInput by mutableStateOf(settingsManager.baseUrl)
@@ -43,6 +57,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var showKeyVisible by mutableStateOf(false)
     var isSettingsOpen by mutableStateOf(false)
 
+    // ── Apparence & flux de démarrage ───────────────────────────────────────
+    var themeIsDark by mutableStateOf(settingsManager.themeIsDark)
+    var onboardingDone by mutableStateOf(settingsManager.onboardingDone)
+
+    fun setTheme(dark: Boolean) {
+        themeIsDark = dark
+        settingsManager.themeIsDark = dark
+    }
+
+    fun completeOnboarding() {
+        onboardingDone = true
+        settingsManager.onboardingDone = true
+    }
+
+    // ── Conversation ────────────────────────────────────────────────────────
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
 
@@ -50,21 +79,32 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var statusMessage by mutableStateOf("")
     var isCode1305Error by mutableStateOf(false)
     var showFallbackModelButton by mutableStateOf(false)
+    var isKeyInvalid by mutableStateOf(false)
+    var isNetworkError by mutableStateOf(false)
+
+    /** Nombre de relances automatiques après perte de réseau (plafonné à 3). */
+    var autoRetryCount by mutableStateOf(0)
+
+    val hasBlockingError: Boolean
+        get() = isKeyInvalid || isNetworkError || showFallbackModelButton || isCode1305Error
 
     data class PendingWrite(
         val path: String,
         val content: String,
-        val toolCallId: String
+        val toolCallId: String,
+        val diff: DiffUtil.DiffResult
     )
 
     var pendingWrite: PendingWrite? by mutableStateOf(null)
     private var onWriteConfirmed: ((Boolean) -> Unit)? = null
     private var agentJob: Job? = null
 
+    /** Fichiers modifiés par l'agent pendant la session (badge explorateur). */
+    val modifiedPaths = mutableStateSetOf<String>()
+
     init {
-        if (settingsManager.apiKey.isBlank()) {
-            isSettingsOpen = true
-        }
+        // L'onboarding et l'état vide guident l'utilisateur ; on n'ouvre
+        // plus les réglages automatiquement au démarrage.
     }
 
     fun saveSettings(key: String, model: String, baseUrl: String, auto: Boolean) {
@@ -76,7 +116,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         modelInput = model
         baseUrlInput = baseUrl
         autoModeInput = auto
-        isSettingsOpen = false
+        if (key.isNotBlank()) isKeyInvalid = false
     }
 
     fun setWorkingFolder(uri: Uri?) {
@@ -91,6 +131,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             workingFolderUriString = uri.toString()
             settingsManager.workingFolderUri = uri.toString()
+            browserChildren.clear()
+            expandedDirs.clear()
+            refreshFolderLabel()
         }
     }
 
@@ -104,6 +147,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         statusMessage = ""
         isCode1305Error = false
         showFallbackModelButton = false
+        isKeyInvalid = false
+        isNetworkError = false
+        autoRetryCount = 0
     }
 
     fun switchToOtherModel() {
@@ -111,9 +157,98 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         settingsManager.model = modelInput
         isCode1305Error = false
         showFallbackModelButton = false
-        statusMessage = "Modèle basculé vers $modelInput."
+        statusMessage = ""
     }
 
+    /** Relance la boucle de l'agent sur l'historique courant (après une erreur). */
+    fun retryLast(auto: Boolean = false) {
+        if (isLoading) return
+        if (_messages.value.isEmpty()) return
+        if (auto) autoRetryCount++
+        statusMessage = ""
+        isNetworkError = false
+        isKeyInvalid = false
+        isCode1305Error = false
+        showFallbackModelButton = false
+        agentJob = viewModelScope.launch(Dispatchers.IO) {
+            try {
+                runAgentLoop()
+            } finally {
+                withContext(NonCancellable + Dispatchers.Main) {
+                    isLoading = false
+                }
+            }
+        }
+    }
+
+    // ── Explorateur de fichiers ─────────────────────────────────────────────
+    var isFileBrowserOpen by mutableStateOf(false)
+    var folderLabel by mutableStateOf("Projet")
+
+    private fun refreshFolderLabel() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val name = getFileRepo().folderName()
+            withContext(Dispatchers.Main) { folderLabel = name }
+        }
+    }
+
+    /** Enfants chargés par chemin (".", "app", "app/src"…). */
+    val browserChildren = mutableStateMapOf<String, List<FileRepository.Entry>>()
+    val expandedDirs = mutableStateSetOf<String>()
+    var browserCount by mutableStateOf(0)
+    var browserLoading by mutableStateOf(false)
+
+    fun ensureLoaded(path: String) {
+        if (browserChildren.containsKey(path)) return
+        val key = path
+        viewModelScope.launch(Dispatchers.IO) {
+            val list = getFileRepo().listEntries(key)
+            withContext(Dispatchers.Main) {
+                browserChildren[key] = list
+            }
+        }
+    }
+
+    fun toggleDir(path: String) {
+        if (expandedDirs.contains(path)) {
+            expandedDirs.remove(path)
+        } else {
+            expandedDirs.add(path)
+            ensureLoaded(path)
+        }
+    }
+
+    fun refreshBrowser() {
+        refreshFolderLabel()
+        browserChildren.clear()
+        expandedDirs.clear()
+        browserLoading = true
+        viewModelScope.launch(Dispatchers.IO) {
+            val repo = getFileRepo()
+            val rootEntries = repo.listEntries(".")
+            val count = repo.listDir(".").lines().count { it.startsWith("[f] ") }
+            withContext(Dispatchers.Main) {
+                browserChildren["."] = rootEntries
+                browserCount = count
+                browserLoading = false
+            }
+        }
+    }
+
+    fun createBrowserFolder(name: String, parentPath: String = ".") {
+        val full = if (parentPath == "." || parentPath.isEmpty()) name else "$parentPath/$name"
+        viewModelScope.launch(Dispatchers.IO) {
+            getFileRepo().makeDir(full)
+            withContext(Dispatchers.Main) {
+                browserChildren.remove(parentPath)
+                browserChildren.remove(".")
+                ensureLoaded(".")
+                if (parentPath != ".") ensureLoaded(parentPath)
+            }
+        }
+    }
+
+    // ── Envoi & boucle agent ────────────────────────────────────────────────
     private fun getFileRepo(): FileRepository {
         return FileRepository(getApplication(), workingFolderUriString)
     }
@@ -135,7 +270,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 runAgentLoop()
             } finally {
-                withContext(kotlinx.coroutines.NonCancellable + Dispatchers.Main) {
+                withContext(NonCancellable + Dispatchers.Main) {
                     isLoading = false
                 }
             }
@@ -144,7 +279,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private suspend fun runAgentLoop() {
         isLoading = true
-        statusMessage = "Réflexion de l'agent..."
+        statusMessage = "Réflexion de l'agent…"
         isCode1305Error = false
         showFallbackModelButton = false
 
@@ -201,6 +336,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     isLoading = false
                     statusMessage = result.errorMessage
                     isCode1305Error = result.isCode1305
+                    isKeyInvalid = result.errorMessage.contains("401")
+                    isNetworkError = !isKeyInvalid && (
+                        result.errorMessage.contains("réseau", ignoreCase = true) ||
+                            result.errorMessage.contains("resolve host", ignoreCase = true)
+                        )
                     if (result.isCode1305 || result.errorMessage.contains("surchargé")) {
                         showFallbackModelButton = true
                     }
@@ -227,27 +367,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         for (tc in toolCalls) {
                             val logLine = "🔧 ${tc.name}(...)"
                             withContext(Dispatchers.Main) {
-                                statusMessage = "Exécution de $logLine..."
+                                statusMessage = "Exécution de $logLine…"
                             }
 
-                            val toolResult = if (tc.name == "write_file" && !autoModeInput) {
-                                val parsedArgs = try {
-                                    Json.parseToJsonElement(tc.arguments).jsonObject
-                                } catch (e: Exception) {
-                                    JsonObject(emptyMap())
-                                }
-                                val path = parsedArgs["path"]?.jsonPrimitive?.content ?: ""
-                                val fileContent = parsedArgs["content"]?.jsonPrimitive?.content ?: ""
-
-                                val userAllowed = waitForWriteConfirmation(path, fileContent, tc.id)
-                                if (userAllowed) {
-                                    fileRepo.writeFile(path, fileContent)
-                                } else {
-                                    "Refusé par l'utilisateur: l'écriture de $path a été annulée."
-                                }
-                            } else {
-                                AgentTools.executeTool(fileRepo, tc.name, tc.arguments)
-                            }
+                            val toolResult = executeToolWithGate(fileRepo, tc)
 
                             val toolMsg = ChatMessage(
                                 role = "tool",
@@ -273,9 +396,54 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private suspend fun waitForWriteConfirmation(path: String, content: String, toolCallId: String): Boolean {
+    /** Porte d'écriture : Auto / fichier toujours autorisé / confirmation manuelle. */
+    private suspend fun executeToolWithGate(fileRepo: FileRepository, tc: AiRepository.ToolCallData): String {
+        if (tc.name == "write_file") {
+            val parsedArgs = try {
+                Json.parseToJsonElement(tc.arguments).jsonObject
+            } catch (e: Exception) {
+                JsonObject(emptyMap())
+            }
+            val path = parsedArgs["path"]?.jsonPrimitive?.content ?: ""
+            val fileContent = parsedArgs["content"]?.jsonPrimitive?.content ?: ""
+
+            val alwaysAllowed = settingsManager.alwaysAllowedPaths
+            val needsConfirmation = !autoModeInput && path !in alwaysAllowed
+
+            val toolResult = if (!needsConfirmation) {
+                if (autoModeInput) {
+                    withContext(Dispatchers.Main) { statusMessage = "Mode Auto : écriture de $path…" }
+                }
+                fileRepo.writeFile(path, fileContent)
+            } else {
+                val userAllowed = waitForWriteConfirmation(path, fileContent, tc.id, fileRepo)
+                if (userAllowed) fileRepo.writeFile(path, fileContent)
+                else "Refusé par l'utilisateur: l'écriture de $path a été annulée."
+            }
+
+            if (toolResult.startsWith("Succès")) {
+                withContext(Dispatchers.Main) { modifiedPaths.add(path) }
+            }
+            return toolResult
+        }
+        return AgentTools.executeTool(fileRepo, tc.name, tc.arguments)
+    }
+
+    private suspend fun waitForWriteConfirmation(
+        path: String,
+        content: String,
+        toolCallId: String,
+        fileRepo: FileRepository
+    ): Boolean {
+        // Contenu existant pour l'aperçu du diff
+        val existing = fileRepo.readFile(path)
+        val oldContent: String? =
+            if (existing.startsWith("Erreur")) null else existing
+
+        val diff = DiffUtil.diff(oldContent, content)
+
         return suspendCancellableCoroutine { continuation ->
-            pendingWrite = PendingWrite(path, content, toolCallId)
+            pendingWrite = PendingWrite(path, content, toolCallId, diff)
             onWriteConfirmed = { allowed ->
                 pendingWrite = null
                 continuation.resume(allowed, null)
@@ -283,7 +451,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun resolvePendingWrite(allowed: Boolean) {
+    fun resolvePendingWrite(allowed: Boolean, always: Boolean = false) {
+        if (allowed && always) {
+            pendingWrite?.let { pw ->
+                settingsManager.alwaysAllowedPaths = settingsManager.alwaysAllowedPaths + pw.path
+            }
+        }
         onWriteConfirmed?.invoke(allowed)
         onWriteConfirmed = null
         pendingWrite = null

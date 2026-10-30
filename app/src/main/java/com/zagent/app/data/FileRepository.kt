@@ -98,6 +98,41 @@ class FileRepository(private val context: Context, private val rootUriString: St
         return if (resultList.isEmpty()) "Dossier vide." else resultList.joinToString("\n")
     }
 
+    data class Entry(
+        val name: String,
+        val isDir: Boolean,
+        val size: Long,
+        val path: String
+    )
+
+    /**
+     * Liste plate et structurée d'un dossier (pour l'explorateur).
+     * [path] = "." ou chemin relatif. Tri : dossiers d'abord puis alphabétique.
+     */
+    fun listEntries(path: String = "."): List<Entry> {
+        if (!validatePath(path)) return emptyList()
+        val root = getRootFolder() ?: return emptyList()
+        val target = resolveDocument(root, path) ?: return emptyList()
+        if (!target.isDirectory) return emptyList()
+        val base = if (path == "." || path.isEmpty() || path == "/") "" else path.removePrefix("./").removePrefix("/")
+        return target.listFiles()
+            .mapNotNull { f ->
+                val name = f.name ?: return@mapNotNull null
+                Entry(
+                    name = name,
+                    isDir = f.isDirectory,
+                    size = f.length(),
+                    path = if (base.isEmpty()) name else "$base/$name"
+                )
+            }
+            .sortedWith(compareByDescending<Entry> { it.isDir }.thenBy { it.name.lowercase() })
+    }
+
+    fun folderName(): String {
+        val root = getRootFolder() ?: return "Projet"
+        return root.name ?: "Projet"
+    }
+
     fun readFile(path: String): String {
         if (!validatePath(path)) return "Erreur: Chemin invalide (.. interdit)"
         val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."

@@ -37,11 +37,28 @@ class SettingsManager(context: Context) {
         get() = prefs.getString(KEY_FOLDER_URI, null)
         set(value) = prefs.edit().putString(KEY_FOLDER_URI, value).apply()
 
+    /** true = sombre, false = clair. */
+    var themeIsDark: Boolean
+        get() = prefs.getBoolean(KEY_THEME_DARK, true)
+        set(value) = prefs.edit().putBoolean(KEY_THEME_DARK, value).apply()
+
+    var onboardingDone: Boolean
+        get() = prefs.getBoolean(KEY_ONBOARDING_DONE, false)
+        set(value) = prefs.edit().putBoolean(KEY_ONBOARDING_DONE, value).apply()
+
+    /** Fichiers que l'utilisateur autorise toujours (écritures automatiques). */
+    var alwaysAllowedPaths: Set<String>
+        get() = prefs.getStringSet(KEY_ALWAYS_ALLOW, emptySet()) ?: emptySet()
+        set(value) = prefs.edit().putStringSet(KEY_ALWAYS_ALLOW, value).apply()
+
     companion object {
         private const val KEY_API_KEY = "api_key"
         private const val KEY_MODEL = "model"
         private const val KEY_BASE_URL = "base_url"
         private const val KEY_AUTO_MODE = "auto_mode"
         private const val KEY_FOLDER_URI = "folder_uri"
+        private const val KEY_THEME_DARK = "theme_dark"
+        private const val KEY_ONBOARDING_DONE = "onboarding_done"
+        private const val KEY_ALWAYS_ALLOW = "always_allow_paths"
     }
 }
