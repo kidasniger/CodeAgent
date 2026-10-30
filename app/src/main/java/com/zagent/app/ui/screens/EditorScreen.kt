@@ -36,6 +36,11 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
+import com.zagent.app.ui.editor.PreviewPane
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Save
@@ -176,6 +181,17 @@ fun EditorScreen(
     var caseSensitive by remember { mutableStateOf(false) }
     var currentIdx by remember { mutableIntStateOf(0) }
     var confirmClose by remember { mutableStateOf<Int?>(null) }
+    var showPreview by remember { mutableStateOf(false) }
+    var previewFull by remember { mutableStateOf(false) }
+    var previewPath by remember { mutableStateOf<String?>(null) }
+    var reloadTick by remember { mutableIntStateOf(0) }
+
+    BackHandler(enabled = showPreview) {
+        if (previewFull) previewFull = false else showPreview = false
+    }
+    LaunchedEffect(tab?.path) {
+        if (showPreview && tab != null && tab.lang == Lang.HTML) previewPath = tab.path
+    }
 
     val scrollStates = remember { HashMap<String, ScrollState>() }
 
@@ -239,6 +255,22 @@ fun EditorScreen(
                 Icons.Default.Search, "Rechercher",
                 onClick = { showSearch = !showSearch }, size = 36.dp,
                 iconTint = if (showSearch) c.cyan else c.text
+            )
+            Spacer(Modifier.width(6.dp))
+            CircleIconButton(
+                Icons.Default.PlayArrow, "Aperçu",
+                onClick = {
+                    if (showPreview) {
+                        showPreview = false
+                        previewFull = false
+                    } else {
+                        if (tab != null && tab.lang == Lang.HTML) previewPath = tab.path
+                        if (previewPath == null) editor.info = "Ouvre un fichier .html pour l'aperçu"
+                        else showPreview = true
+                    }
+                },
+                size = 36.dp,
+                iconTint = if (showPreview) c.cyan else c.text
             )
             Spacer(Modifier.width(6.dp))
             CircleIconButton(
@@ -422,7 +454,7 @@ fun EditorScreen(
         }
 
         // ── Zone d'édition ──────────────────────────────────────────────────
-        Box(Modifier.weight(1f).fillMaxWidth()) {
+        if (!(showPreview && previewFull)) Box(Modifier.weight(1f).fillMaxWidth()) {
             if (tab == null || vScroll == null) {
                 Column(
                     Modifier.fillMaxSize().background(EditorBg),
@@ -445,6 +477,43 @@ fun EditorScreen(
                     matches = matches,
                     current = safeIdx,
                     onSave = { editor.save(tab) }
+                )
+            }
+        }
+
+        // ── Aperçu web (masqué pendant la saisie en mode partagé) ───────────
+        if (showPreview && (previewFull || WindowInsets.ime.getBottom(density) == 0)) {
+            val entry = previewPath ?: "index.html"
+            Column(Modifier.weight(1f).fillMaxWidth()) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(c.bg2)
+                        .padding(start = 12.dp, end = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Aperçu · " + entry,
+                        style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp),
+                        color = c.text2,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f)
+                    )
+                    SmallIcon(Icons.Default.Refresh, "Recharger") { reloadTick++ }
+                    SmallIcon(
+                        if (previewFull) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                        "Plein écran"
+                    ) { previewFull = !previewFull }
+                    SmallIcon(Icons.Default.Close, "Fermer l'aperçu") {
+                        showPreview = false
+                        previewFull = false
+                    }
+                }
+                PreviewPane(
+                    path = entry,
+                    reloadKey = editor.saveCount + reloadTick,
+                    readResource = editor::readResource,
+                    modifier = Modifier.weight(1f).fillMaxWidth()
                 )
             }
         }

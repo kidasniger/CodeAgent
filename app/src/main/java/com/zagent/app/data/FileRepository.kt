@@ -193,6 +193,19 @@ class FileRepository(private val context: Context, private val rootUriString: St
         }
     }
 
+    /** Lecture binaire d'une ressource du projet (aperçu web). Limite : 20 Mo. */
+    fun readBytes(path: String): ByteArray? {
+        if (!validatePath(path)) return null
+        val root = getRootFolder() ?: return null
+        val target = resolveDocument(root, path) ?: return null
+        if (target.isDirectory || target.length() > 20_000_000L) return null
+        return try {
+            context.contentResolver.openInputStream(target.uri)?.use { it.readBytes() }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     /** Lecture complète (sans troncature) pour l'éditeur. Limite : 500 Ko. */
     fun readFileForEdit(path: String): Result<String> {
         if (!validatePath(path)) return Result.failure(IllegalArgumentException("Chemin invalide (.. interdit)"))

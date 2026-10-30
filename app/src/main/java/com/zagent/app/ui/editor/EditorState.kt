@@ -146,6 +146,11 @@ class EditorController(
         private set
     var error by mutableStateOf<String?>(null)
     var info by mutableStateOf<String?>(null)
+    /** Incrémenté à chaque sauvegarde réussie : déclenche le rechargement de l'aperçu. */
+    var saveCount by mutableIntStateOf(0)
+        private set
+
+    fun readResource(path: String): ByteArray? = repo().readBytes(path)
 
     val active: EditorTab? get() = tabs.getOrNull(activeIndex)
 
@@ -200,6 +205,7 @@ class EditorController(
                 val ok = res.startsWith("Succès")
                 if (ok) {
                     tab.markSaved(text)
+                    saveCount++
                     info = "Enregistré · ${tab.name}"
                 } else {
                     error = res
