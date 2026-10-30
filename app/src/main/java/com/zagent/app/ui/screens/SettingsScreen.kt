@@ -201,7 +201,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                             .fillMaxWidth()
                             .clickable { editUrl = !editUrl }
                     ) {
-                        IconBadge(Icons.Default.Globe, c.green)
+                        IconBadge(Icons.Default.Language, c.green)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Text("URL de base", style = MaterialTheme.typography.titleMedium, color = c.text)
