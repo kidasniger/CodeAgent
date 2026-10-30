@@ -1,0 +1,125 @@
+name: Release APK
+
+# Lancement manuel : gh workflow run release.yml -f version=1.0 -f notes="Nouveautés"
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version de base (ex : 1.0)"
+        required: true
+        default: "1.0"
+      notes:
+        description: "Nouveautés affichées dans l'application (une par ligne)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      BASE_VERSION: ${{ github.event.inputs.version }}
+      RELEASE_NOTES: ${{ github.event.inputs.notes }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+
+      - name: Licences Android
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+
+      - name: Calculer la version
+        id: ver
+        run: |
+          case "$BASE_VERSION" in
+            ''|*[!0-9A-Za-z._]*) echo "Version invalide : $BASE_VERSION"; exit 1;;
+          esac
+          # versionCode = nombre de commits : identique entre build.yml et release.yml, toujours croissant
+          CODE=$(git rev-list --count HEAD)
+          NAME="${BASE_VERSION}-b${CODE}"
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "tag=v$NAME" >> "$GITHUB_OUTPUT"
+          echo "Version $NAME (versionCode $CODE)"
+
+      - name: Préparer la signature
+        env:
+          KS_B64: ${{ secrets.KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          {
+            echo "KEYSTORE_PATH=$RUNNER_TEMP/release.keystore"
+            echo "KEYSTORE_PASSWORD=$KS_PASS"
+            echo "KEY_PASSWORD=$KS_PASS"
+            echo "KEY_ALIAS=$KS_ALIAS"
+          } >> "$GITHUB_ENV"
+
+      - name: Tests unitaires
+        run: gradle :app:testDebugUnitTest
+
+      - name: Lint (informatif)
+        continue-on-error: true
+        run: gradle :app:lintDebug
+
+      - name: Build release signé
+        run: gradle assembleRelease -PversionName=${{ steps.ver.outputs.name }} -PversionCode=${{ steps.ver.outputs.code }}
+
+      - name: Nommer l'APK et calculer le SHA-256
+        run: |
+          mkdir -p dist
+          APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
+          OUT="ZAgent-${{ steps.ver.outputs.tag }}.apk"
+          cp "$APK" "dist/$OUT"
+          (cd dist && sha256sum "$OUT" > "$OUT.sha256" && cat "$OUT.sha256")
+
+      - name: Vérifier la signature de l'APK
+        run: |
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner 2>/dev/null | sort -V | tail -1)
+          if [ -z "$APKSIGNER" ]; then echo "apksigner introuvable"; exit 1; fi
+          "$APKSIGNER" verify --verbose --print-certs dist/ZAgent-${{ steps.ver.outputs.tag }}.apk
+
+      - name: Archiver les fichiers
+        uses: actions/upload-artifact@v4
+        with:
+          name: zagent-release
+          path: dist/*
+          retention-days: 30
+
+      - name: Notes de version
+        run: |
+          if [ -n "$RELEASE_NOTES" ]; then
+            printf '%s\n' "$RELEASE_NOTES" > notes.md
+          else
+            git log -1 --pretty=%s > notes.md
+          fi
+
+      - name: Publier la release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: "ZAgent ${{ steps.ver.outputs.name }}"
+          body_path: notes.md
+          files: |
+            dist/*.apk
+            dist/*.sha256
+          fail_on_unmatched_files: true

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Exclut les préférences chiffrées (clé API) : la clé de chiffrement Keystore
+     n'est pas restaurée sur un autre appareil, ce qui provoquait un crash. -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="zagent_secure_prefs.xml"/>
+</full-backup-content>
