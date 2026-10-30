@@ -196,6 +196,15 @@ fun FileBrowserScreen(
             }
         }
 
+        viewModel.browserError?.let { error ->
+            Text(
+                error,
+                color = c.red,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp)
+            )
+        }
+
         // Synthèse en bas
         if (viewModel.modifiedPaths.isNotEmpty()) {
             Row(
