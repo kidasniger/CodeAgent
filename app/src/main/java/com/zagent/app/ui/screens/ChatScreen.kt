@@ -778,7 +778,10 @@ private fun InputBar(
                     .size(42.dp)
                     .clip(CircleShape)
                     .then(if (enabled && value.isNotBlank()) Modifier.background(c.gradBtn) else Modifier.background(c.surface3))
-                    .clickable(enabled = enabled && value.isNotBlank(), onClick = onSend),
+                    .clickable(enabled = enabled && value.isNotBlank()) {
+                        onSend()
+                        keyboardController?.hide()
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
