@@ -2,10 +2,8 @@ package com.zagent.app.update
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.longOrNull
 
@@ -78,6 +76,6 @@ object ReleaseParser {
             .filter { it.isNotEmpty() && !it.startsWith("#") }
             .map { it.replace("**", "").replace("`", "").replace(Regex("^[-*•]\\s*"), "").trim() }
             .filter { it.isNotEmpty() }
-        return if (lines.isEmpty()) "Corrections et améliorations." else lines.joinToString("\n") { "• $it" }
+        return if (lines.isEmpty()) "• Corrections et améliorations." else lines.joinToString("\n") { "• $it" }
     }
 }

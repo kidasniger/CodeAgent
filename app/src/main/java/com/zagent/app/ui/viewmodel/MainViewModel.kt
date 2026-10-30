@@ -277,12 +277,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val mimeType = repository.mimeType(path)
                     withContext(Dispatchers.Main) {
                         try {
-                            val viewIntent = Intent(Intent.ACTION_VIEW)
-                                .setDataAndType(uri, mimeType)
-                                .setClipData(ClipData.newRawUri(path.substringAfterLast('/'), uri))
-                                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            val chooser = Intent.createChooser(viewIntent, "Ouvrir avec")
-                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            val viewIntent = Intent(Intent.ACTION_VIEW).apply {
+                                setDataAndType(uri, mimeType)
+                                clipData = ClipData.newRawUri(path.substringAfterLast('/'), uri)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            val chooser = Intent.createChooser(viewIntent, "Ouvrir avec").apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
                             getApplication<Application>().startActivity(chooser)
                         } catch (error: Exception) {
                             browserError = "Aucune application ne peut ouvrir ce fichier : ${error.localizedMessage ?: path}"
