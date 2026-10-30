@@ -246,16 +246,6 @@ private fun AmbientTopBar(
                         leadingIcon = { Icon(Icons.Default.Refresh, null, tint = c.text2) },
                         onClick = { onMenuDismiss(); onNewConversation() }
                     )
-                    DropdownMenuItem(
-                        text = { Text("Explorateur de fichiers", color = c.text) },
-                        leadingIcon = { Icon(Icons.Default.FolderOpen, null, tint = c.text2) },
-                        onClick = { onMenuDismiss(); onOpenExplorer() }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Réglages", color = c.text) },
-                        leadingIcon = { Icon(Icons.Default.Settings, null, tint = c.text2) },
-                        onClick = { onMenuDismiss(); onOpenSettings() }
-                    )
                 }
             }
             Spacer(Modifier.width(12.dp))
