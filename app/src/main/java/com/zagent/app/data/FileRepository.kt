@@ -128,6 +128,36 @@ class FileRepository(private val context: Context, private val rootUriString: St
             .sortedWith(compareByDescending<Entry> { it.isDir }.thenBy { it.name.lowercase() })
     }
 
+    /** URI de partage d'un fichier, limitée au dossier de travail accordé par SAF. */
+    fun fileUri(path: String): Uri? {
+        if (!validatePath(path)) return null
+        val root = getRootFolder() ?: return null
+        val file = resolveDocument(root, path) ?: return null
+        return if (file.isDirectory) null else file.uri
+    }
+
+    /** Les fichiers texte sont lus dans l'aperçu intégré ; les autres passent par Android. */
+    fun isTextFile(path: String): Boolean {
+        val extension = path.substringAfterLast('.', "").lowercase()
+        return extension in setOf(
+            "txt", "md", "markdown", "kt", "kts", "java", "js", "jsx", "ts", "tsx",
+            "json", "xml", "yaml", "yml", "toml", "gradle", "properties", "pro",
+            "py", "sh", "html", "htm", "css", "scss", "sql", "csv", "log", "ini",
+            "conf", "env", "gitignore", "dockerfile"
+        )
+    }
+
+    fun mimeType(path: String): String {
+        if (isTextFile(path)) return "text/plain"
+        val uri = fileUri(path)
+        val providerType = uri?.let { context.contentResolver.getType(it) }
+        if (!providerType.isNullOrBlank()) return providerType
+        val extension = path.substringAfterLast('.', "").lowercase()
+        return if (extension.isEmpty()) "application/octet-stream"
+        else MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+            ?: "application/octet-stream"
+    }
+
     fun folderName(): String {
         val root = getRootFolder() ?: return "Projet"
         return root.name ?: "Projet"
