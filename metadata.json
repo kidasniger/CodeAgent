@@ -1,6 +1,0 @@
-{
-  "name": "ZAgent",
-  "description": "Agent de code intelligent avec appels d'outils et intégration OpenAI/Z.ai",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
