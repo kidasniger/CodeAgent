@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -480,6 +482,11 @@ fun EditorScreen(
                 )
             }
         }
+
+        // ── Barre de symboles (visible avec le clavier) ─────────────────────
+        if (tab != null && WindowInsets.ime.getBottom(density) > 0) {
+            SymbolBar(onInsert = { tab.insert(it) })
+        }
     }
 
     // ── Confirmation de fermeture d'un onglet modifié ───────────────────────
@@ -639,6 +646,42 @@ private fun CodeEditor(
                         }
                     }
             )
+        }
+    }
+}
+
+private val SYMBOLS = listOf(
+    "Tab" to "  ", "{" to "{", "}" to "}", "(" to "(", ")" to ")", "[" to "[", "]" to "]",
+    ";" to ";", "<" to "<", ">" to ">", "\"" to "\"", "'" to "'", "=" to "=", "/" to "/"
+)
+
+@Composable
+private fun SymbolBar(onInsert: (String) -> Unit) {
+    val c = Zcolors
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(c.bg2)
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        SYMBOLS.forEach { (label, value) ->
+            Box(
+                Modifier
+                    .height(36.dp)
+                    .widthIn(min = if (label == "Tab") 52.dp else 38.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(c.surface2)
+                    .clickable { onInsert(value) },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    label,
+                    style = TextStyle(fontFamily = JetBrainsMono, fontWeight = FontWeight.SemiBold, fontSize = 15.sp),
+                    color = c.text
+                )
+            }
         }
     }
 }
