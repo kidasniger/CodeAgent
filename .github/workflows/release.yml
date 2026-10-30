@@ -1,19 +1,16 @@
 name: Release APK
 
-# Publication automatique après les changements de l'application sur main.
-# Lancement manuel toujours disponible pour choisir version et notes.
+# Publie uniquement après la réussite du build Debug sur main.
+# Les exécutions obsolètes sont ignorées si main a avancé entre-temps.
+# Le lancement manuel reste disponible pour choisir version et notes.
 on:
-  push:
+  workflow_run:
+    workflows:
+      - "Build Android APK"
+    types:
+      - completed
     branches:
       - main
-    paths:
-      - "app/**"
-      - "gradle/**"
-      - "build.gradle.kts"
-      - "settings.gradle.kts"
-      - "gradle.properties"
-      - "gradlew"
-      - "gradlew.bat"
   workflow_dispatch:
     inputs:
       version:
@@ -34,6 +31,7 @@ concurrency:
 
 jobs:
   release:
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_sha == github.sha) }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -43,6 +41,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 0
 
       - name: JDK
@@ -170,7 +169,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
-          target_commitish: ${{ github.sha }}
+          target_commitish: ${{ github.event.workflow_run.head_sha || github.sha }}
           name: "ZAgent ${{ steps.ver.outputs.name }}"
           body_path: notes.md
           files: |
