@@ -5,7 +5,6 @@ import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.mutableStateSetOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -100,7 +99,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var agentJob: Job? = null
 
     /** Fichiers modifiés par l'agent pendant la session (badge explorateur). */
-    val modifiedPaths = mutableStateSetOf<String>()
+    val modifiedPaths = mutableStateMapOf<String, Boolean>()
 
     init {
         // L'onboarding et l'état vide guident l'utilisateur ; on n'ouvre
@@ -194,7 +193,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Enfants chargés par chemin (".", "app", "app/src"…). */
     val browserChildren = mutableStateMapOf<String, List<FileRepository.Entry>>()
-    val expandedDirs = mutableStateSetOf<String>()
+    val expandedDirs = mutableStateMapOf<String, Boolean>()
     var browserCount by mutableStateOf(0)
     var browserLoading by mutableStateOf(false)
 
@@ -210,10 +209,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun toggleDir(path: String) {
-        if (expandedDirs.contains(path)) {
+        if (expandedDirs.containsKey(path)) {
             expandedDirs.remove(path)
         } else {
-            expandedDirs.add(path)
+            expandedDirs[path] = true
             ensureLoaded(path)
         }
     }
@@ -422,7 +421,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             if (toolResult.startsWith("Succès")) {
-                withContext(Dispatchers.Main) { modifiedPaths.add(path) }
+                withContext(Dispatchers.Main) { modifiedPaths[path] = true }
             }
             return toolResult
         }
