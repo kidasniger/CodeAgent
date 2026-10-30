@@ -185,9 +185,22 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                     subtitle = "$model · flash",
                     subtitleMono = true
                 ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        ModelChip("glm-4.7-flash", model == "glm-4.7-flash", onClick = { model = "glm-4.7-flash" })
-                        ModelChip("glm-4.5-flash", model == "glm-4.5-flash", onClick = { model = "glm-4.5-flash" })
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ModelChip(
+                            "glm-4.7-flash",
+                            model == "glm-4.7-flash",
+                            onClick = { model = "glm-4.7-flash" },
+                            modifier = Modifier.weight(1f)
+                        )
+                        ModelChip(
+                            "glm-4.5-flash",
+                            model == "glm-4.5-flash",
+                            onClick = { model = "glm-4.5-flash" },
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                 }
                 CardDivider(Modifier.padding(horizontal = 16.dp))
