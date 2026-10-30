@@ -15,6 +15,7 @@ import com.zagent.app.data.AiRepository
 import com.zagent.app.data.DiffUtil
 import com.zagent.app.data.FileRepository
 import com.zagent.app.data.SettingsManager
+import com.zagent.app.ui.editor.EditorController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -134,6 +135,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             settingsManager.workingFolderUri = uri.toString()
             browserChildren.clear()
             expandedDirs.clear()
+            editor.clear()
+            isEditorOpen = false
             refreshFolderLabel()
         }
     }
@@ -181,6 +184,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
+    // ── Éditeur de code ─────────────────────────────────────────────────────
+    val editor = EditorController(viewModelScope) { getFileRepo() }
+    var isEditorOpen by mutableStateOf(false)
 
     // ── Explorateur de fichiers ─────────────────────────────────────────────
     var isFileBrowserOpen by mutableStateOf(false)
@@ -265,11 +272,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val repository = getFileRepo()
                 if (repository.isTextFile(path)) {
-                    val content = repository.readFile(path)
                     withContext(Dispatchers.Main) {
                         browserFileLoading = false
-                        if (content.startsWith("Erreur")) browserError = content
-                        else browserFilePreview = BrowserFilePreview(path, content)
+                        editor.open(path) { isEditorOpen = true }
                     }
                 } else {
                     val uri = repository.fileUri(path)
@@ -489,7 +494,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             if (toolResult.startsWith("Succès")) {
-                withContext(Dispatchers.Main) { modifiedPaths[path] = true }
+                withContext(Dispatchers.Main) {
+                    modifiedPaths[path] = true
+                    editor.onExternalWrite(path, fileContent)
+                }
             }
             return toolResult
         }

@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.zagent.app.ui.screens.ChatScreen
+import com.zagent.app.ui.screens.EditorScreen
 import com.zagent.app.ui.screens.FileBrowserScreen
 import com.zagent.app.ui.screens.OnboardingScreen
 import com.zagent.app.ui.screens.SettingsScreen
@@ -77,7 +78,12 @@ private fun AppRoot(viewModel: MainViewModel, systemDark: Boolean) {
     }
 
     Box(Modifier.fillMaxSize()) {
-        if (viewModel.isFileBrowserOpen) {
+        if (viewModel.isEditorOpen) {
+            EditorScreen(
+                viewModel = viewModel,
+                onBack = { viewModel.isEditorOpen = false }
+            )
+        } else if (viewModel.isFileBrowserOpen) {
             FileBrowserScreen(
                 viewModel = viewModel,
                 onBack = { viewModel.isFileBrowserOpen = false }

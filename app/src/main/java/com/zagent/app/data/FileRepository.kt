@@ -193,6 +193,24 @@ class FileRepository(private val context: Context, private val rootUriString: St
         }
     }
 
+    /** Lecture complète (sans troncature) pour l'éditeur. Limite : 500 Ko. */
+    fun readFileForEdit(path: String): Result<String> {
+        if (!validatePath(path)) return Result.failure(IllegalArgumentException("Chemin invalide (.. interdit)"))
+        val root = getRootFolder()
+            ?: return Result.failure(IllegalStateException("Aucun dossier de travail sélectionné."))
+        val target = resolveDocument(root, path)
+            ?: return Result.failure(IllegalStateException("Fichier introuvable: $path"))
+        if (target.isDirectory) return Result.failure(IllegalStateException("C'est un dossier: $path"))
+        if (target.length() > 500_000L) {
+            return Result.failure(IllegalStateException("Fichier trop volumineux pour l'éditeur (> 500 Ko)."))
+        }
+        return runCatching {
+            context.contentResolver.openInputStream(target.uri)?.use { input ->
+                input.readBytes().toString(Charsets.UTF_8)
+            } ?: error("Impossible d'ouvrir $path")
+        }
+    }
+
     fun makeDir(path: String): String {
         if (!validatePath(path)) return "Erreur: Chemin invalide (.. interdit)"
         val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
