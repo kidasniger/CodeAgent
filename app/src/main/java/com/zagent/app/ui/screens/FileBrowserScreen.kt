@@ -62,6 +62,7 @@ import com.zagent.app.ui.components.CircleIconButton
 import com.zagent.app.ui.components.GlassCard
 import com.zagent.app.ui.components.StatusBadge
 import com.zagent.app.ui.theme.JetBrainsMono
+import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.SpaceGrotesk
 import com.zagent.app.ui.theme.Zcolors
 import com.zagent.app.ui.viewmodel.MainViewModel
@@ -154,8 +155,8 @@ fun FileBrowserScreen(
                 colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
                     cursorColor = c.cyan
                 ),
                 modifier = Modifier.fillMaxWidth()
@@ -178,7 +179,7 @@ fun FileBrowserScreen(
                 contentPadding = PaddingValues(0.dp)
             ) {
                 LazyColumn(Modifier.fillMaxSize()) {
-                    items(rows, key = { it.path + it.depth }) { row ->
+                    items(rows, key = { "${it.entry.path}:${it.depth}" }) { row ->
                         BrowserRow(row, viewModel)
                     }
                     if (rows.isEmpty()) {
@@ -291,8 +292,8 @@ private fun rememberBrowserRows(viewModel: MainViewModel, query: String): List<B
 private fun BrowserRow(row: BrowserRow, viewModel: MainViewModel) {
     val c = Zcolors
     val e = row.entry
-    val isModified = viewModel.modifiedPaths.contains(e.path)
-    val expanded = viewModel.expandedDirs.contains(e.path)
+    val isModified = viewModel.modifiedPaths.containsKey(e.path)
+    val expanded = viewModel.expandedDirs.containsKey(e.path)
 
     Row(
         modifier = Modifier
