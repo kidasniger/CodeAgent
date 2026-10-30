@@ -522,9 +522,22 @@ private fun IlluKey(
             )
         }
         Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            ModelChip("glm-4.7-flash", currentModel == "glm-4.7-flash", onClick = { onModelSelected("glm-4.7-flash") })
-            ModelChip("glm-4.5-flash", currentModel == "glm-4.5-flash", onClick = { onModelSelected("glm-4.5-flash") })
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ModelChip(
+                "glm-4.7-flash",
+                currentModel == "glm-4.7-flash",
+                onClick = { onModelSelected("glm-4.7-flash") },
+                modifier = Modifier.weight(1f)
+            )
+            ModelChip(
+                "glm-4.5-flash",
+                currentModel == "glm-4.5-flash",
+                onClick = { onModelSelected("glm-4.5-flash") },
+                modifier = Modifier.weight(1f)
+            )
         }
         Spacer(Modifier.height(14.dp))
         Row(
