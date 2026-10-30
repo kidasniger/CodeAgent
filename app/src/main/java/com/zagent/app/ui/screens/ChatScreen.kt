@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -61,6 +62,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,6 +70,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -110,7 +113,7 @@ fun ChatScreen(
     val c = Zcolors
     val messages by viewModel.messages.collectAsState()
     val listState = rememberLazyListState()
-    var input by remember { mutableStateOf("") }
+    var input by rememberSaveable { mutableStateOf("") }
     var menuOpen by remember { mutableStateOf(false) }
 
     val folderLauncher = rememberLauncherForActivityResult(
@@ -231,19 +234,25 @@ private fun AmbientTopBar(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box {
                 CircleIconButton(Icons.Default.Menu, "Menu", onClick = onMenuToggle)
-                DropdownMenu(expanded = menuOpen, onDismissRequest = onMenuDismiss) {
+                DropdownMenu(
+                    expanded = menuOpen,
+                    onDismissRequest = onMenuDismiss,
+                    shape = RoundedCornerShape(16.dp),
+                    containerColor = c.bg2,
+                    tonalElevation = 8.dp
+                ) {
                     DropdownMenuItem(
-                        text = { Text("Nouvelle conversation") },
+                        text = { Text("Nouvelle conversation", color = c.text) },
                         leadingIcon = { Icon(Icons.Default.Refresh, null, tint = c.text2) },
                         onClick = { onMenuDismiss(); onNewConversation() }
                     )
                     DropdownMenuItem(
-                        text = { Text("Explorateur de fichiers") },
+                        text = { Text("Explorateur de fichiers", color = c.text) },
                         leadingIcon = { Icon(Icons.Default.FolderOpen, null, tint = c.text2) },
                         onClick = { onMenuDismiss(); onOpenExplorer() }
                     )
                     DropdownMenuItem(
-                        text = { Text("Réglages") },
+                        text = { Text("Réglages", color = c.text) },
                         leadingIcon = { Icon(Icons.Default.Settings, null, tint = c.text2) },
                         onClick = { onMenuDismiss(); onOpenSettings() }
                     )
@@ -707,6 +716,7 @@ private fun InputBar(
     enabled: Boolean
 ) {
     val c = Zcolors
+    val keyboardController = LocalSoftwareKeyboardController.current
     Column(
         Modifier
             .fillMaxWidth()
@@ -743,6 +753,17 @@ private fun InputBar(
                 },
                 textStyle = TextStyle(fontFamily = Inter, fontSize = 15.sp, color = c.text),
                 maxLines = 4,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Send
+                ),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                    onSend = {
+                        if (enabled && value.isNotBlank()) {
+                            onSend()
+                            keyboardController?.hide()
+                        }
+                    }
+                ),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
@@ -750,7 +771,7 @@ private fun InputBar(
                     unfocusedIndicatorColor = Color.Transparent,
                     cursorColor = c.cyan
                 ),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp, max = 116.dp)
             )
             Box(
                 modifier = Modifier
