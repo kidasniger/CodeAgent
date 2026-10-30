@@ -38,8 +38,21 @@ jobs:
           echo "KEY_ALIAS=$KS_ALIAS" >> "$GITHUB_ENV"
       - name: Build Debug APK
         run: |
+          set -o pipefail
           CODE=$(git rev-list --count HEAD)
-          gradle assembleDebug -PversionName=1.0-b$CODE -PversionCode=$CODE
+          gradle assembleDebug -PversionName=1.0-b$CODE -PversionCode=$CODE 2>&1 | tee build.log
+
+      - name: Rapport erreurs compilation
+        if: failure()
+        run: |
+          if [ -f build.log ]; then
+            grep -E "^e: |error: " build.log | head -30 | while IFS= read -r l; do
+              echo "::error::${l:0:500}"
+            done
+            grep -qE "^e: |error: " build.log || tail -12 build.log | while IFS= read -r l; do
+              echo "::error::${l:0:400}"
+            done
+          fi
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
