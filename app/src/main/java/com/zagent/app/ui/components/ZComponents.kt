@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -364,8 +365,12 @@ fun ModelChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: M
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .background(if (selected) c.violetBg else c.surface)
-            .border(1.dp, if (selected) c.violet else c.border, RoundedCornerShape(12.dp))
+            .background(
+                if (selected) {
+                    if (c.isDark) Color(0xFF2B2142) else Color(0xFFF0EBFF)
+                } else c.bg2
+            )
+            .border(1.dp, if (selected) c.violet else c.border2, RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 9.dp),
         contentAlignment = Alignment.Center
@@ -377,7 +382,10 @@ fun ModelChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: M
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                 fontSize = 12.sp
             ),
-            color = if (selected) c.violet else c.text2
+            color = if (selected) c.violet else c.text2,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -394,8 +402,11 @@ fun MonoChip(text: String, modifier: Modifier = Modifier, tint: Color = Zcolors.
     ) {
         Text(
             text,
-            style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp),
-            color = tint
+            style = TextStyle(fontFamily = JetBrainsMono, fontSize = 10.5.sp),
+            color = tint,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
