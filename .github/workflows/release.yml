@@ -64,7 +64,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ ! "$BASE_VERSION" =~ ^[0-9]+(\\.[0-9]+){1,2}([.-][0-9A-Za-z.-]+)?$ ]]; then
+          if [[ ! "$BASE_VERSION" =~ ^[0-9]+(\.[0-9]+){1,2}([.-][0-9A-Za-z.-]+)?$ ]]; then
             echo "::error::Version invalide : $BASE_VERSION"
             exit 1
           fi
@@ -157,7 +157,7 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -n "$RELEASE_NOTES" ]]; then
-            printf '%s\\n' "$RELEASE_NOTES" > notes.md
+            printf '%s\n' "$RELEASE_NOTES" > notes.md
           elif git describe --tags --abbrev=0 HEAD^ >/dev/null 2>&1; then
             PREVIOUS_TAG="$(git describe --tags --abbrev=0 HEAD^)"
             git log "$PREVIOUS_TAG..HEAD" --pretty=format:'- %s%n' > notes.md
