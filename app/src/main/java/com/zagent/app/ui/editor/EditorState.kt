@@ -239,6 +239,17 @@ class EditorController(
         }
     }
 
+    fun hasDirtyUnder(path: String): Boolean =
+        tabs.any { it.dirty && (it.path == path || it.path.startsWith("$path/")) }
+
+    /** Ferme les onglets d'un fichier (ou des fichiers d'un dossier) supprimé ou renommé. */
+    fun closeUnder(path: String) {
+        for (i in tabs.indices.reversed()) {
+            val p = tabs[i].path
+            if (p == path || p.startsWith("$path/")) close(i)
+        }
+    }
+
     fun clear() {
         tabs.clear()
         activeIndex = 0

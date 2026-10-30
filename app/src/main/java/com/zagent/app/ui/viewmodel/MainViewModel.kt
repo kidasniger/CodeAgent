@@ -235,16 +235,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Recharge l'arbre en conservant les dossiers dépliés. */
     fun refreshBrowser() {
         refreshFolderLabel()
-        browserChildren.clear()
-        expandedDirs.clear()
         browserLoading = true
+        val dirs = listOf(".") + expandedDirs.keys.toList()
         viewModelScope.launch(Dispatchers.IO) {
-            val rootEntries = getFileRepo().listEntries(".")
+            val repo = getFileRepo()
+            val loaded = dirs.map { it to repo.listEntries(it) }
             withContext(Dispatchers.Main) {
-                browserChildren["."] = rootEntries
-                browserCount = rootEntries.count { !it.isDir }
+                for ((p, list) in loaded) browserChildren[p] = list
+                browserChildren.keys.toList().forEach { k ->
+                    if (k != "." && !expandedDirs.containsKey(k)) browserChildren.remove(k)
+                }
+                expandedDirs.keys.toList().forEach { d ->
+                    val parent = if (d.contains('/')) d.substringBeforeLast('/') else "."
+                    val siblings = browserChildren[parent]
+                    if (siblings == null || siblings.none { it.path == d && it.isDir }) {
+                        expandedDirs.remove(d)
+                        browserChildren.remove(d)
+                    }
+                }
+                browserCount = (browserChildren["."] ?: emptyList()).count { !it.isDir }
                 browserLoading = false
             }
         }
@@ -255,10 +267,82 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             getFileRepo().makeDir(full)
             withContext(Dispatchers.Main) {
-                browserChildren.remove(parentPath)
-                browserChildren.remove(".")
-                ensureLoaded(".")
-                if (parentPath != ".") ensureLoaded(parentPath)
+                expandParents(full)
+                refreshBrowser()
+            }
+        }
+    }
+
+    private fun expandParents(path: String) {
+        val parts = path.split("/").filter { it.isNotEmpty() }
+        var acc = ""
+        for (i in 0 until parts.size - 1) {
+            acc = if (acc.isEmpty()) parts[i] else acc + "/" + parts[i]
+            expandedDirs[acc] = true
+        }
+    }
+
+    private fun forgetPath(path: String) {
+        modifiedPaths.keys.toList().filter { it == path || it.startsWith("$path/") }.forEach { modifiedPaths.remove(it) }
+        expandedDirs.keys.toList().filter { it == path || it.startsWith("$path/") }.forEach { expandedDirs.remove(it) }
+        editor.closeUnder(path)
+    }
+
+    fun createBrowserFile(path: String) {
+        browserError = null
+        viewModelScope.launch(Dispatchers.IO) {
+            val res = getFileRepo().createFile(path)
+            withContext(Dispatchers.Main) {
+                if (res.startsWith("Succès")) {
+                    expandParents(path)
+                    refreshBrowser()
+                    editor.open(path) { isEditorOpen = true }
+                } else {
+                    browserError = res
+                }
+            }
+        }
+    }
+
+    fun deleteBrowserPath(path: String) {
+        if (editor.hasDirtyUnder(path)) {
+            browserError = "Enregistre ou ferme les onglets modifiés avant de supprimer."
+            return
+        }
+        browserError = null
+        viewModelScope.launch(Dispatchers.IO) {
+            val res = getFileRepo().deletePath(path)
+            withContext(Dispatchers.Main) {
+                if (res.startsWith("Succès")) {
+                    forgetPath(path)
+                    refreshBrowser()
+                } else {
+                    browserError = res
+                }
+            }
+        }
+    }
+
+    fun renameBrowserPath(path: String, newName: String) {
+        if (newName.isBlank() || newName.contains('/') || newName.contains("..")) {
+            browserError = "Nom invalide."
+            return
+        }
+        if (newName == path.substringAfterLast('/')) return
+        if (editor.hasDirtyUnder(path)) {
+            browserError = "Enregistre ou ferme les onglets modifiés avant de renommer."
+            return
+        }
+        browserError = null
+        viewModelScope.launch(Dispatchers.IO) {
+            val res = getFileRepo().renamePath(path, newName)
+            withContext(Dispatchers.Main) {
+                if (res.startsWith("Succès")) {
+                    forgetPath(path)
+                    refreshBrowser()
+                } else {
+                    browserError = res
+                }
             }
         }
     }

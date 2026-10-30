@@ -37,6 +37,11 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.runtime.remember
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -79,9 +84,14 @@ fun FileBrowserScreen(
 ) {
     val c = Zcolors
     var query by rememberSaveable { mutableStateOf("") }
-    var showNewFolderDialog by rememberSaveable { mutableStateOf(false) }
+    var createKind by rememberSaveable { mutableStateOf<String?>(null) }
+    var createPrefix by rememberSaveable { mutableStateOf("") }
+    var menuNew by remember { mutableStateOf(false) }
+    var renameTarget by remember { mutableStateOf<FileRepository.Entry?>(null) }
+    var deleteTarget by remember { mutableStateOf<FileRepository.Entry?>(null) }
 
-    LaunchedEffect(Unit) { viewModel.refreshBrowser() }
+    // Recharge à l'ouverture, après chaque sauvegarde de l'éditeur et après chaque écriture de l'agent.
+    LaunchedEffect(viewModel.editor.saveCount, viewModel.modifiedPaths.size) { viewModel.refreshBrowser() }
 
     Column(
         modifier = Modifier
@@ -115,7 +125,23 @@ fun FileBrowserScreen(
                 }
                 CircleIconButton(Icons.Default.Refresh, "Rafraîchir", onClick = { viewModel.refreshBrowser() })
                 Spacer(Modifier.width(10.dp))
-                CircleIconButton(Icons.Default.CreateNewFolder, "Nouveau dossier", onClick = { showNewFolderDialog = true })
+                Box {
+                    CircleIconButton(Icons.Default.Add, "Nouveau", onClick = { menuNew = true })
+                    DropdownMenu(
+                        expanded = menuNew,
+                        onDismissRequest = { menuNew = false },
+                        containerColor = c.bg2
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Nouveau fichier", color = c.text) },
+                            onClick = { menuNew = false; createPrefix = ""; createKind = "file" }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Nouveau dossier", color = c.text) },
+                            onClick = { menuNew = false; createPrefix = ""; createKind = "folder" }
+                        )
+                    }
+                }
             }
             // Fil d'ariane sécurisé
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -180,7 +206,15 @@ fun FileBrowserScreen(
             ) {
                 LazyColumn(Modifier.fillMaxSize()) {
                     items(rows, key = { "${it.entry.path}:${it.depth}" }) { row ->
-                        BrowserRow(row, viewModel)
+                        BrowserRow(row, viewModel) { action, e ->
+                            val prefix = if (e.isDir) e.path + "/" else ""
+                            when (action) {
+                                "newfile" -> { createPrefix = prefix; createKind = "file" }
+                                "newfolder" -> { createPrefix = prefix; createKind = "folder" }
+                                "rename" -> renameTarget = e
+                                "delete" -> deleteTarget = e
+                            }
+                        }
                     }
                     if (rows.isEmpty()) {
                         item {
@@ -253,33 +287,91 @@ fun FileBrowserScreen(
         )
     }
 
-    if (showNewFolderDialog) {
-        var name by rememberSaveable { mutableStateOf("") }
+    createKind?.let { kind ->
+        var name by remember(kind, createPrefix) { mutableStateOf(createPrefix) }
         AlertDialog(
-            onDismissRequest = { showNewFolderDialog = false },
+            onDismissRequest = { createKind = null },
             containerColor = c.bg2,
-            title = { Text("Nouveau dossier", fontFamily = SpaceGrotesk, color = c.text) },
+            title = {
+                Text(
+                    if (kind == "file") "Nouveau fichier" else "Nouveau dossier",
+                    fontFamily = SpaceGrotesk, color = c.text
+                )
+            },
             text = {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    placeholder = { Text("src/utils", fontFamily = JetBrainsMono, color = c.text3) },
+                    placeholder = {
+                        Text(
+                            if (kind == "file") "src/index.html" else "src/utils",
+                            fontFamily = JetBrainsMono, color = c.text3
+                        )
+                    },
                     textStyle = TextStyle(fontFamily = JetBrainsMono, color = c.text),
                     singleLine = true
                 )
             },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (name.isNotBlank()) {
-                            viewModel.createBrowserFolder(name.trim())
-                        }
-                        showNewFolderDialog = false
+                TextButton(onClick = {
+                    val n = name.trim().trim('/')
+                    if (n.isNotEmpty()) {
+                        if (kind == "file") viewModel.createBrowserFile(n) else viewModel.createBrowserFolder(n)
                     }
-                ) { Text("Créer", color = c.cyan) }
+                    createKind = null
+                }) { Text("Créer", color = c.cyan) }
             },
             dismissButton = {
-                TextButton(onClick = { showNewFolderDialog = false }) { Text("Annuler", color = c.text2) }
+                TextButton(onClick = { createKind = null }) { Text("Annuler", color = c.text2) }
+            }
+        )
+    }
+
+    renameTarget?.let { e ->
+        var name by remember(e.path) { mutableStateOf(e.name) }
+        AlertDialog(
+            onDismissRequest = { renameTarget = null },
+            containerColor = c.bg2,
+            title = { Text("Renommer", fontFamily = SpaceGrotesk, color = c.text) },
+            text = {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    textStyle = TextStyle(fontFamily = JetBrainsMono, color = c.text),
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.renameBrowserPath(e.path, name.trim())
+                    renameTarget = null
+                }) { Text("Renommer", color = c.cyan) }
+            },
+            dismissButton = {
+                TextButton(onClick = { renameTarget = null }) { Text("Annuler", color = c.text2) }
+            }
+        )
+    }
+
+    deleteTarget?.let { e ->
+        AlertDialog(
+            onDismissRequest = { deleteTarget = null },
+            containerColor = c.bg2,
+            title = { Text("Supprimer ?", fontFamily = SpaceGrotesk, color = c.text) },
+            text = {
+                Text(
+                    e.path + if (e.isDir) "\n(le dossier et tout son contenu)" else "",
+                    fontFamily = JetBrainsMono, fontSize = 13.sp, color = c.text2
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteBrowserPath(e.path)
+                    deleteTarget = null
+                }) { Text("Supprimer", color = c.red) }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteTarget = null }) { Text("Annuler", color = c.text2) }
             }
         )
     }
@@ -314,7 +406,11 @@ private fun rememberBrowserRows(viewModel: MainViewModel, query: String): List<B
 }
 
 @Composable
-private fun BrowserRow(row: BrowserRow, viewModel: MainViewModel) {
+private fun BrowserRow(
+    row: BrowserRow,
+    viewModel: MainViewModel,
+    onAction: (String, FileRepository.Entry) -> Unit
+) {
     val c = Zcolors
     val e = row.entry
     val isModified = viewModel.modifiedPaths.containsKey(e.path)
@@ -383,6 +479,7 @@ private fun BrowserRow(row: BrowserRow, viewModel: MainViewModel) {
                 modifier = Modifier.size(18.dp)
             )
         }
+        RowMenu(e) { action -> onAction(action, e) }
     }
 }
 
@@ -434,5 +531,46 @@ private fun formatSize(bytes: Long): String {
         String.format(Locale.FRANCE, "%.1f Ko", ko)
     } else {
         String.format(Locale.FRANCE, "%.1f Mo", ko / 1024.0)
+    }
+}
+
+@Composable
+private fun RowMenu(e: FileRepository.Entry, onAction: (String) -> Unit) {
+    val c = Zcolors
+    var open by remember { mutableStateOf(false) }
+    Box {
+        Box(
+            Modifier
+                .size(36.dp)
+                .clip(RoundedCornerShape(50))
+                .clickable { open = true },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Default.MoreVert, "Actions", tint = c.text3, modifier = Modifier.size(18.dp))
+        }
+        DropdownMenu(
+            expanded = open,
+            onDismissRequest = { open = false },
+            containerColor = c.bg2
+        ) {
+            if (e.isDir) {
+                DropdownMenuItem(
+                    text = { Text("Nouveau fichier ici", color = c.text) },
+                    onClick = { open = false; onAction("newfile") }
+                )
+                DropdownMenuItem(
+                    text = { Text("Nouveau dossier ici", color = c.text) },
+                    onClick = { open = false; onAction("newfolder") }
+                )
+            }
+            DropdownMenuItem(
+                text = { Text("Renommer", color = c.text) },
+                onClick = { open = false; onAction("rename") }
+            )
+            DropdownMenuItem(
+                text = { Text("Supprimer", color = c.red) },
+                onClick = { open = false; onAction("delete") }
+            )
+        }
     }
 }

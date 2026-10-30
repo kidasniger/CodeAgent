@@ -224,6 +224,42 @@ class FileRepository(private val context: Context, private val rootUriString: St
         }
     }
 
+    fun createFile(path: String): String {
+        if (!validatePath(path)) return "Erreur: Chemin invalide (.. interdit)"
+        val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
+        if (resolveDocument(root, path) != null) return "Erreur: Existe déjà: $path"
+        val lastSlash = path.lastIndexOf('/')
+        if (lastSlash != -1) getOrCreateDocumentPath(root, path.substring(0, lastSlash), true)
+        val created = getOrCreateDocumentPath(root, path, false)
+        return if (created != null) "Succès: Fichier créé $path" else "Erreur: Impossible de créer $path"
+    }
+
+    fun deletePath(path: String): String {
+        if (!validatePath(path)) return "Erreur: Chemin invalide (.. interdit)"
+        if (path == "." || path.isEmpty() || path == "/") return "Erreur: Impossible de supprimer la racine."
+        val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
+        val target = resolveDocument(root, path) ?: return "Erreur: Introuvable: $path"
+        return try {
+            if (target.delete()) "Succès: Supprimé $path" else "Erreur: Suppression impossible: $path"
+        } catch (e: Exception) {
+            "Erreur: ${e.localizedMessage}"
+        }
+    }
+
+    fun renamePath(path: String, newName: String): String {
+        if (!validatePath(path) || newName.contains('/') || newName.contains("..")) return "Erreur: Nom invalide"
+        val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
+        val target = resolveDocument(root, path) ?: return "Erreur: Introuvable: $path"
+        val parentPath = if (path.contains('/')) path.substringBeforeLast('/') else "."
+        val parent = resolveDocument(root, parentPath) ?: return "Erreur: Dossier parent introuvable"
+        if (parent.findFile(newName) != null) return "Erreur: Existe déjà: $newName"
+        return try {
+            if (target.renameTo(newName)) "Succès: Renommé en $newName" else "Erreur: Renommage impossible"
+        } catch (e: Exception) {
+            "Erreur: ${e.localizedMessage}"
+        }
+    }
+
     fun makeDir(path: String): String {
         if (!validatePath(path)) return "Erreur: Chemin invalide (.. interdit)"
         val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
