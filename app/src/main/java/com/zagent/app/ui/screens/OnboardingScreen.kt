@@ -180,7 +180,7 @@ fun OnboardingScreen(
                             Modifier
                                 .size(width = if (active) 26.dp else 8.dp, height = 8.dp)
                                 .clip(RoundedCornerShape(50))
-                                .background(if (active) c.gradBtn else c.surface3)
+                                .then(if (active) Modifier.background(c.gradBtn) else Modifier.background(c.surface3))
                         )
                     }
                 }
@@ -523,8 +523,8 @@ private fun IlluKey(
         }
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            ModelChip("glm-4.7-flash", currentModel == "glm-4.7-flash") { onModelSelected("glm-4.7-flash") }
-            ModelChip("glm-4.5-flash", currentModel == "glm-4.5-flash") { onModelSelected("glm-4.5-flash") }
+            ModelChip("glm-4.7-flash", currentModel == "glm-4.7-flash", onClick = { onModelSelected("glm-4.7-flash") })
+            ModelChip("glm-4.5-flash", currentModel == "glm-4.5-flash", onClick = { onModelSelected("glm-4.5-flash") })
         }
         Spacer(Modifier.height(14.dp))
         Row(
