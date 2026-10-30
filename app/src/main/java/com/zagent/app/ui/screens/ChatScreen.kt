@@ -756,7 +756,7 @@ private fun InputBar(
                 modifier = Modifier
                     .size(42.dp)
                     .clip(CircleShape)
-                    .background(if (enabled && value.isNotBlank()) c.gradBtn else c.surface3)
+                    .then(if (enabled && value.isNotBlank()) Modifier.background(c.gradBtn) else Modifier.background(c.surface3))
                     .clickable(enabled = enabled && value.isNotBlank(), onClick = onSend),
                 contentAlignment = Alignment.Center
             ) {
