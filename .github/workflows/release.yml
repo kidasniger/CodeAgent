@@ -1,7 +1,19 @@
 name: Release APK
 
-# Lancement manuel : gh workflow run release.yml -f version=1.0 -f notes="Nouveautés"
+# Publication automatique après les changements de l'application sur main.
+# Lancement manuel toujours disponible pour choisir version et notes.
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "app/**"
+      - "gradle/**"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - "gradlew"
+      - "gradlew.bat"
   workflow_dispatch:
     inputs:
       version:
@@ -17,15 +29,16 @@ permissions:
   contents: write
 
 concurrency:
-  group: release
+  group: zagent-release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     env:
-      BASE_VERSION: ${{ github.event.inputs.version }}
-      RELEASE_NOTES: ${{ github.event.inputs.notes }}
+      BASE_VERSION: ${{ github.event.inputs.version || '1.0' }}
+      RELEASE_NOTES: ${{ github.event.inputs.notes || '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -48,25 +61,45 @@ jobs:
 
       - name: Calculer la version
         id: ver
+        shell: bash
         run: |
-          case "$BASE_VERSION" in
-            ''|*[!0-9A-Za-z._]*) echo "Version invalide : $BASE_VERSION"; exit 1;;
-          esac
-          # versionCode = nombre de commits : identique entre build.yml et release.yml, toujours croissant
+          set -euo pipefail
+          if [[ ! "$BASE_VERSION" =~ ^[0-9]+(\\.[0-9]+){1,2}([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Version invalide : $BASE_VERSION"
+            exit 1
+          fi
+
+          # Le nombre de commits donne un versionCode croissant commun aux builds et releases.
           CODE=$(git rev-list --count HEAD)
+          if (( CODE < 1 || CODE > 2100000000 )); then
+            echo "::error::versionCode hors limites Android : $CODE"
+            exit 1
+          fi
+
           NAME="${BASE_VERSION}-b${CODE}"
           echo "code=$CODE" >> "$GITHUB_OUTPUT"
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
           echo "tag=v$NAME" >> "$GITHUB_OUTPUT"
           echo "Version $NAME (versionCode $CODE)"
 
-      - name: Préparer la signature
+      - name: Vérifier et préparer la signature
+        shell: bash
         env:
           KS_B64: ${{ secrets.KEYSTORE_BASE64 }}
           KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
           KS_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
-          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          set -euo pipefail
+          [[ -n "${KS_B64:-}" ]] || { echo "::error::Secret KEYSTORE_BASE64 manquant"; exit 1; }
+          [[ -n "${KS_PASS:-}" ]] || { echo "::error::Secret KEYSTORE_PASSWORD manquant"; exit 1; }
+          [[ -n "${KS_ALIAS:-}" ]] || { echo "::error::Secret KEY_ALIAS manquant"; exit 1; }
+
+          printf '%s' "$KS_B64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
+          test -s "$RUNNER_TEMP/release.keystore" || {
+            echo "::error::Le keystore décodé est vide"
+            exit 1
+          }
+
           {
             echo "KEYSTORE_PATH=$RUNNER_TEMP/release.keystore"
             echo "KEYSTORE_PASSWORD=$KS_PASS"
@@ -85,41 +118,63 @@ jobs:
         run: gradle assembleRelease -PversionName=${{ steps.ver.outputs.name }} -PversionCode=${{ steps.ver.outputs.code }}
 
       - name: Nommer l'APK et calculer le SHA-256
+        shell: bash
         run: |
+          set -euo pipefail
           mkdir -p dist
-          APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
+          APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          if [[ -z "$APK" ]]; then
+            echo "::error::Aucun APK release généré"
+            exit 1
+          fi
+
           OUT="ZAgent-${{ steps.ver.outputs.tag }}.apk"
           cp "$APK" "dist/$OUT"
-          (cd dist && sha256sum "$OUT" > "$OUT.sha256" && cat "$OUT.sha256")
+          (cd dist && sha256sum "$OUT" > "$OUT.sha256")
+          cat "dist/$OUT.sha256"
 
       - name: Vérifier la signature de l'APK
+        shell: bash
         run: |
-          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner 2>/dev/null | sort -V | tail -1)
-          if [ -z "$APKSIGNER" ]; then echo "apksigner introuvable"; exit 1; fi
-          "$APKSIGNER" verify --verbose --print-certs dist/ZAgent-${{ steps.ver.outputs.tag }}.apk
+          set -euo pipefail
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner 2>/dev/null | sort -V | tail -1)"
+          if [[ -z "$APKSIGNER" ]]; then
+            echo "::error::apksigner introuvable"
+            exit 1
+          fi
+          "$APKSIGNER" verify --verbose --print-certs "dist/ZAgent-${{ steps.ver.outputs.tag }}.apk"
 
       - name: Archiver les fichiers
         uses: actions/upload-artifact@v4
         with:
           name: zagent-release
           path: dist/*
+          if-no-files-found: error
           retention-days: 30
 
       - name: Notes de version
+        shell: bash
         run: |
-          if [ -n "$RELEASE_NOTES" ]; then
-            printf '%s\n' "$RELEASE_NOTES" > notes.md
+          set -euo pipefail
+          if [[ -n "$RELEASE_NOTES" ]]; then
+            printf '%s\\n' "$RELEASE_NOTES" > notes.md
+          elif git describe --tags --abbrev=0 HEAD^ >/dev/null 2>&1; then
+            PREVIOUS_TAG="$(git describe --tags --abbrev=0 HEAD^)"
+            git log "$PREVIOUS_TAG..HEAD" --pretty=format:'- %s%n' > notes.md
           else
-            git log -1 --pretty=%s > notes.md
+            git log -5 --pretty=format:'- %s%n' > notes.md
           fi
+          test -s notes.md || git log -1 --pretty=format:'- %s%n' > notes.md
 
       - name: Publier la release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           name: "ZAgent ${{ steps.ver.outputs.name }}"
           body_path: notes.md
           files: |
             dist/*.apk
             dist/*.sha256
           fail_on_unmatched_files: true
+          make_latest: true
