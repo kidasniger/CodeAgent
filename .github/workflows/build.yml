@@ -23,6 +23,17 @@ jobs:
         with:
           gradle-version: '9.3.1'
 
+      - name: Préparer la signature
+        env:
+          KS_B64: ${{ secrets.KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          echo "KEYSTORE_PATH=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+          echo "KEYSTORE_PASSWORD=$KS_PASS" >> "$GITHUB_ENV"
+          echo "KEY_PASSWORD=$KS_PASS" >> "$GITHUB_ENV"
+          echo "KEY_ALIAS=$KS_ALIAS" >> "$GITHUB_ENV"
       - name: Build Debug APK
         run: gradle assembleDebug
 
