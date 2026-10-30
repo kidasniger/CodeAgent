@@ -1,5 +1,6 @@
 package com.zagent.app.ui.screens
 
+import com.zagent.app.update.UpdateSettingsCard
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -128,6 +129,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                 )
             }
 
+            UpdateSettingsCard()
             Divider()
 
             Text("Dossier de travail", style = MaterialTheme.typography.titleMedium)

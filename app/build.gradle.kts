@@ -14,28 +14,29 @@ android {
     applicationId = "com.zagent.app"
     minSdk = 26
     targetSdk = 34
-    versionCode = 1
-    versionName = "1.0"
-
+    versionCode = (project.findProperty("versionCode") as String?)?.toIntOrNull() ?: 1
+    versionName = (project.findProperty("versionName") as String?) ?: "1.0"
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
   // Do not remove or modify these signingConfigs. They are necessary for building, installing,
   // and updating Android apps in AI Studio.
   signingConfigs {
-        create("debugConfig") {
-            storeFile = file(System.getenv("KEYSTORE_PATH") ?: "${rootProject.projectDir}/release.keystore")
-            storePassword = System.getenv("KEYSTORE_PASSWORD")
-            keyAlias = System.getenv("KEY_ALIAS")
-            keyPassword = System.getenv("KEY_PASSWORD")
-        }
-        create("release") {
-            storeFile = file(System.getenv("KEYSTORE_PATH") ?: "${rootProject.projectDir}/release.keystore")
-            storePassword = System.getenv("KEYSTORE_PASSWORD")
-            keyAlias = System.getenv("KEY_ALIAS")
-            keyPassword = System.getenv("KEY_PASSWORD")
-        }
+    create("debugConfig") {
+      val envPath = System.getenv("KEYSTORE_PATH")
+      storeFile = if (!envPath.isNullOrEmpty()) file(envPath) else file("${rootDir}/debug.keystore")
+      storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "android"
+      keyAlias = System.getenv("KEY_ALIAS") ?: "androiddebugkey"
+      keyPassword = System.getenv("KEY_PASSWORD") ?: "android"
     }
+    create("release") {
+      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/release.keystore"
+      storeFile = file(keystorePath)
+      storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "android"
+      keyAlias = System.getenv("KEY_ALIAS") ?: "androiddebugkey"
+      keyPassword = System.getenv("KEY_PASSWORD") ?: "android"
+    }
+  }
 
   buildTypes {
     release {
@@ -75,6 +76,7 @@ secrets {
 }
 
 dependencies {
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
   implementation(platform(libs.androidx.compose.bom))
   implementation(libs.androidx.activity.compose)
   implementation(libs.androidx.compose.material.icons.core)
