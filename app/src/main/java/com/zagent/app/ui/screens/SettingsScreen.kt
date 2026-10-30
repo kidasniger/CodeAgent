@@ -29,7 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Globe
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -167,8 +167,8 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedContainerColor = c.surface2,
                                 unfocusedContainerColor = c.surface2,
-                                focusedIndicatorColor = c.cyan,
-                                unfocusedIndicatorColor = Color.Transparent,
+                                focusedBorderColor = c.cyan,
+                                unfocusedBorderColor = Color.Transparent,
                                 cursorColor = c.cyan
                             ),
                             shape = RoundedCornerShape(12.dp),
@@ -186,8 +186,8 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                     subtitleMono = true
                 ) {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        ModelChip("glm-4.7-flash", model == "glm-4.7-flash") { model = "glm-4.7-flash" }
-                        ModelChip("glm-4.5-flash", model == "glm-4.5-flash") { model = "glm-4.5-flash" }
+                        ModelChip("glm-4.7-flash", model == "glm-4.7-flash", onClick = { model = "glm-4.7-flash" })
+                        ModelChip("glm-4.5-flash", model == "glm-4.5-flash", onClick = { model = "glm-4.5-flash" })
                     }
                 }
                 CardDivider(Modifier.padding(horizontal = 16.dp))
@@ -230,8 +230,8 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedContainerColor = c.surface2,
                                 unfocusedContainerColor = c.surface2,
-                                focusedIndicatorColor = c.cyan,
-                                unfocusedIndicatorColor = Color.Transparent,
+                                focusedBorderColor = c.cyan,
+                                unfocusedBorderColor = Color.Transparent,
                                 cursorColor = c.cyan
                             ),
                             shape = RoundedCornerShape(12.dp),
