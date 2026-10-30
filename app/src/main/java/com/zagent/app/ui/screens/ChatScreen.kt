@@ -31,8 +31,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -46,6 +46,7 @@ import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -760,7 +761,7 @@ private fun InputBar(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.AutoMirrored.Filled.ArrowUpward,
+                    Icons.Default.ArrowUpward,
                     "Envoyer",
                     tint = if (enabled && value.isNotBlank()) c.onGrad else c.text3,
                     modifier = Modifier.size(20.dp)
@@ -774,6 +775,7 @@ private fun InputBar(
 // Bottom sheet de confirmation d'écriture (avec diff)
 // ─────────────────────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WriteConfirmSheet(
     pending: MainViewModel.PendingWrite,

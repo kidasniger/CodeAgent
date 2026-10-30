@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.zagent.app.ui.screens.ChatScreen
 import com.zagent.app.ui.screens.FileBrowserScreen
 import com.zagent.app.ui.screens.OnboardingScreen
+import com.zagent.app.ui.screens.SettingsScreen
 import com.zagent.app.ui.screens.SplashScreen
 import com.zagent.app.ui.theme.ZAgentTheme
 import com.zagent.app.ui.theme.Zcolors

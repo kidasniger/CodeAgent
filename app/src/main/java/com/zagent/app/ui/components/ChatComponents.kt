@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -176,11 +177,6 @@ fun ToolChip(
     }
 }
 
-/** Petite astuce d'import : Inter n'est pas exposé ici, on référence la police par le thème. */
-@Suppress("FunctionName")
-private fun Inter: androidx.compose.ui.text.font.FontFamily =
-    androidx.compose.ui.text.font.FontFamily.Default
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Texte markdown léger : `code` et **gras**
 // ─────────────────────────────────────────────────────────────────────────────
@@ -205,7 +201,7 @@ fun buildInlineMarkdown(
                     fontFamily = JetBrainsMono,
                     fontSize = 0.85.sp,
                     color = codeColor,
-                    background = codeBg
+                    background = codeBg ?: Color.Unspecified
                 )
             ) { append(code) }
         } else {
