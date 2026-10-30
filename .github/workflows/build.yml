@@ -1,13 +1,43 @@
-name: Build Android APK
+name: Build & Release APK
 
+# Un seul workflow, deux jobs :
+#  - build   : APK debug à chaque push (toutes les branches) et en lancement manuel.
+#  - release : APK release signé + publication GitHub Release, uniquement sur main
+#              (push, ou lancement manuel avec "release" coché), une fois le build réussi.
 on:
   push:
     branches: [ "**" ]
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Version de base (ex : 1.0)"
+        required: true
+        default: "1.0"
+      notes:
+        description: "Nouveautés affichées dans l'application (une par ligne)"
+        required: false
+        default: ""
+      release:
+        description: "Publier une release (depuis main uniquement)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
 
 jobs:
+  # ───────────────────────── BUILD DEBUG ─────────────────────────
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Un nouveau push sur la même branche annule le build précédent encore en cours.
+    concurrency:
+      group: build-${{ github.ref }}
+      cancel-in-progress: true
+    outputs:
+      code: ${{ steps.ver.outputs.code }}
+      name: ${{ steps.ver.outputs.name }}
+      tag: ${{ steps.ver.outputs.tag }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -25,22 +55,60 @@ jobs:
         with:
           gradle-version: '9.3.1'
 
+      - name: Calculer la version
+        id: ver
+        shell: bash
+        env:
+          BASE_VERSION: ${{ inputs.version || '1.0' }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$BASE_VERSION" =~ ^[0-9]+(\.[0-9]+){1,2}([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Version invalide : $BASE_VERSION"
+            exit 1
+          fi
+
+          # Le nombre de commits donne un versionCode croissant commun aux builds et releases.
+          CODE=$(git rev-list --count HEAD)
+          if (( CODE < 1 || CODE > 2100000000 )); then
+            echo "::error::versionCode hors limites Android : $CODE"
+            exit 1
+          fi
+
+          NAME="${BASE_VERSION}-b${CODE}"
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "tag=v$NAME" >> "$GITHUB_OUTPUT"
+          echo "Version $NAME (versionCode $CODE)"
+
       - name: Préparer la signature
+        shell: bash
         env:
           KS_B64: ${{ secrets.KEYSTORE_BASE64 }}
           KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
           KS_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
-          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
-          echo "KEYSTORE_PATH=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
-          echo "KEYSTORE_PASSWORD=$KS_PASS" >> "$GITHUB_ENV"
-          echo "KEY_PASSWORD=$KS_PASS" >> "$GITHUB_ENV"
-          echo "KEY_ALIAS=$KS_ALIAS" >> "$GITHUB_ENV"
+          set -euo pipefail
+          [[ -n "${KS_B64:-}" ]] || { echo "::error::Secret KEYSTORE_BASE64 manquant"; exit 1; }
+          [[ -n "${KS_PASS:-}" ]] || { echo "::error::Secret KEYSTORE_PASSWORD manquant"; exit 1; }
+          [[ -n "${KS_ALIAS:-}" ]] || { echo "::error::Secret KEY_ALIAS manquant"; exit 1; }
+
+          printf '%s' "$KS_B64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
+          test -s "$RUNNER_TEMP/release.keystore" || {
+            echo "::error::Le keystore décodé est vide"
+            exit 1
+          }
+
+          {
+            echo "KEYSTORE_PATH=$RUNNER_TEMP/release.keystore"
+            echo "KEYSTORE_PASSWORD=$KS_PASS"
+            echo "KEY_PASSWORD=$KS_PASS"
+            echo "KEY_ALIAS=$KS_ALIAS"
+          } >> "$GITHUB_ENV"
+
       - name: Build Debug APK
         run: |
           set -o pipefail
-          CODE=$(git rev-list --count HEAD)
-          gradle assembleDebug -PversionName=1.0-b$CODE -PversionCode=$CODE 2>&1 | tee build.log
+          gradle assembleDebug -PversionName=${{ steps.ver.outputs.name }} -PversionCode=${{ steps.ver.outputs.code }} 2>&1 | tee build.log
 
       - name: Rapport erreurs compilation
         if: failure()
@@ -59,3 +127,135 @@ jobs:
         with:
           name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+  # ───────────────────────── RELEASE SIGNÉE ─────────────────────────
+  release:
+    needs: build
+    if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.release) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    # Les releases se publient une par une ; si main avance, seule la dernière en attente est gardée.
+    concurrency:
+      group: zagent-release
+      cancel-in-progress: false
+    env:
+      RELEASE_NOTES: ${{ inputs.notes || '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+
+      - name: Licences Android
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+
+      - name: Vérifier et préparer la signature
+        shell: bash
+        env:
+          KS_B64: ${{ secrets.KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          [[ -n "${KS_B64:-}" ]] || { echo "::error::Secret KEYSTORE_BASE64 manquant"; exit 1; }
+          [[ -n "${KS_PASS:-}" ]] || { echo "::error::Secret KEYSTORE_PASSWORD manquant"; exit 1; }
+          [[ -n "${KS_ALIAS:-}" ]] || { echo "::error::Secret KEY_ALIAS manquant"; exit 1; }
+
+          printf '%s' "$KS_B64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
+          test -s "$RUNNER_TEMP/release.keystore" || {
+            echo "::error::Le keystore décodé est vide"
+            exit 1
+          }
+
+          {
+            echo "KEYSTORE_PATH=$RUNNER_TEMP/release.keystore"
+            echo "KEYSTORE_PASSWORD=$KS_PASS"
+            echo "KEY_PASSWORD=$KS_PASS"
+            echo "KEY_ALIAS=$KS_ALIAS"
+          } >> "$GITHUB_ENV"
+
+      - name: Tests unitaires
+        run: gradle :app:testDebugUnitTest
+
+      - name: Lint (informatif)
+        continue-on-error: true
+        run: gradle :app:lintDebug
+
+      - name: Build release signé
+        run: gradle assembleRelease -PversionName=${{ needs.build.outputs.name }} -PversionCode=${{ needs.build.outputs.code }}
+
+      - name: Nommer l'APK et calculer le SHA-256
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          if [[ -z "$APK" ]]; then
+            echo "::error::Aucun APK release généré"
+            exit 1
+          fi
+
+          OUT="ZAgent-${{ needs.build.outputs.tag }}.apk"
+          cp "$APK" "dist/$OUT"
+          (cd dist && sha256sum "$OUT" > "$OUT.sha256")
+          cat "dist/$OUT.sha256"
+
+      - name: Vérifier la signature de l'APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner 2>/dev/null | sort -V | tail -1)"
+          if [[ -z "$APKSIGNER" ]]; then
+            echo "::error::apksigner introuvable"
+            exit 1
+          fi
+          "$APKSIGNER" verify --verbose --print-certs "dist/ZAgent-${{ needs.build.outputs.tag }}.apk"
+
+      - name: Archiver les fichiers
+        uses: actions/upload-artifact@v4
+        with:
+          name: zagent-release
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Notes de version
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -n "$RELEASE_NOTES" ]]; then
+            printf '%s\n' "$RELEASE_NOTES" > notes.md
+          elif git describe --tags --abbrev=0 HEAD^ >/dev/null 2>&1; then
+            PREVIOUS_TAG="$(git describe --tags --abbrev=0 HEAD^)"
+            git log "$PREVIOUS_TAG..HEAD" --pretty=format:'- %s%n' > notes.md
+          else
+            git log -5 --pretty=format:'- %s%n' > notes.md
+          fi
+          test -s notes.md || git log -1 --pretty=format:'- %s%n' > notes.md
+
+      - name: Publier la release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.build.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: "ZAgent ${{ needs.build.outputs.name }}"
+          body_path: notes.md
+          files: |
+            dist/*.apk
+            dist/*.sha256
+          fail_on_unmatched_files: true
+          make_latest: true

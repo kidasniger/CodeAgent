@@ -55,6 +55,7 @@ fun PreviewPane(
         }
     }
     val p = port
+    server.fallbackDirs = ancestorDirs(path)
     AndroidView(
         factory = { webView },
         modifier = modifier,
@@ -76,4 +77,15 @@ fun PreviewPane(
             }
         }
     )
+}
+
+/** "public/blog/post.html" -> ["public/blog", "public"] (du plus proche au plus lointain). */
+private fun ancestorDirs(path: String): List<String> {
+    val out = ArrayList<String>()
+    var dir = path.substringBeforeLast('/', "")
+    while (dir.isNotEmpty()) {
+        out.add(dir)
+        dir = dir.substringBeforeLast('/', "")
+    }
+    return out
 }

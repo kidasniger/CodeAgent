@@ -52,6 +52,22 @@ class PreviewServer(private val readResource: (String) -> ByteArray?) {
     private var server: ServerSocket? = null
     private var pool: ExecutorService? = null
 
+    /**
+     * Dossiers (du plus proche au plus lointain) où chercher une ressource introuvable à la racine.
+     * Permet aux chemins absolus ("/css/style.css") de fonctionner quand la page est dans un
+     * sous-dossier comme "public/" (cas Firebase Hosting), comme dans Acode.
+     */
+    @Volatile
+    var fallbackDirs: List<String> = emptyList()
+
+    private fun lookup(path: String): ByteArray? {
+        readResource(path)?.let { return it }
+        for (dir in fallbackDirs) {
+            readResource("$dir/$path")?.let { return it }
+        }
+        return null
+    }
+
     /** Démarre le serveur et renvoie le port. À appeler hors du thread principal. */
     @Synchronized
     fun start(): Int {
@@ -198,11 +214,11 @@ class PreviewServer(private val readResource: (String) -> ByteArray?) {
         val bytes: ByteArray?
         if (path.isEmpty() || path.endsWith("/")) {
             served = path + "index.html"
-            bytes = readResource(served)
+            bytes = lookup(served)
         } else {
-            bytes = readResource(path)
+            bytes = lookup(path)
             if (bytes == null && !path.substringAfterLast('/').contains('.') &&
-                readResource("$path/index.html") != null
+                lookup("$path/index.html") != null
             ) {
                 // Dossier sans "/" final : on redirige pour que les chemins relatifs fonctionnent.
                 val location = (if (rawPath.startsWith("/")) rawPath else "/$rawPath") + "/"
