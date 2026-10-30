@@ -109,7 +109,7 @@ fun FileBrowserScreen(
                         color = c.text2
                     )
                 }
-                if (viewModel.browserLoading) {
+                if (viewModel.browserLoading || viewModel.browserFileLoading) {
                     CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp, color = c.cyan)
                     Spacer(Modifier.width(10.dp))
                 }
@@ -226,6 +226,24 @@ fun FileBrowserScreen(
         }
     }
 
+    viewModel.browserFilePreview?.let { preview ->
+        AlertDialog(
+            onDismissRequest = { viewModel.closeBrowserFilePreview() },
+            containerColor = c.bg2,
+            title = { Text(preview.path, color = c.text, fontFamily = JetBrainsMono, maxLines = 2) },
+            text = {
+                Column(Modifier.fillMaxWidth().height(360.dp).verticalScroll(rememberScrollState())) {
+                    Text(preview.content, color = c.text2, style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp))
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.closeBrowserFilePreview() }) {
+                    Text("Fermer", color = c.cyan)
+                }
+            }
+        )
+    }
+
     if (showNewFolderDialog) {
         var name by rememberSaveable { mutableStateOf("") }
         AlertDialog(
@@ -269,23 +287,21 @@ data class BrowserRow(
 
 @Composable
 private fun rememberBrowserRows(viewModel: MainViewModel, query: String): List<BrowserRow> {
+    // Lire les StateMap pendant la composition : remember(map) ne voit pas leurs mutations internes.
     val children = viewModel.browserChildren
     val expanded = viewModel.expandedDirs
+    val out = mutableListOf<BrowserRow>()
 
-    return androidx.compose.runtime.remember(children, expanded, query) {
-        val out = mutableListOf<BrowserRow>()
-
-        fun walk(path: String, depth: Int) {
-            val list = children[path] ?: return
-            for (e in list) {
-                if (query.isNotBlank() && !e.name.contains(query, ignoreCase = true)) continue
-                out.add(BrowserRow(e, depth))
-                if (e.isDir && expanded.contains(e.path)) walk(e.path, depth + 1)
-            }
+    fun walk(path: String, depth: Int) {
+        val list = children[path] ?: return
+        for (entry in list) {
+            if (query.isNotBlank() && !entry.name.contains(query, ignoreCase = true)) continue
+            out.add(BrowserRow(entry, depth))
+            if (entry.isDir && expanded.containsKey(entry.path)) walk(entry.path, depth + 1)
         }
-        walk(".", 0)
-        out
     }
+    walk(".", 0)
+    return out
 }
 
 @Composable
@@ -306,7 +322,7 @@ private fun BrowserRow(row: BrowserRow, viewModel: MainViewModel) {
                 } else Modifier
             )
             .clickable {
-                if (e.isDir) viewModel.toggleDir(e.path)
+                if (e.isDir) viewModel.toggleDir(e.path) else viewModel.openBrowserFile(e.path)
             }
             .padding(start = (12 + row.depth * 22).dp, end = 14.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically
