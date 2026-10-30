@@ -1,6 +1,8 @@
 package com.zagent.app.ui.viewmodel
 
 import android.app.Application
+import android.content.ClipData
+import android.content.Intent
 import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -188,6 +190,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var browserFileLoading by mutableStateOf(false)
         private set
+    var browserError by mutableStateOf<String?>(null)
+        private set
 
     private fun refreshFolderLabel() {
         viewModelScope.launch(Dispatchers.IO) {
@@ -255,12 +259,43 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun openBrowserFile(path: String) {
         if (browserFileLoading) return
         browserFileLoading = true
+        browserError = null
+
         viewModelScope.launch(Dispatchers.IO) {
-            val content = getFileRepo().readFile(path)
-            withContext(Dispatchers.Main) {
-                browserFileLoading = false
-                if (content.startsWith("Erreur")) statusMessage = content
-                else browserFilePreview = BrowserFilePreview(path, content)
+            try {
+                val repository = getFileRepo()
+                if (repository.isTextFile(path)) {
+                    val content = repository.readFile(path)
+                    withContext(Dispatchers.Main) {
+                        browserFileLoading = false
+                        if (content.startsWith("Erreur")) browserError = content
+                        else browserFilePreview = BrowserFilePreview(path, content)
+                    }
+                } else {
+                    val uri = repository.fileUri(path)
+                        ?: throw IllegalStateException("Fichier introuvable ou inaccessible.")
+                    val mimeType = repository.mimeType(path)
+                    withContext(Dispatchers.Main) {
+                        try {
+                            val viewIntent = Intent(Intent.ACTION_VIEW)
+                                .setDataAndType(uri, mimeType)
+                                .setClipData(ClipData.newRawUri(path.substringAfterLast('/'), uri))
+                                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            val chooser = Intent.createChooser(viewIntent, "Ouvrir avec")
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            getApplication<Application>().startActivity(chooser)
+                        } catch (error: Exception) {
+                            browserError = "Aucune application ne peut ouvrir ce fichier : ${error.localizedMessage ?: path}"
+                        } finally {
+                            browserFileLoading = false
+                        }
+                    }
+                }
+            } catch (error: Exception) {
+                withContext(Dispatchers.Main) {
+                    browserFileLoading = false
+                    browserError = "Impossible d'ouvrir $path : ${error.localizedMessage ?: "erreur inconnue"}"
+                }
             }
         }
     }
