@@ -277,7 +277,7 @@ private fun AmbientTopBar(
                     Spacer(Modifier.width(6.dp))
                     Text(label, style = TextStyle(fontFamily = Inter, fontSize = 11.sp, fontWeight = FontWeight.Medium), color = dot)
                     Spacer(Modifier.width(8.dp))
-                    MonoChip(viewModel.modelInput)
+                    MonoChip(viewModel.modelInput, modifier = Modifier.widthIn(max = 112.dp))
                 }
             }
             Spacer(Modifier.width(10.dp))
