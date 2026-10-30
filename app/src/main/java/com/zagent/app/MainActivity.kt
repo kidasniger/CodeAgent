@@ -1,6 +1,7 @@
 package com.zagent.app
 
 import android.os.Bundle
+import androidx.activity.compose.BackHandler
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -75,6 +76,26 @@ private fun AppRoot(viewModel: MainViewModel, systemDark: Boolean) {
             onFinished = { viewModel.completeOnboarding() }
         )
         return
+    }
+
+    val context = LocalContext.current
+    var lastBackPress by remember { mutableStateOf(0L) }
+    val canGoBack = viewModel.isSettingsOpen || viewModel.isEditorOpen || viewModel.isFileBrowserOpen
+    BackHandler(enabled = canGoBack) {
+        when {
+            viewModel.isSettingsOpen -> viewModel.isSettingsOpen = false
+            viewModel.isEditorOpen -> viewModel.isEditorOpen = false
+            viewModel.isFileBrowserOpen -> viewModel.isFileBrowserOpen = false
+        }
+    }
+    BackHandler(enabled = !canGoBack) {
+        val now = System.currentTimeMillis()
+        if (now - lastBackPress < 2000) {
+            (context as? android.app.Activity)?.finish()
+        } else {
+            lastBackPress = now
+            android.widget.Toast.makeText(context, "Appuyez encore pour quitter", android.widget.Toast.LENGTH_SHORT).show()
+        }
     }
 
     Box(Modifier.fillMaxSize()) {
