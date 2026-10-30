@@ -232,23 +232,6 @@ private fun AmbientTopBar(
             .padding(horizontal = 16.dp, vertical = 10.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box {
-                CircleIconButton(Icons.Default.Menu, "Menu", onClick = onMenuToggle)
-                DropdownMenu(
-                    expanded = menuOpen,
-                    onDismissRequest = onMenuDismiss,
-                    shape = RoundedCornerShape(16.dp),
-                    containerColor = c.bg2,
-                    tonalElevation = 8.dp
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Nouvelle conversation", color = c.text) },
-                        leadingIcon = { Icon(Icons.Default.Refresh, null, tint = c.text2) },
-                        onClick = { onMenuDismiss(); onNewConversation() }
-                    )
-                }
-            }
-            Spacer(Modifier.width(12.dp))
             ZLogo(modifier = Modifier.size(30.dp))
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
@@ -267,13 +250,36 @@ private fun AmbientTopBar(
                     Spacer(Modifier.width(6.dp))
                     Text(label, style = TextStyle(fontFamily = Inter, fontSize = 11.sp, fontWeight = FontWeight.Medium), color = dot)
                     Spacer(Modifier.width(8.dp))
-                    MonoChip(viewModel.modelInput, modifier = Modifier.widthIn(max = 112.dp))
+                    MonoChip(viewModel.modelInput, modifier = Modifier.widthIn(max = 160.dp))
                 }
             }
             Spacer(Modifier.width(10.dp))
-            CircleIconButton(Icons.Default.FolderOpen, "Explorateur", onClick = onOpenExplorer)
-            Spacer(Modifier.width(10.dp))
-            CircleIconButton(Icons.Default.Settings, "Réglages", onClick = onOpenSettings)
+            Box {
+                CircleIconButton(Icons.Default.Menu, "Menu", onClick = onMenuToggle)
+                DropdownMenu(
+                    expanded = menuOpen,
+                    onDismissRequest = onMenuDismiss,
+                    shape = RoundedCornerShape(16.dp),
+                    containerColor = c.bg2,
+                    tonalElevation = 8.dp
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Nouvelle conversation", color = c.text) },
+                        leadingIcon = { Icon(Icons.Default.Refresh, null, tint = c.text2) },
+                        onClick = { onMenuDismiss(); onNewConversation() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Explorateur", color = c.text) },
+                        leadingIcon = { Icon(Icons.Default.FolderOpen, null, tint = c.text2) },
+                        onClick = { onMenuDismiss(); onOpenExplorer() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Réglages", color = c.text) },
+                        leadingIcon = { Icon(Icons.Default.Settings, null, tint = c.text2) },
+                        onClick = { onMenuDismiss(); onOpenSettings() }
+                    )
+                }
+            }
         }
     }
 }
