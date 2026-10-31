@@ -25,6 +25,7 @@ import com.zagent.app.ui.screens.FileBrowserScreen
 import com.zagent.app.ui.screens.OnboardingScreen
 import com.zagent.app.ui.screens.SettingsScreen
 import com.zagent.app.ui.screens.SplashScreen
+import com.zagent.app.ui.screens.TerminalScreen
 import com.zagent.app.ui.theme.ZAgentTheme
 import com.zagent.app.ui.theme.Zcolors
 import com.zagent.app.ui.viewmodel.MainViewModel
@@ -80,10 +81,11 @@ private fun AppRoot(viewModel: MainViewModel, systemDark: Boolean) {
 
     val context = LocalContext.current
     var lastBackPress by remember { mutableStateOf(0L) }
-    val canGoBack = viewModel.isSettingsOpen || viewModel.isEditorOpen || viewModel.isFileBrowserOpen
+    val canGoBack = viewModel.isSettingsOpen || viewModel.isTerminalOpen || viewModel.isEditorOpen || viewModel.isFileBrowserOpen
     BackHandler(enabled = canGoBack) {
         when {
             viewModel.isSettingsOpen -> viewModel.isSettingsOpen = false
+            viewModel.isTerminalOpen -> viewModel.isTerminalOpen = false
             viewModel.isEditorOpen -> viewModel.isEditorOpen = false
             viewModel.isFileBrowserOpen -> viewModel.isFileBrowserOpen = false
         }
@@ -99,7 +101,12 @@ private fun AppRoot(viewModel: MainViewModel, systemDark: Boolean) {
     }
 
     Box(Modifier.fillMaxSize()) {
-        if (viewModel.isEditorOpen) {
+        if (viewModel.isTerminalOpen) {
+            TerminalScreen(
+                controller = viewModel.terminal,
+                onBack = { viewModel.isTerminalOpen = false }
+            )
+        } else if (viewModel.isEditorOpen) {
             EditorScreen(
                 viewModel = viewModel,
                 onBack = { viewModel.isEditorOpen = false }

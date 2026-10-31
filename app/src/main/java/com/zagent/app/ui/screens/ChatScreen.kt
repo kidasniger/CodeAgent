@@ -38,12 +38,12 @@ import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -322,6 +322,11 @@ private fun AmbientTopBar(
                         text = { Text("Explorateur", color = c.text) },
                         leadingIcon = { Icon(Icons.Default.FolderOpen, null, tint = c.text2) },
                         onClick = { onMenuDismiss(); onOpenExplorer() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Terminal", color = c.text) },
+                        leadingIcon = { Icon(Icons.Default.Terminal, null, tint = c.text2) },
+                        onClick = { onMenuDismiss(); viewModel.isTerminalOpen = true }
                     )
                     DropdownMenuItem(
                         text = { Text("Réglages", color = c.text) },

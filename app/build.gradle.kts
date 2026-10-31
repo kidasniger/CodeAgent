@@ -13,7 +13,7 @@ android {
   defaultConfig {
     applicationId = "com.zagent.app"
     minSdk = 26
-    targetSdk = 34
+    targetSdk = 28
     versionCode = (project.findProperty("versionCode") as String?)?.toIntOrNull() ?: 1
     versionName = (project.findProperty("versionName") as String?) ?: "1.0"
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -61,6 +61,7 @@ android {
     compose = true
     buildConfig = true
   }
+  lint { disable += "ExpiredTargetSdkVersion" }
   testOptions { unitTests { isIncludeAndroidResources = true } }
   dependenciesInfo {
     includeInApk = false
@@ -77,6 +78,8 @@ secrets {
 
 dependencies {
     implementation("androidx.work:work-runtime-ktx:2.9.1")
+  implementation("com.github.termux.termux-app:terminal-view:v0.118.0")
+  implementation("com.github.termux.termux-app:terminal-emulator:v0.118.0")
   implementation(platform(libs.androidx.compose.bom))
   implementation(libs.androidx.activity.compose)
   implementation(libs.androidx.compose.material.icons.core)

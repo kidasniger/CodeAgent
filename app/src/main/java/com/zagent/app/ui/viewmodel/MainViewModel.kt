@@ -252,6 +252,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // ── Explorateur de fichiers ─────────────────────────────────────────────
     var isFileBrowserOpen by mutableStateOf(false)
+
+    // ── Terminal embarqué ───────────────────────────────────────────────────
+    var isTerminalOpen by mutableStateOf(false)
+    val terminal = com.zagent.app.terminal.TerminalController(application, viewModelScope)
     var folderLabel by mutableStateOf("Projet")
     data class BrowserFilePreview(val path: String, val content: String)
     var browserFilePreview by mutableStateOf<BrowserFilePreview?>(null)
