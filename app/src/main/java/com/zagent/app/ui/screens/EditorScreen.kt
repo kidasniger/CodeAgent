@@ -43,7 +43,6 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Terminal
 import com.zagent.app.ui.editor.ConsolePanel
-import com.zagent.app.ui.editor.ConsoleState
 import com.zagent.app.ui.editor.PreviewPane
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -189,7 +188,15 @@ fun EditorScreen(
     var previewFull by remember { mutableStateOf(false) }
     var previewPath by remember { mutableStateOf<String?>(null) }
     var reloadTick by remember { mutableIntStateOf(0) }
-    val console = remember { ConsoleState() }
+    val console = viewModel.console
+    val previewReq = viewModel.previewRequest
+    LaunchedEffect(previewReq) {
+        if (previewReq != null) {
+            previewPath = previewReq
+            showPreview = true
+            viewModel.previewRequest = null
+        }
+    }
     var showConsole by remember { mutableStateOf(true) }
 
     BackHandler(enabled = showPreview) {
@@ -518,7 +525,7 @@ fun EditorScreen(
                 }
                 PreviewPane(
                     path = entry,
-                    reloadKey = editor.saveCount + reloadTick,
+                    reloadKey = editor.saveCount + reloadTick + viewModel.previewTick,
                     readResource = editor::readResource,
                     console = console,
                     modifier = Modifier.weight(1f).fillMaxWidth()

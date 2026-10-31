@@ -5,6 +5,7 @@ import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -17,9 +18,11 @@ import com.zagent.app.data.parseAskQuestions
 import com.zagent.app.data.DiffUtil
 import com.zagent.app.data.FileRepository
 import com.zagent.app.data.SettingsManager
+import com.zagent.app.ui.editor.ConsoleState
 import com.zagent.app.ui.editor.EditorController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -57,6 +60,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var baseUrlInput by mutableStateOf(settingsManager.baseUrl)
     var autoModeInput by mutableStateOf(settingsManager.autoMode)
     var workingFolderUriString by mutableStateOf(settingsManager.workingFolderUri)
+    var smartModeInput by mutableStateOf(settingsManager.smartMode)
+
+    fun setSmartMode(value: Boolean) {
+        smartModeInput = value
+        settingsManager.smartMode = value
+    }
 
     var showKeyVisible by mutableStateOf(false)
     var isSettingsOpen by mutableStateOf(false)
@@ -115,6 +124,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var onAskAnswered: ((String?) -> Unit)? = null
     private var agentJob: Job? = null
 
+    /** État d'avant une écriture de l'agent (oldContent = null : le fichier n'existait pas). */
+    data class UndoEntry(val path: String, val oldContent: String?)
+
+    /** Changements faits par l'agent pendant la dernière demande, annulables d'un tap. */
+    val agentUndo = mutableStateListOf<UndoEntry>()
+
+    /** Console JS partagée entre l'aperçu et l'outil run_preview. */
+    val console = ConsoleState()
+    var previewRequest by mutableStateOf<String?>(null)
+    var previewTick by mutableStateOf(0)
+
     /** Fichiers modifiés par l'agent pendant la session (badge explorateur). */
     val modifiedPaths = mutableStateMapOf<String, Boolean>()
 
@@ -164,6 +184,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         pendingAsk = null
         onDeleteConfirmed = null
         pendingDelete = null
+        agentUndo.clear()
         isLoading = false
         _messages.value = emptyList()
         statusMessage = ""
@@ -443,6 +464,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
+        agentUndo.clear()
         val newUserMessage = ChatMessage("user", userText)
         _messages.value = _messages.value + newUserMessage
 
@@ -465,7 +487,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         showFallbackModelButton = false
 
         val fileRepo = getFileRepo()
-        val systemPrompt = "Tu es un agent de code qui travaille dans un dossier de projet. Utilise les outils pour explorer, lire, créer des dossiers, écrire et supprimer des fichiers (delete_file ; pour vider un fichier, write_file avec contenu vide). Si tu ne connais pas la structure, commence par list_dir. Lis un fichier avant de le modifier. Écris toujours le contenu COMPLET d'un fichier. Les chemins sont relatifs au dossier de travail. Si la demande est floue ou qu'un choix important manque (sujet, public, style, durée, technologie…), appelle d'abord ask_user avec 1 à 4 questions courtes à choix (2 à 4 options chacune) au lieu de deviner, puis continue avec les réponses sans reposer les mêmes questions. Réponds en français, de façon courte."
+        val systemPrompt = "Tu es un agent de code qui travaille dans un dossier de projet. Utilise les outils pour explorer, lire, créer des dossiers, écrire et supprimer des fichiers (delete_file ; pour vider un fichier, write_file avec contenu vide). Si tu ne connais pas la structure, commence par list_dir ; utilise search_in_files pour retrouver du code. Lis un fichier avant de le modifier. Pour modifier un fichier existant, utilise edit_file (un passage exact, unique) ; si edit_file échoue, relis le fichier avec read_file. N'utilise write_file (contenu COMPLET) que pour créer un fichier ou le réécrire entièrement. Après avoir créé ou modifié une page web, vérifie-la avec run_preview et corrige les erreurs de console. Les chemins sont relatifs au dossier de travail. Si la demande est floue ou qu'un choix important manque (sujet, public, style, durée, technologie…), appelle d'abord ask_user avec 1 à 4 questions courtes à choix (2 à 4 options chacune) au lieu de deviner, puis continue avec les réponses sans reposer les mêmes questions. Réponds en français, de façon courte."
 
         var stepCount = 0
         val maxSteps = 20
@@ -587,28 +609,67 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             val path = parsedArgs["path"]?.jsonPrimitive?.content ?: ""
             val fileContent = parsedArgs["content"]?.jsonPrimitive?.content ?: ""
-
-            val alwaysAllowed = settingsManager.alwaysAllowedPaths
-            val needsConfirmation = !autoModeInput && path !in alwaysAllowed
-
-            val toolResult = if (!needsConfirmation) {
-                if (autoModeInput) {
-                    withContext(Dispatchers.Main) { statusMessage = "Mode Auto : écriture de $path…" }
-                }
-                fileRepo.writeFile(path, fileContent)
+            return applyWrite(fileRepo, tc.id, path, fileContent, isEdit = false)
+        }
+        if (tc.name == "edit_file") {
+            val args = try {
+                Json.parseToJsonElement(tc.arguments).jsonObject
+            } catch (e: Exception) {
+                JsonObject(emptyMap())
+            }
+            val path = args["path"]?.jsonPrimitive?.content?.trim().orEmpty()
+            val oldRaw = args["old_string"]?.jsonPrimitive?.content ?: ""
+            val newRaw = args["new_string"]?.jsonPrimitive?.content ?: ""
+            if (path.isEmpty()) return "Erreur: chemin manquant pour edit_file."
+            if (oldRaw.isEmpty()) return "Erreur: old_string est vide."
+            val cur = fileRepo.readFileForEdit(path).getOrElse { return "Erreur: " + (it.message ?: "lecture impossible") }
+            val crlf = cur.contains("\r\n")
+            val text = cur.replace("\r\n", "\n")
+            val oldS = oldRaw.replace("\r\n", "\n")
+            val newS = newRaw.replace("\r\n", "\n")
+            var count = 0
+            var first = -1
+            var idx = text.indexOf(oldS)
+            while (idx >= 0) {
+                if (count == 0) first = idx
+                count++
+                idx = text.indexOf(oldS, idx + oldS.length)
+            }
+            if (count == 0) return "Erreur: old_string introuvable dans $path. Relis le fichier avec read_file et recopie le texte exactement."
+            if (count > 1) return "Erreur: old_string apparaît $count fois dans $path. Ajoute du contexte autour pour le rendre unique."
+            val updated = text.substring(0, first) + newS + text.substring(first + oldS.length)
+            val out = if (crlf) updated.replace("\n", "\r\n") else updated
+            return applyWrite(fileRepo, tc.id, path, out, isEdit = true)
+        }
+        if (tc.name == "run_preview") {
+            val args = try {
+                Json.parseToJsonElement(tc.arguments).jsonObject
+            } catch (e: Exception) {
+                JsonObject(emptyMap())
+            }
+            val path = args["path"]?.jsonPrimitive?.content?.trim().orEmpty()
+            if (path.isEmpty()) return "Erreur: chemin manquant pour run_preview."
+            val ext = path.substringAfterLast('.', "").lowercase()
+            if (ext != "html" && ext != "htm") return "Erreur: run_preview attend un fichier .html."
+            val raw = fileRepo.readFile(path)
+            if (raw.startsWith("Erreur")) return raw
+            withContext(Dispatchers.Main) {
+                statusMessage = "Aperçu de $path…"
+                console.clear()
+                editor.open(path) { isEditorOpen = true }
+                isEditorOpen = true
+                previewTick++
+                previewRequest = path
+            }
+            delay(5000)
+            val entries = withContext(Dispatchers.Main) { console.entries.toList() }
+            return if (entries.isEmpty()) {
+                "Aperçu chargé : console vide, aucune erreur."
             } else {
-                val userAllowed = waitForWriteConfirmation(path, fileContent, tc.id, fileRepo)
-                if (userAllowed) fileRepo.writeFile(path, fileContent)
-                else "Refusé par l'utilisateur: l'écriture de $path a été annulée."
+                entries.joinToString("\n") { e ->
+                    "[" + e.level.name + "] " + e.text + (if (e.source.isNotEmpty()) " (" + e.source + ")" else "")
+                }.take(4000)
             }
-
-            if (toolResult.startsWith("Succès")) {
-                withContext(Dispatchers.Main) {
-                    modifiedPaths[path] = true
-                    editor.onExternalWrite(path, fileContent)
-                }
-            }
-            return toolResult
         }
         if (tc.name == "delete_file") {
             val args = try {
@@ -686,17 +747,70 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         pendingAsk = null
     }
 
+    /** Écriture avec porte de confirmation (Auto / Intelligent / fichier autorisé / manuel) et sauvegarde pour l'annulation. */
+    private suspend fun applyWrite(
+        fileRepo: FileRepository,
+        toolCallId: String,
+        path: String,
+        content: String,
+        isEdit: Boolean
+    ): String {
+        if (path.isBlank()) return "Erreur: chemin manquant."
+        val raw = fileRepo.readFile(path)
+        val exists = !raw.startsWith("Erreur: Fichier introuvable")
+        val full = if (exists) fileRepo.readFileForEdit(path).getOrNull() else null
+        val oldForDiff: String? = if (!exists) null else (full ?: raw)
+
+        val auto = autoModeInput || path in settingsManager.alwaysAllowedPaths ||
+            (smartModeInput && (!exists || isEdit))
+        val allowed = if (auto) {
+            if (autoModeInput) {
+                withContext(Dispatchers.Main) { statusMessage = "Mode Auto : écriture de $path…" }
+            }
+            true
+        } else {
+            waitForWriteConfirmation(path, content, toolCallId, oldForDiff)
+        }
+        if (!allowed) return "Refusé par l'utilisateur: l'écriture de $path a été annulée."
+
+        val res = fileRepo.writeFile(path, content)
+        if (res.startsWith("Succès")) {
+            withContext(Dispatchers.Main) {
+                modifiedPaths[path] = true
+                if (!exists || full != null) agentUndo.add(UndoEntry(path, full))
+                editor.onExternalWrite(path, content)
+            }
+        }
+        return res
+    }
+
+    /** Annule tous les changements de fichiers faits par l'agent pour la dernière demande. */
+    fun undoAgentChanges() {
+        if (isLoading || agentUndo.isEmpty()) return
+        val entries = agentUndo.toList().reversed()
+        agentUndo.clear()
+        viewModelScope.launch(Dispatchers.IO) {
+            val repo = getFileRepo()
+            for (e in entries) {
+                val old = e.oldContent
+                if (old == null) {
+                    repo.deletePath(e.path)
+                    withContext(Dispatchers.Main) { forgetPath(e.path) }
+                } else {
+                    repo.writeFile(e.path, old)
+                    withContext(Dispatchers.Main) { editor.onExternalWrite(e.path, old) }
+                }
+            }
+            withContext(Dispatchers.Main) { refreshBrowser() }
+        }
+    }
+
     private suspend fun waitForWriteConfirmation(
         path: String,
         content: String,
         toolCallId: String,
-        fileRepo: FileRepository
+        oldContent: String?
     ): Boolean {
-        // Contenu existant pour l'aperçu du diff
-        val existing = fileRepo.readFile(path)
-        val oldContent: String? =
-            if (existing.startsWith("Erreur")) null else existing
-
         val diff = DiffUtil.diff(oldContent, content)
 
         return suspendCancellableCoroutine { continuation ->

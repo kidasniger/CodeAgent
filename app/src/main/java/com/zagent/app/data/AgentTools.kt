@@ -96,6 +96,73 @@ object AgentTools {
         add(buildJsonObject {
             put("type", "function")
             put("function", buildJsonObject {
+                put("name", "edit_file")
+                put("description", "Modifie un fichier existant en remplaçant UN passage exact par un autre. Préfère-le à write_file pour tout changement partiel. old_string doit apparaître exactement une fois (ajoute du contexte autour sinon).")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {
+                        put("path", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Chemin relatif du fichier")
+                        })
+                        put("old_string", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Texte exact à remplacer (indentation comprise)")
+                        })
+                        put("new_string", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Texte de remplacement")
+                        })
+                    })
+                    put("required", buildJsonArray { add("path"); add("old_string"); add("new_string") })
+                })
+            })
+        })
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "search_in_files")
+                put("description", "Cherche un texte dans les fichiers du projet. Renvoie chemin:ligne: contenu (max 100 résultats).")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {
+                        put("query", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Texte à chercher")
+                        })
+                        put("path", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Dossier où chercher (défaut '.')")
+                        })
+                        put("case_sensitive", buildJsonObject {
+                            put("type", "boolean")
+                            put("description", "Respecter la casse (défaut false)")
+                        })
+                    })
+                    put("required", buildJsonArray { add("query") })
+                })
+            })
+        })
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "run_preview")
+                put("description", "Ouvre l'aperçu web d'un fichier HTML dans l'appli et renvoie les messages de la console JS (erreurs, console.log) après chargement. Utilise-le pour vérifier ton travail.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {
+                        put("path", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Chemin relatif du fichier .html (ex: index.html)")
+                        })
+                    })
+                    put("required", buildJsonArray { add("path") })
+                })
+            })
+        })
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
                 put("name", "ask_user")
                 put("description", "Pose 1 à 4 questions à choix à l'utilisateur (cartes à toucher) quand la demande est floue ou qu'un choix important manque. Renvoie ses réponses.")
                 put("parameters", buildJsonObject {
@@ -155,6 +222,12 @@ object AgentTools {
                     val path = jsonObject["path"]?.jsonPrimitive?.content ?: ""
                     val content = jsonObject["content"]?.jsonPrimitive?.content ?: ""
                     fileRepo.writeFile(path, content)
+                }
+                "search_in_files" -> {
+                    val query = jsonObject["query"]?.jsonPrimitive?.content ?: ""
+                    val path = jsonObject["path"]?.jsonPrimitive?.content ?: "."
+                    val cs = jsonObject["case_sensitive"]?.jsonPrimitive?.booleanOrNull ?: false
+                    ProjectSearch.search(fileRepo, query, path, cs)
                 }
                 else -> "Erreur: Outil inconnu $name"
             }

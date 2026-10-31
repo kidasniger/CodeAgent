@@ -33,6 +33,11 @@ class SettingsManager(context: Context) {
         get() = prefs.getBoolean(KEY_AUTO_MODE, false)
         set(value) = prefs.edit().putBoolean(KEY_AUTO_MODE, value).apply()
 
+    /** Mode intelligent : nouveaux fichiers et edit_file sans confirmation, écrasement et suppression confirmés. */
+    var smartMode: Boolean
+        get() = prefs.getBoolean(KEY_SMART_MODE, true)
+        set(value) = prefs.edit().putBoolean(KEY_SMART_MODE, value).apply()
+
     var workingFolderUri: String?
         get() = prefs.getString(KEY_FOLDER_URI, null)
         set(value) = prefs.edit().putString(KEY_FOLDER_URI, value).apply()
@@ -56,6 +61,7 @@ class SettingsManager(context: Context) {
         private const val KEY_MODEL = "model"
         private const val KEY_BASE_URL = "base_url"
         private const val KEY_AUTO_MODE = "auto_mode"
+        private const val KEY_SMART_MODE = "smart_mode"
         private const val KEY_FOLDER_URI = "folder_uri"
         private const val KEY_THEME_DARK = "theme_dark"
         private const val KEY_ONBOARDING_DONE = "onboarding_done"

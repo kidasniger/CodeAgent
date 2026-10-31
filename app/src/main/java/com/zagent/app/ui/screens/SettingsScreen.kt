@@ -287,6 +287,33 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                 }
                 CardDivider(Modifier.padding(horizontal = 16.dp))
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+                    var smart by remember { mutableStateOf(viewModel.smartModeInput) }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconBadge(Icons.Default.Tune, c.cyan)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("Mode intelligent", style = MaterialTheme.typography.titleMedium, color = c.text)
+                            Text(
+                                "Nouveaux fichiers et petites modifications sans confirmation ; écrasement et suppression confirmés",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = c.text2
+                            )
+                        }
+                        Switch(
+                            checked = smart,
+                            onCheckedChange = { smart = it; viewModel.setSmartMode(it) },
+                            colors = androidx.compose.material3.SwitchDefaults.colors(
+                                checkedTrackColor = c.green,
+                                checkedThumbColor = Color.White,
+                                uncheckedTrackColor = c.surface3,
+                                uncheckedThumbColor = c.bg2,
+                                uncheckedBorderColor = c.border2
+                            )
+                        )
+                    }
+                }
+                CardDivider(Modifier.padding(horizontal = 16.dp))
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier

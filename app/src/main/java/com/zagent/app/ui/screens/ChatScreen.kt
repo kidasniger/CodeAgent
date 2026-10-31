@@ -198,6 +198,25 @@ fun ChatScreen(
                 TypingPill(viewModel.statusMessage.ifBlank { "Réflexion de l'agent" })
             }
         }
+        if (!viewModel.isLoading && viewModel.agentUndo.isNotEmpty()) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    "↩ Annuler " + viewModel.agentUndo.size + " changement(s) de l'agent",
+                    color = c.amber,
+                    fontSize = 12.sp,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(c.amberBg)
+                        .clickable { viewModel.undoAgentChanges() }
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
+        }
         InputBar(
             value = input,
             onValueChange = { input = it },
