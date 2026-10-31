@@ -554,7 +554,6 @@ fun EditorScreen(
                         reloadKey = editor.saveCount + reloadTick + viewModel.previewTick + (if (fs) 100000 else 0),
                         readResource = editor::readResource,
                         console = console,
-                        dark = viewModel.themeIsDark,
                         modifier = Modifier.fillMaxSize()
                     )
                     if (fs) {
@@ -566,8 +565,8 @@ fun EditorScreen(
                                 .background(Color(0x99000000)),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            SmallIcon(Icons.Default.Refresh, "Recharger") { reloadTick++ }
-                            SmallIcon(Icons.Default.FullscreenExit, "Quitter le plein écran") { previewFull = false }
+                            SmallIcon(Icons.Default.Refresh, "Recharger", Color.White) { reloadTick++ }
+                            SmallIcon(Icons.Default.FullscreenExit, "Quitter le plein écran", Color.White) { previewFull = false }
                         }
                     }
                 }
@@ -670,7 +669,7 @@ fun EditorScreen(
 }
 
 @Composable
-private fun SmallIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, desc: String, onClick: () -> Unit) {
+private fun SmallIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, desc: String, tint: Color? = null, onClick: () -> Unit) {
     val c = Zcolors
     Box(
         Modifier
@@ -679,7 +678,7 @@ private fun SmallIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, des
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, desc, tint = c.text2, modifier = Modifier.size(20.dp))
+        Icon(icon, desc, tint = tint ?: c.text2, modifier = Modifier.size(20.dp))
     }
 }
 

@@ -3,7 +3,6 @@ package com.zagent.app.ui.editor
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.graphics.Color
-import android.os.Build
 import android.view.View
 import android.net.Uri
 import android.webkit.ConsoleMessage
@@ -40,6 +39,14 @@ import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.Zcolors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+
+private const val BG_FIX_JS = "(function(){try{var b=document.body,h=document.documentElement;" +
+    "if(!b)return;var cb=getComputedStyle(b),ch=getComputedStyle(h);" +
+    "var noH=ch.backgroundImage==='none'&&(ch.backgroundColor==='rgba(0, 0, 0, 0)'||ch.backgroundColor==='transparent');" +
+    "var hasB=cb.backgroundImage!=='none'||(cb.backgroundColor!=='rgba(0, 0, 0, 0)'&&cb.backgroundColor!=='transparent');" +
+    "if(noH&&hasB){h.style.backgroundImage=cb.backgroundImage;h.style.backgroundColor=cb.backgroundColor;" +
+    "h.style.backgroundRepeat='no-repeat';h.style.backgroundAttachment='fixed';h.style.backgroundSize='cover';}" +
+    "}catch(e){}})();"
 
 /** Niveau d'un message de console. */
 enum class ConsoleLevel { LOG, WARN, ERROR }
@@ -79,7 +86,6 @@ fun PreviewPane(
     reloadKey: Int,
     readResource: (String) -> ByteArray?,
     console: ConsoleState,
-    dark: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -105,6 +111,12 @@ fun PreviewPane(
             webViewClient = object : WebViewClient() {
                 override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                     console.clear()
+                }
+
+                override fun onPageFinished(view: WebView?, url: String?) {
+                    // Le fond de la page (body) n'est pas toujours peint par le WebView :
+                    // on le copie sur <html> pour qu'il s'affiche comme dans un navigateur.
+                    view?.evaluateJavascript(BG_FIX_JS, null)
                 }
 
                 override fun onReceivedError(
@@ -149,13 +161,6 @@ fun PreviewPane(
         factory = { webView },
         modifier = modifier,
         update = { wv ->
-            // Synchronise l'aperçu avec le thème choisi dans l'appli (pas celui du système)
-            if (Build.VERSION.SDK_INT >= 29) {
-                @Suppress("DEPRECATION")
-                wv.settings.forceDark =
-                    if (dark) WebSettings.FORCE_DARK_ON else WebSettings.FORCE_DARK_OFF
-            }
-            wv.setBackgroundColor(if (dark) Color.BLACK else Color.WHITE)
             if (p != null) {
                 val key = path + "#" + reloadKey + "@" + p
                 if (wv.tag != key) {
