@@ -73,6 +73,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
+          chmod -R a+rwX .
           ok=0
           for i in 1 2 3 4 5; do
             echo "=== Essai $i/5 ==="
