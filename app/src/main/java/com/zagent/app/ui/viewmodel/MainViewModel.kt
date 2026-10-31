@@ -12,6 +12,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.zagent.app.data.AgentTools
 import com.zagent.app.data.AiRepository
+import com.zagent.app.data.AskQuestion
+import com.zagent.app.data.parseAskQuestions
 import com.zagent.app.data.DiffUtil
 import com.zagent.app.data.FileRepository
 import com.zagent.app.data.SettingsManager
@@ -99,6 +101,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     var pendingWrite: PendingWrite? by mutableStateOf(null)
     private var onWriteConfirmed: ((Boolean) -> Unit)? = null
+
+    /** Suppression demandée par l'agent (outil delete_file), en attente de confirmation. */
+    data class PendingDelete(val path: String, val toolCallId: String)
+
+    var pendingDelete: PendingDelete? by mutableStateOf(null)
+    private var onDeleteConfirmed: ((Boolean) -> Unit)? = null
+
+    /** Questions à choix posées par l'agent (outil ask_user), en attente de réponse. */
+    data class PendingAsk(val toolCallId: String, val questions: List<AskQuestion>)
+
+    var pendingAsk: PendingAsk? by mutableStateOf(null)
+    private var onAskAnswered: ((String?) -> Unit)? = null
     private var agentJob: Job? = null
 
     /** Fichiers modifiés par l'agent pendant la session (badge explorateur). */
@@ -146,6 +160,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         agentJob = null
         onWriteConfirmed = null
         pendingWrite = null
+        onAskAnswered = null
+        pendingAsk = null
+        onDeleteConfirmed = null
+        pendingDelete = null
         isLoading = false
         _messages.value = emptyList()
         statusMessage = ""
@@ -177,6 +195,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         agentJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 runAgentLoop()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Une erreur inattendue dans la boucle de l'agent ne doit jamais fermer l'appli.
+                withContext(NonCancellable + Dispatchers.Main) {
+                    statusMessage = "Erreur de l'agent : " + (e.localizedMessage ?: e.javaClass.simpleName)
+                }
             } finally {
                 withContext(NonCancellable + Dispatchers.Main) {
                     isLoading = false
@@ -440,7 +465,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         showFallbackModelButton = false
 
         val fileRepo = getFileRepo()
-        val systemPrompt = "Tu es un agent de code qui travaille dans un dossier de projet. Utilise les outils pour explorer, lire, créer des dossiers et écrire des fichiers. Si tu ne connais pas la structure, commence par list_dir. Lis un fichier avant de le modifier. Écris toujours le contenu COMPLET d'un fichier. Les chemins sont relatifs au dossier de travail. Réponds en français, de façon courte."
+        val systemPrompt = "Tu es un agent de code qui travaille dans un dossier de projet. Utilise les outils pour explorer, lire, créer des dossiers, écrire et supprimer des fichiers (delete_file ; pour vider un fichier, write_file avec contenu vide). Si tu ne connais pas la structure, commence par list_dir. Lis un fichier avant de le modifier. Écris toujours le contenu COMPLET d'un fichier. Les chemins sont relatifs au dossier de travail. Si la demande est floue ou qu'un choix important manque (sujet, public, style, durée, technologie…), appelle d'abord ask_user avec 1 à 4 questions courtes à choix (2 à 4 options chacune) au lieu de deviner, puis continue avec les réponses sans reposer les mêmes questions. Réponds en français, de façon courte."
 
         var stepCount = 0
         val maxSteps = 20
@@ -585,7 +610,80 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             return toolResult
         }
+        if (tc.name == "delete_file") {
+            val args = try {
+                Json.parseToJsonElement(tc.arguments).jsonObject
+            } catch (e: Exception) {
+                JsonObject(emptyMap())
+            }
+            val path = args["path"]?.jsonPrimitive?.content?.trim().orEmpty()
+            if (path.isEmpty()) return "Erreur: chemin manquant pour delete_file."
+            val allowed = autoModeInput || waitForDeleteConfirmation(path, tc.id)
+            if (!allowed) return "Refusé par l'utilisateur: la suppression de $path a été annulée."
+            val res = fileRepo.deletePath(path)
+            if (res.startsWith("Succès")) {
+                withContext(Dispatchers.Main) {
+                    forgetPath(path)
+                    refreshBrowser()
+                }
+            }
+            return res
+        }
+        if (tc.name == "ask_user") {
+            val questions = parseAskQuestions(tc.arguments)
+            if (questions.isEmpty()) {
+                return "Erreur: ask_user demande au moins une question avec des options."
+            }
+            val answers = waitForAsk(tc.id, questions)
+            return answers
+                ?: "L'utilisateur a ignoré les questions : continue avec des choix raisonnables par défaut."
+        }
         return AgentTools.executeTool(fileRepo, tc.name, tc.arguments)
+    }
+
+    private suspend fun waitForDeleteConfirmation(path: String, toolCallId: String): Boolean {
+        return suspendCancellableCoroutine { continuation ->
+            statusMessage = "En attente de ta confirmation…"
+            pendingDelete = PendingDelete(path, toolCallId)
+            onDeleteConfirmed = { allowed ->
+                pendingDelete = null
+                statusMessage = "Réflexion de l'agent…"
+                continuation.resume(allowed, null)
+            }
+            continuation.invokeOnCancellation {
+                pendingDelete = null
+                onDeleteConfirmed = null
+            }
+        }
+    }
+
+    fun resolvePendingDelete(allowed: Boolean) {
+        onDeleteConfirmed?.invoke(allowed)
+        onDeleteConfirmed = null
+        pendingDelete = null
+    }
+
+    private suspend fun waitForAsk(toolCallId: String, questions: List<AskQuestion>): String? {
+        return suspendCancellableCoroutine { continuation ->
+            statusMessage = "En attente de ta réponse…"
+            pendingAsk = PendingAsk(toolCallId, questions)
+            onAskAnswered = { answers ->
+                pendingAsk = null
+                statusMessage = "Réflexion de l'agent…"
+                continuation.resume(answers, null)
+            }
+            continuation.invokeOnCancellation {
+                pendingAsk = null
+                onAskAnswered = null
+            }
+        }
+    }
+
+    /** Appelé par la carte de questions : réponses formatées, ou null si l'utilisateur ignore. */
+    fun resolvePendingAsk(answers: String?) {
+        onAskAnswered?.invoke(answers)
+        onAskAnswered = null
+        pendingAsk = null
     }
 
     private suspend fun waitForWriteConfirmation(

@@ -76,6 +76,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zagent.app.data.AiRepository
+import com.zagent.app.data.AskQuestion
+import com.zagent.app.data.parseAskQuestions
+import com.zagent.app.ui.components.AskCard
 import com.zagent.app.data.DiffUtil
 import com.zagent.app.ui.components.CircleIconButton
 import com.zagent.app.ui.components.EmptyState
@@ -171,6 +174,13 @@ fun ChatScreen(
                             is ChatRow.User -> UserBubble(row.text)
                             is ChatRow.Agent -> AgentCard(row.content, row.tools)
                             is ChatRow.OrphanTool -> OrphanToolLine(row.text)
+                            is ChatRow.Ask -> AskCard(
+                                questions = row.questions,
+                                result = row.result,
+                                active = row.result == null &&
+                                    viewModel.pendingAsk?.toolCallId == row.toolCallId,
+                                onSubmit = { answers -> viewModel.resolvePendingAsk(answers) }
+                            )
                         }
                     }
                 }
@@ -206,6 +216,14 @@ fun ChatScreen(
         WriteConfirmSheet(
             pending = pw,
             onResolve = { allowed, always -> viewModel.resolvePendingWrite(allowed, always) }
+        )
+    }
+
+    // Feuille de confirmation de suppression
+    viewModel.pendingDelete?.let { pd ->
+        DeleteConfirmSheet(
+            pending = pd,
+            onResolve = { allowed -> viewModel.resolvePendingDelete(allowed) }
         )
     }
 }
@@ -506,6 +524,15 @@ private sealed interface ChatRow {
         override val key: String get() = "a_$id"
     }
 
+    data class Ask(
+        val id: Int,
+        val toolCallId: String,
+        val questions: List<AskQuestion>,
+        val result: String?
+    ) : ChatRow {
+        override val key: String get() = "q_$id"
+    }
+
     data class OrphanTool(val id: Int, val text: String) : ChatRow {
         override val key: String get() = "t_$id"
     }
@@ -515,6 +542,7 @@ private fun buildChatRows(messages: List<com.zagent.app.ui.viewmodel.ChatMessage
     val rows = mutableListOf<ChatRow>()
     var currentTools: MutableList<Pair<AiRepository.ToolCallData, String?>>? = null
     var nextId = 0
+    val askRowIndex = HashMap<String, Int>()
 
     val timeFmt = SimpleDateFormat("HH:mm", Locale.getDefault())
 
@@ -528,18 +556,36 @@ private fun buildChatRows(messages: List<com.zagent.app.ui.viewmodel.ChatMessage
                 rows.add(ChatRow.User(nextId++, m.content ?: ""))
             }
             "assistant" -> {
-                currentTools = mutableListOf()
-                rows.add(ChatRow.Agent(nextId++, m.content, currentTools))
-                m.toolCalls?.forEach { tc -> currentTools.add(tc to null) }
+                val list = mutableListOf<Pair<AiRepository.ToolCallData, String?>>()
+                currentTools = list
+                val calls = m.toolCalls.orEmpty()
+                val visibleTools = calls.filter { it.name != "ask_user" }
+                if (!m.content.isNullOrBlank() || visibleTools.isNotEmpty() || calls.isEmpty()) {
+                    rows.add(ChatRow.Agent(nextId++, m.content, list))
+                }
+                visibleTools.forEach { tc -> list.add(tc to null) }
+                calls.filter { it.name == "ask_user" }.forEach { tc ->
+                    val qs = parseAskQuestions(tc.arguments)
+                    if (qs.isNotEmpty()) {
+                        askRowIndex[tc.id] = rows.size
+                        rows.add(ChatRow.Ask(nextId++, tc.id, qs, null))
+                    }
+                }
             }
             "tool" -> {
-                val last = rows.lastOrNull()
-                if (last is ChatRow.Agent && currentTools != null) {
-                    val idx = currentTools.indexOfFirst { it.first.id == m.toolCallId }
-                    if (idx >= 0) currentTools[idx] = currentTools[idx].copy(second = m.content)
-                    else rows.add(ChatRow.OrphanTool(nextId++, "${m.toolLog ?: "outil"} → ${(m.content ?: "").take(120)}"))
+                if (m.name == "ask_user") {
+                    val idx = askRowIndex[m.toolCallId]
+                    val old = if (idx != null) rows[idx] as? ChatRow.Ask else null
+                    if (idx != null && old != null) rows[idx] = old.copy(result = m.content ?: "")
                 } else {
-                    rows.add(ChatRow.OrphanTool(nextId++, "${m.toolLog ?: "outil"} → ${(m.content ?: "").take(120)}"))
+                    val tools = currentTools
+                    if (tools != null) {
+                        val idx = tools.indexOfFirst { it.first.id == m.toolCallId }
+                        if (idx >= 0) tools[idx] = tools[idx].copy(second = m.content)
+                        else rows.add(ChatRow.OrphanTool(nextId++, "${m.toolLog ?: "outil"} → ${(m.content ?: "").take(120)}"))
+                    } else {
+                        rows.add(ChatRow.OrphanTool(nextId++, "${m.toolLog ?: "outil"} → ${(m.content ?: "").take(120)}"))
+                    }
                 }
             }
         }
@@ -785,6 +831,92 @@ private fun InputBar(
                     "Envoyer",
                     tint = if (enabled && value.isNotBlank()) c.onGrad else c.text3,
                     modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Bottom sheet de confirmation de suppression
+// ─────────────────────────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DeleteConfirmSheet(
+    pending: MainViewModel.PendingDelete,
+    onResolve: (Boolean) -> Unit
+) {
+    val c = Zcolors
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = { onResolve(false) },
+        sheetState = sheetState,
+        containerColor = c.bg2,
+        shape = RoundedCornerShape(24.dp, 24.dp, 0.dp, 0.dp)
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 24.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconBadge(Icons.Default.Shield, c.red, size = 46.dp, iconSize = 22.dp)
+                Spacer(Modifier.width(14.dp))
+                Column {
+                    Text(
+                        "Confirmation de suppression",
+                        style = TextStyle(fontFamily = Inter, fontSize = 12.sp, fontWeight = FontWeight.Medium),
+                        color = c.text2
+                    )
+                    Text(
+                        "Supprimer cet élément ?",
+                        style = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.SemiBold, fontSize = 20.sp),
+                        color = c.text
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(c.surface2)
+                    .border(1.dp, c.border, RoundedCornerShape(50))
+                    .padding(horizontal = 12.dp, vertical = 7.dp)
+            ) {
+                Text(
+                    pending.path,
+                    style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp),
+                    color = c.text,
+                    maxLines = 1
+                )
+            }
+
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "L'agent demande à supprimer cet élément du projet. Cette action est définitive.",
+                style = MaterialTheme.typography.bodySmall,
+                color = c.text2
+            )
+
+            Spacer(Modifier.height(18.dp))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                SecondaryButton(
+                    "Refuser",
+                    onClick = { onResolve(false) },
+                    modifier = Modifier.weight(1f),
+                    height = 50.dp
+                )
+                GradientButton(
+                    "Supprimer",
+                    onClick = { onResolve(true) },
+                    modifier = Modifier.weight(1f),
+                    height = 50.dp
                 )
             }
         }

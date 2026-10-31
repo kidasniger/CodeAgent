@@ -394,7 +394,6 @@ fun DiffPanel(
             .clip(RoundedCornerShape(14.dp))
             .background(c.codeBg)
             .border(1.dp, c.codeBorder, RoundedCornerShape(14.dp))
-            .verticalScroll(rememberScrollState())
     ) {
         shown.forEach { line ->
             val (bg, textColor, sign) = when (line.kind) {
