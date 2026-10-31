@@ -551,7 +551,7 @@ fun EditorScreen(
                 Box(Modifier.weight(1f).fillMaxWidth()) {
                     PreviewPane(
                         path = entry,
-                        reloadKey = editor.saveCount + reloadTick + viewModel.previewTick,
+                        reloadKey = editor.saveCount + reloadTick + viewModel.previewTick + (if (fs) 100000 else 0),
                         readResource = editor::readResource,
                         console = console,
                         dark = viewModel.themeIsDark,
