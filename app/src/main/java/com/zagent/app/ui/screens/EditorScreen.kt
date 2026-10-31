@@ -1,11 +1,6 @@
 package com.zagent.app.ui.screens
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
@@ -619,21 +614,18 @@ fun EditorScreen(
                                     fsBarTick++
                                 }
                         )
-                        AnimatedVisibility(
-                            visible = fsBar,
-                            modifier = Modifier.align(Alignment.TopCenter),
-                            enter = fadeIn() + slideInVertically { -it },
-                            exit = fadeOut() + slideOutVertically { -it }
-                        ) {
-                            FullscreenBar(
-                                title = pageTitle.takeIf { it.isNotBlank() && !it.startsWith("127.0.0.1") && !it.startsWith("http") } ?: entry,
-                                errors = console.errorCount,
-                                menuOpen = fsMenu,
-                                onMenu = { fsMenu = it; fsBarTick++ },
-                                onRefresh = { reloadTick++; fsBarTick++ },
-                                onConsole = { fsConsole = !fsConsole },
-                                onExit = { previewFull = false }
-                            )
+                        if (fsBar) {
+                            Box(Modifier.align(Alignment.TopCenter)) {
+                                FullscreenBar(
+                                    title = pageTitle.takeIf { it.isNotBlank() && !it.startsWith("127.0.0.1") && !it.startsWith("http") } ?: entry,
+                                    errors = console.errorCount,
+                                    menuOpen = fsMenu,
+                                    onMenu = { fsMenu = it; fsBarTick++ },
+                                    onRefresh = { reloadTick++; fsBarTick++ },
+                                    onConsole = { fsConsole = !fsConsole },
+                                    onExit = { previewFull = false }
+                                )
+                            }
                         }
                         // Console : panneau par-dessus la page (40 % de l'écran)
                         if (fsConsole) {
