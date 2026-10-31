@@ -46,11 +46,15 @@ class TerminalController(
     }
 
     companion object {
-        private const val BOOTSTRAP_URL_BASE =
-            "https://github.com/kidasniger/CodeAgent/releases/download/bootstrap/"
+        private const val RELEASES_API =
+            "https://api.github.com/repos/termux/termux-packages/releases?per_page=30"
+
+        // Même longueur (10 caractères) : permet de remplacer l'un par l'autre dans les binaires.
+        private const val OLD_PKG = "com.termux"
+        private const val NEW_PKG = "com.zagent"
     }
 
-    // Les chemins doivent correspondre au préfixe compilé dans le bootstrap.
+    // Le préfixe est /data/data/com.zagent/files/usr (bootstrap officiel adapté à l'extraction).
     private val baseDir = File("/data/data/${app.packageName}/files")
     private val prefixDir = File(baseDir, "usr")
     private val homeDir = File(baseDir, "home")
@@ -80,15 +84,21 @@ class TerminalController(
                 return
             }
         }
-        state = State.Working("Téléchargement du système", 0f)
+        if (app.packageName != NEW_PKG) {
+            state = State.Failed("L'identifiant de l'appli doit être $NEW_PKG (actuellement ${app.packageName})")
+            return
+        }
+        state = State.Working("Recherche du système", null)
         scope.launch(Dispatchers.IO) {
             try {
+                val url = resolveBootstrapUrl(arch)
                 val zip = File(baseDir, "bootstrap-$arch.zip")
-                download(BOOTSTRAP_URL_BASE + "bootstrap-$arch.zip", zip)
+                download(url, zip)
                 setState(State.Working("Extraction", null))
                 extract(zip)
                 zip.delete()
                 setState(State.Working("Configuration", null))
+                installDebPatcher()
                 runSecondStage()
                 if (!isInstalled()) error("bin/bash introuvable après l'extraction")
                 setState(State.Ready)
@@ -97,6 +107,32 @@ class TerminalController(
                 setState(State.Failed(e.message ?: e.javaClass.simpleName))
             }
         }
+    }
+
+    /** Trouve le dernier bootstrap officiel Termux (variante Android 7+) pour l'architecture donnée. */
+    private fun resolveBootstrapUrl(arch: String): String {
+        val client = OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .build()
+        val req = Request.Builder().url(RELEASES_API)
+            .header("Accept", "application/vnd.github+json")
+            .build()
+        client.newCall(req).execute().use { resp ->
+            if (!resp.isSuccessful) error("Impossible de lister les versions du système (HTTP ${resp.code})")
+            val arr = org.json.JSONArray(resp.body?.string() ?: error("Réponse vide"))
+            for (i in 0 until arr.length()) {
+                val rel = arr.getJSONObject(i)
+                val tag = rel.optString("tag_name")
+                if (!tag.startsWith("bootstrap-") || !tag.contains("android-7")) continue
+                val assets = rel.optJSONArray("assets") ?: continue
+                for (j in 0 until assets.length()) {
+                    val a = assets.getJSONObject(j)
+                    if (a.optString("name") == "bootstrap-$arch.zip") return a.getString("browser_download_url")
+                }
+            }
+        }
+        error("Aucun bootstrap Termux trouvé")
     }
 
     private suspend fun setState(s: State) = withContext(Dispatchers.Main) { state = s }
@@ -145,7 +181,7 @@ class TerminalController(
                 val entry = zis.nextEntry ?: break
                 val name = entry.name
                 if (name == "SYMLINKS.txt") {
-                    zis.readBytes().toString(Charsets.UTF_8).lineSequence().forEach { line ->
+                    zis.readBytes().toString(Charsets.UTF_8).replace(OLD_PKG, NEW_PKG).lineSequence().forEach { line ->
                         val parts = line.split("←")
                         if (parts.size == 2) symlinks.add(parts[0] to parts[1])
                     }
@@ -172,33 +208,63 @@ class TerminalController(
             Os.symlink(target, linkFile.absolutePath)
         }
 
-        fixTextPaths(stagingDir)
+        patchPrefix(stagingDir)
 
         prefixDir.deleteRecursively()
         if (!stagingDir.renameTo(prefixDir)) error("Impossible de finaliser l'installation")
         File(prefixDir, "tmp").mkdirs()
         homeDir.mkdirs()
-        File(prefixDir, ".zagent-paths-fixed").createNewFile()
     }
 
-    /** Remplace l'ancien préfixe com.termux dans les fichiers texte (les binaires sont ignorés). */
-    private fun fixTextPaths(root: File) {
-        val re = Regex("/data/data/com\\.termux(?=[/\\s\"'\\\\:;)}]|$)")
-        val replacement = "/data/data/${app.packageName}"
+    /** Remplace com.termux par com.zagent dans tous les fichiers (binaires compris, même longueur). */
+    private fun patchPrefix(root: File) {
+        val old = OLD_PKG.toByteArray(Charsets.US_ASCII)
+        val new = NEW_PKG.toByteArray(Charsets.US_ASCII)
         Files.walk(root.toPath()).use { stream ->
             stream.forEach { p ->
                 if (!Files.isRegularFile(p, LinkOption.NOFOLLOW_LINKS)) return@forEach
                 val f = p.toFile()
                 val len = f.length()
-                if (len == 0L || len > 2_000_000L) return@forEach
+                if (len < old.size || len > 64L * 1024 * 1024) return@forEach
                 val bytes = f.readBytes()
-                if (bytes.contains(0.toByte())) return@forEach
-                val text = String(bytes, Charsets.ISO_8859_1)
-                if (!text.contains("/data/data/com.termux")) return@forEach
-                val out = re.replace(text, replacement)
-                if (out != text) f.writeBytes(out.toByteArray(Charsets.ISO_8859_1))
+                if (replaceBytes(bytes, old, new)) {
+                    f.setWritable(true, true)
+                    f.writeBytes(bytes)
+                }
             }
         }
+    }
+
+    private fun replaceBytes(data: ByteArray, old: ByteArray, new: ByteArray): Boolean {
+        var changed = false
+        var i = 0
+        val last = data.size - old.size
+        while (i <= last) {
+            if (data[i] == old[0]) {
+                var k = 1
+                while (k < old.size && data[i + k] == old[k]) k++
+                if (k == old.size) {
+                    System.arraycopy(new, 0, data, i, new.size)
+                    changed = true
+                    i += old.size
+                    continue
+                }
+            }
+            i++
+        }
+        return changed
+    }
+
+    /** Installe le crochet apt qui adapte chaque paquet officiel Termux avant son installation. */
+    private fun installDebPatcher() {
+        val script = app.assets.open("zagent-patch-debs.sh").bufferedReader().use { it.readText() }
+            .replace("@PREFIX@", prefixDir.absolutePath)
+        val bin = File(prefixDir, "bin/zagent-patch-debs")
+        bin.writeText(script)
+        Os.chmod(bin.absolutePath, 0x1C0) // 0700
+        val confDir = File(prefixDir, "etc/apt/apt.conf.d")
+        confDir.mkdirs()
+        File(confDir, "99-zagent").writeText("DPkg::Pre-Install-Pkgs { \"${bin.absolutePath}\"; };\n")
     }
 
     private fun runSecondStage() {
@@ -232,27 +298,20 @@ class TerminalController(
             "TERM=xterm-256color",
             "COLORTERM=truecolor",
             "ANDROID_DATA=/data",
-            "ANDROID_ROOT=/system"
+            "ANDROID_ROOT=/system",
+            "TERMUX_VERSION=0.118.0",
+            "TERMUX_APP__PACKAGE_NAME=${app.packageName}",
+            "TERMUX__PREFIX=${prefixDir.absolutePath}",
+            "TERMUX__HOME=${homeDir.absolutePath}"
         )
-        val termuxExec = File(prefixDir, "lib/libtermux-exec.so")
-        if (termuxExec.exists()) env.add("LD_PRELOAD=${termuxExec.absolutePath}")
+        val termuxExec = listOf("lib/libtermux-exec-ld-preload.so", "lib/libtermux-exec.so")
+            .map { File(prefixDir, it) }.firstOrNull { it.exists() }
+        if (termuxExec != null) env.add("LD_PRELOAD=${termuxExec.absolutePath}")
         return env.toTypedArray()
     }
 
-    /** Corrige une fois les chemins d'une installation existante, puis lance le shell. */
     fun openSession() {
-        if (!isInstalled()) return
-        scope.launch(Dispatchers.IO) {
-            val marker = File(prefixDir, ".zagent-paths-fixed")
-            if (!marker.exists()) {
-                try {
-                    fixTextPaths(prefixDir)
-                    marker.createNewFile()
-                } catch (_: Exception) {
-                }
-            }
-            withContext(Dispatchers.Main) { startSession() }
-        }
+        startSession()
     }
 
     private fun startSession() {

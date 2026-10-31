@@ -11,7 +11,7 @@ android {
   compileSdk = 36
 
   defaultConfig {
-    applicationId = "com.zagent.app"
+    applicationId = "com.zagent"
     minSdk = 26
     targetSdk = 28
     versionCode = (project.findProperty("versionCode") as String?)?.toIntOrNull() ?: 1
