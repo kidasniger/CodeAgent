@@ -76,6 +76,12 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.compose.foundation.layout.displayCutoutPadding
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
@@ -199,6 +205,23 @@ fun EditorScreen(
     }
     var showConsole by remember { mutableStateOf(true) }
 
+    // Plein écran : on masque aussi la barre d'état et de navigation (glisser depuis le bord pour les revoir)
+    val fs = showPreview && previewFull
+    val hostView = LocalView.current
+    DisposableEffect(fs) {
+        var ctx = hostView.context
+        while (ctx is android.content.ContextWrapper && ctx !is android.app.Activity) ctx = ctx.baseContext
+        val window = (ctx as? android.app.Activity)?.window
+        val ctrl = window?.let { WindowCompat.getInsetsController(it, hostView) }
+        if (fs) {
+            ctrl?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            ctrl?.hide(WindowInsetsCompat.Type.systemBars())
+        } else {
+            ctrl?.show(WindowInsetsCompat.Type.systemBars())
+        }
+        onDispose { ctrl?.show(WindowInsetsCompat.Type.systemBars()) }
+    }
+
     BackHandler(enabled = showPreview) {
         if (previewFull) previewFull = false else showPreview = false
     }
@@ -219,12 +242,14 @@ fun EditorScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(c.bg)
-            .statusBarsPadding()
-            .navigationBarsPadding()
+            .then(
+                if (fs) Modifier.displayCutoutPadding()
+                else Modifier.statusBarsPadding().navigationBarsPadding()
+            )
             .imePadding()
     ) {
         // ── Barre supérieure ────────────────────────────────────────────────
-        Row(
+        if (!fs) Row(
             Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 8.dp),
@@ -294,7 +319,7 @@ fun EditorScreen(
         }
 
         // ── Onglets ─────────────────────────────────────────────────────────
-        if (editor.tabs.isNotEmpty()) {
+        if (!fs && editor.tabs.isNotEmpty()) {
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -362,7 +387,7 @@ fun EditorScreen(
             scope.launch { vScroll?.animateScrollTo(target) }
         }
 
-        if (showSearch && tab != null) {
+        if (!fs && showSearch && tab != null) {
             Column(
                 Modifier
                     .fillMaxWidth()
@@ -435,7 +460,7 @@ fun EditorScreen(
         }
 
         // ── Bandeaux d'erreur / conflit ─────────────────────────────────────
-        editor.error?.let { err ->
+        editor.error?.takeIf { !fs }?.let { err ->
             Text(
                 err,
                 color = c.red,
@@ -447,7 +472,7 @@ fun EditorScreen(
                     .padding(horizontal = 14.dp, vertical = 8.dp)
             )
         }
-        if (tab != null && tab.externalConflict) {
+        if (!fs && tab != null && tab.externalConflict) {
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -498,7 +523,7 @@ fun EditorScreen(
         if (showPreview && (previewFull || WindowInsets.ime.getBottom(density) == 0)) {
             val entry = previewPath ?: "index.html"
             Column(Modifier.weight(1f).fillMaxWidth()) {
-                Row(
+                if (!fs) Row(
                     Modifier
                         .fillMaxWidth()
                         .background(c.bg2)
@@ -523,14 +548,29 @@ fun EditorScreen(
                         previewFull = false
                     }
                 }
-                PreviewPane(
-                    path = entry,
-                    reloadKey = editor.saveCount + reloadTick + viewModel.previewTick,
-                    readResource = editor::readResource,
-                    console = console,
-                    modifier = Modifier.weight(1f).fillMaxWidth()
-                )
-                if (showConsole) {
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    PreviewPane(
+                        path = entry,
+                        reloadKey = editor.saveCount + reloadTick + viewModel.previewTick,
+                        readResource = editor::readResource,
+                        console = console,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    if (fs) {
+                        Row(
+                            Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(12.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(Color(0x99000000)),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            SmallIcon(Icons.Default.Refresh, "Recharger") { reloadTick++ }
+                            SmallIcon(Icons.Default.FullscreenExit, "Quitter le plein écran") { previewFull = false }
+                        }
+                    }
+                }
+                if (showConsole && !fs) {
                     Row(
                         Modifier.fillMaxWidth().background(c.surface2).padding(start = 12.dp, end = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -558,7 +598,7 @@ fun EditorScreen(
         }
 
         // ── Barre d'état ────────────────────────────────────────────────────
-        if (tab != null) {
+        if (!fs && tab != null) {
             val sel = tab.value.selection
             val pos = sel.start.coerceIn(0, text.length)
             val before = text.substring(0, pos)

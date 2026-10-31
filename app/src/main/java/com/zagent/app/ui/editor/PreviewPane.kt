@@ -2,6 +2,8 @@ package com.zagent.app.ui.editor
 
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
+import android.graphics.Color
+import android.view.View
 import android.net.Uri
 import android.webkit.ConsoleMessage
 import android.webkit.WebChromeClient
@@ -87,6 +89,15 @@ fun PreviewPane(
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.cacheMode = WebSettings.LOAD_NO_CACHE
+            // Rendu proche d'un vrai navigateur (comme Acode)
+            settings.useWideViewPort = true
+            settings.loadWithOverviewMode = true
+            settings.mediaPlaybackRequiresUserGesture = false
+            settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+            setLayerType(View.LAYER_TYPE_HARDWARE, null)
+            setBackgroundColor(Color.WHITE)
+            onResume()
+            resumeTimers()
             settings.allowFileAccess = false
             settings.allowContentAccess = false
             webViewClient = object : WebViewClient() {
