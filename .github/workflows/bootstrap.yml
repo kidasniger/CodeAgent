@@ -94,6 +94,18 @@ jobs:
           done
           test "$ok" = 1
 
+      - name: Corriger les chemins texte restants
+        run: |
+          z="$PWD/tp/output/bootstrap-${ARCH}.zip"
+          d=$(mktemp -d)
+          cd "$d"
+          unzip -q "$z"
+          grep -rlI "/data/data/com.termux/" . | xargs -r sed -i "s#/data/data/com.termux/#/data/data/${APP_PACKAGE}/#g"
+          rm "$z"
+          zip -qr9 "$z" .
+          echo "Fichiers restants avec l'ancien préfixe (binaires) :"
+          grep -rl "/data/data/com.termux/" . || true
+
       - name: Vérifier l'archive
         run: |
           ls -lh "tp/output/bootstrap-${ARCH}.zip"
