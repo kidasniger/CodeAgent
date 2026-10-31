@@ -259,7 +259,6 @@ class TerminalController(
         override fun onBell(session: TerminalSession?) {}
         override fun onColorsChanged(session: TerminalSession?) { view?.onScreenUpdated() }
         override fun onTerminalCursorStateChange(state: Boolean) {}
-        override fun setTerminalShellPid(session: TerminalSession?, pid: Int) {}
         override fun getTerminalCursorStyle(): Int? = 0
 
         override fun onScale(scale: Float): Float = 1.0f
