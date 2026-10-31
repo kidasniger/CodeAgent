@@ -203,10 +203,23 @@ fun ChatScreen(
                 Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
             ) {
+                val html = viewModel.lastAgentHtml
+                if (html != null) {
+                    Text(
+                        "Ouvrir l'aperçu",
+                        color = c.cyan,
+                        fontSize = 12.sp,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(c.cyanBg)
+                            .clickable { viewModel.openPreview(html) }
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
                 Text(
-                    "↩ Annuler " + viewModel.agentUndo.size + " changement(s) de l'agent",
+                    "Annuler " + viewModel.agentUndo.size + " changement(s)",
                     color = c.amber,
                     fontSize = 12.sp,
                     modifier = Modifier

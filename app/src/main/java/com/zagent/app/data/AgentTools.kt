@@ -146,23 +146,6 @@ object AgentTools {
         add(buildJsonObject {
             put("type", "function")
             put("function", buildJsonObject {
-                put("name", "run_preview")
-                put("description", "Ouvre l'aperçu web d'un fichier HTML dans l'appli et renvoie les messages de la console JS (erreurs, console.log) après chargement. Utilise-le pour vérifier ton travail.")
-                put("parameters", buildJsonObject {
-                    put("type", "object")
-                    put("properties", buildJsonObject {
-                        put("path", buildJsonObject {
-                            put("type", "string")
-                            put("description", "Chemin relatif du fichier .html (ex: index.html)")
-                        })
-                    })
-                    put("required", buildJsonArray { add("path") })
-                })
-            })
-        })
-        add(buildJsonObject {
-            put("type", "function")
-            put("function", buildJsonObject {
                 put("name", "ask_user")
                 put("description", "Pose 1 à 4 questions à choix à l'utilisateur (cartes à toucher) quand la demande est floue ou qu'un choix important manque. Renvoie ses réponses.")
                 put("parameters", buildJsonObject {

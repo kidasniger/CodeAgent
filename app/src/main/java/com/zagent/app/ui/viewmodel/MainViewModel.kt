@@ -22,7 +22,6 @@ import com.zagent.app.ui.editor.ConsoleState
 import com.zagent.app.ui.editor.EditorController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -130,10 +129,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     /** Changements faits par l'agent pendant la dernière demande, annulables d'un tap. */
     val agentUndo = mutableStateListOf<UndoEntry>()
 
-    /** Console JS partagée entre l'aperçu et l'outil run_preview. */
+    /** Console JS partagée entre l'aperçu et le bouton de correction. */
     val console = ConsoleState()
     var previewRequest by mutableStateOf<String?>(null)
     var previewTick by mutableStateOf(0)
+
+    /** Dernière page HTML créée ou modifiée par l'agent (pour le bouton d'aperçu du chat). */
+    val lastAgentHtml: String?
+        get() = agentUndo.lastOrNull {
+            val e = it.path.substringAfterLast('.', "").lowercase()
+            e == "html" || e == "htm"
+        }?.path
+
+    /** Ouverture de l'aperçu, uniquement sur action de l'utilisateur. */
+    fun openPreview(path: String) {
+        console.clear()
+        editor.open(path) { isEditorOpen = true }
+        isEditorOpen = true
+        previewTick++
+        previewRequest = path
+    }
 
     /** Fichiers modifiés par l'agent pendant la session (badge explorateur). */
     val modifiedPaths = mutableStateMapOf<String, Boolean>()
@@ -487,7 +502,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         showFallbackModelButton = false
 
         val fileRepo = getFileRepo()
-        val systemPrompt = "Tu es un agent de code qui travaille dans un dossier de projet. Utilise les outils pour explorer, lire, créer des dossiers, écrire et supprimer des fichiers (delete_file ; pour vider un fichier, write_file avec contenu vide). Si tu ne connais pas la structure, commence par list_dir ; utilise search_in_files pour retrouver du code. Lis un fichier avant de le modifier. Pour modifier un fichier existant, utilise edit_file (un passage exact, unique) ; si edit_file échoue, relis le fichier avec read_file. N'utilise write_file (contenu COMPLET) que pour créer un fichier ou le réécrire entièrement. Après avoir créé ou modifié une page web, vérifie-la avec run_preview et corrige les erreurs de console. Les chemins sont relatifs au dossier de travail. Si la demande est floue ou qu'un choix important manque (sujet, public, style, durée, technologie…), appelle d'abord ask_user avec 1 à 4 questions courtes à choix (2 à 4 options chacune) au lieu de deviner, puis continue avec les réponses sans reposer les mêmes questions. Réponds en français, de façon courte."
+        val systemPrompt = "Tu es un agent de code qui travaille dans un dossier de projet. Utilise les outils pour explorer, lire, créer des dossiers, écrire et supprimer des fichiers (delete_file ; pour vider un fichier, write_file avec contenu vide). Si tu ne connais pas la structure, commence par list_dir ; utilise search_in_files pour retrouver du code. Lis un fichier avant de le modifier. Pour modifier un fichier existant, utilise edit_file (un passage exact, unique) ; si edit_file échoue, relis le fichier avec read_file. N'utilise write_file (contenu COMPLET) que pour créer un fichier ou le réécrire entièrement. Les chemins sont relatifs au dossier de travail. Si la demande est floue ou qu'un choix important manque (sujet, public, style, durée, technologie…), appelle d'abord ask_user avec 1 à 4 questions courtes à choix (2 à 4 options chacune) au lieu de deviner, puis continue avec les réponses sans reposer les mêmes questions. Réponds en français, de façon courte."
 
         var stepCount = 0
         val maxSteps = 20
@@ -568,7 +583,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         }
 
                         for (tc in toolCalls) {
-                            val logLine = "🔧 ${tc.name}(...)"
+                            val logLine = "${tc.name}(...)"
                             withContext(Dispatchers.Main) {
                                 statusMessage = "Exécution de $logLine…"
                             }
@@ -580,7 +595,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                                 content = toolResult,
                                 toolCallId = tc.id,
                                 name = tc.name,
-                                toolLog = "🔧 ${tc.name}"
+                                toolLog = tc.name
                             )
                             withContext(Dispatchers.Main) {
                                 _messages.value = _messages.value + toolMsg
@@ -640,36 +655,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val updated = text.substring(0, first) + newS + text.substring(first + oldS.length)
             val out = if (crlf) updated.replace("\n", "\r\n") else updated
             return applyWrite(fileRepo, tc.id, path, out, isEdit = true)
-        }
-        if (tc.name == "run_preview") {
-            val args = try {
-                Json.parseToJsonElement(tc.arguments).jsonObject
-            } catch (e: Exception) {
-                JsonObject(emptyMap())
-            }
-            val path = args["path"]?.jsonPrimitive?.content?.trim().orEmpty()
-            if (path.isEmpty()) return "Erreur: chemin manquant pour run_preview."
-            val ext = path.substringAfterLast('.', "").lowercase()
-            if (ext != "html" && ext != "htm") return "Erreur: run_preview attend un fichier .html."
-            val raw = fileRepo.readFile(path)
-            if (raw.startsWith("Erreur")) return raw
-            withContext(Dispatchers.Main) {
-                statusMessage = "Aperçu de $path…"
-                console.clear()
-                editor.open(path) { isEditorOpen = true }
-                isEditorOpen = true
-                previewTick++
-                previewRequest = path
-            }
-            delay(5000)
-            val entries = withContext(Dispatchers.Main) { console.entries.toList() }
-            return if (entries.isEmpty()) {
-                "Aperçu chargé : console vide, aucune erreur."
-            } else {
-                entries.joinToString("\n") { e ->
-                    "[" + e.level.name + "] " + e.text + (if (e.source.isNotEmpty()) " (" + e.source + ")" else "")
-                }.take(4000)
-            }
         }
         if (tc.name == "delete_file") {
             val args = try {

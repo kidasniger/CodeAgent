@@ -55,6 +55,13 @@ class ConsoleState {
     }
 
     fun clear() = entries.clear()
+
+    /** Erreurs formatées pour les envoyer à l'agent. */
+    fun errorsAsText(): String = entries
+        .filter { it.level == ConsoleLevel.ERROR }
+        .joinToString("\n") { e ->
+            "- " + e.text + (if (e.source.isNotEmpty()) " (" + e.source + ")" else "")
+        }
 }
 
 /**

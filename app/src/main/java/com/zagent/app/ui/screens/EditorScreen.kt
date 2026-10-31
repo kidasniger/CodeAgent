@@ -542,6 +542,14 @@ fun EditorScreen(
                             color = if (errs > 0) c.red else c.text2,
                             modifier = Modifier.weight(1f)
                         )
+                        if (errs > 0) {
+                            TextButton(onClick = {
+                                val msg = "La page " + entry + " a des erreurs dans la console :\n" +
+                                    console.errorsAsText() + "\nCorrige-les."
+                                viewModel.isEditorOpen = false
+                                viewModel.sendMessage(msg)
+                            }) { Text("Corriger avec l'IA", color = c.cyan, fontSize = 12.sp) }
+                        }
                         SmallIcon(Icons.Default.Delete, "Vider la console") { console.clear() }
                     }
                     ConsolePanel(console, Modifier.height(140.dp))
