@@ -1,27 +1,66 @@
 package com.zagent.app.ui.editor
 
 import android.annotation.SuppressLint
+import android.graphics.Bitmap
 import android.net.Uri
+import android.webkit.ConsoleMessage
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.zagent.app.ui.theme.JetBrainsMono
+import com.zagent.app.ui.theme.Zcolors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+
+/** Niveau d'un message de console. */
+enum class ConsoleLevel { LOG, WARN, ERROR }
+
+class ConsoleEntry(val level: ConsoleLevel, val text: String, val source: String)
+
+/** Messages console JS de l'aperçu (console.log, erreurs, échecs de chargement). */
+class ConsoleState {
+    val entries = mutableStateListOf<ConsoleEntry>()
+
+    val errorCount: Int get() = entries.count { it.level == ConsoleLevel.ERROR }
+
+    fun add(level: ConsoleLevel, text: String, source: String = "") {
+        entries.add(ConsoleEntry(level, text, source))
+        while (entries.size > 300) entries.removeAt(0)
+    }
+
+    fun clear() = entries.clear()
+}
 
 /**
  * Aperçu web : un vrai serveur HTTP local (PreviewServer) sert le projet,
  * le WebView charge http://127.0.0.1:<port>/<fichier>, comme dans Acode.
+ * Les messages console et les erreurs JS sont envoyés dans [console].
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -29,6 +68,7 @@ fun PreviewPane(
     path: String,
     reloadKey: Int,
     readResource: (String) -> ByteArray?,
+    console: ConsoleState,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -42,7 +82,36 @@ fun PreviewPane(
             settings.cacheMode = WebSettings.LOAD_NO_CACHE
             settings.allowFileAccess = false
             settings.allowContentAccess = false
-            webViewClient = WebViewClient()
+            webViewClient = object : WebViewClient() {
+                override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+                    console.clear()
+                }
+
+                override fun onReceivedError(
+                    view: WebView?,
+                    request: WebResourceRequest?,
+                    error: WebResourceError?
+                ) {
+                    val url = request?.url?.toString().orEmpty()
+                    console.add(
+                        ConsoleLevel.ERROR,
+                        "Échec de chargement : " + url + " (" + (error?.description ?: "erreur") + ")"
+                    )
+                }
+            }
+            webChromeClient = object : WebChromeClient() {
+                override fun onConsoleMessage(m: ConsoleMessage): Boolean {
+                    val level = when (m.messageLevel()) {
+                        ConsoleMessage.MessageLevel.ERROR -> ConsoleLevel.ERROR
+                        ConsoleMessage.MessageLevel.WARNING -> ConsoleLevel.WARN
+                        else -> ConsoleLevel.LOG
+                    }
+                    val src = m.sourceId().orEmpty().substringAfterLast('/')
+                    val where = if (src.isNotEmpty()) src + ":" + m.lineNumber() else ""
+                    console.add(level, m.message().orEmpty(), where)
+                    return true
+                }
+            }
         }
     }
     LaunchedEffect(server) {
@@ -77,6 +146,56 @@ fun PreviewPane(
             }
         }
     )
+}
+
+/** Panneau console affiché sous l'aperçu. */
+@Composable
+fun ConsolePanel(state: ConsoleState, modifier: Modifier = Modifier) {
+    val c = Zcolors
+    val scroll = rememberScrollState()
+    LaunchedEffect(state.entries.size) { scroll.scrollTo(scroll.maxValue) }
+    Column(
+        modifier
+            .fillMaxWidth()
+            .background(c.bg2)
+            .verticalScroll(scroll)
+            .padding(horizontal = 10.dp, vertical = 6.dp)
+    ) {
+        if (state.entries.isEmpty()) {
+            Text(
+                "Console vide",
+                style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp),
+                color = c.text3
+            )
+        }
+        state.entries.forEach { e ->
+            val color = when (e.level) {
+                ConsoleLevel.ERROR -> c.red
+                ConsoleLevel.WARN -> c.amber
+                ConsoleLevel.LOG -> c.text
+            }
+            val bg = when (e.level) {
+                ConsoleLevel.ERROR -> c.redBg
+                ConsoleLevel.WARN -> c.amberBg
+                ConsoleLevel.LOG -> c.bg2
+            }
+            Row(Modifier.fillMaxWidth().background(bg).padding(vertical = 2.dp, horizontal = 4.dp)) {
+                Text(
+                    e.text,
+                    style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp, lineHeight = 15.sp),
+                    color = color,
+                    modifier = Modifier.weight(1f)
+                )
+                if (e.source.isNotEmpty()) {
+                    Text(
+                        "  " + e.source,
+                        style = TextStyle(fontFamily = JetBrainsMono, fontSize = 10.sp),
+                        color = c.text3
+                    )
+                }
+            }
+        }
+    }
 }
 
 /** "public/blog/post.html" -> ["public/blog", "public"] (du plus proche au plus lointain). */

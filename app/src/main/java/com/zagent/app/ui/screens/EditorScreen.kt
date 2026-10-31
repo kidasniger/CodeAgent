@@ -40,6 +40,10 @@ import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Terminal
+import com.zagent.app.ui.editor.ConsolePanel
+import com.zagent.app.ui.editor.ConsoleState
 import com.zagent.app.ui.editor.PreviewPane
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -185,6 +189,8 @@ fun EditorScreen(
     var previewFull by remember { mutableStateOf(false) }
     var previewPath by remember { mutableStateOf<String?>(null) }
     var reloadTick by remember { mutableIntStateOf(0) }
+    val console = remember { ConsoleState() }
+    var showConsole by remember { mutableStateOf(true) }
 
     BackHandler(enabled = showPreview) {
         if (previewFull) previewFull = false else showPreview = false
@@ -500,6 +506,7 @@ fun EditorScreen(
                         modifier = Modifier.weight(1f)
                     )
                     SmallIcon(Icons.Default.Refresh, "Recharger") { reloadTick++ }
+                    SmallIcon(Icons.Default.Terminal, "Console") { showConsole = !showConsole }
                     SmallIcon(
                         if (previewFull) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
                         "Plein écran"
@@ -513,8 +520,25 @@ fun EditorScreen(
                     path = entry,
                     reloadKey = editor.saveCount + reloadTick,
                     readResource = editor::readResource,
+                    console = console,
                     modifier = Modifier.weight(1f).fillMaxWidth()
                 )
+                if (showConsole) {
+                    Row(
+                        Modifier.fillMaxWidth().background(c.surface2).padding(start = 12.dp, end = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val errs = console.errorCount
+                        Text(
+                            "Console" + if (errs > 0) " · $errs erreur" + (if (errs > 1) "s" else "") else "",
+                            style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp),
+                            color = if (errs > 0) c.red else c.text2,
+                            modifier = Modifier.weight(1f)
+                        )
+                        SmallIcon(Icons.Default.Delete, "Vider la console") { console.clear() }
+                    }
+                    ConsolePanel(console, Modifier.height(140.dp))
+                }
             }
         }
 
