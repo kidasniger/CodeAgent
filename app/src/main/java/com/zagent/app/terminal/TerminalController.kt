@@ -100,6 +100,7 @@ class TerminalController(
                 setState(State.Working("Configuration", null))
                 installDebPatcher()
                 runSecondStage()
+                ensureMirror()
                 if (!isInstalled()) error("bin/bash introuvable après l'extraction")
                 setState(State.Ready)
             } catch (e: Exception) {
@@ -267,6 +268,42 @@ class TerminalController(
         File(confDir, "99-zagent").writeText("DPkg::Pre-Install-Pkgs { \"${bin.absolutePath}\"; };\n")
     }
 
+    /**
+     * Fixe le miroir apt par défaut (packages-cf.termux.dev) au lieu d'un miroir tiré au hasard.
+     * Appliqué une seule fois (marqueur etc/termux/.zagent-mirror) : un changement ultérieur
+     * via termux-change-repo est respecté. Sert aussi aux installations déjà existantes.
+     */
+    private fun ensureMirror() {
+        try {
+            val termuxDir = File(prefixDir, "etc/termux")
+            val marker = File(termuxDir, ".zagent-mirror")
+            if (marker.exists()) return
+            val mirrors = File(termuxDir, "mirrors")
+            mirrors.mkdirs()
+            val default = File(mirrors, "default")
+            if (!default.exists()) {
+                default.writeText(
+                    "# Default mirror\n" +
+                        "WEIGHT=1\n" +
+                        "MAIN=\"https://packages-cf.termux.dev/apt/termux-main\"\n" +
+                        "ROOT=\"https://packages-cf.termux.dev/apt/termux-root\"\n" +
+                        "X11=\"https://packages-cf.termux.dev/apt/termux-x11\"\n"
+                )
+            }
+            val chosen = File(termuxDir, "chosen_mirrors")
+            chosen.delete() // supprime le lien (ou le fichier) existant, sans suivre le lien
+            chosen.deleteRecursively()
+            Os.symlink("mirrors/default", chosen.absolutePath)
+            File(prefixDir, "etc/apt/sources.list").writeText(
+                "# The main termux repository:\n" +
+                    "deb https://packages-cf.termux.dev/apt/termux-main stable main\n"
+            )
+            marker.writeText("1\n")
+        } catch (e: Exception) {
+            // Non bloquant : pkg choisira un miroir lui-même.
+        }
+    }
+
     private fun runSecondStage() {
         val script = File(prefixDir, "etc/termux/termux-bootstrap/second-stage/termux-bootstrap-second-stage.sh")
         if (!script.exists()) return
@@ -316,6 +353,9 @@ class TerminalController(
 
     private fun startSession() {
         if (!isInstalled()) return
+        ensureMirror()
+        // Réinstalle le crochet apt à chaque ouverture : prend en compte un script mis à jour.
+        try { installDebPatcher() } catch (e: Exception) { }
         session?.finishIfRunning()
         homeDir.mkdirs()
         File(prefixDir, "tmp").mkdirs()
