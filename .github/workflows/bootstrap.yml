@@ -46,7 +46,17 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          ./scripts/run-docker.sh ./scripts/build-bootstraps.sh --architectures "$ARCH" --add "$PACKAGES" 2>&1 | tee ../build.log
+          ok=0
+          for i in 1 2 3 4 5; do
+            echo "=== Essai $i/5 ==="
+            if ./scripts/run-docker.sh ./scripts/build-bootstraps.sh --architectures "$ARCH" --add "$PACKAGES" 2>&1 | tee -a ../build.log; then
+              ok=1
+              break
+            fi
+            echo "Échec de l'essai $i, nouvelle tentative dans 60 s (les paquets déjà compilés sont conservés)"
+            sleep 60
+          done
+          test "$ok" = 1
 
       - name: Vérifier l'archive
         run: |
