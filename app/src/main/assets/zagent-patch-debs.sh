@@ -45,6 +45,11 @@ while IFS= read -r deb; do
     esac
   done
 
+  # Scripts de maintenance : dpkg-deb exige des droits executables (>= 0555).
+  for s in preinst postinst prerm postrm config; do
+    [ -f "$work/DEBIAN/$s" ] && chmod 0755 "$work/DEBIAN/$s"
+  done
+
   # Reconstruction : gzip (rapide), puis repli sur la compression par defaut.
   if err="$(dpkg-deb -Zgzip -z3 -b "$work" "$deb.patched" 2>&1)" || \
      err="$(dpkg-deb -b "$work" "$deb.patched" 2>&1)"; then
