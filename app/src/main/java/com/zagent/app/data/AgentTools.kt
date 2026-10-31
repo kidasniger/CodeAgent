@@ -146,6 +146,27 @@ object AgentTools {
         add(buildJsonObject {
             put("type", "function")
             put("function", buildJsonObject {
+                put("name", "run_command")
+                put("description", "Exécute une commande shell (bash) dans le dossier du projet, avec le terminal de l'appli : git, npm, node, python, pip, clang, pkg, etc. Toutes les commandes sont autorisées. Renvoie le code de sortie et la sortie (stdout et stderr). Les programmes interactifs (éditeur, saisie clavier) ne marchent pas : utilise des options non interactives (ex: pkg install -y, npm init -y).")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {
+                        put("command", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Commande bash complète (ex: 'npm install && npm test')")
+                        })
+                        put("timeout_seconds", buildJsonObject {
+                            put("type", "integer")
+                            put("description", "Délai maximal en secondes (défaut 120, max 600)")
+                        })
+                    })
+                    put("required", buildJsonArray { add("command") })
+                })
+            })
+        })
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
                 put("name", "ask_user")
                 put("description", "Pose 1 à 4 questions à choix à l'utilisateur (cartes à toucher) quand la demande est floue ou qu'un choix important manque. Renvoie ses réponses.")
                 put("parameters", buildJsonObject {

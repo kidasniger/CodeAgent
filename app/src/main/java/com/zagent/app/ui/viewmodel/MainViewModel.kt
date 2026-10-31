@@ -117,6 +117,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var pendingDelete: PendingDelete? by mutableStateOf(null)
     private var onDeleteConfirmed: ((Boolean) -> Unit)? = null
 
+    /** Commande demandée par l'agent (outil run_command), en attente de confirmation (hors mode Auto). */
+    data class PendingCommand(val command: String, val toolCallId: String)
+
+    var pendingCommand: PendingCommand? by mutableStateOf(null)
+    private var onCommandConfirmed: ((Boolean) -> Unit)? = null
+
+    /** Commande en cours d'exécution et sa sortie, affichées en direct dans le chat. */
+    var liveCommand by mutableStateOf<String?>(null)
+    var liveOutput by mutableStateOf("")
+
     /** Questions à choix posées par l'agent (outil ask_user), en attente de réponse. */
     data class PendingAsk(val toolCallId: String, val questions: List<AskQuestion>)
 
@@ -223,6 +233,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         pendingAsk = null
         onDeleteConfirmed = null
         pendingDelete = null
+        onCommandConfirmed = null
+        pendingCommand = null
+        liveCommand = null
         agentUndo.clear()
         isLoading = false
         _messages.value = emptyList()
@@ -534,7 +547,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         showFallbackModelButton = false
 
         val fileRepo = getFileRepo()
-        val systemPrompt = "Tu es un agent de code qui travaille dans un dossier de projet. Utilise les outils pour explorer, lire, créer des dossiers, écrire et supprimer des fichiers (delete_file ; pour vider un fichier, write_file avec contenu vide). Si tu ne connais pas la structure, commence par list_dir ; utilise search_in_files pour retrouver du code. Lis un fichier avant de le modifier. Pour modifier un fichier existant, utilise edit_file (un passage exact, unique) ; si edit_file échoue, relis le fichier avec read_file. N'utilise write_file (contenu COMPLET) que pour créer un fichier ou le réécrire entièrement. Les chemins sont relatifs au dossier de travail. Si la demande est floue ou qu'un choix important manque (sujet, public, style, durée, technologie…), appelle d'abord ask_user avec 1 à 4 questions courtes à choix (2 à 4 options chacune) au lieu de deviner, puis continue avec les réponses sans reposer les mêmes questions. Réponds en français, de façon courte."
+        val systemPrompt = "Tu es un agent de code qui travaille dans un dossier de projet. Utilise les outils pour explorer, lire, créer des dossiers, écrire et supprimer des fichiers (delete_file ; pour vider un fichier, write_file avec contenu vide). Si tu ne connais pas la structure, commence par list_dir ; utilise search_in_files pour retrouver du code. Lis un fichier avant de le modifier. Pour modifier un fichier existant, utilise edit_file (un passage exact, unique) ; si edit_file échoue, relis le fichier avec read_file. N'utilise write_file (contenu COMPLET) que pour créer un fichier ou le réécrire entièrement. Les chemins sont relatifs au dossier de travail. Tu peux exécuter n'importe quelle commande shell dans le dossier du projet avec run_command (git, npm, node, python, pip, clang, pkg install -y, etc.) : utilise-le pour installer, compiler, lancer des tests, vérifier ton travail et faire du git ; lis la sortie et corrige les erreurs. Les commandes ne peuvent pas être interactives (pas d'éditeur, pas de saisie) : ajoute les options non interactives (-y, --yes). Si la demande est floue ou qu'un choix important manque (sujet, public, style, durée, technologie…), appelle d'abord ask_user avec 1 à 4 questions courtes à choix (2 à 4 options chacune) au lieu de deviner, puis continue avec les réponses sans reposer les mêmes questions. Réponds en français, de façon courte."
 
         var stepCount = 0
         val maxSteps = 20
@@ -707,6 +720,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             return res
         }
+        if (tc.name == "run_command") {
+            val args = try {
+                Json.parseToJsonElement(tc.arguments).jsonObject
+            } catch (e: Exception) {
+                JsonObject(emptyMap())
+            }
+            val command = args["command"]?.jsonPrimitive?.content?.trim().orEmpty()
+            if (command.isEmpty()) return "Erreur: commande manquante pour run_command."
+            val timeout = (args["timeout_seconds"]?.jsonPrimitive?.content?.toIntOrNull() ?: 120).coerceIn(1, 600)
+            val allowed = autoModeInput || waitForCommandConfirmation(command, tc.id)
+            if (!allowed) return "Refusé par l'utilisateur: la commande a été annulée."
+            withContext(Dispatchers.Main) {
+                liveOutput = ""
+                liveCommand = command
+                statusMessage = "Commande en cours…"
+            }
+            try {
+                return terminal.runCommand(command, workingFolderUriString, timeout) { out -> liveOutput = out }
+            } finally {
+                withContext(NonCancellable + Dispatchers.Main) {
+                    liveCommand = null
+                    refreshBrowser()
+                }
+            }
+        }
         if (tc.name == "ask_user") {
             val questions = parseAskQuestions(tc.arguments)
             if (questions.isEmpty()) {
@@ -739,6 +777,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         onDeleteConfirmed?.invoke(allowed)
         onDeleteConfirmed = null
         pendingDelete = null
+    }
+
+    private suspend fun waitForCommandConfirmation(command: String, toolCallId: String): Boolean {
+        return suspendCancellableCoroutine { continuation ->
+            statusMessage = "En attente de ta confirmation…"
+            pendingCommand = PendingCommand(command, toolCallId)
+            onCommandConfirmed = { allowed ->
+                pendingCommand = null
+                statusMessage = "Réflexion de l'agent…"
+                continuation.resume(allowed, null)
+            }
+            continuation.invokeOnCancellation {
+                pendingCommand = null
+                onCommandConfirmed = null
+            }
+        }
+    }
+
+    fun resolvePendingCommand(allowed: Boolean) {
+        onCommandConfirmed?.invoke(allowed)
+        onCommandConfirmed = null
+        pendingCommand = null
     }
 
     private suspend fun waitForAsk(toolCallId: String, questions: List<AskQuestion>): String? {

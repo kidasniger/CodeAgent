@@ -181,6 +181,11 @@ fun ChatScreen(
             }
         }
 
+        // Sortie en direct de la commande lancée par l'agent
+        viewModel.liveCommand?.let { cmd ->
+            LiveCommandCard(cmd, viewModel.liveOutput)
+        }
+
         // Pastille « Réflexion de l'agent » + barre de saisie flottante
         if (viewModel.isLoading) {
             Row(
@@ -242,6 +247,14 @@ fun ChatScreen(
         WriteConfirmSheet(
             pending = pw,
             onResolve = { allowed, always -> viewModel.resolvePendingWrite(allowed, always) }
+        )
+    }
+
+    // Feuille de confirmation d'une commande (hors mode Auto)
+    viewModel.pendingCommand?.let { pc ->
+        CommandConfirmSheet(
+            pending = pc,
+            onResolve = { allowed -> viewModel.resolvePendingCommand(allowed) }
         )
     }
 
@@ -762,7 +775,7 @@ private fun CodeBlockFor(seg: ContentSegment) {
 private fun toolArgShort(argumentsJson: String): String? = try {
     val obj = kotlinx.serialization.json.Json.parseToJsonElement(argumentsJson)
         .let { it as? kotlinx.serialization.json.JsonObject }
-    obj?.get("path")?.let { p ->
+    (obj?.get("path") ?: obj?.get("command"))?.let { p ->
         (p as? kotlinx.serialization.json.JsonPrimitive)?.content
     }
 } catch (_: Exception) {
@@ -862,6 +875,133 @@ private fun InputBar(
                     "Envoyer",
                     tint = if (enabled && value.isNotBlank()) c.onGrad else c.text3,
                     modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sortie en direct d'une commande de l'agent
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun LiveCommandCard(command: String, output: String) {
+    val c = Zcolors
+    val scroll = rememberScrollState()
+    androidx.compose.runtime.LaunchedEffect(output) { scroll.scrollTo(scroll.maxValue) }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(c.surface)
+            .border(1.dp, c.border, RoundedCornerShape(14.dp))
+            .padding(12.dp)
+    ) {
+        Text(
+            "$ $command",
+            style = TextStyle(fontFamily = JetBrainsMono, fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
+            color = c.cyan,
+            maxLines = 2
+        )
+        Spacer(Modifier.height(6.dp))
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(max = 180.dp)
+                .verticalScroll(scroll)
+        ) {
+            Text(
+                output.ifEmpty { "…" },
+                style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp, lineHeight = 15.sp),
+                color = c.text2
+            )
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Bottom sheet de confirmation d'une commande
+// ─────────────────────────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CommandConfirmSheet(
+    pending: MainViewModel.PendingCommand,
+    onResolve: (Boolean) -> Unit
+) {
+    val c = Zcolors
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = { onResolve(false) },
+        sheetState = sheetState,
+        containerColor = c.bg2,
+        shape = RoundedCornerShape(24.dp, 24.dp, 0.dp, 0.dp)
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 24.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconBadge(Icons.Default.Terminal, c.cyan, size = 46.dp, iconSize = 22.dp)
+                Spacer(Modifier.width(14.dp))
+                Column {
+                    Text(
+                        "Commande de l'agent",
+                        style = TextStyle(fontFamily = Inter, fontSize = 12.sp, fontWeight = FontWeight.Medium),
+                        color = c.text2
+                    )
+                    Text(
+                        "Exécuter cette commande ?",
+                        style = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.SemiBold, fontSize = 20.sp),
+                        color = c.text
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(c.surface2)
+                    .border(1.dp, c.border, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 12.dp, vertical = 10.dp)
+            ) {
+                Text(
+                    pending.command,
+                    style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp),
+                    color = c.text,
+                    maxLines = 8
+                )
+            }
+
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "Elle s'exécute dans le dossier du projet, avec le terminal de l'appli. Active le mode Auto dans les réglages pour ne plus avoir à confirmer.",
+                style = MaterialTheme.typography.bodySmall,
+                color = c.text2
+            )
+
+            Spacer(Modifier.height(18.dp))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                SecondaryButton(
+                    "Refuser",
+                    onClick = { onResolve(false) },
+                    modifier = Modifier.weight(1f),
+                    height = 50.dp
+                )
+                GradientButton(
+                    "Exécuter",
+                    onClick = { onResolve(true) },
+                    modifier = Modifier.weight(1f),
+                    height = 50.dp
                 )
             }
         }

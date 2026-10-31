@@ -19,6 +19,8 @@ import com.termux.view.TerminalView
 import com.termux.view.TerminalViewClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -324,6 +326,105 @@ class TerminalController(
             p.destroyForcibly()
             error("La configuration du système a dépassé 120 s")
         }
+    }
+
+    // ── Commandes de l'agent ────────────────────────────────────────────────
+
+    /**
+     * Exécute [command] avec bash dans [cwd] (dossier du projet), sans entrée clavier.
+     * [onOutput] reçoit la sortie accumulée (au plus toutes les 150 ms) pour l'affichage en direct.
+     * Retourne "Code de sortie: N" (ou "Erreur: ...") suivi de la sortie.
+     */
+    suspend fun runCommand(
+        command: String,
+        cwd: String?,
+        timeoutSec: Int,
+        onOutput: (String) -> Unit
+    ): String = withContext(Dispatchers.IO) {
+        if (!isInstalled()) {
+            return@withContext "Erreur: le terminal n'est pas installé. Ouvre l'écran Terminal pour l'installer."
+        }
+        File(prefixDir, "tmp").mkdirs()
+        val dir = cwd?.let { File(it) }?.takeIf { it.isDirectory } ?: homeDir
+        val pb = ProcessBuilder(File(prefixDir, "bin/bash").absolutePath, "-c", command)
+        pb.directory(dir)
+        pb.redirectErrorStream(true)
+        pb.redirectInput(ProcessBuilder.Redirect.from(File("/dev/null")))
+        pb.environment().clear()
+        buildEnv().forEach { e ->
+            val i = e.indexOf('=')
+            pb.environment()[e.substring(0, i)] = e.substring(i + 1)
+        }
+        val proc = try {
+            pb.start()
+        } catch (e: Exception) {
+            return@withContext "Erreur: impossible de lancer la commande (${e.message})"
+        }
+
+        val ctx = currentCoroutineContext()
+        var timedOut = false
+        var cancelled = false
+        val started = System.currentTimeMillis()
+        val watchdog = Thread {
+            try {
+                while (proc.isAlive) {
+                    if (!ctx.isActive) {
+                        cancelled = true
+                        proc.destroyForcibly()
+                        break
+                    }
+                    if (System.currentTimeMillis() - started > timeoutSec * 1000L) {
+                        timedOut = true
+                        proc.destroyForcibly()
+                        break
+                    }
+                    Thread.sleep(250)
+                }
+            } catch (e: InterruptedException) {
+                // fin normale
+            }
+        }
+        watchdog.isDaemon = true
+        watchdog.start()
+
+        val sb = StringBuilder()
+        var lastEmit = 0L
+        try {
+            proc.inputStream.bufferedReader(Charsets.UTF_8).use { reader ->
+                val buf = CharArray(4096)
+                while (true) {
+                    val n = reader.read(buf)
+                    if (n < 0) break
+                    sb.append(buf, 0, n)
+                    if (sb.length > 60000) sb.delete(0, sb.length - 40000)
+                    val now = System.currentTimeMillis()
+                    if (now - lastEmit > 150) {
+                        lastEmit = now
+                        onOutput(sb.toString())
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // flux fermé par l'arrêt du processus
+        }
+        val code = try {
+            proc.waitFor()
+        } catch (e: InterruptedException) {
+            -1
+        }
+        watchdog.interrupt()
+        onOutput(sb.toString())
+
+        val out = sb.toString().let {
+            if (it.length > 20000) "[début de la sortie tronqué]\n" + it.takeLast(20000) else it
+        }
+        val head = when {
+            timedOut -> "Erreur: délai de $timeoutSec s dépassé, commande arrêtée."
+            cancelled -> "Erreur: commande interrompue."
+            code == 0 -> "Code de sortie: 0"
+            else -> "Erreur: code de sortie $code"
+        }
+        "$head\n$out"
     }
 
     // ── Session shell ───────────────────────────────────────────────────────
