@@ -18,6 +18,9 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -30,6 +33,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -44,10 +49,16 @@ import com.zagent.app.ui.theme.Zcolors
 fun TerminalScreen(controller: TerminalController, onBack: () -> Unit) {
     val c = Zcolors
     val state = controller.state
+    val termBg = c.bg.toArgb()
+    val termFg = c.text.toArgb()
+
+    LaunchedEffect(termBg, termFg, controller.session) {
+        controller.applyColors(termBg, termFg)
+    }
 
     LaunchedEffect(state) {
         if (state is TerminalController.State.Ready && controller.session == null) {
-            controller.startSession()
+            controller.openSession()
         }
     }
 
@@ -75,7 +86,7 @@ fun TerminalScreen(controller: TerminalController, onBack: () -> Unit) {
                 modifier = Modifier.weight(1f)
             )
             if (state is TerminalController.State.Ready) {
-                IconButton(onClick = { controller.startSession() }) {
+                IconButton(onClick = { controller.openSession() }) {
                     Icon(Icons.Default.Refresh, "Nouvelle session", tint = c.text2)
                 }
             }
@@ -135,12 +146,14 @@ fun TerminalScreen(controller: TerminalController, onBack: () -> Unit) {
                                         ?.let { setTypeface(it) }
                                     isFocusable = true
                                     isFocusableInTouchMode = true
+                                    setBackgroundColor(termBg)
                                     controller.view = this
                                     attachSession(session)
                                     requestFocus()
                                 }
                             },
                             update = { v ->
+                                v.setBackgroundColor(termBg)
                                 controller.view = v
                                 if (v.currentSession !== session) {
                                     v.attachSession(session)
@@ -154,7 +167,7 @@ fun TerminalScreen(controller: TerminalController, onBack: () -> Unit) {
                         Centered {
                             Text("Session terminée", color = c.text2)
                             Spacer(Modifier.height(8.dp))
-                            Button(onClick = { controller.startSession() }) { Text("Relancer") }
+                            Button(onClick = { controller.openSession() }) { Text("Relancer") }
                         }
                     }
                 }
@@ -174,7 +187,7 @@ private fun Centered(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun RowScope.Key(label: String, active: Boolean = false, onClick: () -> Unit) {
+private fun RowScope.Key(label: String? = null, icon: ImageVector? = null, active: Boolean = false, onClick: () -> Unit) {
     val c = Zcolors
     Box(
         Modifier
@@ -185,7 +198,27 @@ private fun RowScope.Key(label: String, active: Boolean = false, onClick: () -> 
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Text(label, color = if (active) c.bg else c.text)
+        if (icon != null) {
+            Icon(icon, null, tint = if (active) c.bg else c.text)
+        } else if (label != null) {
+            Text(label, color = if (active) c.bg else c.text)
+        }
+    }
+}
+
+@Composable
+private fun RowScope.IconKey(icon: ImageVector, description: String, onClick: () -> Unit) {
+    val c = Zcolors
+    Box(
+        Modifier
+            .weight(1f)
+            .height(40.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(c.bg)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, description, tint = c.text)
     }
 }
 
@@ -205,9 +238,9 @@ private fun ExtraKeys(controller: TerminalController) {
         Key("/", onClick = { controller.send("/") })
         Key("-", onClick = { controller.send("-") })
         Key("|", onClick = { controller.send("|") })
-        Key("\u2190", onClick = { controller.send("\u001b[D") })
-        Key("\u2191", onClick = { controller.send("\u001b[A") })
-        Key("\u2193", onClick = { controller.send("\u001b[B") })
-        Key("\u2192", onClick = { controller.send("\u001b[C") })
+        IconKey(Icons.AutoMirrored.Filled.ArrowBack, "Gauche", onClick = { controller.send("\u001b[D") })
+        IconKey(Icons.Default.ArrowUpward, "Haut", onClick = { controller.send("\u001b[A") })
+        IconKey(Icons.Default.ArrowDownward, "Bas", onClick = { controller.send("\u001b[B") })
+        IconKey(Icons.AutoMirrored.Filled.ArrowForward, "Droite", onClick = { controller.send("\u001b[C") })
     }
 }

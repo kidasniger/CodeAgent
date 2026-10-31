@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.termux.terminal.TerminalSession
 import com.termux.terminal.TerminalSessionClient
+import com.termux.terminal.TextStyle
 import com.termux.view.TerminalView
 import com.termux.view.TerminalViewClient
 import kotlinx.coroutines.CoroutineScope
@@ -24,6 +25,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
+import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.util.concurrent.TimeUnit
 import java.util.zip.ZipInputStream
 
@@ -60,6 +63,7 @@ class TerminalController(
     var sessionEnded by mutableStateOf(false)
         private set
     var ctrlActive by mutableStateOf(false)
+
 
     var view: TerminalView? = null
 
@@ -168,10 +172,33 @@ class TerminalController(
             Os.symlink(target, linkFile.absolutePath)
         }
 
+        fixTextPaths(stagingDir)
+
         prefixDir.deleteRecursively()
         if (!stagingDir.renameTo(prefixDir)) error("Impossible de finaliser l'installation")
         File(prefixDir, "tmp").mkdirs()
         homeDir.mkdirs()
+        File(prefixDir, ".zagent-paths-fixed").createNewFile()
+    }
+
+    /** Remplace l'ancien préfixe com.termux dans les fichiers texte (les binaires sont ignorés). */
+    private fun fixTextPaths(root: File) {
+        val re = Regex("/data/data/com\\.termux(?=[/\\s\"'\\\\:;)}]|$)")
+        val replacement = "/data/data/${app.packageName}"
+        Files.walk(root.toPath()).use { stream ->
+            stream.forEach { p ->
+                if (!Files.isRegularFile(p, LinkOption.NOFOLLOW_LINKS)) return@forEach
+                val f = p.toFile()
+                val len = f.length()
+                if (len == 0L || len > 2_000_000L) return@forEach
+                val bytes = f.readBytes()
+                if (bytes.contains(0.toByte())) return@forEach
+                val text = String(bytes, Charsets.ISO_8859_1)
+                if (!text.contains("/data/data/com.termux")) return@forEach
+                val out = re.replace(text, replacement)
+                if (out != text) f.writeBytes(out.toByteArray(Charsets.ISO_8859_1))
+            }
+        }
     }
 
     private fun runSecondStage() {
@@ -212,8 +239,25 @@ class TerminalController(
         return env.toTypedArray()
     }
 
-    fun startSession() {
+    /** Corrige une fois les chemins d'une installation existante, puis lance le shell. */
+    fun openSession() {
         if (!isInstalled()) return
+        scope.launch(Dispatchers.IO) {
+            val marker = File(prefixDir, ".zagent-paths-fixed")
+            if (!marker.exists()) {
+                try {
+                    fixTextPaths(prefixDir)
+                    marker.createNewFile()
+                } catch (_: Exception) {
+                }
+            }
+            withContext(Dispatchers.Main) { startSession() }
+        }
+    }
+
+    private fun startSession() {
+        if (!isInstalled()) return
+        session?.finishIfRunning()
         homeDir.mkdirs()
         File(prefixDir, "tmp").mkdirs()
         sessionEnded = false
@@ -226,6 +270,25 @@ class TerminalController(
             client
         )
         session = s
+    }
+
+    private var colorBg = 0xFF0B0F17.toInt()
+    private var colorFg = 0xFFE6EAF2.toInt()
+
+    /** Aligne les couleurs du terminal sur le thème clair/sombre de l'appli. */
+    fun applyColors(bg: Int, fg: Int) {
+        colorBg = bg
+        colorFg = fg
+        applyToEmulator()
+    }
+
+    private fun applyToEmulator() {
+        val e = session?.emulator ?: return
+        val cols = e.mColors.mCurrentColors
+        cols[TextStyle.COLOR_INDEX_FOREGROUND] = colorFg
+        cols[TextStyle.COLOR_INDEX_BACKGROUND] = colorBg
+        cols[TextStyle.COLOR_INDEX_CURSOR] = colorFg
+        view?.onScreenUpdated()
     }
 
     fun send(text: String) {
@@ -279,7 +342,7 @@ class TerminalController(
             if (ctrlActive) ctrlActive = false
             return false
         }
-        override fun onEmulatorSet() {}
+        override fun onEmulatorSet() { applyToEmulator() }
 
         override fun logError(tag: String?, message: String?) {}
         override fun logWarn(tag: String?, message: String?) {}
