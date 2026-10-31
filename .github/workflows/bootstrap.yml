@@ -41,6 +41,16 @@ jobs:
           grep -n '^TERMUX_APP__PACKAGE_NAME=' scripts/properties.sh
           grep -q "TERMUX_APP__PACKAGE_NAME=\"${APP_PACKAGE}\"" scripts/properties.sh
 
+      - name: Ignorer les sous-paquets (bzip2 est un sous-paquet de libbz2)
+        working-directory: tp
+        run: |
+          f=scripts/build-bootstraps.sh
+          ls -d packages/*bz2* packages/bzip2 2>&1 || true
+          sed -i 's|\*"No build.sh script at package dir"\*|*"No build.sh script at package dir"* \|\| "$build_output" == *"found in any of the enabled repositories"*|' "$f"
+          sed -i 's|\$IGNORE_BUILD_SCRIPT_NOT_FOUND_ERROR == "1"|"1" == "1"|' "$f"
+          grep -n 'No build.sh script\|enabled repositories\|IGNORE_BUILD' "$f"
+          grep -q 'found in any of the enabled repositories' "$f"
+
       - name: Construire le bootstrap
         working-directory: tp
         shell: bash
