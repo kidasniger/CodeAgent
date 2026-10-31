@@ -3,6 +3,7 @@ package com.zagent.app.ui.editor
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.os.Build
 import android.view.View
 import android.net.Uri
 import android.webkit.ConsoleMessage
@@ -78,6 +79,7 @@ fun PreviewPane(
     reloadKey: Int,
     readResource: (String) -> ByteArray?,
     console: ConsoleState,
+    dark: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -147,6 +149,13 @@ fun PreviewPane(
         factory = { webView },
         modifier = modifier,
         update = { wv ->
+            // Synchronise l'aperçu avec le thème choisi dans l'appli (pas celui du système)
+            if (Build.VERSION.SDK_INT >= 29) {
+                @Suppress("DEPRECATION")
+                wv.settings.forceDark =
+                    if (dark) WebSettings.FORCE_DARK_ON else WebSettings.FORCE_DARK_OFF
+            }
+            wv.setBackgroundColor(if (dark) Color.BLACK else Color.WHITE)
             if (p != null) {
                 val key = path + "#" + reloadKey + "@" + p
                 if (wv.tag != key) {

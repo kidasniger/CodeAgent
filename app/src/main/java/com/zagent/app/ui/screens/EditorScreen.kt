@@ -554,6 +554,7 @@ fun EditorScreen(
                         reloadKey = editor.saveCount + reloadTick + viewModel.previewTick,
                         readResource = editor::readResource,
                         console = console,
+                        dark = viewModel.themeIsDark,
                         modifier = Modifier.fillMaxSize()
                     )
                     if (fs) {
