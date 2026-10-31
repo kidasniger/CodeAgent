@@ -1,0 +1,81 @@
+name: Bootstrap Termux
+
+# Construit le système Termux (bash, coreutils, git...) pour le package com.zagent.app.
+# Lancement manuel : gh workflow run bootstrap.yml
+
+on:
+  workflow_dispatch:
+    inputs:
+      packages:
+        description: "Paquets à inclure en plus (séparés par des virgules)"
+        default: "git,openssh,curl"
+      arch:
+        description: "Architecture (aarch64 pour un téléphone récent)"
+        default: "aarch64"
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 345
+    env:
+      ARCH: ${{ inputs.arch }}
+      PACKAGES: ${{ inputs.packages }}
+      APP_PACKAGE: com.zagent.app
+    steps:
+      - name: Cloner termux-packages
+        run: git clone --depth 1 https://github.com/termux/termux-packages.git tp
+
+      - name: Libérer de l'espace disque
+        run: |
+          (cd tp && ./scripts/free-space.sh) || true
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache || true
+          df -h /
+
+      - name: Appliquer le nom de package
+        working-directory: tp
+        run: |
+          sed -i "s/^TERMUX_APP__PACKAGE_NAME=\"com.termux\"/TERMUX_APP__PACKAGE_NAME=\"${APP_PACKAGE}\"/" scripts/properties.sh
+          grep -n '^TERMUX_APP__PACKAGE_NAME=' scripts/properties.sh
+          grep -q "TERMUX_APP__PACKAGE_NAME=\"${APP_PACKAGE}\"" scripts/properties.sh
+
+      - name: Construire le bootstrap
+        working-directory: tp
+        shell: bash
+        run: |
+          set -o pipefail
+          ./scripts/run-docker.sh ./scripts/build-bootstraps.sh --architectures "$ARCH" --add "$PACKAGES" 2>&1 | tee ../build.log
+
+      - name: Vérifier l'archive
+        run: |
+          ls -lh "tp/bootstrap-${ARCH}.zip"
+          mkdir chk && cd chk && unzip -q "../tp/bootstrap-${ARCH}.zip"
+          echo "Fichiers contenant l'ancien préfixe com.termux :"
+          grep -rl "/data/data/com.termux/" . | wc -l
+          echo "Fichiers contenant le nouveau préfixe :"
+          grep -rl "/data/data/${APP_PACKAGE}/" . | wc -l
+          ls usr 2>/dev/null || ls
+
+      - name: Archiver les résultats
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bootstrap-${{ inputs.arch }}
+          path: |
+            tp/bootstrap-*.zip
+            build.log
+          if-no-files-found: warn
+
+      - name: Publier (pré-version, sans effet sur la mise à jour de l'appli)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mv "tp/bootstrap-${ARCH}.zip" .
+          gh release view bootstrap >/dev/null 2>&1 || gh release create bootstrap \
+            --prerelease --latest=false \
+            --title "Bootstrap Termux (pas une mise à jour de l'appli)" \
+            --notes "Archive système pour le terminal intégré. Ne pas installer."
+          gh release upload bootstrap "bootstrap-${ARCH}.zip" --clobber
