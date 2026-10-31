@@ -1,6 +1,15 @@
 package com.zagent.app.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -205,25 +214,63 @@ fun EditorScreen(
     }
     var showConsole by remember { mutableStateOf(true) }
 
-    // Plein écran : on masque aussi la barre d'état et de navigation (glisser depuis le bord pour les revoir)
+    // Plein écran : la barre de navigation est masquée, la barre d'état reste visible (aux couleurs du thème)
     val fs = showPreview && previewFull
+    var fsBar by remember { mutableStateOf(true) }
+    var fsBarTick by remember { mutableIntStateOf(0) }
+    var fsMenu by remember { mutableStateOf(false) }
+    var fsConsole by remember { mutableStateOf(false) }
+    var fsPillOpen by remember { mutableStateOf(false) }
+    var fsAutoOpened by remember { mutableStateOf(false) }
+    var pageTitle by remember { mutableStateOf("") }
+    LaunchedEffect(fs) {
+        fsBar = fs
+        if (!fs) {
+            fsMenu = false
+            fsConsole = false
+            fsPillOpen = false
+        }
+    }
+    // La barre du haut se masque seule après 3 secondes
+    LaunchedEffect(fs, fsBar, fsBarTick, fsMenu) {
+        if (fs && fsBar && !fsMenu) {
+            delay(3000)
+            fsBar = false
+        }
+    }
+    // La console s'ouvre toute seule à la première erreur JS de la page
+    LaunchedEffect(console.errorCount, fs) {
+        if (console.errorCount == 0) {
+            fsAutoOpened = false
+        } else if (fs && !fsAutoOpened) {
+            fsConsole = true
+            fsAutoOpened = true
+        }
+    }
     val hostView = LocalView.current
-    DisposableEffect(fs) {
+    DisposableEffect(fs, c.isDark) {
         var ctx = hostView.context
         while (ctx is android.content.ContextWrapper && ctx !is android.app.Activity) ctx = ctx.baseContext
         val window = (ctx as? android.app.Activity)?.window
         val ctrl = window?.let { WindowCompat.getInsetsController(it, hostView) }
+        val prevLight = ctrl?.isAppearanceLightStatusBars
         if (fs) {
             ctrl?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            ctrl?.hide(WindowInsetsCompat.Type.systemBars())
+            ctrl?.hide(WindowInsetsCompat.Type.navigationBars())
+            ctrl?.isAppearanceLightStatusBars = !c.isDark
         } else {
             ctrl?.show(WindowInsetsCompat.Type.systemBars())
         }
-        onDispose { ctrl?.show(WindowInsetsCompat.Type.systemBars()) }
+        onDispose {
+            ctrl?.show(WindowInsetsCompat.Type.systemBars())
+            if (fs && prevLight != null) ctrl?.isAppearanceLightStatusBars = prevLight
+        }
     }
 
     BackHandler(enabled = showPreview) {
-        if (previewFull) previewFull = false else showPreview = false
+        if (fsConsole) fsConsole = false
+        else if (previewFull) previewFull = false
+        else showPreview = false
     }
     LaunchedEffect(tab?.path) {
         if (showPreview && tab != null && tab.lang == Lang.HTML) previewPath = tab.path
@@ -243,7 +290,7 @@ fun EditorScreen(
             .fillMaxSize()
             .background(c.bg)
             .then(
-                if (fs) Modifier.displayCutoutPadding()
+                if (fs) Modifier.statusBarsPadding().displayCutoutPadding()
                 else Modifier.statusBarsPadding().navigationBarsPadding()
             )
             .imePadding()
@@ -554,19 +601,96 @@ fun EditorScreen(
                         reloadKey = editor.saveCount + reloadTick + viewModel.previewTick + (if (fs) 100000 else 0),
                         readResource = editor::readResource,
                         console = console,
+                        onTitle = { pageTitle = it },
                         modifier = Modifier.fillMaxSize()
                     )
                     if (fs) {
-                        Row(
+                        // Zone tactile discrète en haut (centre) : fait réapparaître la barre
+                        Box(
                             Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(12.dp)
-                                .clip(RoundedCornerShape(50))
-                                .background(Color(0x99000000)),
-                            verticalAlignment = Alignment.CenterVertically
+                                .align(Alignment.TopCenter)
+                                .fillMaxWidth(0.4f)
+                                .height(32.dp)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) {
+                                    fsBar = true
+                                    fsBarTick++
+                                }
+                        )
+                        AnimatedVisibility(
+                            visible = fsBar,
+                            modifier = Modifier.align(Alignment.TopCenter),
+                            enter = fadeIn() + slideInVertically { -it },
+                            exit = fadeOut() + slideOutVertically { -it }
                         ) {
-                            SmallIcon(Icons.Default.Refresh, "Recharger", Color.White) { reloadTick++ }
-                            SmallIcon(Icons.Default.FullscreenExit, "Quitter le plein écran", Color.White) { previewFull = false }
+                            FullscreenBar(
+                                title = pageTitle.takeIf { it.isNotBlank() && !it.startsWith("127.0.0.1") && !it.startsWith("http") } ?: entry,
+                                errors = console.errorCount,
+                                menuOpen = fsMenu,
+                                onMenu = { fsMenu = it; fsBarTick++ },
+                                onRefresh = { reloadTick++; fsBarTick++ },
+                                onConsole = { fsConsole = !fsConsole },
+                                onExit = { previewFull = false }
+                            )
+                        }
+                        // Console : panneau par-dessus la page (40 % de l'écran)
+                        if (fsConsole) {
+                            Column(
+                                Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .fillMaxWidth()
+                                    .fillMaxHeight(0.4f)
+                                    .background(c.bg2)
+                            ) {
+                                Box(Modifier.fillMaxWidth().height(1.dp).background(c.border2))
+                                Row(
+                                    Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    val errs = console.errorCount
+                                    Text(
+                                        "Console" + if (errs > 0) " · $errs erreur" + (if (errs > 1) "s" else "") else "",
+                                        style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp),
+                                        color = if (errs > 0) c.red else c.text2,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    if (errs > 0) {
+                                        TextButton(onClick = {
+                                            val msg = "La page " + entry + " a des erreurs dans la console :\n" +
+                                                console.errorsAsText() + "\nCorrige-les."
+                                            viewModel.isEditorOpen = false
+                                            viewModel.sendMessage(msg)
+                                        }) { Text("Corriger avec l'IA", color = c.cyan, fontSize = 12.sp) }
+                                    }
+                                    SmallIcon(Icons.Default.Delete, "Vider la console") { console.clear() }
+                                    SmallIcon(Icons.Default.Close, "Fermer la console") { fsConsole = false }
+                                }
+                                ConsolePanel(console, Modifier.weight(1f))
+                            }
+                        }
+                        // Pilule en bas à droite : repliée en un bouton rond, aux couleurs du thème
+                        if (!fsConsole) {
+                            Row(
+                                Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(12.dp)
+                                    .clip(RoundedCornerShape(50))
+                                    .background(c.bg2.copy(alpha = 0.92f))
+                                    .border(1.dp, c.border2, RoundedCornerShape(50)),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (fsPillOpen) {
+                                    SmallIcon(Icons.Default.Refresh, "Recharger") { reloadTick++ }
+                                    ConsoleIcon(console.errorCount) { fsConsole = true }
+                                    SmallIcon(Icons.Default.FullscreenExit, "Quitter le plein écran") { previewFull = false }
+                                }
+                                SmallIcon(
+                                    if (fsPillOpen) Icons.Default.Close else Icons.Default.MoreVert,
+                                    if (fsPillOpen) "Replier" else "Actions"
+                                ) { fsPillOpen = !fsPillOpen }
+                            }
                         }
                     }
                 }
@@ -828,6 +952,78 @@ private fun SymbolBar(onInsert: (String) -> Unit) {
                     label,
                     style = TextStyle(fontFamily = JetBrainsMono, fontWeight = FontWeight.SemiBold, fontSize = 15.sp),
                     color = c.text
+                )
+            }
+        }
+    }
+}
+
+/** Barre du haut du plein écran : titre de la page, recharger, console (avec badge) et menu. */
+@Composable
+private fun FullscreenBar(
+    title: String,
+    errors: Int,
+    menuOpen: Boolean,
+    onMenu: (Boolean) -> Unit,
+    onRefresh: () -> Unit,
+    onConsole: () -> Unit,
+    onExit: () -> Unit
+) {
+    val c = Zcolors
+    Column(Modifier.fillMaxWidth().background(c.bg2.copy(alpha = 0.95f))) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 14.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                title,
+                style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp),
+                color = c.text,
+                maxLines = 1,
+                modifier = Modifier.weight(1f)
+            )
+            SmallIcon(Icons.Default.Refresh, "Recharger") { onRefresh() }
+            ConsoleIcon(errors) { onConsole() }
+            Box {
+                SmallIcon(Icons.Default.MoreVert, "Menu") { onMenu(true) }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { onMenu(false) }) {
+                    DropdownMenuItem(text = { Text("Recharger") }, onClick = { onMenu(false); onRefresh() })
+                    DropdownMenuItem(text = { Text("Console") }, onClick = { onMenu(false); onConsole() })
+                    DropdownMenuItem(text = { Text("Quitter le plein écran") }, onClick = { onMenu(false); onExit() })
+                }
+            }
+        }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(c.border))
+    }
+}
+
+/** Bouton console avec badge rouge du nombre d'erreurs. */
+@Composable
+private fun ConsoleIcon(errors: Int, onClick: () -> Unit) {
+    val c = Zcolors
+    Box(
+        Modifier
+            .size(34.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(Icons.Default.Terminal, "Console", tint = c.text2, modifier = Modifier.size(20.dp))
+        if (errors > 0) {
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 3.dp, end = 1.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(c.red)
+                    .padding(horizontal = 4.dp, vertical = 1.dp)
+            ) {
+                Text(
+                    if (errors > 99) "99+" else errors.toString(),
+                    color = Color.White,
+                    fontSize = 9.sp,
+                    lineHeight = 10.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }

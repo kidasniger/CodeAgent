@@ -40,13 +40,23 @@ import com.zagent.app.ui.theme.Zcolors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-private const val BG_FIX_JS = "(function(){try{var b=document.body,h=document.documentElement;" +
-    "if(!b)return;var cb=getComputedStyle(b),ch=getComputedStyle(h);" +
-    "var noH=ch.backgroundImage==='none'&&(ch.backgroundColor==='rgba(0, 0, 0, 0)'||ch.backgroundColor==='transparent');" +
-    "var hasB=cb.backgroundImage!=='none'||(cb.backgroundColor!=='rgba(0, 0, 0, 0)'&&cb.backgroundColor!=='transparent');" +
-    "if(noH&&hasB){h.style.backgroundImage=cb.backgroundImage;h.style.backgroundColor=cb.backgroundColor;" +
-    "h.style.backgroundRepeat='no-repeat';h.style.backgroundAttachment='fixed';h.style.backgroundSize='cover';}" +
-    "}catch(e){}})();"
+private const val BG_FIX_JS = """
+(function(){try{
+var b=document.body,h=document.documentElement;
+if(b){
+var cb=getComputedStyle(b),ch=getComputedStyle(h);
+var noH=ch.backgroundImage==='none'&&(ch.backgroundColor==='rgba(0, 0, 0, 0)'||ch.backgroundColor==='transparent');
+var hasB=cb.backgroundImage!=='none'||(cb.backgroundColor!=='rgba(0, 0, 0, 0)'&&cb.backgroundColor!=='transparent');
+if(noH&&hasB){h.style.backgroundImage=cb.backgroundImage;h.style.backgroundColor=cb.backgroundColor;
+h.style.backgroundRepeat='no-repeat';h.style.backgroundAttachment='fixed';h.style.backgroundSize='cover';}
+}
+var fix=function(rules){for(var i=0;i<rules.length;i++){var r=rules[i];
+if(!r.style){if(r.cssRules)fix(r.cssRules);continue;}
+['min-height','height'].forEach(function(p){var v=r.style.getPropertyValue(p);
+if(/^\s*100(\.0+)?vh\s*${'$'}/.test(v)){r.style.setProperty(p,'100dvh',r.style.getPropertyPriority(p));}});}};
+for(var s=0;s<document.styleSheets.length;s++){try{fix(document.styleSheets[s].cssRules);}catch(e){}}
+}catch(e){}})();
+"""
 
 /** Niveau d'un message de console. */
 enum class ConsoleLevel { LOG, WARN, ERROR }
@@ -86,10 +96,12 @@ fun PreviewPane(
     reloadKey: Int,
     readResource: (String) -> ByteArray?,
     console: ConsoleState,
+    onTitle: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val latestRead by rememberUpdatedState(readResource)
+    val latestTitle by rememberUpdatedState(onTitle)
     val server = remember { PreviewServer { res -> latestRead(res) } }
     var port by remember { mutableStateOf<Int?>(null) }
     val webView = remember {
@@ -132,6 +144,10 @@ fun PreviewPane(
                 }
             }
             webChromeClient = object : WebChromeClient() {
+                override fun onReceivedTitle(view: WebView?, title: String?) {
+                    latestTitle(title.orEmpty())
+                }
+
                 override fun onConsoleMessage(m: ConsoleMessage): Boolean {
                     val level = when (m.messageLevel()) {
                         ConsoleMessage.MessageLevel.ERROR -> ConsoleLevel.ERROR
