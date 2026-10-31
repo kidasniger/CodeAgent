@@ -68,6 +68,14 @@ jobs:
             done
           done
 
+      - name: Écrire le zip dans output (la racine de tp est en lecture seule dans le conteneur)
+        working-directory: tp
+        run: |
+          f=scripts/build-bootstraps.sh
+          sed -i '\#mv -f "\${BOOTSTRAP_TMPDIR}#s#\$TERMUX_PACKAGES_DIRECTORY/#\$TERMUX_BUILT_DEBS_DIRECTORY/#' "$f"
+          grep -n 'bootstrap-\${1}.zip' "$f"
+          grep -qF 'bootstrap-${1}.zip" "$TERMUX_BUILT_DEBS_DIRECTORY/"' "$f"
+
       - name: Construire le bootstrap
         working-directory: tp
         shell: bash
@@ -88,8 +96,8 @@ jobs:
 
       - name: Vérifier l'archive
         run: |
-          ls -lh "tp/bootstrap-${ARCH}.zip"
-          mkdir chk && cd chk && unzip -q "../tp/bootstrap-${ARCH}.zip"
+          ls -lh "tp/output/bootstrap-${ARCH}.zip"
+          mkdir chk && cd chk && unzip -q "../tp/output/bootstrap-${ARCH}.zip"
           echo "Fichiers contenant l'ancien préfixe com.termux :"
           grep -rl "/data/data/com.termux/" . | wc -l
           echo "Fichiers contenant le nouveau préfixe :"
@@ -102,7 +110,7 @@ jobs:
         with:
           name: bootstrap-${{ inputs.arch }}
           path: |
-            tp/bootstrap-*.zip
+            tp/output/bootstrap-*.zip
             build.log
           if-no-files-found: warn
 
@@ -111,7 +119,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          mv "tp/bootstrap-${ARCH}.zip" .
+          mv "tp/output/bootstrap-${ARCH}.zip" .
           gh release view bootstrap >/dev/null 2>&1 || gh release create bootstrap \
             --prerelease --latest=false \
             --title "Bootstrap Termux (pas une mise à jour de l'appli)" \
