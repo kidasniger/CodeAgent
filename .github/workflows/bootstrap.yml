@@ -51,19 +51,22 @@ jobs:
           grep -n 'No build.sh script\|enabled repositories\|IGNORE_BUILD' "$f"
           grep -q 'found in any of the enabled repositories' "$f"
 
-      - name: Choisir un miroir pour les sources gnupg
+      - name: Choisir un miroir pour chaque source gnupg
         working-directory: tp
         run: |
-          for m in https://mirrors.dotsrc.org/gcrypt https://ftp.nluug.nl/pub/security/gcrypt https://ftp.fau.de/gcrypt https://www.mirrorservice.org/sites/ftp.gnupg.org/gcrypt https://ftp.gnupg.org/gcrypt; do
-            if curl -fsIL --max-time 20 "$m/libgpg-error/libgpg-error-1.61.tar.bz2" >/dev/null; then
-              echo "Miroir retenu : $m"
-              grep -rl 'https://www.gnupg.org/ftp/gcrypt' packages | xargs -r sed -i "s|https://www.gnupg.org/ftp/gcrypt|$m|g"
-              grep -rn "$m" packages | head
-              exit 0
-            fi
-            echo "Miroir inutilisable : $m"
+          mirrors="https://mirrors.dotsrc.org/gcrypt https://ftp.nluug.nl/pub/security/gcrypt https://ftp.fau.de/gcrypt https://www.mirrorservice.org/sites/ftp.gnupg.org/gcrypt https://ftp.gnupg.org/gcrypt"
+          for f in $(grep -rl 'https://www.gnupg.org/ftp/gcrypt' packages); do
+            url=$(bash -c 'source "$1" >/dev/null 2>&1; echo "$TERMUX_PKG_SRCURL"' _ "$f")
+            [ -n "$url" ] || { echo "URL illisible : $f"; continue; }
+            path=${url#https://www.gnupg.org/ftp/gcrypt}
+            for m in $mirrors; do
+              if curl -fsIL --max-time 20 "$m$path" >/dev/null; then
+                sed -i "s|https://www.gnupg.org/ftp/gcrypt|$m|g" "$f"
+                echo "$f -> $m"
+                break
+              fi
+            done
           done
-          echo "Aucun miroir disponible, on garde gnupg.org"
 
       - name: Construire le bootstrap
         working-directory: tp
