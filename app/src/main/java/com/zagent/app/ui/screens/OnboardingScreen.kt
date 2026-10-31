@@ -150,8 +150,8 @@ fun OnboardingScreen(
                 val (title, body) = when (p) {
                     0 -> "Un agent qui code\npour toi" to
                             "ZAgent lit, crée et modifie les fichiers de ton projet directement depuis ton téléphone. Décris une tâche, il s'occupe du reste."
-                    1 -> "Choisis ton dossier\nde projet" to
-                            "L'agent n'accède qu'au dossier que tu sélectionnes. Aucun autre fichier de ton téléphone n'est lu ni modifié."
+                    1 -> "Un dossier\npar projet" to
+                            "L'agent n'accède qu'au projet actif, dans l'espace du terminal de l'appli. Aucun autre fichier de ton téléphone n'est lu ni modifié."
                     2 -> "Tu valides chaque\nécriture" to
                             "Chaque création ou modification de fichier passe par une confirmation avec aperçu du diff. Le mode Auto t'évite les allers-retours."
                     else -> "Branche ta clé\nAPI Z.ai" to

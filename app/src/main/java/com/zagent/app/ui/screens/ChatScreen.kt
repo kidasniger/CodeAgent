@@ -119,12 +119,6 @@ fun ChatScreen(
     var input by rememberSaveable { mutableStateOf("") }
     var menuOpen by remember { mutableStateOf(false) }
 
-    val folderLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocumentTree()
-    ) { uri: Uri? ->
-        if (uri != null) viewModel.setWorkingFolder(uri)
-    }
-
     val chatRows = remember(messages) { buildChatRows(messages) }
 
     LaunchedEffect(messages.size) {
@@ -159,7 +153,7 @@ fun ChatScreen(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.Center
                 ) {
-                    ChatEmptyState(viewModel, onOpenSettings, onPickFolder = { folderLauncher.launch(null) })
+                    ChatEmptyState(viewModel, onOpenSettings, onPickFolder = { viewModel.isProjectPickerOpen = true })
                 }
             } else {
                 LazyColumn(
@@ -512,9 +506,9 @@ private fun ChatEmptyState(
         noFolder -> EmptyState(
             icon = Icons.Default.FolderOpen,
             tint = c.amber,
-            title = "Aucun dossier choisi",
-            body = "Sélectionne le dossier d'un projet : ZAgent y lira et écrira les fichiers, sans jamais toucher au reste du téléphone.",
-            primaryText = "Choisir un dossier",
+            title = "Aucun projet choisi",
+            body = "Crée ou choisis un projet : ZAgent y lira et écrira les fichiers, et le terminal s'y ouvre au même endroit.",
+            primaryText = "Choisir un projet",
             onPrimary = onPickFolder,
             secondaryText = "Ouvrir les réglages",
             onSecondary = onOpenSettings
@@ -532,7 +526,7 @@ private fun ChatEmptyState(
             tint = c.cyan,
             title = "Prêt à coder",
             body = "Décris une tâche : l'agent explore ton dossier, lit les fichiers et te propose les modifications avant d'écrire.",
-            secondaryText = "Choisir un autre dossier",
+            secondaryText = "Changer de projet",
             onSecondary = onPickFolder
         )
     }

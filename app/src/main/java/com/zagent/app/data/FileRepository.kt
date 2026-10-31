@@ -3,24 +3,21 @@ package com.zagent.app.data
 import android.content.Context
 import android.net.Uri
 import android.webkit.MimeTypeMap
-import androidx.documentfile.provider.DocumentFile
-import java.io.BufferedReader
-import java.io.InputStreamReader
+import androidx.core.content.FileProvider
+import java.io.File
 
-class FileRepository(private val context: Context, private val rootUriString: String?) {
+/**
+ * Accès aux fichiers du projet, sur de vrais fichiers (le même dossier que le terminal).
+ * [rootPath] = chemin absolu du dossier du projet, par exemple
+ * /data/data/com.zagent/files/home/projects/monprojet
+ */
+class FileRepository(private val context: Context, private val rootPath: String?) {
 
-    private fun getRootFolder(): DocumentFile? {
-        if (rootUriString.isNullOrEmpty()) return null
-        val uri = Uri.parse(rootUriString)
-        return DocumentFile.fromTreeUri(context, uri)
-    }
-
-    // txt -> text/plain, extensions connues -> leur type, sinon octet-stream.
-    // Évite que le provider ajoute une extension (.txt) au nom du fichier.
-    private fun mimeTypeFor(fileName: String): String {
-        val ext = fileName.substringAfterLast('.', "").lowercase()
-        if (ext.isEmpty()) return "application/octet-stream"
-        return MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: "application/octet-stream"
+    private fun getRootFolder(): File? {
+        val p = rootPath ?: return null
+        if (!p.startsWith("/")) return null
+        val f = File(p)
+        return if (f.isDirectory) f else null
     }
 
     private fun validatePath(path: String): Boolean {
@@ -28,61 +25,39 @@ class FileRepository(private val context: Context, private val rootUriString: St
         return true
     }
 
-    private fun resolveDocument(root: DocumentFile, path: String): DocumentFile? {
-        if (path == "." || path.isEmpty()) return root
-        val cleanPath = path.removePrefix("./").removePrefix("/")
-        val segments = cleanPath.split("/").filter { it.isNotEmpty() }
-        var current: DocumentFile = root
-        for (segment in segments) {
-            if (segment == "..") return null
-            val found = current.findFile(segment)
-            if (found != null) {
-                current = found
-            } else {
-                return null
-            }
+    /** Résout [path] dans le projet (existe ou non). Retourne null si le chemin sort du projet. */
+    private fun resolveInside(root: File, path: String): File? {
+        val clean = path.removePrefix("./").removePrefix("/")
+        if (clean.isEmpty() || clean == ".") return root
+        val f = File(root, clean)
+        return try {
+            val rc = root.canonicalPath
+            val fc = f.canonicalPath
+            if (fc == rc || fc.startsWith(rc + File.separator)) f else null
+        } catch (e: Exception) {
+            null
         }
-        return current
     }
 
-    private fun getOrCreateDocumentPath(root: DocumentFile, path: String, isDirectory: Boolean): DocumentFile? {
-        val cleanPath = path.removePrefix("./").removePrefix("/")
-        if (cleanPath.isEmpty() || cleanPath == ".") return root
-        val segments = cleanPath.split("/").filter { it.isNotEmpty() }
-        var current: DocumentFile = root
-        for (i in segments.indices) {
-            val segment = segments[i]
-            if (segment == "..") return null
-            var found = current.findFile(segment)
-            if (found == null) {
-                found = if (i == segments.size - 1 && !isDirectory) {
-                    current.createFile(mimeTypeFor(segment), segment)
-                } else {
-                    current.createDirectory(segment)
-                }
-            }
-            if (found == null) return null
-            current = found
-        }
-        return current
-    }
+    private fun resolveExisting(root: File, path: String): File? =
+        resolveInside(root, path)?.takeIf { it.exists() }
 
     fun listDir(path: String = "."): String {
         if (!validatePath(path)) return "Erreur: Chemin invalide (.. interdit)"
         val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
-        val target = resolveDocument(root, path) ?: return "Erreur: Dossier introuvable: $path"
+        val target = resolveExisting(root, path) ?: return "Erreur: Dossier introuvable: $path"
         if (!target.isDirectory) return "Erreur: Ce n'est pas un dossier: $path"
 
         val ignoredDirs = setOf(".git", "node_modules", ".godot", "build")
         val resultList = mutableListOf<String>()
         var count = 0
 
-        fun recursiveList(dir: DocumentFile, currentRelPath: String, depth: Int) {
+        fun recursiveList(dir: File, currentRelPath: String, depth: Int) {
             if (depth > 4 || count >= 300) return
-            val files = dir.listFiles()
+            val files = (dir.listFiles() ?: return).sortedBy { it.name.lowercase() }
             for (file in files) {
                 if (count >= 300) break
-                val name = file.name ?: continue
+                val name = file.name
                 if (file.isDirectory && ignoredDirs.contains(name)) continue
                 val rel = if (currentRelPath.isEmpty()) name else "$currentRelPath/$name"
                 val type = if (file.isDirectory) "d" else "f"
@@ -94,7 +69,8 @@ class FileRepository(private val context: Context, private val rootUriString: St
             }
         }
 
-        recursiveList(target, if (path == "." || path.isEmpty()) "" else path, 1)
+        val startRel = if (path == "." || path.isEmpty()) "" else path.removePrefix("./").removePrefix("/")
+        recursiveList(target, startRel, 1)
         return if (resultList.isEmpty()) "Dossier vide." else resultList.joinToString("\n")
     }
 
@@ -112,28 +88,32 @@ class FileRepository(private val context: Context, private val rootUriString: St
     fun listEntries(path: String = "."): List<Entry> {
         if (!validatePath(path)) return emptyList()
         val root = getRootFolder() ?: return emptyList()
-        val target = resolveDocument(root, path) ?: return emptyList()
+        val target = resolveExisting(root, path) ?: return emptyList()
         if (!target.isDirectory) return emptyList()
         val base = if (path == "." || path.isEmpty() || path == "/") "" else path.removePrefix("./").removePrefix("/")
-        return target.listFiles()
-            .mapNotNull { f ->
-                val name = f.name ?: return@mapNotNull null
+        return (target.listFiles() ?: emptyArray())
+            .map { f ->
                 Entry(
-                    name = name,
+                    name = f.name,
                     isDir = f.isDirectory,
                     size = f.length(),
-                    path = if (base.isEmpty()) name else "$base/$name"
+                    path = if (base.isEmpty()) f.name else "$base/${f.name}"
                 )
             }
             .sortedWith(compareByDescending<Entry> { it.isDir }.thenBy { it.name.lowercase() })
     }
 
-    /** URI de partage d'un fichier, limitée au dossier de travail accordé par SAF. */
+    /** URI de partage d'un fichier du projet (via FileProvider). */
     fun fileUri(path: String): Uri? {
         if (!validatePath(path)) return null
         val root = getRootFolder() ?: return null
-        val file = resolveDocument(root, path) ?: return null
-        return if (file.isDirectory) null else file.uri
+        val file = resolveExisting(root, path) ?: return null
+        if (file.isDirectory) return null
+        return try {
+            FileProvider.getUriForFile(context, "${context.packageName}.updateprovider", file)
+        } catch (e: Exception) {
+            null
+        }
     }
 
     /** Les fichiers texte sont lus dans l'aperçu intégré ; les autres passent par Android. */
@@ -149,9 +129,6 @@ class FileRepository(private val context: Context, private val rootUriString: St
 
     fun mimeType(path: String): String {
         if (isTextFile(path)) return "text/plain"
-        val uri = fileUri(path)
-        val providerType = uri?.let { context.contentResolver.getType(it) }
-        if (!providerType.isNullOrBlank()) return providerType
         val extension = path.substringAfterLast('.', "").lowercase()
         return if (extension.isEmpty()) "application/octet-stream"
         else MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
@@ -160,36 +137,33 @@ class FileRepository(private val context: Context, private val rootUriString: St
 
     fun folderName(): String {
         val root = getRootFolder() ?: return "Projet"
-        return root.name ?: "Projet"
+        return root.name.ifEmpty { "Projet" }
     }
 
     fun readFile(path: String): String {
         if (!validatePath(path)) return "Erreur: Chemin invalide (.. interdit)"
         val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
-        val target = resolveDocument(root, path) ?: return "Erreur: Fichier introuvable: $path"
+        val target = resolveExisting(root, path) ?: return "Erreur: Fichier introuvable: $path"
         if (target.isDirectory) return "Erreur: C'est un dossier, pas un fichier: $path"
 
-        try {
-            val uri = target.uri
-            context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                BufferedReader(InputStreamReader(inputStream, Charsets.UTF_8)).use { reader ->
-                    val sb = StringBuilder()
-                    var charCount = 0
-                    val buffer = CharArray(1024)
-                    var read: Int
-                    while (reader.read(buffer).also { read = it } != -1) {
-                        sb.append(buffer, 0, read)
-                        charCount += read
-                        if (charCount >= 20000) {
-                            sb.append("\n[Tronqué à 20000 caractères]")
-                            break
-                        }
+        return try {
+            target.inputStream().bufferedReader(Charsets.UTF_8).use { reader ->
+                val sb = StringBuilder()
+                var charCount = 0
+                val buffer = CharArray(1024)
+                var read: Int
+                while (reader.read(buffer).also { read = it } != -1) {
+                    sb.append(buffer, 0, read)
+                    charCount += read
+                    if (charCount >= 20000) {
+                        sb.append("\n[Tronqué à 20000 caractères]")
+                        break
                     }
-                    return sb.toString()
                 }
-            } ?: return "Erreur: Impossible d'ouvrir le flux pour $path"
+                sb.toString()
+            }
         } catch (e: Exception) {
-            return "Erreur lors de la lecture (fichier binaire ou corrompu ?): ${e.localizedMessage}"
+            "Erreur lors de la lecture (fichier binaire ou corrompu ?): ${e.localizedMessage}"
         }
     }
 
@@ -197,10 +171,10 @@ class FileRepository(private val context: Context, private val rootUriString: St
     fun readBytes(path: String): ByteArray? {
         if (!validatePath(path)) return null
         val root = getRootFolder() ?: return null
-        val target = resolveDocument(root, path) ?: return null
+        val target = resolveExisting(root, path) ?: return null
         if (target.isDirectory || target.length() > 20_000_000L) return null
         return try {
-            context.contentResolver.openInputStream(target.uri)?.use { it.readBytes() }
+            target.readBytes()
         } catch (e: Exception) {
             null
         }
@@ -211,36 +185,37 @@ class FileRepository(private val context: Context, private val rootUriString: St
         if (!validatePath(path)) return Result.failure(IllegalArgumentException("Chemin invalide (.. interdit)"))
         val root = getRootFolder()
             ?: return Result.failure(IllegalStateException("Aucun dossier de travail sélectionné."))
-        val target = resolveDocument(root, path)
+        val target = resolveExisting(root, path)
             ?: return Result.failure(IllegalStateException("Fichier introuvable: $path"))
         if (target.isDirectory) return Result.failure(IllegalStateException("C'est un dossier: $path"))
         if (target.length() > 500_000L) {
             return Result.failure(IllegalStateException("Fichier trop volumineux pour l'éditeur (> 500 Ko)."))
         }
-        return runCatching {
-            context.contentResolver.openInputStream(target.uri)?.use { input ->
-                input.readBytes().toString(Charsets.UTF_8)
-            } ?: error("Impossible d'ouvrir $path")
-        }
+        return runCatching { target.readBytes().toString(Charsets.UTF_8) }
     }
 
     fun createFile(path: String): String {
         if (!validatePath(path)) return "Erreur: Chemin invalide (.. interdit)"
         val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
-        if (resolveDocument(root, path) != null) return "Erreur: Existe déjà: $path"
-        val lastSlash = path.lastIndexOf('/')
-        if (lastSlash != -1) getOrCreateDocumentPath(root, path.substring(0, lastSlash), true)
-        val created = getOrCreateDocumentPath(root, path, false)
-        return if (created != null) "Succès: Fichier créé $path" else "Erreur: Impossible de créer $path"
+        val target = resolveInside(root, path) ?: return "Erreur: Chemin invalide: $path"
+        if (target.exists()) return "Erreur: Existe déjà: $path"
+        return try {
+            target.parentFile?.mkdirs()
+            if (target.createNewFile()) "Succès: Fichier créé $path" else "Erreur: Impossible de créer $path"
+        } catch (e: Exception) {
+            "Erreur: Impossible de créer $path (${e.localizedMessage})"
+        }
     }
 
     fun deletePath(path: String): String {
         if (!validatePath(path)) return "Erreur: Chemin invalide (.. interdit)"
         if (path == "." || path.isEmpty() || path == "/") return "Erreur: Impossible de supprimer la racine."
         val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
-        val target = resolveDocument(root, path) ?: return "Erreur: Introuvable: $path"
+        val target = resolveExisting(root, path) ?: return "Erreur: Introuvable: $path"
+        if (target.canonicalPath == root.canonicalPath) return "Erreur: Impossible de supprimer la racine."
         return try {
-            if (target.delete()) "Succès: Supprimé $path" else "Erreur: Suppression impossible: $path"
+            val ok = if (target.isDirectory) target.deleteRecursively() else target.delete()
+            if (ok) "Succès: Supprimé $path" else "Erreur: Suppression impossible: $path"
         } catch (e: Exception) {
             "Erreur: ${e.localizedMessage}"
         }
@@ -249,12 +224,12 @@ class FileRepository(private val context: Context, private val rootUriString: St
     fun renamePath(path: String, newName: String): String {
         if (!validatePath(path) || newName.contains('/') || newName.contains("..")) return "Erreur: Nom invalide"
         val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
-        val target = resolveDocument(root, path) ?: return "Erreur: Introuvable: $path"
-        val parentPath = if (path.contains('/')) path.substringBeforeLast('/') else "."
-        val parent = resolveDocument(root, parentPath) ?: return "Erreur: Dossier parent introuvable"
-        if (parent.findFile(newName) != null) return "Erreur: Existe déjà: $newName"
+        val target = resolveExisting(root, path) ?: return "Erreur: Introuvable: $path"
+        val parent = target.parentFile ?: return "Erreur: Dossier parent introuvable"
+        val dest = File(parent, newName)
+        if (dest.exists()) return "Erreur: Existe déjà: $newName"
         return try {
-            if (target.renameTo(newName)) "Succès: Renommé en $newName" else "Erreur: Renommage impossible"
+            if (target.renameTo(dest)) "Succès: Renommé en $newName" else "Erreur: Renommage impossible"
         } catch (e: Exception) {
             "Erreur: ${e.localizedMessage}"
         }
@@ -263,29 +238,22 @@ class FileRepository(private val context: Context, private val rootUriString: St
     fun makeDir(path: String): String {
         if (!validatePath(path)) return "Erreur: Chemin invalide (.. interdit)"
         val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
-        val created = getOrCreateDocumentPath(root, path, true)
-        return if (created != null) "Succès: Dossier créé $path" else "Erreur: Impossible de créer le dossier $path"
+        val target = resolveInside(root, path) ?: return "Erreur: Chemin invalide: $path"
+        if (target.isDirectory) return "Succès: Dossier créé $path"
+        return if (target.mkdirs()) "Succès: Dossier créé $path" else "Erreur: Impossible de créer le dossier $path"
     }
 
     fun writeFile(path: String, content: String): String {
         if (!validatePath(path)) return "Erreur: Chemin invalide (.. interdit)"
         val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
-        
-        val lastSlash = path.lastIndexOf('/')
-        if (lastSlash != -1) {
-            val parentPath = path.substring(0, lastSlash)
-            getOrCreateDocumentPath(root, parentPath, true)
-        }
-
-        val target = getOrCreateDocumentPath(root, path, false) ?: return "Erreur: Impossible de créer/ouvrir le fichier $path"
-        try {
-            context.contentResolver.openOutputStream(target.uri, "wt")?.use { outputStream ->
-                outputStream.write(content.toByteArray(Charsets.UTF_8))
-                outputStream.flush()
-                return "Succès: Fichier écrit $path"
-            } ?: return "Erreur: Impossible d'ouvrir le flux d'écriture pour $path"
+        val target = resolveInside(root, path) ?: return "Erreur: Chemin invalide: $path"
+        if (target.isDirectory) return "Erreur: C'est un dossier: $path"
+        return try {
+            target.parentFile?.mkdirs()
+            target.writeBytes(content.toByteArray(Charsets.UTF_8))
+            "Succès: Fichier écrit $path"
         } catch (e: Exception) {
-            return "Erreur d'écriture: ${e.localizedMessage}"
+            "Erreur d'écriture: ${e.localizedMessage}"
         }
     }
 }

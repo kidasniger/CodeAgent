@@ -68,6 +68,9 @@ class TerminalController(
         private set
     var ctrlActive by mutableStateOf(false)
 
+    /** Dossier du projet actif : la prochaine session shell démarre dedans. */
+    var projectDir: String? = null
+
 
     var view: TerminalView? = null
 
@@ -360,9 +363,10 @@ class TerminalController(
         homeDir.mkdirs()
         File(prefixDir, "tmp").mkdirs()
         sessionEnded = false
+        val startDir = projectDir?.let { File(it) }?.takeIf { it.isDirectory } ?: homeDir
         val s = TerminalSession(
             File(prefixDir, "bin/bash").absolutePath,
-            homeDir.absolutePath,
+            startDir.absolutePath,
             arrayOf("-bash"),
             buildEnv(),
             2000,

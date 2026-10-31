@@ -91,12 +91,6 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
         viewModel.saveSettings(apiKey, model, baseUrl, autoMode)
     }
 
-    val folderLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocumentTree()
-    ) { uri: Uri? ->
-        if (uri != null) viewModel.setWorkingFolder(uri)
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -318,14 +312,14 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { folderLauncher.launch(null) }
+                            .clickable { viewModel.isProjectPickerOpen = true }
                     ) {
                         IconBadge(Icons.Default.Folder, c.amber)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("Dossier de travail", style = MaterialTheme.typography.titleMedium, color = c.text)
+                            Text("Projet actif", style = MaterialTheme.typography.titleMedium, color = c.text)
                             Text(
-                                shortUri(viewModel.workingFolderUriString) ?: "Aucun dossier sélectionné",
+                                shortUri(viewModel.workingFolderUriString) ?: "Aucun projet sélectionné",
                                 style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.5.sp),
                                 color = if (viewModel.workingFolderUriString.isNullOrEmpty()) c.amber else c.text2,
                                 maxLines = 1
@@ -490,7 +484,6 @@ private fun maskedKey(key: String): String {
 /** Affiche la fin de l'URI d'un dossier de façon lisible. */
 private fun shortUri(uri: String?): String? {
     if (uri.isNullOrEmpty()) return null
-    val decoded = Uri.decode(uri)
-    val primary = decoded.substringAfter("primary:", "")
-    return if (primary.isNotEmpty()) "/storage/emulated/0/$primary".removeSuffix(":") else decoded.takeLast(40)
+    val rel = uri.substringAfter("/files/home", "")
+    return if (rel.isNotEmpty()) "~$rel" else uri.takeLast(40)
 }

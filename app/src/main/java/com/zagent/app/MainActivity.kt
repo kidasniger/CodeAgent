@@ -71,7 +71,7 @@ private fun AppRoot(viewModel: MainViewModel, systemDark: Boolean) {
         OnboardingScreen(
             currentModel = viewModel.modelInput,
             onModelSelected = { m -> viewModel.saveSettings(viewModel.apiKeyInput, m, viewModel.baseUrlInput, viewModel.autoModeInput) },
-            onFolderPicked = { uri -> viewModel.setWorkingFolder(uri) },
+            onFolderPicked = { },
             onApiKeySaved = { key -> viewModel.saveSettings(key, viewModel.modelInput, viewModel.baseUrlInput, viewModel.autoModeInput) },
             initialApiKey = viewModel.apiKeyInput,
             onFinished = { viewModel.completeOnboarding() }
@@ -128,6 +128,10 @@ private fun AppRoot(viewModel: MainViewModel, systemDark: Boolean) {
         }
 
         UpdateHost()
+
+        if (viewModel.isProjectPickerOpen) {
+            com.zagent.app.ui.screens.ProjectPickerDialog(viewModel)
+        }
     }
 }
 

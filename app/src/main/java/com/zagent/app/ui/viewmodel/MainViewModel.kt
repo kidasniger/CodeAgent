@@ -58,7 +58,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var modelInput by mutableStateOf(settingsManager.model)
     var baseUrlInput by mutableStateOf(settingsManager.baseUrl)
     var autoModeInput by mutableStateOf(settingsManager.autoMode)
-    var workingFolderUriString by mutableStateOf(settingsManager.workingFolderUri)
+    // Chemin absolu du projet (dans le home du terminal). Les anciennes valeurs content:// sont ignorées.
+    var workingFolderUriString by mutableStateOf(settingsManager.workingFolderUri?.takeIf { it.startsWith("/") })
     var smartModeInput by mutableStateOf(settingsManager.smartMode)
 
     fun setSmartMode(value: Boolean) {
@@ -170,24 +171,47 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (key.isNotBlank()) isKeyInvalid = false
     }
 
-    fun setWorkingFolder(uri: Uri?) {
-        if (uri != null) {
-            try {
-                getApplication<Application>().contentResolver.takePersistableUriPermission(
-                    uri,
-                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                )
-            } catch (e: Exception) {
-                // Ignore
-            }
-            workingFolderUriString = uri.toString()
-            settingsManager.workingFolderUri = uri.toString()
-            browserChildren.clear()
-            expandedDirs.clear()
-            editor.clear()
-            isEditorOpen = false
-            refreshFolderLabel()
+    // ── Projets (dossiers réels dans le home du terminal) ───────────────────
+    var isProjectPickerOpen by mutableStateOf(false)
+
+    /** Dossier qui contient tous les projets : ~/projects */
+    private fun projectsRoot(): java.io.File =
+        java.io.File(getApplication<Application>().filesDir, "home/projects")
+
+    fun listProjects(): List<String> =
+        (projectsRoot().listFiles() ?: emptyArray())
+            .filter { it.isDirectory && !it.name.startsWith(".") }
+            .map { it.name }
+            .sortedBy { it.lowercase() }
+
+    /** Crée le projet [name] et le sélectionne. Retourne un message d'erreur, ou null si OK. */
+    fun createProject(name: String): String? {
+        val n = name.trim()
+        if (!Regex("^[A-Za-z0-9][A-Za-z0-9._-]{0,49}$").matches(n)) {
+            return "Nom invalide : lettres, chiffres, point, tiret et underscore (50 max)."
         }
+        val dir = java.io.File(projectsRoot(), n)
+        if (dir.exists() && !dir.isDirectory) return "Un fichier porte déjà ce nom."
+        if (!dir.isDirectory && !dir.mkdirs()) return "Impossible de créer le dossier."
+        selectProject(n)
+        return null
+    }
+
+    fun selectProject(name: String) {
+        val dir = java.io.File(projectsRoot(), name)
+        if (!dir.isDirectory) return
+        setWorkingFolderPath(dir.absolutePath)
+    }
+
+    private fun setWorkingFolderPath(path: String) {
+        workingFolderUriString = path
+        settingsManager.workingFolderUri = path
+        terminal.projectDir = path
+        browserChildren.clear()
+        expandedDirs.clear()
+        editor.clear()
+        isEditorOpen = false
+        refreshFolderLabel()
     }
 
     fun clearConversation() {
@@ -256,6 +280,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // ── Terminal embarqué ───────────────────────────────────────────────────
     var isTerminalOpen by mutableStateOf(false)
     val terminal = com.zagent.app.terminal.TerminalController(application, viewModelScope)
+
+    init {
+        terminal.projectDir = workingFolderUriString
+    }
     var folderLabel by mutableStateOf("Projet")
     data class BrowserFilePreview(val path: String, val content: String)
     var browserFilePreview by mutableStateOf<BrowserFilePreview?>(null)
