@@ -82,6 +82,15 @@ import com.zagent.app.ui.viewmodel.MainViewModel
 @Composable
 fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
     val c = Zcolors
+    var showAppearanceSettings by rememberSaveable { mutableStateOf(false) }
+
+    if (showAppearanceSettings) {
+        AppearanceSettingsScreen(
+            viewModel = viewModel,
+            onBack = { showAppearanceSettings = false }
+        )
+        return
+    }
 
     var apiKey by rememberSaveable { mutableStateOf(viewModel.apiKeyInput) }
     var baseUrl by rememberSaveable { mutableStateOf(viewModel.baseUrlInput) }
@@ -541,46 +550,29 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
             // ── APPARENCE ───────────────────────────────────────────────────
             SectionLabel("Apparence")
             Spacer(Modifier.height(8.dp))
-            GlassCard(contentPadding = PaddingValues(14.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(c.violetBg),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        // Demi-lune : icône thème
-                        Box(
-                            Modifier
-                                .size(18.dp)
-                                .clip(CircleShape)
-                                .background(c.violet)
-                        )
-                        Box(
-                            Modifier
-                                .size(18.dp)
-                                .padding(end = 9.dp)
-                                .clip(CircleShape)
-                                .background(c.violetBg)
-                        )
-                    }
+            GlassCard(contentPadding = PaddingValues(0.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showAppearanceSettings = true }
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconBadge(Icons.Default.Tune, c.violet)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Thème", style = MaterialTheme.typography.titleMedium, color = c.text)
+                        Text("Apparence", style = MaterialTheme.typography.titleMedium, color = c.text)
                         Text(
-                            when (viewModel.themeMode) {
-                                ThemeMode.SYSTEM -> "Suit le réglage du système"
-                                ThemeMode.LIGHT -> "Toujours clair"
-                                ThemeMode.DARK -> "Toujours sombre"
-                            },
+                            "Thème, verre, police et densité",
                             style = MaterialTheme.typography.bodySmall,
                             color = c.text2
                         )
                     }
-                    ThemeSegmented(
-                        mode = viewModel.themeMode,
-                        onSelect = { viewModel.updateThemeMode(it) }
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = "Ouvrir l’apparence",
+                        tint = c.text3,
+                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
