@@ -166,7 +166,7 @@ fun ToolChip(
                     .border(1.dp, c.border, RoundedCornerShape(12.dp))
                     .padding(10.dp)
             ) {
-                val preview = resultText!!.lines().take(8).joinToString("\n")
+                val preview = resultText!!.lines().take(8).joinToString("\n").take(1500)
                 Text(
                     preview,
                     style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp, lineHeight = 15.sp),

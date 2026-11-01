@@ -86,6 +86,7 @@ import com.zagent.app.data.AskQuestion
 import com.zagent.app.data.TodoItem
 import com.zagent.app.data.parseAskQuestions
 import com.zagent.app.ui.components.AnsiText
+import com.zagent.app.ui.components.tailForDisplay
 import com.zagent.app.ui.components.AskCard
 import com.zagent.app.data.DiffUtil
 import com.zagent.app.ui.components.CircleIconButton
@@ -197,7 +198,11 @@ fun ChatScreen(
                                 row.content,
                                 row.tools,
                                 fixId = if (viewModel.isLoading) null else lastFailedCmdId,
-                                onFix = { cmd, res -> viewModel.fixCommandWithAi(cmd, res) }
+                                onFix = { cmd, res -> viewModel.fixCommandWithAi(cmd, res) },
+                                liveId = viewModel.liveCommandId,
+                                liveOutput = { viewModel.liveOutput },
+                                liveStartedAt = viewModel.liveStartedAt,
+                                onStop = { viewModel.stopLiveCommand() }
                             )
                             is ChatRow.OrphanTool -> OrphanToolLine(row.text)
                             is ChatRow.Ask -> AskCard(
@@ -214,11 +219,6 @@ fun ChatScreen(
                     }
                 }
             }
-        }
-
-        // Sortie en direct de la commande lancée par l'agent
-        viewModel.liveCommand?.let { cmd ->
-            LiveCommandCard(cmd, viewModel.liveOutput, viewModel.liveStartedAt, onStop = { viewModel.stopLiveCommand() })
         }
 
         // Pastille de statut de l'agent + barre de saisie flottante
@@ -821,7 +821,11 @@ private fun AgentCard(
     content: String?,
     tools: List<Pair<AiRepository.ToolCallData, String?>>,
     fixId: String? = null,
-    onFix: (String, String) -> Unit = { _, _ -> }
+    onFix: (String, String) -> Unit = { _, _ -> },
+    liveId: String? = null,
+    liveOutput: () -> String = { "" },
+    liveStartedAt: Long = 0L,
+    onStop: () -> Unit = {}
 ) {
     val c = Zcolors
     GlassCard(
@@ -852,7 +856,15 @@ private fun AgentCard(
         }
         tools.forEach { (tc, result) ->
             if (tc.name == "run_command") {
-                CommandBlock(tc, result, canFix = tc.id == fixId, onFix = onFix)
+                CommandBlock(
+                    tc, result,
+                    canFix = tc.id == fixId,
+                    onFix = onFix,
+                    isLive = result == null && tc.id == liveId,
+                    liveOutput = liveOutput,
+                    liveStartedAt = liveStartedAt,
+                    onStop = onStop
+                )
             } else {
                 ToolChip(
                     name = tc.name,
@@ -873,7 +885,11 @@ private fun CommandBlock(
     tc: AiRepository.ToolCallData,
     result: String?,
     canFix: Boolean,
-    onFix: (String, String) -> Unit
+    onFix: (String, String) -> Unit,
+    isLive: Boolean = false,
+    liveOutput: () -> String = { "" },
+    liveStartedAt: Long = 0L,
+    onStop: () -> Unit = {}
 ) {
     val c = Zcolors
     val command = try {
@@ -885,7 +901,9 @@ private fun CommandBlock(
     val state = toolStateOf(result)
     var expanded by rememberSaveable(tc.id) { mutableStateOf(true) }
     val head = result?.substringBefore('\n').orEmpty()
-    val output = result?.substringAfter('\n', "")?.trimEnd().orEmpty()
+    val output = remember(result) {
+        tailForDisplay(result?.substringAfter('\n', "")?.trimEnd().orEmpty(), 12000)
+    }
     val statusColor = when (state) {
         ToolState.OK -> c.green
         ToolState.ERROR -> c.red
@@ -930,6 +948,57 @@ private fun CommandBlock(
                     contentDescription = "Détail",
                     tint = c.text3,
                     modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+        if (isLive) {
+            var now by remember { mutableStateOf(System.currentTimeMillis()) }
+            LaunchedEffect(liveStartedAt) {
+                while (true) {
+                    now = System.currentTimeMillis()
+                    kotlinx.coroutines.delay(500)
+                }
+            }
+            val secs = ((now - liveStartedAt) / 1000).coerceAtLeast(0)
+            val liveScroll = rememberScrollState()
+            val shownLive = remember(liveOutput()) { tailForDisplay(liveOutput(), 6000) }
+            LaunchedEffect(shownLive) { liveScroll.scrollTo(liveScroll.maxValue) }
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(start = 12.dp, end = 12.dp, bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "En cours : " + secs + " s",
+                    style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp),
+                    color = c.text3,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    "Arrêter",
+                    color = c.red,
+                    style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(c.redBg)
+                        .clickable(onClick = onStop)
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                )
+            }
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 220.dp)
+                    .background(c.surface2)
+                    .verticalScroll(liveScroll)
+                    .padding(10.dp)
+            ) {
+                AnsiText(
+                    text = shownLive.ifEmpty { "..." },
+                    style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp, lineHeight = 15.sp),
+                    baseColor = c.text2,
+                    linkColor = c.cyan
                 )
             }
         }
@@ -1223,75 +1292,6 @@ private fun InputBar(
                     modifier = Modifier.size(20.dp)
                 )
             }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Sortie en direct d'une commande de l'agent
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun LiveCommandCard(command: String, output: String, startedAt: Long, onStop: () -> Unit) {
-    val c = Zcolors
-    val scroll = rememberScrollState()
-    var now by remember { mutableStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(startedAt) {
-        while (true) {
-            now = System.currentTimeMillis()
-            kotlinx.coroutines.delay(500)
-        }
-    }
-    val secs = ((now - startedAt) / 1000).coerceAtLeast(0)
-    androidx.compose.runtime.LaunchedEffect(output) { scroll.scrollTo(scroll.maxValue) }
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(c.surface)
-            .border(1.dp, c.border, RoundedCornerShape(14.dp))
-            .padding(12.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                "$ $command",
-                style = TextStyle(fontFamily = JetBrainsMono, fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
-                color = c.cyan,
-                maxLines = 2,
-                modifier = Modifier.weight(1f)
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                secs.toString() + " s",
-                style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp),
-                color = c.text3
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                "Arrêter",
-                color = c.red,
-                style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold),
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(c.redBg)
-                    .clickable(onClick = onStop)
-                    .padding(horizontal = 10.dp, vertical = 5.dp)
-            )
-        }
-        Spacer(Modifier.height(6.dp))
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .heightIn(max = 180.dp)
-                .verticalScroll(scroll)
-        ) {
-            AnsiText(
-                text = output.ifEmpty { "…" },
-                style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp, lineHeight = 15.sp),
-                baseColor = c.text2,
-                linkColor = c.cyan
-            )
         }
     }
 }

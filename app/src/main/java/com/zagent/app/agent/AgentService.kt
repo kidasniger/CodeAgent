@@ -15,7 +15,12 @@ class AgentService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         AgentNotifier.ensureChannels(this)
         val text = intent?.getStringExtra("text") ?: "L'agent travaille…"
-        startForeground(1, AgentNotifier.runningNotification(this, text))
+        try {
+            startForeground(1, AgentNotifier.runningNotification(this, text))
+        } catch (e: Exception) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
         if (wakeLock == null) {
             val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
             wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "zagent:agent").apply {

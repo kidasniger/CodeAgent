@@ -136,3 +136,12 @@ fun AnsiText(
         }
     )
 }
+
+/** Garde la fin d'un long texte pour l'affichage (évite de mettre en page des dizaines de milliers de caractères). */
+fun tailForDisplay(text: String, max: Int): String {
+    if (text.length <= max) return text
+    val cut = text.length - max
+    val nl = text.indexOf('\n', cut)
+    val start = if (nl in 0 until text.length - 1) nl + 1 else cut
+    return "[...]\n" + text.substring(start)
+}

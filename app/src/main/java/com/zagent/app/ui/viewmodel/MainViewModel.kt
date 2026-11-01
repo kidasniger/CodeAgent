@@ -148,6 +148,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Commande en cours d'exécution et sa sortie, affichées en direct dans le chat. */
     var liveCommand by mutableStateOf<String?>(null)
+    var liveCommandId by mutableStateOf<String?>(null)
     var liveOutput by mutableStateOf("")
     var liveStartedAt by mutableStateOf(0L)
 
@@ -921,6 +922,18 @@ done; } 2>&1 | head -c 50000
         agentJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 runAgentLoop()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                // Une erreur inattendue dans la boucle de l'agent ne doit jamais fermer l'appli.
+                val msg = e.localizedMessage ?: e.javaClass.simpleName
+                terminal.logAgent("Erreur interne : " + msg.take(160))
+                withContext(NonCancellable + Dispatchers.Main) {
+                    liveText = ""
+                    liveCommand = null
+                    liveCommandId = null
+                    statusMessage = "Erreur interne de l'agent : " + msg.take(160)
+                }
             } finally {
                 AgentService.stop(getApplication())
                 withContext(NonCancellable + Dispatchers.Main) {
@@ -937,6 +950,9 @@ done; } 2>&1 | head -c 50000
         showFallbackModelButton = false
 
         val fileRepo = getFileRepo()
+        _messages.value.lastOrNull { it.role == "user" }?.content?.let { ask ->
+            terminal.logAgent("\n== Demande : " + ask.trim().lineSequence().first().take(120))
+        }
         val basePrompt = "Tu es un agent de code qui travaille dans un dossier de projet. Utilise les outils pour explorer, lire, créer des dossiers, écrire et supprimer des fichiers (delete_file ; pour vider un fichier, write_file avec contenu vide). Si tu ne connais pas la structure, commence par list_dir ; utilise search_in_files pour retrouver du code. Lis un fichier avant de le modifier. Pour modifier un fichier existant, utilise edit_file (un passage exact, unique) ; si edit_file échoue, relis le fichier avec read_file. N'utilise write_file (contenu COMPLET) que pour créer un fichier ou le réécrire entièrement. Les chemins sont relatifs au dossier de travail. Tu peux exécuter n'importe quelle commande shell dans le dossier du projet avec run_command (git, npm, node, python, pip, clang, pkg install -y, etc.) : utilise-le pour installer, compiler, lancer des tests, vérifier ton travail et faire du git ; lis la sortie et corrige les erreurs. Les commandes ne peuvent pas être interactives (pas d'éditeur, pas de saisie) : ajoute les options non interactives (-y, --yes). Si la demande est floue ou qu'un choix important manque (sujet, public, style, durée, technologie…), appelle d'abord ask_user avec 1 à 4 questions courtes à choix (2 à 4 options chacune) au lieu de deviner, puis continue avec les réponses sans reposer les mêmes questions. Avant chaque appel d'outil, écris une seule phrase courte qui annonce ce que tu vas faire (ex : « Je lance git push »). Pour toute demande de 3 étapes ou plus, appelle d'abord update_todos avec la liste des tâches, puis remets-la à jour (liste complète) quand une tâche est terminée. Réponds en français, de façon courte."
 
         val rules = fileRepo.readFile("AGENT.md")
@@ -959,10 +975,13 @@ done; } 2>&1 | head -c 50000
                     put("role", "system")
                     put("content", systemPrompt)
                 })
-                for (msg in _messages.value) {
+                val history = _messages.value
+                val compactBefore = history.size - 10
+                for ((idx, msg) in history.withIndex()) {
+                    val sentContent = if (idx < compactBefore && msg.role == "tool") compactToolOutput(msg.content) else msg.content
                     add(buildJsonObject {
                         put("role", msg.role)
-                        if (msg.content != null) put("content", msg.content) else put("content", JsonNull)
+                        if (sentContent != null) put("content", sentContent) else put("content", JsonNull)
                         if (msg.toolCallId != null) put("tool_call_id", msg.toolCallId)
                         if (msg.name != null) put("name", msg.name)
                         if (msg.toolCalls != null && msg.toolCalls.isNotEmpty()) {
@@ -987,18 +1006,26 @@ done; } 2>&1 | head -c 50000
                 liveText = ""
                 statusMessage = "Envoi à l'IA…"
             }
+            val liveBuf = StringBuilder()
+            var lastPublish = 0L
             val result = aiRepository.callChatCompletions(
                 baseUrl = baseUrlInput,
                 apiKey = apiKeyInput,
                 model = effectiveModel,
                 messages = jsonMessages,
                 onRetryUpdate = { retryMsg ->
+                    liveBuf.setLength(0)
                     liveText = ""
                     statusMessage = retryMsg
                 },
                 onDelta = { piece ->
-                    if (liveText.isEmpty()) statusMessage = "L'IA écrit…"
-                    liveText += piece
+                    liveBuf.append(piece)
+                    val nowMs = System.currentTimeMillis()
+                    if (liveText.isEmpty() || nowMs - lastPublish >= 120) {
+                        lastPublish = nowMs
+                        if (liveText.isEmpty()) statusMessage = "L'IA écrit…"
+                        liveText = liveBuf.toString()
+                    }
                 }
             )
 
@@ -1057,7 +1084,12 @@ done; } 2>&1 | head -c 50000
                                 statusMessage = label
                             }
 
+                            val logIt = tc.name != "run_command" && tc.name != "ask_user"
+                            if (logIt) terminal.logAgent("> " + label.removeSuffix("…"))
                             val toolResult = executeToolWithGate(fileRepo, tc)
+                            if (logIt) {
+                                terminal.logAgent("  " + toolResult.lineSequence().firstOrNull().orEmpty().take(160))
+                            }
 
                             val toolMsg = ChatMessage(
                                 role = "tool",
@@ -1083,6 +1115,12 @@ done; } 2>&1 | head -c 50000
                 statusMessage = "Limite de $maxSteps étapes atteinte pour cette demande."
             }
         }
+    }
+
+    /** Raccourcit une ancienne sortie d'outil avant de la renvoyer à l'IA (contexte plus léger, requêtes plus rapides). */
+    private fun compactToolOutput(content: String?): String? {
+        if (content == null || content.length <= 3000) return content
+        return content.take(1500) + "\n[... sortie ancienne raccourcie ...]\n" + content.takeLast(1000)
     }
 
     /** Notification Android si l'appli n'est pas à l'écran. */
@@ -1215,6 +1253,7 @@ done; } 2>&1 | head -c 50000
                 liveOutput = ""
                 liveStartedAt = System.currentTimeMillis()
                 summaryCommands.add(command.take(100))
+                liveCommandId = tc.id
                 liveCommand = command
                 statusMessage = "Commande : " + command.take(60) + "…"
             }
@@ -1223,6 +1262,7 @@ done; } 2>&1 | head -c 50000
             } finally {
                 withContext(NonCancellable + Dispatchers.Main) {
                     liveCommand = null
+                    liveCommandId = null
                     refreshBrowser()
                 }
             }

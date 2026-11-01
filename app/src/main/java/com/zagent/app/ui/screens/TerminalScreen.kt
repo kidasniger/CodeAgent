@@ -249,7 +249,10 @@ private fun TabsRow(controller: TerminalController, showAgent: Boolean, onAgent:
 @Composable
 private fun AgentLogPane(controller: TerminalController, modifier: Modifier) {
     val c = Zcolors
-    val log = controller.agentLog
+    val fullLog = controller.agentLog
+    val log = androidx.compose.runtime.remember(fullLog) {
+        com.zagent.app.ui.components.tailForDisplay(fullLog, 16000)
+    }
     val scroll = rememberScrollState()
     LaunchedEffect(log) { scroll.scrollTo(scroll.maxValue) }
     Column(modifier) {
@@ -260,7 +263,7 @@ private fun AgentLogPane(controller: TerminalController, modifier: Modifier) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "Lecture seule : commandes de l'agent",
+                "Lecture seule : actions et commandes de l'agent",
                 color = c.text3,
                 style = TextStyle(fontSize = 12.sp),
                 modifier = Modifier.weight(1f)

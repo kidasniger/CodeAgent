@@ -97,6 +97,13 @@ class TerminalController(
         private set
     private var agentBase = ""
 
+    /** Ajoute une ligne au journal de l'onglet Agent (actions de l'agent autres que les commandes). */
+    @Synchronized
+    fun logAgent(line: String) {
+        agentBase = (agentBase + line + "\n").takeLast(60000)
+        agentLog = agentBase
+    }
+
     fun clearAgentLog() {
         agentBase = ""
         agentLog = ""
@@ -455,7 +462,7 @@ class TerminalController(
                     sb.append(buf, 0, n)
                     if (sb.length > 60000) sb.delete(0, sb.length - 40000)
                     val now = System.currentTimeMillis()
-                    if (now - lastEmit > 150) {
+                    if (now - lastEmit > 250) {
                         lastEmit = now
                         emit(sb.toString())
                     }
