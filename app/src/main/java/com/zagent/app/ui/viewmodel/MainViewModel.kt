@@ -1348,7 +1348,7 @@ done; } 2>&1 | head -c 50000
      */
     private val destructiveRegexes = listOf(
         // rm récursif visant la racine (« / », « /* »), le home (« ~ », « $HOME ») seuls
-        Regex("""\brm\b[^;&|]*(?:\s|\"|')?(?:/(?:\*|['"\s]|$)|~(?:['"\s]|$)|\$HOME(?:['"\s]|$))"""),
+        Regex("""\brm\b[^;&|]*(?:\s|\"|')?(?:/(?:\*|['"\s]|$)|~(?:['"\s]|$)|[$]HOME(?:['"\s]|$))"""),
         // formatage d'un système de fichiers
         Regex("""\bmkfs(?:\.\w+)?\b"""),
         // écriture brute sur un périphérique bloc
