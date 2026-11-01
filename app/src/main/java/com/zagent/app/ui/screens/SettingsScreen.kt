@@ -72,6 +72,7 @@ import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.SpaceGrotesk
 import com.zagent.app.ui.theme.ThemeMode
 import com.zagent.app.ui.theme.Zcolors
+import com.zagent.app.ui.screens.settings.AppearanceSettingsScreen
 import com.zagent.app.ui.viewmodel.MainViewModel
 
 // ─────────────────────────────────────────────────────────────────────────────
