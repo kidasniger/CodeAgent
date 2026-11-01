@@ -92,7 +92,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var themeMode by mutableStateOf(settingsManager.themeMode)
     var onboardingDone by mutableStateOf(settingsManager.onboardingDone)
 
-    fun setThemeMode(mode: ThemeMode) {
+    fun updateThemeMode(mode: ThemeMode) {
         themeMode = mode
         settingsManager.themeMode = mode
     }

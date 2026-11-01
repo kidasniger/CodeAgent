@@ -579,7 +579,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                     }
                     ThemeSegmented(
                         mode = viewModel.themeMode,
-                        onSelect = { viewModel.setThemeMode(it) }
+                        onSelect = { viewModel.updateThemeMode(it) }
                     )
                 }
             }
