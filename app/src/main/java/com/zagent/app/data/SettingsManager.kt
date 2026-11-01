@@ -56,7 +56,31 @@ class SettingsManager(context: Context) {
         get() = prefs.getStringSet(KEY_ALWAYS_ALLOW, emptySet()) ?: emptySet()
         set(value) = prefs.edit().putStringSet(KEY_ALWAYS_ALLOW, value).apply()
 
+    /** Instructions personnalisées ajoutées au prompt de l'agent à chaque demande. */
+    var customInstructions: String
+        get() = prefs.getString(KEY_CUSTOM_INSTR, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_CUSTOM_INSTR, value).apply()
+
+    /** Nombre maximal d'étapes de l'agent par demande (5 à 100). */
+    var maxSteps: Int
+        get() = prefs.getInt(KEY_MAX_STEPS, 20).coerceIn(5, 100)
+        set(value) = prefs.edit().putInt(KEY_MAX_STEPS, value.coerceIn(5, 100)).apply()
+
+    /** Prix par million de tokens en entrée (0 = inconnu), pour le calcul du coût. */
+    var priceInPerM: Float
+        get() = prefs.getFloat(KEY_PRICE_IN, 0f)
+        set(value) = prefs.edit().putFloat(KEY_PRICE_IN, value.coerceAtLeast(0f)).apply()
+
+    /** Prix par million de tokens en sortie (0 = inconnu). */
+    var priceOutPerM: Float
+        get() = prefs.getFloat(KEY_PRICE_OUT, 0f)
+        set(value) = prefs.edit().putFloat(KEY_PRICE_OUT, value.coerceAtLeast(0f)).apply()
+
     companion object {
+        private const val KEY_MAX_STEPS = "max_steps"
+        private const val KEY_PRICE_IN = "price_in_per_m"
+        private const val KEY_PRICE_OUT = "price_out_per_m"
+        private const val KEY_CUSTOM_INSTR = "custom_instructions"
         private const val KEY_API_KEY = "api_key"
         private const val KEY_MODEL = "model"
         private const val KEY_BASE_URL = "base_url"

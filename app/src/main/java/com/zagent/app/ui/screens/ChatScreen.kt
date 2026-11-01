@@ -36,6 +36,9 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Terminal
@@ -45,6 +48,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -73,11 +77,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zagent.app.data.AiRepository
 import com.zagent.app.data.AskQuestion
+import com.zagent.app.data.TodoItem
 import com.zagent.app.data.parseAskQuestions
+import com.zagent.app.ui.components.AnsiText
 import com.zagent.app.ui.components.AskCard
 import com.zagent.app.data.DiffUtil
 import com.zagent.app.ui.components.CircleIconButton
@@ -90,6 +98,11 @@ import com.zagent.app.ui.components.SecondaryButton
 import com.zagent.app.ui.components.StatusBadge
 import com.zagent.app.ui.components.TypingPill
 import com.zagent.app.ui.components.ZLogo
+import com.zagent.app.ui.components.DevServerBar
+import com.zagent.app.ui.components.GitChangesSheet
+import com.zagent.app.ui.components.GitDiffView
+import com.zagent.app.ui.components.ModelPickerDialog
+import com.zagent.app.ui.components.UsageLine
 import com.zagent.app.ui.components.CodeBlock
 import com.zagent.app.ui.components.DiffPanel
 import com.zagent.app.ui.components.ToolChip
@@ -120,9 +133,20 @@ fun ChatScreen(
     var menuOpen by remember { mutableStateOf(false) }
 
     val chatRows = remember(messages) { buildChatRows(messages) }
+    val lastFailedCmdId = remember(messages) {
+        val m = messages.lastOrNull { it.role == "tool" && it.name == "run_command" }
+        val r = m?.content.orEmpty()
+        if (m != null && (r.startsWith("Erreur: code") || r.startsWith("Erreur: délai"))) m.toolCallId else null
+    }
 
     LaunchedEffect(messages.size) {
         if (chatRows.isNotEmpty()) listState.animateScrollToItem(chatRows.size - 1)
+    }
+
+    LaunchedEffect(viewModel.liveText.length) {
+        if (viewModel.liveText.isNotEmpty() && listState.layoutInfo.totalItemsCount > chatRows.size) {
+            listState.scrollToItem(chatRows.size)
+        }
     }
 
     Column(
@@ -143,6 +167,9 @@ fun ChatScreen(
 
         // Bannières d'état (erreur réseau, clé invalide, surcharge…)
         StatusBanners(viewModel, onOpenSettings = onOpenSettings)
+
+        // Liste de tâches de l'agent
+        TodoPanel(viewModel.todos)
 
         // Liste des messages
         Box(Modifier.weight(1f)) {
@@ -166,7 +193,12 @@ fun ChatScreen(
                         when (row) {
                             is ChatRow.Date -> DatePill(row.label)
                             is ChatRow.User -> UserBubble(row.text)
-                            is ChatRow.Agent -> AgentCard(row.content, row.tools)
+                            is ChatRow.Agent -> AgentCard(
+                                row.content,
+                                row.tools,
+                                fixId = if (viewModel.isLoading) null else lastFailedCmdId,
+                                onFix = { cmd, res -> viewModel.fixCommandWithAi(cmd, res) }
+                            )
                             is ChatRow.OrphanTool -> OrphanToolLine(row.text)
                             is ChatRow.Ask -> AskCard(
                                 questions = row.questions,
@@ -177,16 +209,19 @@ fun ChatScreen(
                             )
                         }
                     }
+                    if (viewModel.liveText.isNotBlank()) {
+                        item(key = "live_text") { AgentCard(viewModel.liveText, emptyList()) }
+                    }
                 }
             }
         }
 
         // Sortie en direct de la commande lancée par l'agent
         viewModel.liveCommand?.let { cmd ->
-            LiveCommandCard(cmd, viewModel.liveOutput)
+            LiveCommandCard(cmd, viewModel.liveOutput, viewModel.liveStartedAt, onStop = { viewModel.stopLiveCommand() })
         }
 
-        // Pastille « Réflexion de l'agent » + barre de saisie flottante
+        // Pastille de statut de l'agent + barre de saisie flottante
         if (viewModel.isLoading) {
             Row(
                 Modifier
@@ -194,8 +229,11 @@ fun ChatScreen(
                     .padding(horizontal = 16.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.Center
             ) {
-                TypingPill(viewModel.statusMessage.ifBlank { "Réflexion de l'agent" })
+                TypingPill(viewModel.statusMessage.ifBlank { "L'agent travaille" })
             }
+        }
+        if (!viewModel.isLoading && (viewModel.summaryFiles.isNotEmpty() || viewModel.summaryCommands.isNotEmpty())) {
+            TaskSummary(viewModel.summaryFiles.toList(), viewModel.summaryCommands.toList())
         }
         if (!viewModel.isLoading && viewModel.agentUndo.isNotEmpty()) {
             Row(
@@ -228,6 +266,14 @@ fun ChatScreen(
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 )
             }
+        }
+        if (viewModel.terminal.devRunning) {
+            DevServerBar(
+                url = viewModel.terminal.devUrl,
+                log = viewModel.terminal.devLog,
+                onOpen = { viewModel.openDevPreview() },
+                onStop = { viewModel.stopDevServerByUser() }
+            )
         }
         InputBar(
             value = input,
@@ -263,6 +309,32 @@ fun ChatScreen(
         DeleteConfirmSheet(
             pending = pd,
             onResolve = { allowed -> viewModel.resolvePendingDelete(allowed) }
+        )
+    }
+
+    // Changements Git (ouvert par l'utilisateur)
+    if (viewModel.gitSheetOpen) {
+        val g = viewModel.gitChanges
+        GitChangesSheet(
+            status = g?.status.orEmpty(),
+            diff = g?.diff.orEmpty(),
+            error = g?.error,
+            loading = viewModel.gitLoading,
+            onRefresh = { viewModel.refreshGitChanges() },
+            onClose = { viewModel.gitSheetOpen = false }
+        )
+    }
+
+    // Modèle de la conversation
+    if (viewModel.isModelDialogOpen) {
+        ModelPickerDialog(
+            globalModel = viewModel.modelInput,
+            currentChatModel = viewModel.chatModel,
+            onSelect = { m ->
+                viewModel.selectChatModel(m)
+                viewModel.isModelDialogOpen = false
+            },
+            onDismiss = { viewModel.isModelDialogOpen = false }
         )
     }
 }
@@ -307,8 +379,15 @@ private fun AmbientTopBar(
                     Spacer(Modifier.width(6.dp))
                     Text(label, style = TextStyle(fontFamily = Inter, fontSize = 11.sp, fontWeight = FontWeight.Medium), color = dot)
                     Spacer(Modifier.width(8.dp))
-                    MonoChip(viewModel.modelInput, modifier = Modifier.widthIn(max = 160.dp))
+                    MonoChip(
+                        viewModel.effectiveModel,
+                        modifier = Modifier
+                            .widthIn(max = 160.dp)
+                            .clip(RoundedCornerShape(50))
+                            .clickable { viewModel.isModelDialogOpen = true }
+                    )
                 }
+                UsageLine(viewModel.totalTokens, viewModel.tokensEstimated, viewModel.estimatedCost)
             }
             Spacer(Modifier.width(10.dp))
             Box {
@@ -334,6 +413,16 @@ private fun AmbientTopBar(
                         text = { Text("Terminal", color = c.text) },
                         leadingIcon = { Icon(Icons.Default.Terminal, null, tint = c.text2) },
                         onClick = { onMenuDismiss(); viewModel.isTerminalOpen = true }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Ouvrir dans le terminal", color = c.text) },
+                        leadingIcon = { Icon(Icons.Default.Terminal, null, tint = c.text2) },
+                        onClick = { onMenuDismiss(); viewModel.openTerminalInProject() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Changements Git", color = c.text) },
+                        leadingIcon = { Icon(Icons.Default.Check, null, tint = c.text2) },
+                        onClick = { onMenuDismiss(); viewModel.openGitChanges() }
                     )
                     DropdownMenuItem(
                         text = { Text("Réglages", color = c.text) },
@@ -373,9 +462,16 @@ private fun StatusBanners(viewModel: MainViewModel, onOpenSettings: () -> Unit) 
             icon = Icons.Default.Bolt,
             tint = c.amber,
             title = "Modèle surchargé",
-            body = "${viewModel.modelInput} est momentanément saturé. Bascule sur l'autre modèle ou réessaie dans un instant.",
+            body = "${viewModel.effectiveModel} est momentanément saturé. Bascule sur l'autre modèle ou réessaie dans un instant.",
             primary = "Essayer l'autre modèle" to { viewModel.switchToOtherModel() },
             secondary = "Réessayer" to { viewModel.retryLast() }
+        )
+        viewModel.stepLimitReached && !viewModel.isLoading -> StateBanner(
+            icon = Icons.Default.Bolt,
+            tint = c.amber,
+            title = "Limite d'étapes atteinte",
+            body = "L'agent s'est arrêté après " + viewModel.maxStepsInput + " étapes. Continue pour lui laisser un nouveau budget d'étapes, ou change la limite dans les réglages.",
+            primary = "Continuer" to { viewModel.continueAgent() }
         )
         !viewModel.isLoading && viewModel.statusMessage.isNotEmpty() -> StateBanner(
             icon = Icons.Default.ErrorOutline,
@@ -603,7 +699,7 @@ private fun buildChatRows(messages: List<com.zagent.app.ui.viewmodel.ChatMessage
                 val list = mutableListOf<Pair<AiRepository.ToolCallData, String?>>()
                 currentTools = list
                 val calls = m.toolCalls.orEmpty()
-                val visibleTools = calls.filter { it.name != "ask_user" }
+                val visibleTools = calls.filter { it.name != "ask_user" && it.name != "update_todos" }
                 if (!m.content.isNullOrBlank() || visibleTools.isNotEmpty() || calls.isEmpty()) {
                     rows.add(ChatRow.Agent(nextId++, m.content, list))
                 }
@@ -621,6 +717,8 @@ private fun buildChatRows(messages: List<com.zagent.app.ui.viewmodel.ChatMessage
                     val idx = askRowIndex[m.toolCallId]
                     val old = if (idx != null) rows[idx] as? ChatRow.Ask else null
                     if (idx != null && old != null) rows[idx] = old.copy(result = m.content ?: "")
+                } else if (m.name == "update_todos") {
+                    // résultat masqué : la liste de tâches est affichée en haut du chat
                 } else {
                     val tools = currentTools
                     if (tools != null) {
@@ -721,7 +819,9 @@ private fun splitContent(content: String): List<ContentSegment> {
 @Composable
 private fun AgentCard(
     content: String?,
-    tools: List<Pair<AiRepository.ToolCallData, String?>>
+    tools: List<Pair<AiRepository.ToolCallData, String?>>,
+    fixId: String? = null,
+    onFix: (String, String) -> Unit = { _, _ -> }
 ) {
     val c = Zcolors
     GlassCard(
@@ -751,14 +851,260 @@ private fun AgentCard(
             }
         }
         tools.forEach { (tc, result) ->
-            ToolChip(
-                name = tc.name,
-                arg = toolArgShort(tc.arguments),
-                state = toolStateOf(result),
-                resultText = result,
-                expandKey = tc.id
-            )
+            if (tc.name == "run_command") {
+                CommandBlock(tc, result, canFix = tc.id == fixId, onFix = onFix)
+            } else {
+                ToolChip(
+                    name = tc.name,
+                    arg = toolArgShort(tc.arguments),
+                    state = toolStateOf(result),
+                    resultText = result,
+                    expandKey = tc.id
+                )
+            }
             Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+/** Commande de l'agent : reste visible dans le message, repliable, avec sa sortie complète. */
+@Composable
+private fun CommandBlock(
+    tc: AiRepository.ToolCallData,
+    result: String?,
+    canFix: Boolean,
+    onFix: (String, String) -> Unit
+) {
+    val c = Zcolors
+    val command = try {
+        (kotlinx.serialization.json.Json.parseToJsonElement(tc.arguments) as? kotlinx.serialization.json.JsonObject)
+            ?.get("command")?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
+    } catch (_: Exception) {
+        null
+    } ?: ""
+    val state = toolStateOf(result)
+    var expanded by rememberSaveable(tc.id) { mutableStateOf(true) }
+    val head = result?.substringBefore('\n').orEmpty()
+    val output = result?.substringAfter('\n', "")?.trimEnd().orEmpty()
+    val statusColor = when (state) {
+        ToolState.OK -> c.green
+        ToolState.ERROR -> c.red
+        ToolState.REFUSED -> c.amber
+        ToolState.RUNNING -> c.cyan
+    }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(c.surface)
+            .border(1.dp, c.border, RoundedCornerShape(14.dp))
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable(enabled = result != null) { expanded = !expanded }
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "$ $command",
+                style = TextStyle(fontFamily = JetBrainsMono, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, lineHeight = 16.sp),
+                color = c.cyan,
+                maxLines = if (expanded) 6 else 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(Modifier.width(8.dp))
+            when (state) {
+                ToolState.RUNNING -> CircularProgressIndicator(
+                    modifier = Modifier.size(13.dp), strokeWidth = 2.dp, color = c.cyan
+                )
+                ToolState.OK -> Icon(Icons.Default.Check, null, tint = c.green, modifier = Modifier.size(14.dp))
+                ToolState.ERROR -> Icon(Icons.Default.Close, null, tint = c.red, modifier = Modifier.size(14.dp))
+                ToolState.REFUSED -> Text("refusé", color = c.amber, fontSize = 12.sp)
+            }
+            if (result != null) {
+                Spacer(Modifier.width(4.dp))
+                Icon(
+                    if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = "Détail",
+                    tint = c.text3,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+        if (expanded && result != null) {
+            if (head.isNotBlank()) {
+                Text(
+                    head,
+                    style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp),
+                    color = statusColor,
+                    modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 6.dp)
+                )
+            }
+            if (output.isNotEmpty()) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 260.dp)
+                        .background(c.surface2)
+                        .verticalScroll(rememberScrollState())
+                        .padding(10.dp)
+                ) {
+                    AnsiText(
+                        text = output,
+                        style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp, lineHeight = 15.sp),
+                        baseColor = c.text2,
+                        linkColor = c.cyan
+                    )
+                }
+            }
+        }
+        if (canFix && result != null) {
+            Text(
+                "Corriger avec l'IA",
+                color = c.cyan,
+                fontSize = 12.sp,
+                modifier = Modifier
+                    .padding(10.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(c.cyanBg)
+                    .clickable { onFix(command, result) }
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            )
+        }
+    }
+}
+
+/** Liste de tâches de l'agent, cochée au fur et à mesure. */
+@Composable
+private fun TodoPanel(todos: List<TodoItem>) {
+    if (todos.isEmpty()) return
+    val c = Zcolors
+    var open by rememberSaveable { mutableStateOf(true) }
+    val done = todos.count { it.done }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(c.surface)
+            .border(1.dp, c.border, RoundedCornerShape(14.dp))
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable { open = !open }
+                .padding(horizontal = 12.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Tâches  $done/${todos.size}",
+                style = TextStyle(fontFamily = Inter, fontSize = 13.sp, fontWeight = FontWeight.SemiBold),
+                color = c.text,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = null,
+                tint = c.text3,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+        if (open) {
+            Column(
+                Modifier
+                    .heightIn(max = 180.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(start = 12.dp, end = 12.dp, bottom = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                todos.forEach { t ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            Modifier
+                                .size(16.dp)
+                                .clip(RoundedCornerShape(5.dp))
+                                .background(if (t.done) c.green else Color.Transparent)
+                                .border(1.5.dp, if (t.done) c.green else c.border, RoundedCornerShape(5.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (t.done) Icon(Icons.Default.Check, null, tint = c.bg, modifier = Modifier.size(12.dp))
+                        }
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            t.text,
+                            style = TextStyle(
+                                fontFamily = Inter,
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp,
+                                textDecoration = if (t.done) TextDecoration.LineThrough else TextDecoration.None
+                            ),
+                            color = if (t.done) c.text3 else c.text
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Résumé de fin de tâche : fichiers touchés et commandes lancées. */
+@Composable
+private fun TaskSummary(files: List<String>, commands: List<String>) {
+    val c = Zcolors
+    var open by rememberSaveable { mutableStateOf(false) }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(c.surface)
+            .border(1.dp, c.border, RoundedCornerShape(14.dp))
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable { open = !open }
+                .padding(horizontal = 12.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Résumé : " + files.size + " fichier(s), " + commands.size + " commande(s)",
+                style = TextStyle(fontFamily = Inter, fontSize = 13.sp, fontWeight = FontWeight.SemiBold),
+                color = c.text,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = null,
+                tint = c.text3,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+        if (open) {
+            Column(
+                Modifier
+                    .heightIn(max = 200.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(start = 12.dp, end = 12.dp, bottom = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                files.forEach {
+                    Text(
+                        "fichier  $it",
+                        style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp, lineHeight = 15.sp),
+                        color = c.text2
+                    )
+                }
+                commands.forEach {
+                    Text(
+                        "$ $it",
+                        style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp, lineHeight = 15.sp),
+                        color = c.cyan
+                    )
+                }
+            }
         }
     }
 }
@@ -886,9 +1232,17 @@ private fun InputBar(
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun LiveCommandCard(command: String, output: String) {
+private fun LiveCommandCard(command: String, output: String, startedAt: Long, onStop: () -> Unit) {
     val c = Zcolors
     val scroll = rememberScrollState()
+    var now by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(startedAt) {
+        while (true) {
+            now = System.currentTimeMillis()
+            kotlinx.coroutines.delay(500)
+        }
+    }
+    val secs = ((now - startedAt) / 1000).coerceAtLeast(0)
     androidx.compose.runtime.LaunchedEffect(output) { scroll.scrollTo(scroll.maxValue) }
     Column(
         Modifier
@@ -899,12 +1253,32 @@ private fun LiveCommandCard(command: String, output: String) {
             .border(1.dp, c.border, RoundedCornerShape(14.dp))
             .padding(12.dp)
     ) {
-        Text(
-            "$ $command",
-            style = TextStyle(fontFamily = JetBrainsMono, fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
-            color = c.cyan,
-            maxLines = 2
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "$ $command",
+                style = TextStyle(fontFamily = JetBrainsMono, fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
+                color = c.cyan,
+                maxLines = 2,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                secs.toString() + " s",
+                style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp),
+                color = c.text3
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "Arrêter",
+                color = c.red,
+                style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(c.redBg)
+                    .clickable(onClick = onStop)
+                    .padding(horizontal = 10.dp, vertical = 5.dp)
+            )
+        }
         Spacer(Modifier.height(6.dp))
         Column(
             Modifier
@@ -912,10 +1286,11 @@ private fun LiveCommandCard(command: String, output: String) {
                 .heightIn(max = 180.dp)
                 .verticalScroll(scroll)
         ) {
-            Text(
-                output.ifEmpty { "…" },
+            AnsiText(
+                text = output.ifEmpty { "…" },
                 style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp, lineHeight = 15.sp),
-                color = c.text2
+                baseColor = c.text2,
+                linkColor = c.cyan
             )
         }
     }
@@ -943,6 +1318,7 @@ private fun CommandConfirmSheet(
         Column(
             Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 24.dp)
         ) {
@@ -981,9 +1357,30 @@ private fun CommandConfirmSheet(
                 )
             }
 
+            if (pending.note != null) {
+                Spacer(Modifier.height(10.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(c.amberBg)
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                ) {
+                    Text(
+                        pending.note,
+                        style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp, lineHeight = 17.sp),
+                        color = c.amber
+                    )
+                }
+            }
+            pending.changes?.let { ch ->
+                Spacer(Modifier.height(10.dp))
+                GitDiffView(status = ch.status, diff = ch.diff, error = ch.error, maxHeight = 260.dp)
+            }
             Spacer(Modifier.height(10.dp))
             Text(
-                "Elle s'exécute dans le dossier du projet, avec le terminal de l'appli. Active le mode Auto dans les réglages pour ne plus avoir à confirmer.",
+                pending.footer ?: if (pending.note != null) "Un git push est toujours confirmé, même en mode Auto."
+                else "Elle s'exécute dans le dossier du projet, avec le terminal de l'appli. Active le mode Auto dans les réglages pour ne plus avoir à confirmer.",
                 style = MaterialTheme.typography.bodySmall,
                 color = c.text2
             )

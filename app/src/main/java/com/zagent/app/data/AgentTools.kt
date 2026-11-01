@@ -167,6 +167,66 @@ object AgentTools {
         add(buildJsonObject {
             put("type", "function")
             put("function", buildJsonObject {
+                put("name", "start_dev_server")
+                put("description", "Lance un serveur de développement (ex: npm run dev) en arrière-plan, sans bloquer. Il reste actif jusqu'à stop_dev_server. Renvoie l'adresse locale détectée. L'utilisateur ouvre lui-même l'aperçu : ne l'ouvre pas.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {
+                        put("command", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Commande du serveur (défaut : 'npm run dev')")
+                        })
+                    })
+                    put("required", buildJsonArray {})
+                })
+            })
+        })
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "stop_dev_server")
+                put("description", "Arrête le serveur de développement lancé avec start_dev_server.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {})
+                    put("required", buildJsonArray {})
+                })
+            })
+        })
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "update_todos")
+                put("description", "Affiche et met à jour la liste de tâches en haut du chat. Pour toute demande de 3 étapes ou plus : appelle-le au début avec toutes les tâches (done=false), puis rappelle-le avec la liste COMPLÈTE à chaque tâche terminée (done=true).")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {
+                        put("todos", buildJsonObject {
+                            put("type", "array")
+                            put("description", "Liste complète des tâches, dans l'ordre")
+                            put("items", buildJsonObject {
+                                put("type", "object")
+                                put("properties", buildJsonObject {
+                                    put("text", buildJsonObject {
+                                        put("type", "string")
+                                        put("description", "Intitulé court de la tâche")
+                                    })
+                                    put("done", buildJsonObject {
+                                        put("type", "boolean")
+                                        put("description", "true si la tâche est terminée")
+                                    })
+                                })
+                                put("required", buildJsonArray { add("text"); add("done") })
+                            })
+                        })
+                    })
+                    put("required", buildJsonArray { add("todos") })
+                })
+            })
+        })
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
                 put("name", "ask_user")
                 put("description", "Pose 1 à 4 questions à choix à l'utilisateur (cartes à toucher) quand la demande est floue ou qu'un choix important manque. Renvoie ses réponses.")
                 put("parameters", buildJsonObject {
@@ -266,6 +326,24 @@ fun parseAskQuestions(argumentsJson: String): List<AskQuestion> = try {
         val multiple = (o["multiple"] as? JsonPrimitive)?.booleanOrNull ?: false
         AskQuestion(title, question, options, multiple)
     }.take(4)
+} catch (e: Exception) {
+    emptyList()
+}
+
+/** Une tâche de la liste affichée en haut du chat (outil update_todos). */
+data class TodoItem(val text: String, val done: Boolean)
+
+/** Lit les arguments JSON de update_todos ; renvoie une liste vide si rien d'exploitable. */
+fun parseTodos(argumentsJson: String): List<TodoItem> = try {
+    val root = Json.parseToJsonElement(argumentsJson) as? JsonObject
+    val arr = root?.get("todos") as? JsonArray
+    arr.orEmpty().mapNotNull { el ->
+        val o = el as? JsonObject ?: return@mapNotNull null
+        val text = (o["text"] as? JsonPrimitive)?.contentOrNull?.trim()
+        if (text.isNullOrBlank()) return@mapNotNull null
+        val done = (o["done"] as? JsonPrimitive)?.booleanOrNull ?: false
+        TodoItem(text.take(120), done)
+    }.take(30)
 } catch (e: Exception) {
     emptyList()
 }

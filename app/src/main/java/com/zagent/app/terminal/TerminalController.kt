@@ -10,6 +10,8 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.inputmethod.InputMethodManager
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.termux.terminal.TerminalSession
@@ -20,6 +22,7 @@ import com.termux.view.TerminalViewClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -64,17 +67,55 @@ class TerminalController(
 
     var state by mutableStateOf<State>(if (isInstalled()) State.Ready else State.Idle)
         private set
-    var session by mutableStateOf<TerminalSession?>(null)
+
+    /** Un onglet shell : sa session et son état (terminée ou non). */
+    class ShellTab(val session: TerminalSession, val number: Int) {
+        var ended by mutableStateOf(false)
+    }
+
+    val tabs = mutableStateListOf<ShellTab>()
+    var activeTab by mutableIntStateOf(0)
+    private var tabCounter = 0
+
+    val session: TerminalSession? get() = tabs.getOrNull(activeTab)?.session
+    val sessionEnded: Boolean get() = tabs.getOrNull(activeTab)?.ended ?: false
+
+    private val prefs = app.getSharedPreferences("terminal_prefs", Context.MODE_PRIVATE)
+
+    /** Taille du texte du terminal (réglable par A- / A+). */
+    var fontSize by mutableIntStateOf(prefs.getInt("font_size", 14))
         private set
-    var sessionEnded by mutableStateOf(false)
-        private set
+
+    fun changeFontSize(delta: Int) {
+        fontSize = (fontSize + delta).coerceIn(8, 28)
+        prefs.edit().putInt("font_size", fontSize).apply()
+    }
     var ctrlActive by mutableStateOf(false)
+
+    /** Journal en lecture seule des commandes lancées par l'agent (onglet « Agent » du terminal). */
+    var agentLog by mutableStateOf("")
+        private set
+    private var agentBase = ""
+
+    fun clearAgentLog() {
+        agentBase = ""
+        agentLog = ""
+    }
 
     /** Dossier du projet actif : la prochaine session shell démarre dedans. */
     var projectDir: String? = null
 
 
     var view: TerminalView? = null
+
+    @Volatile private var currentProc: Process? = null
+    @Volatile private var userStopped = false
+
+    /** Arrête la commande de l'agent en cours (bouton « Arrêter » du chat). */
+    fun stopCurrentCommand() {
+        userStopped = true
+        currentProc?.destroyForcibly()
+    }
 
     private fun isInstalled(): Boolean = File(prefixDir, "bin/bash").exists()
 
@@ -339,6 +380,8 @@ class TerminalController(
         command: String,
         cwd: String?,
         timeoutSec: Int,
+        silent: Boolean = false,
+        outLimit: Int = 20000,
         onOutput: (String) -> Unit
     ): String = withContext(Dispatchers.IO) {
         if (!isInstalled()) {
@@ -355,12 +398,26 @@ class TerminalController(
             val i = e.indexOf('=')
             pb.environment()[e.substring(0, i)] = e.substring(i + 1)
         }
+        if (!silent) {
+            agentBase = (agentLog + "\n$ " + command + "\n").takeLast(60000)
+            agentLog = agentBase
+        }
+        val emit: (String) -> Unit = { out ->
+            if (!silent) agentLog = agentBase + out
+            onOutput(out)
+        }
         val proc = try {
             pb.start()
         } catch (e: Exception) {
+            if (!silent) {
+                agentBase += "[impossible de lancer la commande]\n"
+                agentLog = agentBase
+            }
             return@withContext "Erreur: impossible de lancer la commande (${e.message})"
         }
 
+        currentProc = proc
+        userStopped = false
         val ctx = currentCoroutineContext()
         var timedOut = false
         var cancelled = false
@@ -400,7 +457,7 @@ class TerminalController(
                     val now = System.currentTimeMillis()
                     if (now - lastEmit > 150) {
                         lastEmit = now
-                        onOutput(sb.toString())
+                        emit(sb.toString())
                     }
                 }
             }
@@ -413,18 +470,193 @@ class TerminalController(
             -1
         }
         watchdog.interrupt()
-        onOutput(sb.toString())
+        currentProc = null
+        emit(sb.toString())
 
-        val out = sb.toString().let {
-            if (it.length > 20000) "[début de la sortie tronqué]\n" + it.takeLast(20000) else it
+        val out = com.zagent.app.ui.components.cleanForModel(sb.toString()).let {
+            if (it.length > outLimit) "[début de la sortie tronqué]\n" + it.takeLast(outLimit) else it
         }
+        val secs = "%.1f".format(java.util.Locale.US, (System.currentTimeMillis() - started) / 1000.0)
         val head = when {
-            timedOut -> "Erreur: délai de $timeoutSec s dépassé, commande arrêtée."
-            cancelled -> "Erreur: commande interrompue."
-            code == 0 -> "Code de sortie: 0"
-            else -> "Erreur: code de sortie $code"
+            timedOut -> "Erreur: délai de $timeoutSec s dépassé, commande arrêtée ($secs s)."
+            cancelled -> "Erreur: commande interrompue ($secs s)."
+            userStopped -> "Erreur: commande arrêtée par l'utilisateur ($secs s)."
+            code == 0 -> "Code de sortie: 0 ($secs s)"
+            else -> "Erreur: code de sortie $code ($secs s)"
+        }
+        if (!silent) {
+            agentBase = agentBase + sb.toString() + "[" + head.lineSequence().first() + "]\n"
+            agentLog = agentBase
         }
         "$head\n$out"
+    }
+
+    // ── Serveur de développement (arrière-plan) ─────────────────────────────
+
+    /** Adresse locale détectée dans la sortie du serveur (ex : http://localhost:5173/). */
+    var devUrl by mutableStateOf<String?>(null)
+        private set
+    var devCommand by mutableStateOf<String?>(null)
+        private set
+    var devRunning by mutableStateOf(false)
+        private set
+    var devLog by mutableStateOf("")
+        private set
+
+    /** Prévenu quand le serveur démarre (true) ou s'arrête (false). */
+    var onDevServerChanged: ((Boolean) -> Unit)? = null
+
+    @Volatile private var devProc: Process? = null
+
+    private val devUrlRegex = Regex("""https?://(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1?\]):\d+[^\s'"<>)]*""")
+    private val devPortRegex = Regex("""(?i)listening\s+(?:on|at)\s+(?:port\s+)?(\d{4,5})""")
+
+    private fun detectDevUrl(text: String): String? {
+        devUrlRegex.find(text)?.let { m ->
+            return m.value.trimEnd('.', ',', ';')
+                .replace("0.0.0.0", "localhost")
+                .replace("[::1]", "localhost")
+                .replace("[::]", "localhost")
+        }
+        devPortRegex.find(text)?.let { m -> return "http://localhost:" + m.groupValues[1] + "/" }
+        return null
+    }
+
+    private fun pidOf(p: Process): Int? = try {
+        val f = p.javaClass.getDeclaredField("pid")
+        f.isAccessible = true
+        f.getInt(p)
+    } catch (e: Throwable) {
+        null
+    }
+
+    /** Tue le processus et ses descendants (npm lance node en sous-processus). */
+    private fun killTree(p: Process) {
+        val root = pidOf(p)
+        if (root != null) {
+            try {
+                val children = HashMap<Int, MutableList<Int>>()
+                File("/proc").listFiles()?.forEach { d ->
+                    val pid = d.name.toIntOrNull() ?: return@forEach
+                    try {
+                        val stat = File(d, "stat").readText()
+                        val rest = stat.substring(stat.lastIndexOf(')') + 2).split(' ')
+                        val ppid = rest.getOrNull(1)?.toIntOrNull() ?: return@forEach
+                        children.getOrPut(ppid) { ArrayList() }.add(pid)
+                    } catch (e: Exception) {
+                        // processus disparu ou illisible
+                    }
+                }
+                val all = ArrayList<Int>()
+                val stack = ArrayList<Int>()
+                stack.add(root)
+                while (stack.isNotEmpty()) {
+                    val x = stack.removeAt(stack.size - 1)
+                    all.add(x)
+                    children[x]?.let { stack.addAll(it) }
+                }
+                for (pid in all.reversed()) {
+                    try { android.os.Process.killProcess(pid) } catch (e: Exception) { }
+                }
+            } catch (e: Exception) {
+                // on retombe sur destroyForcibly
+            }
+        }
+        p.destroyForcibly()
+    }
+
+    /**
+     * Lance [command] en arrière-plan (sans délai) et attend jusqu'à [waitSec] secondes
+     * que l'adresse locale apparaisse dans la sortie.
+     */
+    suspend fun startDevServer(command: String, cwd: String?, waitSec: Int = 45): String {
+        if (!isInstalled()) {
+            return "Erreur: le terminal n'est pas installé. Ouvre l'écran Terminal pour l'installer."
+        }
+        if (devProc?.isAlive == true) {
+            return "Erreur: un serveur de développement tourne déjà (" + (devCommand ?: "") + ")" +
+                (devUrl?.let { " sur $it" } ?: "") + ". Appelle stop_dev_server avant d'en lancer un autre."
+        }
+        val proc: Process = withContext(Dispatchers.IO) {
+            File(prefixDir, "tmp").mkdirs()
+            val dir = cwd?.let { File(it) }?.takeIf { it.isDirectory } ?: homeDir
+            val pb = ProcessBuilder(File(prefixDir, "bin/bash").absolutePath, "-c", command)
+            pb.directory(dir)
+            pb.redirectErrorStream(true)
+            pb.redirectInput(ProcessBuilder.Redirect.from(File("/dev/null")))
+            pb.environment().clear()
+            buildEnv().forEach { e ->
+                val i = e.indexOf('=')
+                pb.environment()[e.substring(0, i)] = e.substring(i + 1)
+            }
+            try { pb.start() } catch (e: Exception) { null }
+        } ?: return "Erreur: impossible de lancer la commande."
+
+        devProc = proc
+        devUrl = null
+        devCommand = command
+        devLog = ""
+        devRunning = true
+        onDevServerChanged?.invoke(true)
+
+        val sb = StringBuilder()
+        val reader = Thread {
+            try {
+                proc.inputStream.bufferedReader(Charsets.UTF_8).use { r ->
+                    val buf = CharArray(2048)
+                    while (true) {
+                        val n = r.read(buf)
+                        if (n < 0) break
+                        sb.append(buf, 0, n)
+                        if (sb.length > 40000) sb.delete(0, sb.length - 30000)
+                        val clean = com.zagent.app.ui.components.cleanForModel(sb.toString())
+                        devLog = clean
+                        if (devUrl == null) {
+                            val found = detectDevUrl(clean)
+                            if (found != null) devUrl = found
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                // flux fermé par l'arrêt du processus
+            }
+            val code = try { proc.waitFor() } catch (e: InterruptedException) { -1 }
+            if (devProc === proc) {
+                devProc = null
+                devRunning = false
+                devUrl = null
+                devLog = devLog + "\n[serveur arrêté, code " + code + "]"
+                onDevServerChanged?.invoke(false)
+            }
+        }
+        reader.isDaemon = true
+        reader.start()
+
+        val started = System.currentTimeMillis()
+        while (System.currentTimeMillis() - started < waitSec * 1000L) {
+            if (devUrl != null || !devRunning) break
+            delay(400)
+        }
+        val tail = devLog.takeLast(1500).trim()
+        val url = devUrl
+        return when {
+            url != null -> "Serveur de développement démarré en arrière-plan. Adresse locale : " + url +
+                "\nL'utilisateur ouvre lui-même l'aperçu (bouton dans le chat) : ne l'ouvre pas. Pour l'arrêter : stop_dev_server.\nDernières lignes :\n" + tail
+            !devRunning -> "Erreur: le serveur s'est arrêté juste après le lancement.\n" + tail
+            else -> "Serveur lancé en arrière-plan, mais aucune adresse locale détectée après " + waitSec + " s. Dernières lignes :\n" + tail
+        }
+    }
+
+    /** Arrête le serveur de développement. Retourne false s'il n'y en avait pas. */
+    fun stopDevServer(): Boolean {
+        val p = devProc ?: return false
+        devProc = null
+        killTree(p)
+        devRunning = false
+        devUrl = null
+        devLog = devLog + "\n[serveur arrêté]"
+        onDevServerChanged?.invoke(false)
+        return true
     }
 
     // ── Session shell ───────────────────────────────────────────────────────
@@ -451,21 +683,49 @@ class TerminalController(
         return env.toTypedArray()
     }
 
+    /** Ouvre le premier onglet, ou relance l'onglet actif. */
     fun openSession() {
-        startSession()
+        if (!isInstalled()) return
+        if (tabs.isEmpty()) {
+            addTab()
+            return
+        }
+        val i = activeTab.coerceIn(0, tabs.lastIndex)
+        val old = tabs[i]
+        val s = createSession() ?: return
+        old.session.finishIfRunning()
+        tabs[i] = ShellTab(s, old.number)
     }
 
-    private fun startSession() {
+    /** Nouvel onglet shell dans le dossier du projet actif. */
+    fun addTab() {
         if (!isInstalled()) return
+        val s = createSession() ?: return
+        tabs.add(ShellTab(s, ++tabCounter))
+        activeTab = tabs.lastIndex
+    }
+
+    fun closeTab(index: Int) {
+        val t = tabs.getOrNull(index) ?: return
+        t.session.finishIfRunning()
+        val old = activeTab
+        tabs.removeAt(index)
+        activeTab = when {
+            tabs.isEmpty() -> 0
+            index < old -> old - 1
+            else -> old.coerceAtMost(tabs.lastIndex)
+        }
+        if (tabs.isEmpty()) tabCounter = 0
+    }
+
+    private fun createSession(): TerminalSession? {
         ensureMirror()
         // Réinstalle le crochet apt à chaque ouverture : prend en compte un script mis à jour.
         try { installDebPatcher() } catch (e: Exception) { }
-        session?.finishIfRunning()
         homeDir.mkdirs()
         File(prefixDir, "tmp").mkdirs()
-        sessionEnded = false
         val startDir = projectDir?.let { File(it) }?.takeIf { it.isDirectory } ?: homeDir
-        val s = TerminalSession(
+        return TerminalSession(
             File(prefixDir, "bin/bash").absolutePath,
             startDir.absolutePath,
             arrayOf("-bash"),
@@ -473,7 +733,30 @@ class TerminalController(
             2000,
             client
         )
-        session = s
+    }
+
+    private fun shellQuote(p: String) = "'" + p.replace("'", "'\\''") + "'"
+
+    /** Envoie « cd » vers le projet actif dans l'onglet affiché (bouton « Ouvrir dans le terminal »). */
+    fun cdToProject() {
+        val d = projectDir ?: return
+        val t = tabs.getOrNull(activeTab) ?: return
+        if (t.ended) return
+        t.session.write("\u0015cd " + shellQuote(d) + "\n")
+    }
+
+    fun paste() {
+        val cm = app.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val text = cm.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(app)?.toString()
+        if (!text.isNullOrEmpty()) session?.emulator?.paste(text)
+    }
+
+    /** Copie tout l'historique de l'onglet affiché (les 50 000 derniers caractères). */
+    fun copyAll() {
+        val text = session?.emulator?.screen?.transcriptText?.trimEnd() ?: return
+        val cm = app.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        cm.setPrimaryClip(ClipData.newPlainText("terminal", text.takeLast(50000)))
+        android.widget.Toast.makeText(app, "Terminal copié", android.widget.Toast.LENGTH_SHORT).show()
     }
 
     private var colorBg = 0xFF0B0F17.toInt()
@@ -487,11 +770,13 @@ class TerminalController(
     }
 
     private fun applyToEmulator() {
-        val e = session?.emulator ?: return
-        val cols = e.mColors.mCurrentColors
-        cols[TextStyle.COLOR_INDEX_FOREGROUND] = colorFg
-        cols[TextStyle.COLOR_INDEX_BACKGROUND] = colorBg
-        cols[TextStyle.COLOR_INDEX_CURSOR] = colorFg
+        tabs.forEach { t ->
+            val e = t.session.emulator ?: return@forEach
+            val cols = e.mColors.mCurrentColors
+            cols[TextStyle.COLOR_INDEX_FOREGROUND] = colorFg
+            cols[TextStyle.COLOR_INDEX_BACKGROUND] = colorBg
+            cols[TextStyle.COLOR_INDEX_CURSOR] = colorFg
+        }
         view?.onScreenUpdated()
     }
 
@@ -512,7 +797,7 @@ class TerminalController(
         override fun onTextChanged(changedSession: TerminalSession?) { view?.onScreenUpdated() }
         override fun onTitleChanged(changedSession: TerminalSession?) {}
         override fun onSessionFinished(finishedSession: TerminalSession?) {
-            if (finishedSession === session) sessionEnded = true
+            tabs.firstOrNull { it.session === finishedSession }?.ended = true
         }
         override fun onCopyTextToClipboard(session: TerminalSession?, text: String?) {
             val cm = app.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager

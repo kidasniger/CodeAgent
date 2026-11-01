@@ -18,7 +18,9 @@ class AiRepository {
     sealed class ApiResponse {
         data class Success(
             val messageContent: String?,
-            val toolCalls: List<ToolCallData>?
+            val toolCalls: List<ToolCallData>?,
+            val promptTokens: Int? = null,
+            val completionTokens: Int? = null
         ) : ApiResponse()
         data class Error(val errorMessage: String, val isCode1305: Boolean = false) : ApiResponse()
     }
@@ -29,12 +31,94 @@ class AiRepository {
         val arguments: String
     )
 
+
+    private class ToolAcc {
+        var id = ""
+        var name = ""
+        val args = StringBuilder()
+    }
+
+    /** Lit la réponse en flux (SSE) : le texte part à [onDelta] au fil de l'eau, les appels d'outils sont assemblés. */
+    private fun parseStream(response: Response, onDelta: (String) -> Unit): ApiResponse {
+        val body = response.body ?: return ApiResponse.Success(null, null)
+        val content = StringBuilder()
+        val tools = sortedMapOf<Int, ToolAcc>()
+        val raw = StringBuilder()
+        var sawSse = false
+        var usagePrompt: Int? = null
+        var usageCompletion: Int? = null
+        val source = body.source()
+        while (true) {
+            val line = source.readUtf8Line() ?: break
+            if (!line.startsWith("data:")) {
+                if (!sawSse) raw.append(line).append('\n')
+                continue
+            }
+            sawSse = true
+            val data = line.removePrefix("data:").trim()
+            if (data.isEmpty()) continue
+            if (data == "[DONE]") break
+            val obj = try {
+                Json.parseToJsonElement(data).jsonObject
+            } catch (e: Exception) {
+                continue
+            }
+            (obj["usage"] as? JsonObject)?.let { u ->
+                (u["prompt_tokens"] as? JsonPrimitive)?.intOrNull?.let { usagePrompt = it }
+                (u["completion_tokens"] as? JsonPrimitive)?.intOrNull?.let { usageCompletion = it }
+            }
+            val first = (obj["choices"] as? JsonArray)?.firstOrNull() as? JsonObject ?: continue
+            val delta = first["delta"] as? JsonObject ?: continue
+            val piece = (delta["content"] as? JsonPrimitive)?.contentOrNull
+            if (!piece.isNullOrEmpty()) {
+                content.append(piece)
+                onDelta(piece)
+            }
+            (delta["tool_calls"] as? JsonArray)?.forEachIndexed { pos, el ->
+                val o = el as? JsonObject ?: return@forEachIndexed
+                val idx = (o["index"] as? JsonPrimitive)?.intOrNull ?: pos
+                val acc = tools.getOrPut(idx) { ToolAcc() }
+                (o["id"] as? JsonPrimitive)?.contentOrNull?.let { if (it.isNotEmpty()) acc.id = it }
+                val f = o["function"] as? JsonObject
+                (f?.get("name") as? JsonPrimitive)?.contentOrNull?.let { if (it.isNotEmpty()) acc.name = it }
+                (f?.get("arguments") as? JsonPrimitive)?.contentOrNull?.let { acc.args.append(it) }
+            }
+        }
+        if (!sawSse && raw.isNotBlank()) return parseFullJson(raw.toString(), onDelta)
+        val calls = tools.entries.mapNotNull { (idx, a) ->
+            if (a.name.isEmpty()) null
+            else ToolCallData(a.id.ifEmpty { "call_$idx" }, a.name, a.args.toString().ifBlank { "{}" })
+        }
+        return ApiResponse.Success(content.toString().ifEmpty { null }, calls.ifEmpty { null }, usagePrompt, usageCompletion)
+    }
+
+    /** Repli : le fournisseur a ignoré le mode flux et renvoie un JSON complet. */
+    private fun parseFullJson(text: String, onDelta: (String) -> Unit): ApiResponse {
+        val root = Json.parseToJsonElement(text).jsonObject
+        val message = (root["choices"] as? JsonArray)?.firstOrNull()?.jsonObject?.get("message") as? JsonObject
+        val content = (message?.get("content") as? JsonPrimitive)?.contentOrNull
+        if (!content.isNullOrEmpty()) onDelta(content)
+        val calls = (message?.get("tool_calls") as? JsonArray)?.mapNotNull { el ->
+            val o = el.jsonObject
+            val id = (o["id"] as? JsonPrimitive)?.contentOrNull ?: ""
+            val f = o["function"] as? JsonObject
+            val name = (f?.get("name") as? JsonPrimitive)?.contentOrNull ?: ""
+            val args = (f?.get("arguments") as? JsonPrimitive)?.contentOrNull ?: "{}"
+            if (id.isNotEmpty() && name.isNotEmpty()) ToolCallData(id, name, args) else null
+        }
+        val usage = root["usage"] as? JsonObject
+        val up = (usage?.get("prompt_tokens") as? JsonPrimitive)?.intOrNull
+        val uc = (usage?.get("completion_tokens") as? JsonPrimitive)?.intOrNull
+        return ApiResponse.Success(content, calls, up, uc)
+    }
+
     suspend fun callChatCompletions(
         baseUrl: String,
         apiKey: String,
         model: String,
         messages: JsonArray,
-        onRetryUpdate: (String) -> Unit
+        onRetryUpdate: (String) -> Unit,
+        onDelta: (String) -> Unit = {}
     ): ApiResponse {
         val url = if (baseUrl.isBlank()) "https://api.z.ai/api/paas/v4/chat/completions" else baseUrl
 
@@ -43,6 +127,7 @@ class AiRepository {
             put("messages", messages)
             put("tools", AgentTools.toolsJson)
             put("tool_choice", "auto")
+            put("stream", true)
         }
 
         val requestBody = requestBodyJson.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
@@ -61,26 +146,10 @@ class AiRepository {
 
             try {
                 client.newCall(request).execute().use { response ->
-                    val responseString = response.body?.string() ?: ""
                     if (response.isSuccessful) {
-                        val root = Json.parseToJsonElement(responseString).jsonObject
-                        val choices = root["choices"]?.jsonArray
-                        val firstChoice = choices?.firstOrNull()?.jsonObject
-                        val message = firstChoice?.get("message")?.jsonObject
-                        val content = message?.get("content")?.jsonPrimitive?.contentOrNull
-                        val toolCallsJson = message?.get("tool_calls")?.jsonArray
-
-                        val toolCallsList = toolCallsJson?.mapNotNull { tcElem ->
-                            val tcObj = tcElem.jsonObject
-                            val id = tcObj["id"]?.jsonPrimitive?.content ?: ""
-                            val funcObj = tcObj["function"]?.jsonObject
-                            val name = funcObj?.get("name")?.jsonPrimitive?.content ?: ""
-                            val args = funcObj?.get("arguments")?.jsonPrimitive?.content ?: "{}"
-                            if (id.isNotEmpty() && name.isNotEmpty()) ToolCallData(id, name, args) else null
-                        }
-
-                        return ApiResponse.Success(content, toolCallsList)
+                        return parseStream(response, onDelta)
                     } else {
+                        val responseString = response.body?.string() ?: ""
                         val code = response.code
                         if (code == 401) {
                             return ApiResponse.Error("Clé API invalide (Erreur 401). Vérifiez vos réglages.")

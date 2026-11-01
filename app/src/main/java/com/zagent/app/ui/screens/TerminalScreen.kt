@@ -15,6 +15,18 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import com.zagent.app.ui.theme.JetBrainsMono
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -51,6 +63,7 @@ fun TerminalScreen(controller: TerminalController, onBack: () -> Unit) {
     val state = controller.state
     val termBg = c.bg.toArgb()
     val termFg = c.text.toArgb()
+    var showAgent by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(termBg, termFg, controller.session) {
         controller.applyColors(termBg, termFg)
@@ -86,8 +99,12 @@ fun TerminalScreen(controller: TerminalController, onBack: () -> Unit) {
                 modifier = Modifier.weight(1f)
             )
             if (state is TerminalController.State.Ready) {
+                if (!showAgent) {
+                    HeaderText("A−") { controller.changeFontSize(-1) }
+                    HeaderText("A+") { controller.changeFontSize(1) }
+                }
                 IconButton(onClick = { controller.openSession() }) {
-                    Icon(Icons.Default.Refresh, "Nouvelle session", tint = c.text2)
+                    Icon(Icons.Default.Refresh, "Relancer l'onglet", tint = c.text2)
                 }
             }
         }
@@ -132,46 +149,195 @@ fun TerminalScreen(controller: TerminalController, onBack: () -> Unit) {
             }
 
             is TerminalController.State.Ready -> {
-                val session = controller.session
-                val density = LocalDensity.current
-                Box(Modifier.weight(1f).fillMaxWidth()) {
-                    if (session != null) {
-                        AndroidView(
-                            modifier = Modifier.fillMaxSize(),
-                            factory = { ctx ->
-                                TerminalView(ctx, null).apply {
-                                    setTerminalViewClient(controller.terminalViewClient())
-                                    setTextSize(with(density) { 14.dp.roundToPx() })
-                                    ResourcesCompat.getFont(ctx, R.font.jetbrainsmono_regular)
-                                        ?.let { setTypeface(it) }
-                                    isFocusable = true
-                                    isFocusableInTouchMode = true
-                                    setBackgroundColor(termBg)
-                                    controller.view = this
-                                    attachSession(session)
-                                    requestFocus()
-                                }
-                            },
-                            update = { v ->
-                                v.setBackgroundColor(termBg)
-                                controller.view = v
-                                if (v.currentSession !== session) {
-                                    v.attachSession(session)
-                                    v.onScreenUpdated()
-                                }
-                            },
-                            onRelease = { v -> if (controller.view === v) controller.view = null }
-                        )
-                    }
-                    if (controller.sessionEnded) {
-                        Centered {
-                            Text("Session terminée", color = c.text2)
-                            Spacer(Modifier.height(8.dp))
-                            Button(onClick = { controller.openSession() }) { Text("Relancer") }
-                        }
-                    }
+                TabsRow(controller, showAgent, onAgent = { showAgent = it })
+                if (showAgent) {
+                    AgentLogPane(controller, Modifier.weight(1f).fillMaxWidth())
+                } else {
+                    ShellPane(controller, termBg, Modifier.weight(1f).fillMaxWidth())
+                    ExtraKeys(controller)
                 }
-                ExtraKeys(controller)
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeaderText(label: String, onClick: () -> Unit) {
+    val c = Zcolors
+    Text(
+        label,
+        color = c.text2,
+        style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 8.dp)
+    )
+}
+
+@Composable
+private fun TabsRow(controller: TerminalController, showAgent: Boolean, onAgent: (Boolean) -> Unit) {
+    val c = Zcolors
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        controller.tabs.forEachIndexed { i, tab ->
+            val on = !showAgent && controller.activeTab == i
+            Row(
+                Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (on) c.cyan else c.bg2)
+                    .clickable {
+                        controller.activeTab = i
+                        onAgent(false)
+                    }
+                    .padding(start = 14.dp, end = if (controller.tabs.size > 1) 6.dp else 14.dp, top = 7.dp, bottom = 7.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Shell " + tab.number,
+                    color = if (on) c.bg else c.text2,
+                    style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                )
+                if (controller.tabs.size > 1) {
+                    Text(
+                        "×",
+                        color = if (on) c.bg else c.text3,
+                        style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable { controller.closeTab(i) }
+                            .padding(horizontal = 8.dp)
+                    )
+                }
+            }
+        }
+        Box(
+            Modifier
+                .clip(RoundedCornerShape(10.dp))
+                .background(c.bg2)
+                .clickable {
+                    controller.addTab()
+                    onAgent(false)
+                }
+                .padding(horizontal = 14.dp, vertical = 7.dp)
+        ) {
+            Text("+", color = c.text, style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Bold))
+        }
+        Box(
+            Modifier
+                .clip(RoundedCornerShape(10.dp))
+                .background(if (showAgent) c.cyan else c.bg2)
+                .clickable { onAgent(true) }
+                .padding(horizontal = 14.dp, vertical = 7.dp)
+        ) {
+            Text(
+                "Agent",
+                color = if (showAgent) c.bg else c.text2,
+                style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            )
+        }
+    }
+}
+
+/** Onglet « Agent » : commandes lancées par l'IA et leur sortie, en lecture seule. */
+@Composable
+private fun AgentLogPane(controller: TerminalController, modifier: Modifier) {
+    val c = Zcolors
+    val log = controller.agentLog
+    val scroll = rememberScrollState()
+    LaunchedEffect(log) { scroll.scrollTo(scroll.maxValue) }
+    Column(modifier) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Lecture seule : commandes de l'agent",
+                color = c.text3,
+                style = TextStyle(fontSize = 12.sp),
+                modifier = Modifier.weight(1f)
+            )
+            if (log.isNotEmpty()) {
+                Text(
+                    "Vider",
+                    color = c.amber,
+                    style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { controller.clearAgentLog() }
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                )
+            }
+        }
+        Box(
+            Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(scroll)
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+        ) {
+            com.zagent.app.ui.components.AnsiText(
+                text = log.ifEmpty { "Aucune commande lancée par l'agent pour le moment." },
+                style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp, lineHeight = 16.sp),
+                baseColor = if (log.isEmpty()) c.text3 else c.text,
+                linkColor = c.cyan
+            )
+        }
+    }
+}
+
+@Composable
+private fun ShellPane(controller: TerminalController, termBg: Int, modifier: Modifier) {
+    val c = Zcolors
+    val session = controller.session
+    val density = LocalDensity.current
+    Box(modifier) {
+        if (session != null) {
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { ctx ->
+                    TerminalView(ctx, null).apply {
+                        setTerminalViewClient(controller.terminalViewClient())
+                        setTextSize(with(density) { controller.fontSize.dp.roundToPx() })
+                        tag = controller.fontSize
+                        ResourcesCompat.getFont(ctx, R.font.jetbrainsmono_regular)
+                            ?.let { setTypeface(it) }
+                        isFocusable = true
+                        isFocusableInTouchMode = true
+                        setBackgroundColor(termBg)
+                        controller.view = this
+                        attachSession(session)
+                        requestFocus()
+                    }
+                },
+                update = { v ->
+                    v.setBackgroundColor(termBg)
+                    controller.view = v
+                    if (v.tag != controller.fontSize) {
+                        v.tag = controller.fontSize
+                        v.setTextSize(with(density) { controller.fontSize.dp.roundToPx() })
+                    }
+                    if (v.currentSession !== session) {
+                        v.attachSession(session)
+                        v.onScreenUpdated()
+                    }
+                },
+                onRelease = { v -> if (controller.view === v) controller.view = null }
+            )
+        }
+        if (controller.sessionEnded) {
+            Centered {
+                Text("Session terminée", color = c.text2)
+                Spacer(Modifier.height(8.dp))
+                Button(onClick = { controller.openSession() }) { Text("Relancer") }
             }
         }
     }
@@ -242,5 +408,17 @@ private fun ExtraKeys(controller: TerminalController) {
         IconKey(Icons.Default.ArrowUpward, "Haut", onClick = { controller.send("\u001b[A") })
         IconKey(Icons.Default.ArrowDownward, "Bas", onClick = { controller.send("\u001b[B") })
         IconKey(Icons.AutoMirrored.Filled.ArrowForward, "Droite", onClick = { controller.send("\u001b[C") })
+    }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(c.bg2)
+            .padding(start = 4.dp, end = 4.dp, bottom = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Key("Coller", onClick = { controller.paste() })
+        Key("Copier tout", onClick = { controller.copyAll() })
+        Key("Projet", onClick = { controller.cdToProject() })
+        Key("^C", onClick = { controller.send("\u0003") })
     }
 }

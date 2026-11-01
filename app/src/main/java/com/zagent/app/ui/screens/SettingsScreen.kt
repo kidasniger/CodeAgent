@@ -328,6 +328,200 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = c.text3, modifier = Modifier.size(20.dp))
                     }
                 }
+                CardDivider(Modifier.padding(horizontal = 16.dp))
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+                    var editInstr by remember { mutableStateOf(false) }
+                    var instr by remember { mutableStateOf(viewModel.customInstructionsInput) }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { editInstr = !editInstr }
+                    ) {
+                        IconBadge(Icons.Default.AutoAwesome, c.violet)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("Instructions personnalisées", style = MaterialTheme.typography.titleMedium, color = c.text)
+                            Text(
+                                if (instr.isBlank()) "Règles ajoutées à chaque demande (en plus de AGENT.md du projet)"
+                                else instr.trim().lines().first().take(60),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = c.text2,
+                                maxLines = 1
+                            )
+                        }
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            null, tint = c.text3,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .graphicsRotate(if (editInstr) 90f else 0f)
+                        )
+                    }
+                    if (editInstr) {
+                        Spacer(Modifier.height(10.dp))
+                        OutlinedTextField(
+                            value = instr,
+                            onValueChange = {
+                                instr = it
+                                viewModel.setCustomInstructions(it)
+                            },
+                            placeholder = {
+                                Text(
+                                    "Ex : réponds en français, utilise TypeScript, pas de commentaires inutiles…",
+                                    color = c.text3,
+                                    style = TextStyle(fontSize = 12.sp)
+                                )
+                            },
+                            textStyle = TextStyle(fontSize = 13.sp, color = c.text),
+                            minLines = 3,
+                            maxLines = 8,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = c.surface2,
+                                unfocusedContainerColor = c.surface2,
+                                focusedBorderColor = c.cyan,
+                                unfocusedBorderColor = Color.Transparent,
+                                cursorColor = c.cyan
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+                CardDivider(Modifier.padding(horizontal = 16.dp))
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+                    var steps by remember { mutableStateOf(viewModel.maxStepsInput) }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconBadge(Icons.Default.Tune, c.cyan)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("Limite d'étapes", style = MaterialTheme.typography.titleMedium, color = c.text)
+                            Text(
+                                "Étapes maximum par demande, puis bouton Continuer",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = c.text2
+                            )
+                        }
+                        Text(
+                            "−",
+                            color = c.text,
+                            fontSize = 18.sp,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(c.surface2)
+                                .clickable {
+                                    steps = (steps - 5).coerceAtLeast(5)
+                                    viewModel.setMaxSteps(steps)
+                                }
+                                .padding(horizontal = 14.dp, vertical = 6.dp)
+                        )
+                        Text(
+                            steps.toString(),
+                            color = c.text,
+                            style = TextStyle(fontFamily = JetBrainsMono, fontSize = 14.sp),
+                            modifier = Modifier.padding(horizontal = 10.dp)
+                        )
+                        Text(
+                            "+",
+                            color = c.text,
+                            fontSize = 18.sp,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(c.surface2)
+                                .clickable {
+                                    steps = (steps + 5).coerceAtMost(100)
+                                    viewModel.setMaxSteps(steps)
+                                }
+                                .padding(horizontal = 14.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+                CardDivider(Modifier.padding(horizontal = 16.dp))
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+                    var editPrices by remember { mutableStateOf(false) }
+                    var priceIn by remember {
+                        mutableStateOf(if (viewModel.priceInInput > 0f) viewModel.priceInInput.toString() else "")
+                    }
+                    var priceOut by remember {
+                        mutableStateOf(if (viewModel.priceOutInput > 0f) viewModel.priceOutInput.toString() else "")
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { editPrices = !editPrices }
+                    ) {
+                        IconBadge(Icons.Default.Tune, c.green)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("Prix des tokens", style = MaterialTheme.typography.titleMedium, color = c.text)
+                            Text(
+                                if (viewModel.priceInInput > 0f || viewModel.priceOutInput > 0f)
+                                    "Entrée " + viewModel.priceInInput + " / sortie " + viewModel.priceOutInput + " par million (USD)"
+                                else "Renseigne les prix pour afficher le coût de la conversation",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = c.text2,
+                                maxLines = 1
+                            )
+                        }
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            null, tint = c.text3,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .graphicsRotate(if (editPrices) 90f else 0f)
+                        )
+                    }
+                    if (editPrices) {
+                        Spacer(Modifier.height(10.dp))
+                        val fieldColors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = c.surface2,
+                            unfocusedContainerColor = c.surface2,
+                            focusedBorderColor = c.cyan,
+                            unfocusedBorderColor = Color.Transparent,
+                            cursorColor = c.cyan
+                        )
+                        OutlinedTextField(
+                            value = priceIn,
+                            onValueChange = {
+                                priceIn = it
+                                viewModel.setPrices(
+                                    it.replace(',', '.').toFloatOrNull() ?: 0f,
+                                    priceOut.replace(',', '.').toFloatOrNull() ?: 0f
+                                )
+                            },
+                            label = { Text("Entrée, USD par million de tokens", color = c.text3, style = TextStyle(fontSize = 12.sp)) },
+                            textStyle = TextStyle(fontFamily = JetBrainsMono, fontSize = 13.sp, color = c.text),
+                            singleLine = true,
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
+                            ),
+                            colors = fieldColors,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = priceOut,
+                            onValueChange = {
+                                priceOut = it
+                                viewModel.setPrices(
+                                    priceIn.replace(',', '.').toFloatOrNull() ?: 0f,
+                                    it.replace(',', '.').toFloatOrNull() ?: 0f
+                                )
+                            },
+                            label = { Text("Sortie, USD par million de tokens", color = c.text3, style = TextStyle(fontSize = 12.sp)) },
+                            textStyle = TextStyle(fontFamily = JetBrainsMono, fontSize = 13.sp, color = c.text),
+                            singleLine = true,
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
+                            ),
+                            colors = fieldColors,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
             }
 
             Spacer(Modifier.height(20.dp))

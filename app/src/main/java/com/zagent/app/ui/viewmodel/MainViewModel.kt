@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
+import androidx.documentfile.provider.DocumentFile
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
@@ -11,10 +12,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.zagent.app.agent.AgentNotifier
+import com.zagent.app.agent.AgentService
 import com.zagent.app.data.AgentTools
 import com.zagent.app.data.AiRepository
 import com.zagent.app.data.AskQuestion
 import com.zagent.app.data.parseAskQuestions
+import com.zagent.app.data.TodoItem
+import com.zagent.app.data.parseTodos
 import com.zagent.app.data.DiffUtil
 import com.zagent.app.data.FileRepository
 import com.zagent.app.data.SettingsManager
@@ -38,6 +43,12 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
 
 data class ChatMessage(
     val role: String,
@@ -61,6 +72,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // Chemin absolu du projet (dans le home du terminal). Les anciennes valeurs content:// sont ignorées.
     var workingFolderUriString by mutableStateOf(settingsManager.workingFolderUri?.takeIf { it.startsWith("/") })
     var smartModeInput by mutableStateOf(settingsManager.smartMode)
+    var customInstructionsInput by mutableStateOf(settingsManager.customInstructions)
+
+    fun setCustomInstructions(value: String) {
+        customInstructionsInput = value
+        settingsManager.customInstructions = value
+    }
 
     fun setSmartMode(value: Boolean) {
         smartModeInput = value
@@ -118,7 +135,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var onDeleteConfirmed: ((Boolean) -> Unit)? = null
 
     /** Commande demandée par l'agent (outil run_command), en attente de confirmation (hors mode Auto). */
-    data class PendingCommand(val command: String, val toolCallId: String)
+    data class PendingCommand(
+        val command: String,
+        val toolCallId: String,
+        val note: String? = null,
+        val changes: GitChanges? = null,
+        val footer: String? = null
+    )
 
     var pendingCommand: PendingCommand? by mutableStateOf(null)
     private var onCommandConfirmed: ((Boolean) -> Unit)? = null
@@ -126,6 +149,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     /** Commande en cours d'exécution et sa sortie, affichées en direct dans le chat. */
     var liveCommand by mutableStateOf<String?>(null)
     var liveOutput by mutableStateOf("")
+    var liveStartedAt by mutableStateOf(0L)
+
+    /** Texte de l'IA en cours d'écriture (affiché mot à mot avant d'être ajouté à la conversation). */
+    var liveText by mutableStateOf("")
+
+    /** Liste de tâches de l'agent (outil update_todos), affichée en haut du chat. */
+    var todos by mutableStateOf<List<TodoItem>>(emptyList())
+
+    /** Résumé de la demande en cours : fichiers touchés et commandes lancées. */
+    val summaryFiles = mutableStateListOf<String>()
+    val summaryCommands = mutableStateListOf<String>()
 
     /** Questions à choix posées par l'agent (outil ask_user), en attente de réponse. */
     data class PendingAsk(val toolCallId: String, val questions: List<AskQuestion>)
@@ -179,6 +213,332 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         baseUrlInput = baseUrl
         autoModeInput = auto
         if (key.isNotBlank()) isKeyInvalid = false
+    }
+
+
+    // ── Limite d'étapes ─────────────────────────────────────────────────────
+    var maxStepsInput by mutableStateOf(settingsManager.maxSteps)
+
+    fun setMaxSteps(value: Int) {
+        val n = value.coerceIn(5, 100)
+        maxStepsInput = n
+        settingsManager.maxSteps = n
+    }
+
+    /** Vrai quand l'agent s'est arrêté sur la limite d'étapes : le chat propose « Continuer ». */
+    var stepLimitReached by mutableStateOf(false)
+
+    /** Relance l'agent sur l'historique courant, avec un nouveau budget d'étapes. */
+    fun continueAgent() {
+        if (isLoading || !stepLimitReached) return
+        stepLimitReached = false
+        retryLast()
+    }
+
+    // ── Modèle par conversation, tokens et coût ─────────────────────────────
+    /** Modèle choisi pour cette conversation (null = réglage global). */
+    var chatModel by mutableStateOf<String?>(null)
+    var isModelDialogOpen by mutableStateOf(false)
+
+    val effectiveModel: String
+        get() = chatModel?.takeIf { it.isNotBlank() } ?: modelInput
+
+    fun selectChatModel(model: String?) {
+        chatModel = model?.trim()?.ifEmpty { null }
+    }
+
+    var promptTokens by mutableStateOf(0)
+    var completionTokens by mutableStateOf(0)
+
+    /** Vrai si une partie du compteur est une estimation (le fournisseur n'a pas renvoyé l'usage). */
+    var tokensEstimated by mutableStateOf(false)
+
+    var priceInInput by mutableStateOf(settingsManager.priceInPerM)
+    var priceOutInput by mutableStateOf(settingsManager.priceOutPerM)
+
+    val totalTokens: Int get() = promptTokens + completionTokens
+
+    /** Coût de la conversation, ou null si aucun prix n'est renseigné dans les réglages. */
+    val estimatedCost: Double?
+        get() = if (priceInInput <= 0f && priceOutInput <= 0f) null
+        else promptTokens.toDouble() * priceInInput / 1_000_000.0 +
+            completionTokens.toDouble() * priceOutInput / 1_000_000.0
+
+    fun setPrices(priceIn: Float, priceOut: Float) {
+        priceInInput = priceIn.coerceAtLeast(0f)
+        priceOutInput = priceOut.coerceAtLeast(0f)
+        settingsManager.priceInPerM = priceInInput
+        settingsManager.priceOutPerM = priceOutInput
+    }
+
+    // ── Git visuel ──────────────────────────────────────────────────────────
+    data class GitChanges(val status: String, val diff: String, val error: String? = null)
+
+    var gitSheetOpen by mutableStateOf(false)
+    var gitChanges by mutableStateOf<GitChanges?>(null)
+    var gitLoading by mutableStateOf(false)
+
+    // § remplace le signe dollar (évite les modèles de chaînes Kotlin)
+    private val gitScript = """
+{ git rev-parse --is-inside-work-tree >/dev/null 2>&1 || { echo NOREPO; exit 0; }
+git status --short
+echo '@@@DIFF@@@'
+if git rev-parse --verify HEAD >/dev/null 2>&1; then git diff HEAD --no-color --no-ext-diff; else git diff --cached --no-color --no-ext-diff; fi
+git ls-files --others --exclude-standard | head -20 | while IFS= read -r f; do
+  if [ -f "§f" ] && grep -Iq . "§f" 2>/dev/null; then
+    echo "diff --git a/§f b/§f"; echo "new file"; echo "--- /dev/null"; echo "+++ b/§f"
+    echo "@@ -0,0 +1 @@"; head -n 200 "§f" | sed 's/^/+/'
+  fi
+done; } 2>&1 | head -c 50000
+""".replace('§', '$')
+
+    /** Changements du dépôt : état, diff des fichiers suivis et contenu des nouveaux fichiers. */
+    suspend fun readGitChanges(): GitChanges {
+        val res = terminal.runCommand(gitScript, workingFolderUriString, 20, silent = true, outLimit = 60000) { }
+        val first = res.substringBefore('\n')
+        val body = res.substringAfter('\n', "")
+        if (first.startsWith("Erreur")) return GitChanges("", "", res.take(300))
+        if (body.trim() == "NOREPO") return GitChanges("", "", "Ce projet n'est pas un dépôt Git.")
+        val status = body.substringBefore("@@@DIFF@@@").trim()
+        val diff = body.substringAfter("@@@DIFF@@@", "").trim('\n')
+        return GitChanges(status, diff)
+    }
+
+    fun openGitChanges() {
+        gitSheetOpen = true
+        refreshGitChanges()
+    }
+
+    fun refreshGitChanges() {
+        if (gitLoading) return
+        gitLoading = true
+        viewModelScope.launch(Dispatchers.IO) {
+            val r = readGitChanges()
+            withContext(Dispatchers.Main) {
+                gitChanges = r
+                gitLoading = false
+            }
+        }
+    }
+
+    // ── Serveur de développement ────────────────────────────────────────────
+    /** Ouverture de l'aperçu sur l'adresse locale du serveur, uniquement sur action de l'utilisateur. */
+    fun openDevPreview() {
+        val url = terminal.devUrl ?: return
+        console.clear()
+        isEditorOpen = true
+        previewTick++
+        previewRequest = url
+    }
+
+    fun stopDevServerByUser() {
+        terminal.stopDevServer()
+    }
+
+    // ── Import / export de projets ──────────────────────────────────────────
+    var transferStatus by mutableStateOf<String?>(null)
+    var transferBusy by mutableStateOf(false)
+
+    private fun sanitizeProjectName(raw: String): String {
+        val cleaned = raw.trim().replace(Regex("[^A-Za-z0-9._-]+"), "-").trim('-', '.', '_')
+        return (cleaned.ifEmpty { "projet-importe" }).take(50)
+    }
+
+    private fun uniqueProjectName(base: String): String {
+        var name = base
+        var i = 2
+        while (File(projectsRoot(), name).exists()) {
+            name = base.take(44) + "-" + i
+            i++
+        }
+        return name
+    }
+
+    private fun displayNameOf(uri: Uri): String? = try {
+        getApplication<Application>().contentResolver.query(uri, null, null, null, null)?.use { c ->
+            val idx = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+            if (idx >= 0 && c.moveToFirst()) c.getString(idx) else null
+        }
+    } catch (e: Exception) {
+        null
+    }
+
+    /** Importe un zip du téléphone dans un nouveau projet (~/projects/<nom>). */
+    fun importZip(uri: Uri) {
+        if (transferBusy) return
+        transferBusy = true
+        transferStatus = "Import du zip en cours…"
+        viewModelScope.launch(Dispatchers.IO) {
+            var dest: File? = null
+            val msg = try {
+                val label = (displayNameOf(uri) ?: "projet-importe").removeSuffix(".zip").removeSuffix(".ZIP")
+                val name = uniqueProjectName(sanitizeProjectName(label))
+                val d = File(projectsRoot(), name)
+                dest = d
+                d.mkdirs()
+                val count = unzipTo(uri, d)
+                withContext(Dispatchers.Main) { selectProject(name) }
+                "Importé : $name ($count fichiers)"
+            } catch (e: Exception) {
+                dest?.deleteRecursively()
+                "Erreur d'import : " + (e.localizedMessage ?: e.javaClass.simpleName)
+            }
+            withContext(Dispatchers.Main) {
+                transferStatus = msg
+                transferBusy = false
+            }
+        }
+    }
+
+    private fun unzipTo(uri: Uri, dest: File): Int {
+        val resolver = getApplication<Application>().contentResolver
+        val names = ArrayList<String>()
+        (resolver.openInputStream(uri) ?: throw IllegalStateException("Fichier illisible.")).use { ins ->
+            ZipInputStream(ins.buffered()).use { z ->
+                var e = z.nextEntry
+                while (e != null) {
+                    names.add(e.name.replace('\\', '/'))
+                    e = z.nextEntry
+                }
+            }
+        }
+        if (names.isEmpty()) throw IllegalStateException("Le zip est vide ou invalide.")
+        val real = names.filter { it.isNotEmpty() && !it.startsWith("__MACOSX/") }
+        val firstSegments = real.map { it.substringBefore('/') }.toSet()
+        // Un seul dossier racine dans le zip : on le retire pour que les fichiers arrivent à la racine du projet.
+        val strip = if (firstSegments.size == 1 && real.all { it.contains('/') }) firstSegments.first() + "/" else ""
+        val destCanon = dest.canonicalPath
+        var count = 0
+        (resolver.openInputStream(uri) ?: throw IllegalStateException("Fichier illisible.")).use { ins ->
+            ZipInputStream(ins.buffered()).use { z ->
+                var e = z.nextEntry
+                while (e != null) {
+                    var n = e.name.replace('\\', '/')
+                    if (!n.startsWith("__MACOSX/")) {
+                        if (strip.isNotEmpty()) n = n.removePrefix(strip)
+                        if (n.isNotEmpty()) {
+                            val out = File(dest, n)
+                            val canon = out.canonicalPath
+                            // protection contre les chemins « ../ » (zip slip)
+                            if (canon == destCanon || canon.startsWith(destCanon + File.separator)) {
+                                if (e.isDirectory) {
+                                    out.mkdirs()
+                                } else {
+                                    out.parentFile?.mkdirs()
+                                    FileOutputStream(out).use { o -> z.copyTo(o) }
+                                    count++
+                                }
+                            }
+                        }
+                    }
+                    z.closeEntry()
+                    e = z.nextEntry
+                }
+            }
+        }
+        return count
+    }
+
+    /** Importe un dossier du téléphone (sélecteur Android) dans un nouveau projet. node_modules est ignoré. */
+    fun importFolder(uri: Uri) {
+        if (transferBusy) return
+        transferBusy = true
+        transferStatus = "Import du dossier en cours…"
+        viewModelScope.launch(Dispatchers.IO) {
+            var dest: File? = null
+            val msg = try {
+                val app = getApplication<Application>()
+                val root = DocumentFile.fromTreeUri(app, uri) ?: throw IllegalStateException("Dossier inaccessible.")
+                val name = uniqueProjectName(sanitizeProjectName(root.name ?: "dossier"))
+                val d = File(projectsRoot(), name)
+                dest = d
+                d.mkdirs()
+                val count = copyTree(root, d)
+                withContext(Dispatchers.Main) { selectProject(name) }
+                "Importé : $name ($count fichiers)"
+            } catch (e: Exception) {
+                dest?.deleteRecursively()
+                "Erreur d'import : " + (e.localizedMessage ?: e.javaClass.simpleName)
+            }
+            withContext(Dispatchers.Main) {
+                transferStatus = msg
+                transferBusy = false
+            }
+        }
+    }
+
+    private fun copyTree(src: DocumentFile, dest: File): Int {
+        val resolver = getApplication<Application>().contentResolver
+        var count = 0
+        for (child in src.listFiles()) {
+            val childName = child.name ?: continue
+            if (child.isDirectory) {
+                if (childName == "node_modules") continue
+                val sub = File(dest, childName)
+                sub.mkdirs()
+                count += copyTree(child, sub)
+            } else if (child.isFile) {
+                val out = File(dest, childName)
+                resolver.openInputStream(child.uri)?.use { ins ->
+                    FileOutputStream(out).use { o -> ins.copyTo(o) }
+                    count++
+                }
+            }
+        }
+        return count
+    }
+
+    /** Exporte le projet [project] en zip vers [uri] (sélecteur Android). node_modules est ignoré. */
+    fun exportProject(project: String, uri: Uri) {
+        if (transferBusy) return
+        transferBusy = true
+        transferStatus = "Export de $project en cours…"
+        viewModelScope.launch(Dispatchers.IO) {
+            val msg = try {
+                val dir = File(projectsRoot(), project)
+                if (!dir.isDirectory) throw IllegalStateException("Projet introuvable.")
+                var count = 0
+                (getApplication<Application>().contentResolver.openOutputStream(uri)
+                    ?: throw IllegalStateException("Destination inaccessible.")).use { os ->
+                    ZipOutputStream(os.buffered()).use { z ->
+                        count = zipDir(dir, project + "/", z)
+                    }
+                }
+                "Exporté : $project.zip ($count fichiers)"
+            } catch (e: Exception) {
+                "Erreur d'export : " + (e.localizedMessage ?: e.javaClass.simpleName)
+            }
+            withContext(Dispatchers.Main) {
+                transferStatus = msg
+                transferBusy = false
+            }
+        }
+    }
+
+    private fun zipDir(dir: File, prefix: String, z: ZipOutputStream): Int {
+        var n = 0
+        for (f in (dir.listFiles() ?: emptyArray()).sortedBy { it.name }) {
+            if (f.name == "node_modules") continue
+            if (java.nio.file.Files.isSymbolicLink(f.toPath())) continue
+            val entry = prefix + f.name
+            if (f.isDirectory) {
+                z.putNextEntry(ZipEntry("$entry/"))
+                z.closeEntry()
+                n += zipDir(f, "$entry/", z)
+            } else if (f.isFile) {
+                z.putNextEntry(ZipEntry(entry))
+                FileInputStream(f).use { it.copyTo(z) }
+                z.closeEntry()
+                n++
+            }
+        }
+        return n
+    }
+
+    override fun onCleared() {
+        terminal.onDevServerChanged = null
+        terminal.stopDevServer()
+        super.onCleared()
     }
 
     // ── Projets (dossiers réels dans le home du terminal) ───────────────────
@@ -236,6 +596,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         onCommandConfirmed = null
         pendingCommand = null
         liveCommand = null
+        liveText = ""
+        todos = emptyList()
+        summaryFiles.clear()
+        summaryCommands.clear()
         agentUndo.clear()
         isLoading = false
         _messages.value = emptyList()
@@ -245,11 +609,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         isKeyInvalid = false
         isNetworkError = false
         autoRetryCount = 0
+        stepLimitReached = false
+        chatModel = null
+        promptTokens = 0
+        completionTokens = 0
+        tokensEstimated = false
     }
 
     fun switchToOtherModel() {
-        modelInput = if (modelInput == "glm-4.5-flash") "glm-4.7-flash" else "glm-4.5-flash"
-        settingsManager.model = modelInput
+        val next = if (effectiveModel == "glm-4.5-flash") "glm-4.7-flash" else "glm-4.5-flash"
+        if (chatModel != null) {
+            chatModel = next
+        } else {
+            modelInput = next
+            settingsManager.model = next
+        }
         isCode1305Error = false
         showFallbackModelButton = false
         statusMessage = ""
@@ -265,6 +639,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         isKeyInvalid = false
         isCode1305Error = false
         showFallbackModelButton = false
+        AgentService.start(getApplication())
         agentJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 runAgentLoop()
@@ -276,6 +651,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     statusMessage = "Erreur de l'agent : " + (e.localizedMessage ?: e.javaClass.simpleName)
                 }
             } finally {
+                AgentService.stop(getApplication())
                 withContext(NonCancellable + Dispatchers.Main) {
                     isLoading = false
                 }
@@ -296,6 +672,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         terminal.projectDir = workingFolderUriString
+        terminal.onDevServerChanged = { running ->
+            AgentService.devServerActive = running
+            if (running) {
+                AgentService.start(getApplication(), "Serveur de développement actif")
+            } else if (!isLoading) {
+                AgentService.stop(getApplication())
+            }
+        }
     }
     var folderLabel by mutableStateOf("Projet")
     data class BrowserFilePreview(val path: String, val content: String)
@@ -524,15 +908,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
+        stepLimitReached = false
         agentUndo.clear()
+        todos = emptyList()
+        summaryFiles.clear()
+        summaryCommands.clear()
         val newUserMessage = ChatMessage("user", userText)
         _messages.value = _messages.value + newUserMessage
 
         isLoading = true
+        AgentService.start(getApplication())
         agentJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 runAgentLoop()
             } finally {
+                AgentService.stop(getApplication())
                 withContext(NonCancellable + Dispatchers.Main) {
                     isLoading = false
                 }
@@ -542,15 +932,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private suspend fun runAgentLoop() {
         isLoading = true
-        statusMessage = "Réflexion de l'agent…"
+        statusMessage = "Envoi à l'IA…"
         isCode1305Error = false
         showFallbackModelButton = false
 
         val fileRepo = getFileRepo()
-        val systemPrompt = "Tu es un agent de code qui travaille dans un dossier de projet. Utilise les outils pour explorer, lire, créer des dossiers, écrire et supprimer des fichiers (delete_file ; pour vider un fichier, write_file avec contenu vide). Si tu ne connais pas la structure, commence par list_dir ; utilise search_in_files pour retrouver du code. Lis un fichier avant de le modifier. Pour modifier un fichier existant, utilise edit_file (un passage exact, unique) ; si edit_file échoue, relis le fichier avec read_file. N'utilise write_file (contenu COMPLET) que pour créer un fichier ou le réécrire entièrement. Les chemins sont relatifs au dossier de travail. Tu peux exécuter n'importe quelle commande shell dans le dossier du projet avec run_command (git, npm, node, python, pip, clang, pkg install -y, etc.) : utilise-le pour installer, compiler, lancer des tests, vérifier ton travail et faire du git ; lis la sortie et corrige les erreurs. Les commandes ne peuvent pas être interactives (pas d'éditeur, pas de saisie) : ajoute les options non interactives (-y, --yes). Si la demande est floue ou qu'un choix important manque (sujet, public, style, durée, technologie…), appelle d'abord ask_user avec 1 à 4 questions courtes à choix (2 à 4 options chacune) au lieu de deviner, puis continue avec les réponses sans reposer les mêmes questions. Réponds en français, de façon courte."
+        val basePrompt = "Tu es un agent de code qui travaille dans un dossier de projet. Utilise les outils pour explorer, lire, créer des dossiers, écrire et supprimer des fichiers (delete_file ; pour vider un fichier, write_file avec contenu vide). Si tu ne connais pas la structure, commence par list_dir ; utilise search_in_files pour retrouver du code. Lis un fichier avant de le modifier. Pour modifier un fichier existant, utilise edit_file (un passage exact, unique) ; si edit_file échoue, relis le fichier avec read_file. N'utilise write_file (contenu COMPLET) que pour créer un fichier ou le réécrire entièrement. Les chemins sont relatifs au dossier de travail. Tu peux exécuter n'importe quelle commande shell dans le dossier du projet avec run_command (git, npm, node, python, pip, clang, pkg install -y, etc.) : utilise-le pour installer, compiler, lancer des tests, vérifier ton travail et faire du git ; lis la sortie et corrige les erreurs. Les commandes ne peuvent pas être interactives (pas d'éditeur, pas de saisie) : ajoute les options non interactives (-y, --yes). Si la demande est floue ou qu'un choix important manque (sujet, public, style, durée, technologie…), appelle d'abord ask_user avec 1 à 4 questions courtes à choix (2 à 4 options chacune) au lieu de deviner, puis continue avec les réponses sans reposer les mêmes questions. Avant chaque appel d'outil, écris une seule phrase courte qui annonce ce que tu vas faire (ex : « Je lance git push »). Pour toute demande de 3 étapes ou plus, appelle d'abord update_todos avec la liste des tâches, puis remets-la à jour (liste complète) quand une tâche est terminée. Réponds en français, de façon courte."
+
+        val rules = fileRepo.readFile("AGENT.md")
+        val projectRules = if (rules.startsWith("Erreur") || rules.isBlank()) ""
+            else "\n\nRègles du projet (fichier AGENT.md), à respecter :\n" + rules.take(6000)
+        val custom = customInstructionsInput.trim().let {
+            if (it.isEmpty()) "" else "\n\nInstructions personnalisées de l'utilisateur :\n" + it.take(4000)
+        }
+        val systemPrompt = basePrompt + projectRules + custom
 
         var stepCount = 0
-        val maxSteps = 20
+        val maxSteps = maxStepsInput
+        var finished = false
 
         while (stepCount < maxSteps) {
             stepCount++
@@ -584,18 +983,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
+            withContext(Dispatchers.Main) {
+                liveText = ""
+                statusMessage = "Envoi à l'IA…"
+            }
             val result = aiRepository.callChatCompletions(
                 baseUrl = baseUrlInput,
                 apiKey = apiKeyInput,
-                model = modelInput,
+                model = effectiveModel,
                 messages = jsonMessages,
                 onRetryUpdate = { retryMsg ->
+                    liveText = ""
                     statusMessage = retryMsg
+                },
+                onDelta = { piece ->
+                    if (liveText.isEmpty()) statusMessage = "L'IA écrit…"
+                    liveText += piece
                 }
             )
 
             when (result) {
                 is AiRepository.ApiResponse.Error -> {
+                    alertUser("L'agent s'est arrêté", result.errorMessage.take(120))
+                    liveText = ""
                     isLoading = false
                     statusMessage = result.errorMessage
                     isCode1305Error = result.isCode1305
@@ -607,30 +1017,44 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     if (result.isCode1305 || result.errorMessage.contains("surchargé")) {
                         showFallbackModelButton = true
                     }
+                    finished = true
                     break
                 }
                 is AiRepository.ApiResponse.Success -> {
                     val content = result.messageContent
                     val toolCalls = result.toolCalls
 
+                    // Tokens : valeurs du fournisseur si présentes, sinon estimation (environ 4 caractères par token).
+                    val estIn = (jsonMessages.toString().length + AgentTools.toolsJson.toString().length) / 4
+                    val estOut = ((content?.length ?: 0) + (toolCalls?.sumOf { it.name.length + it.arguments.length } ?: 0)) / 4
+                    val usedIn = result.promptTokens
+                    val usedOut = result.completionTokens
+                    promptTokens += usedIn ?: estIn
+                    completionTokens += usedOut ?: estOut
+                    if (usedIn == null || usedOut == null) tokensEstimated = true
+
                     if (toolCalls.isNullOrEmpty()) {
                         val assistantMsg = ChatMessage("assistant", content ?: "")
+                        alertUser("L'agent a terminé", (content ?: "Tâche terminée.").trim().take(140))
                         withContext(Dispatchers.Main) {
                             _messages.value = _messages.value + assistantMsg
+                            liveText = ""
                             isLoading = false
                             statusMessage = ""
                         }
+                        finished = true
                         break
                     } else {
                         val assistantMsg = ChatMessage("assistant", content, toolCalls = toolCalls)
                         withContext(Dispatchers.Main) {
                             _messages.value = _messages.value + assistantMsg
+                            liveText = ""
                         }
 
                         for (tc in toolCalls) {
-                            val logLine = "${tc.name}(...)"
+                            val label = describeTool(tc.name, tc.arguments)
                             withContext(Dispatchers.Main) {
-                                statusMessage = "Exécution de $logLine…"
+                                statusMessage = label
                             }
 
                             val toolResult = executeToolWithGate(fileRepo, tc)
@@ -651,11 +1075,59 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
 
-        if (stepCount >= maxSteps) {
+        if (!finished) {
+            alertUser("L'agent s'est arrêté", "Limite de $maxSteps étapes atteinte.")
             withContext(Dispatchers.Main) {
                 isLoading = false
-                statusMessage = "Limite de 20 étapes atteinte pour cette demande."
+                stepLimitReached = true
+                statusMessage = "Limite de $maxSteps étapes atteinte pour cette demande."
             }
+        }
+    }
+
+    /** Notification Android si l'appli n'est pas à l'écran. */
+    private fun alertUser(title: String, text: String) {
+        AgentNotifier.alert(getApplication(), title, text)
+    }
+
+    /** Renvoie à l'agent une commande en erreur pour qu'il la corrige. */
+    fun fixCommandWithAi(command: String, result: String) {
+        val out = result.substringAfter('\n', "").trim().takeLast(1500)
+        sendMessage(
+            "La commande `" + command + "` a échoué.\n\n```\n" + out +
+                "\n```\nAnalyse l'erreur, corrige le problème, puis relance la commande."
+        )
+    }
+
+    /** Arrête la commande en cours ; l'agent reçoit « arrêtée par l'utilisateur » et continue. */
+    fun stopLiveCommand() {
+        terminal.stopCurrentCommand()
+    }
+
+    /** Ouvre l'écran Terminal et place le shell dans le dossier du projet actif. */
+    fun openTerminalInProject() {
+        isTerminalOpen = true
+        terminal.cdToProject()
+    }
+
+    /** Statut précis affiché pendant qu'un outil s'exécute. */
+    private fun describeTool(name: String, argumentsJson: String): String {
+        val o = try { Json.parseToJsonElement(argumentsJson) as? JsonObject } catch (e: Exception) { null }
+        fun arg(k: String): String = (o?.get(k) as? JsonPrimitive)?.content?.trim().orEmpty()
+        return when (name) {
+            "list_dir" -> "Lecture du dossier " + arg("path").ifEmpty { "." } + "…"
+            "read_file" -> "Lecture de " + arg("path") + "…"
+            "make_dir" -> "Création du dossier " + arg("path") + "…"
+            "write_file" -> "Écriture de " + arg("path") + "…"
+            "edit_file" -> "Modification de " + arg("path") + "…"
+            "delete_file" -> "Suppression de " + arg("path") + "…"
+            "search_in_files" -> "Recherche de « " + arg("query").take(40) + " »…"
+            "run_command" -> "Commande : " + arg("command").take(60) + "…"
+            "update_todos" -> "Mise à jour des tâches…"
+            "start_dev_server" -> "Démarrage du serveur de développement…"
+            "stop_dev_server" -> "Arrêt du serveur de développement…"
+            "ask_user" -> "En attente de ta réponse…"
+            else -> "Exécution de $name…"
         }
     }
 
@@ -714,6 +1186,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val res = fileRepo.deletePath(path)
             if (res.startsWith("Succès")) {
                 withContext(Dispatchers.Main) {
+                    summaryFiles.add("$path (supprimé)")
                     forgetPath(path)
                     refreshBrowser()
                 }
@@ -729,12 +1202,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val command = args["command"]?.jsonPrimitive?.content?.trim().orEmpty()
             if (command.isEmpty()) return "Erreur: commande manquante pour run_command."
             val timeout = (args["timeout_seconds"]?.jsonPrimitive?.content?.toIntOrNull() ?: 120).coerceIn(1, 600)
-            val allowed = autoModeInput || waitForCommandConfirmation(command, tc.id)
+            // Un git push est toujours confirmé (même en mode Auto), avec la branche et le dépôt visés.
+            val isPush = pushRegex.containsMatchIn(command)
+            val isCommit = commitRegex.containsMatchIn(command)
+            val note = if (isPush) describePushTarget(command) else null
+            // Un git commit est toujours confirmé, avec le diff de tous les changements.
+            val changes = if (isCommit) readGitChanges() else null
+            val footer = if (isCommit && !isPush) "Un git commit est toujours confirmé, même en mode Auto : vérifie les changements ci-dessus." else null
+            val allowed = (autoModeInput && !isPush && !isCommit) || waitForCommandConfirmation(command, tc.id, note, changes, footer)
             if (!allowed) return "Refusé par l'utilisateur: la commande a été annulée."
             withContext(Dispatchers.Main) {
                 liveOutput = ""
+                liveStartedAt = System.currentTimeMillis()
+                summaryCommands.add(command.take(100))
                 liveCommand = command
-                statusMessage = "Commande en cours…"
+                statusMessage = "Commande : " + command.take(60) + "…"
             }
             try {
                 return terminal.runCommand(command, workingFolderUriString, timeout) { out -> liveOutput = out }
@@ -744,6 +1226,32 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     refreshBrowser()
                 }
             }
+        }
+        if (tc.name == "start_dev_server") {
+            val args = try {
+                Json.parseToJsonElement(tc.arguments).jsonObject
+            } catch (e: Exception) {
+                JsonObject(emptyMap())
+            }
+            val command = (args["command"] as? JsonPrimitive)?.content?.trim().orEmpty().ifEmpty { "npm run dev" }
+            val allowed = autoModeInput || waitForCommandConfirmation(
+                command, tc.id, null, null,
+                "Le serveur reste actif en arrière-plan jusqu'à ce que tu l'arrêtes. Tu ouvres l'aperçu toi-même depuis le chat."
+            )
+            if (!allowed) return "Refusé par l'utilisateur: le lancement du serveur a été annulé."
+            withContext(Dispatchers.Main) {
+                summaryCommands.add(command.take(100))
+                statusMessage = "Démarrage du serveur : " + command.take(50) + "…"
+            }
+            return terminal.startDevServer(command, workingFolderUriString)
+        }
+        if (tc.name == "stop_dev_server") {
+            return if (terminal.stopDevServer()) "Serveur de développement arrêté." else "Aucun serveur de développement en cours."
+        }
+        if (tc.name == "update_todos") {
+            val list = parseTodos(tc.arguments)
+            withContext(Dispatchers.Main) { todos = list }
+            return "Liste de tâches mise à jour (" + list.count { it.done } + "/" + list.size + " terminées)."
         }
         if (tc.name == "ask_user") {
             val questions = parseAskQuestions(tc.arguments)
@@ -760,10 +1268,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun waitForDeleteConfirmation(path: String, toolCallId: String): Boolean {
         return suspendCancellableCoroutine { continuation ->
             statusMessage = "En attente de ta confirmation…"
+            alertUser("Confirmation requise", "Supprimer $path ?")
             pendingDelete = PendingDelete(path, toolCallId)
             onDeleteConfirmed = { allowed ->
                 pendingDelete = null
-                statusMessage = "Réflexion de l'agent…"
+                statusMessage = "Exécution en cours…"
                 continuation.resume(allowed, null)
             }
             continuation.invokeOnCancellation {
@@ -779,13 +1288,43 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         pendingDelete = null
     }
 
-    private suspend fun waitForCommandConfirmation(command: String, toolCallId: String): Boolean {
+    private val pushRegex = Regex("""(^|[;&|\s])git(\s+-C\s+\S+)?\s+push(\s|$)""")
+    private val commitRegex = Regex("""(^|[;&|\s])git(\s+-C\s+\S+)?\s+commit(\s|$)""")
+
+    /** Branche courante et dépôt(s) distant(s) du projet, pour la confirmation d'un git push. */
+    private suspend fun describePushTarget(command: String): String {
+        val res = terminal.runCommand(
+            "git rev-parse --abbrev-ref HEAD 2>&1; git remote -v 2>&1",
+            workingFolderUriString, 15
+        ) { }
+        val lines = res.lines().drop(1).filter { it.isNotBlank() }
+        val branch = lines.firstOrNull()?.trim().orEmpty()
+        val remotes = lines.drop(1).filter { it.contains("(push)") }
+            .map { it.replace("\t", "  ").replace(" (push)", "").trim() }
+        val sb = StringBuilder("Branche courante : " + branch.ifEmpty { "inconnue" })
+        if (remotes.isEmpty()) sb.append("\nDépôt : aucun remote trouvé")
+        else sb.append("\nDépôt :\n").append(remotes.joinToString("\n"))
+        val named = Regex("""\b(main|master)\b""").find(command.substringAfter("push"))?.value
+        if (named != null && branch.isNotEmpty() && named != branch) {
+            sb.append("\nAttention : la commande vise « $named », la branche courante est « $branch ».")
+        }
+        return sb.toString()
+    }
+
+    private suspend fun waitForCommandConfirmation(
+        command: String,
+        toolCallId: String,
+        note: String? = null,
+        changes: GitChanges? = null,
+        footer: String? = null
+    ): Boolean {
         return suspendCancellableCoroutine { continuation ->
             statusMessage = "En attente de ta confirmation…"
-            pendingCommand = PendingCommand(command, toolCallId)
+            alertUser("Confirmation requise", "Lancer : " + command.take(100))
+            pendingCommand = PendingCommand(command, toolCallId, note, changes, footer)
             onCommandConfirmed = { allowed ->
                 pendingCommand = null
-                statusMessage = "Réflexion de l'agent…"
+                statusMessage = "Exécution en cours…"
                 continuation.resume(allowed, null)
             }
             continuation.invokeOnCancellation {
@@ -804,10 +1343,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun waitForAsk(toolCallId: String, questions: List<AskQuestion>): String? {
         return suspendCancellableCoroutine { continuation ->
             statusMessage = "En attente de ta réponse…"
+            alertUser("L'agent te pose une question", questions.first().question.take(120))
             pendingAsk = PendingAsk(toolCallId, questions)
             onAskAnswered = { answers ->
                 pendingAsk = null
-                statusMessage = "Réflexion de l'agent…"
+                statusMessage = "Exécution en cours…"
                 continuation.resume(answers, null)
             }
             continuation.invokeOnCancellation {
@@ -854,6 +1394,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (res.startsWith("Succès")) {
             withContext(Dispatchers.Main) {
                 modifiedPaths[path] = true
+                if (path !in summaryFiles) summaryFiles.add(path)
                 if (!exists || full != null) agentUndo.add(UndoEntry(path, full))
                 editor.onExternalWrite(path, content)
             }
@@ -891,6 +1432,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val diff = DiffUtil.diff(oldContent, content)
 
         return suspendCancellableCoroutine { continuation ->
+            alertUser("Confirmation requise", "Écrire $path ?")
             pendingWrite = PendingWrite(path, content, toolCallId, diff)
             onWriteConfirmed = { allowed ->
                 pendingWrite = null

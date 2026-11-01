@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import com.zagent.app.agent.AgentNotifier
 import com.zagent.app.ui.screens.ChatScreen
 import com.zagent.app.ui.screens.EditorScreen
 import com.zagent.app.ui.screens.FileBrowserScreen
@@ -34,9 +35,20 @@ import com.zagent.app.update.UpdateHost
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
 
+    override fun onStart() {
+        super.onStart()
+        AgentNotifier.appInForeground = true
+    }
+
+    override fun onStop() {
+        AgentNotifier.appInForeground = false
+        super.onStop()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        AgentNotifier.ensureChannels(this)
         setContent {
             val systemDark = isSystemInDarkTheme()
             val dark = viewModel.themeIsDark

@@ -1,6 +1,9 @@
 package com.zagent.app.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -33,14 +36,28 @@ import com.zagent.app.ui.theme.SpaceGrotesk
 import com.zagent.app.ui.theme.Zcolors
 import com.zagent.app.ui.viewmodel.MainViewModel
 
-/** Choix d'un projet existant (~/projects/...) ou création d'un nouveau projet. */
+/** Choix d'un projet existant (~/projects/...), création, import (zip ou dossier) et export en zip. */
 @Composable
 fun ProjectPickerDialog(viewModel: MainViewModel) {
     val c = Zcolors
     var name by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
-    val projects = remember { viewModel.listProjects() }
+    // La liste est relue après chaque import (le statut change à la fin du transfert).
+    val projects = remember(viewModel.transferStatus, viewModel.transferBusy) { viewModel.listProjects() }
     val current = viewModel.workingFolderUriString
+    var exportTarget by remember { mutableStateOf<String?>(null) }
+
+    val zipPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) viewModel.importZip(uri)
+    }
+    val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) viewModel.importFolder(uri)
+    }
+    val exportPicker = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+        val target = exportTarget
+        if (uri != null && target != null) viewModel.exportProject(target, uri)
+        exportTarget = null
+    }
 
     AlertDialog(
         onDismissRequest = { viewModel.isProjectPickerOpen = false },
@@ -76,7 +93,20 @@ fun ProjectPickerDialog(viewModel: MainViewModel) {
                                     p,
                                     color = if (active) c.green else c.text,
                                     style = TextStyle(fontFamily = JetBrainsMono, fontSize = 13.sp),
-                                    modifier = Modifier.padding(start = 10.dp)
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(start = 10.dp)
+                                )
+                                Text(
+                                    "Exporter",
+                                    color = if (viewModel.transferBusy) c.text3 else c.cyan,
+                                    style = TextStyle(fontSize = 12.sp),
+                                    modifier = Modifier
+                                        .clickable(enabled = !viewModel.transferBusy) {
+                                            exportTarget = p
+                                            exportPicker.launch("$p.zip")
+                                        }
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
                                 )
                             }
                         }
@@ -84,7 +114,7 @@ fun ProjectPickerDialog(viewModel: MainViewModel) {
                     Spacer(Modifier.height(12.dp))
                 } else {
                     Text(
-                        "Aucun projet pour l'instant. Crée le premier ci-dessous.",
+                        "Aucun projet pour l'instant. Crée le premier ci-dessous ou importe-en un.",
                         color = c.text2,
                         style = TextStyle(fontSize = 13.sp)
                     )
@@ -101,6 +131,29 @@ fun ProjectPickerDialog(viewModel: MainViewModel) {
                 error?.let {
                     Spacer(Modifier.height(6.dp))
                     Text(it, color = c.amber, style = TextStyle(fontSize = 12.sp))
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(
+                        enabled = !viewModel.transferBusy,
+                        onClick = {
+                            zipPicker.launch(
+                                arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream")
+                            )
+                        }
+                    ) { Text("Importer un zip", color = if (viewModel.transferBusy) c.text3 else c.cyan) }
+                    TextButton(
+                        enabled = !viewModel.transferBusy,
+                        onClick = { folderPicker.launch(null) }
+                    ) { Text("Importer un dossier", color = if (viewModel.transferBusy) c.text3 else c.cyan) }
+                }
+                viewModel.transferStatus?.let {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        it,
+                        color = if (it.startsWith("Erreur")) c.amber else c.text2,
+                        style = TextStyle(fontSize = 12.sp)
+                    )
                 }
             }
         },

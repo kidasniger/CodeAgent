@@ -172,7 +172,8 @@ fun PreviewPane(
         }
     }
     val p = port
-    server.fallbackDirs = ancestorDirs(path)
+    val isUrl = path.startsWith("http://") || path.startsWith("https://")
+    server.fallbackDirs = if (isUrl) emptyList() else ancestorDirs(path)
     AndroidView(
         factory = { webView },
         modifier = modifier,
@@ -181,7 +182,10 @@ fun PreviewPane(
                 val key = path + "#" + reloadKey + "@" + p
                 if (wv.tag != key) {
                     wv.tag = key
-                    if (p > 0) {
+                    if (isUrl) {
+                        // serveur de développement : adresse locale directe
+                        wv.loadUrl(path)
+                    } else if (p > 0) {
                         wv.loadUrl("http://127.0.0.1:" + p + "/" + Uri.encode(path, "/"))
                     } else {
                         wv.loadDataWithBaseURL(
