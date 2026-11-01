@@ -29,6 +29,7 @@ import com.zagent.app.ui.screens.SplashScreen
 import com.zagent.app.ui.screens.TerminalScreen
 import com.zagent.app.ui.theme.ZAgentTheme
 import com.zagent.app.ui.theme.Zcolors
+import com.zagent.app.ui.theme.resolveDarkTheme
 import com.zagent.app.ui.viewmodel.MainViewModel
 import com.zagent.app.update.UpdateHost
 
@@ -51,7 +52,7 @@ class MainActivity : ComponentActivity() {
         AgentNotifier.ensureChannels(this)
         setContent {
             val systemDark = isSystemInDarkTheme()
-            val dark = viewModel.themeIsDark
+            val dark = viewModel.themeMode.resolveDarkTheme(systemDark)
             ZAgentTheme(darkTheme = dark) {
                 SurfaceBackground()
                 AppRoot(viewModel, systemDark)

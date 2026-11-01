@@ -15,6 +15,19 @@ import androidx.compose.ui.unit.dp
 val Zcolors: ZColors
     @Composable get() = LocalZColors.current
 
+/** Mode de thème choisi par l'utilisateur : suit le système, ou force clair/sombre. */
+enum class ThemeMode { SYSTEM, LIGHT, DARK }
+
+/**
+ * Convertit le mode choisi en thème effectif.
+ * SYSTEM suit le réglage sombre d'Android ; LIGHT et DARK sont forcés.
+ */
+fun ThemeMode.resolveDarkTheme(systemDark: Boolean): Boolean = when (this) {
+    ThemeMode.SYSTEM -> systemDark
+    ThemeMode.LIGHT -> false
+    ThemeMode.DARK -> true
+}
+
 // Rayons du design system : 8 / 16 / 24 / full
 val ZShapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp),

@@ -25,6 +25,7 @@ import com.zagent.app.data.FileRepository
 import com.zagent.app.data.SettingsManager
 import com.zagent.app.ui.editor.ConsoleState
 import com.zagent.app.ui.editor.EditorController
+import com.zagent.app.ui.theme.ThemeMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -88,12 +89,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var isSettingsOpen by mutableStateOf(false)
 
     // ── Apparence & flux de démarrage ───────────────────────────────────────
-    var themeIsDark by mutableStateOf(settingsManager.themeIsDark)
+    var themeMode by mutableStateOf(settingsManager.themeMode)
     var onboardingDone by mutableStateOf(settingsManager.onboardingDone)
 
-    fun setTheme(dark: Boolean) {
-        themeIsDark = dark
-        settingsManager.themeIsDark = dark
+    fun setThemeMode(mode: ThemeMode) {
+        themeMode = mode
+        settingsManager.themeMode = mode
     }
 
     fun completeOnboarding() {

@@ -70,6 +70,7 @@ import com.zagent.app.ui.components.ZLogo
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.SpaceGrotesk
+import com.zagent.app.ui.theme.ThemeMode
 import com.zagent.app.ui.theme.Zcolors
 import com.zagent.app.ui.viewmodel.MainViewModel
 
@@ -564,10 +565,21 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                         )
                     }
                     Spacer(Modifier.width(12.dp))
-                    Text("Thème", style = MaterialTheme.typography.titleMedium, color = c.text, modifier = Modifier.weight(1f))
+                    Column(Modifier.weight(1f)) {
+                        Text("Thème", style = MaterialTheme.typography.titleMedium, color = c.text)
+                        Text(
+                            when (viewModel.themeMode) {
+                                ThemeMode.SYSTEM -> "Suit le réglage du système"
+                                ThemeMode.LIGHT -> "Toujours clair"
+                                ThemeMode.DARK -> "Toujours sombre"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = c.text2
+                        )
+                    }
                     ThemeSegmented(
-                        dark = viewModel.themeIsDark,
-                        onDark = { viewModel.setTheme(it) }
+                        mode = viewModel.themeMode,
+                        onSelect = { viewModel.setThemeMode(it) }
                     )
                 }
             }
@@ -640,8 +652,9 @@ private fun ExpandableRow(
     }
 }
 
+/** Contrôle segmenté à 3 options : Système / Clair / Sombre. */
 @Composable
-private fun ThemeSegmented(dark: Boolean, onDark: (Boolean) -> Unit) {
+private fun ThemeSegmented(mode: ThemeMode, onSelect: (ThemeMode) -> Unit) {
     val c = Zcolors
     Row(
         modifier = Modifier
@@ -650,8 +663,9 @@ private fun ThemeSegmented(dark: Boolean, onDark: (Boolean) -> Unit) {
             .border(1.dp, c.border, RoundedCornerShape(50))
             .padding(3.dp)
     ) {
-        SegOption("Sombre", dark, { onDark(true) }, c)
-        SegOption("Clair", !dark, { onDark(false) }, c)
+        SegOption("Système", mode == ThemeMode.SYSTEM, { onSelect(ThemeMode.SYSTEM) }, c)
+        SegOption("Clair", mode == ThemeMode.LIGHT, { onSelect(ThemeMode.LIGHT) }, c)
+        SegOption("Sombre", mode == ThemeMode.DARK, { onSelect(ThemeMode.DARK) }, c)
     }
 }
 

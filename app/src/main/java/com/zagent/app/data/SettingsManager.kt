@@ -3,6 +3,7 @@ package com.zagent.app.data
 import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.zagent.app.ui.theme.ThemeMode
 
 class SettingsManager(context: Context) {
     private val masterKey = MasterKey.Builder(context)
@@ -16,6 +17,25 @@ class SettingsManager(context: Context) {
         EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
         EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
     )
+
+    init {
+        migrateThemeKey()
+    }
+
+    /**
+     * Migration de l'ancienne clé booléenne « theme_dark » vers le mode à 3 états :
+     * true → DARK, false → LIGHT, puis suppression de l'ancienne clé.
+     * Ne s'exécute qu'une seule fois (l'ancienne clé disparaît après migration).
+     */
+    private fun migrateThemeKey() {
+        if (prefs.contains(LEGACY_KEY_THEME_DARK)) {
+            val wasDark = prefs.getBoolean(LEGACY_KEY_THEME_DARK, true)
+            prefs.edit()
+                .putString(KEY_THEME_MODE, if (wasDark) ThemeMode.DARK.name else ThemeMode.LIGHT.name)
+                .remove(LEGACY_KEY_THEME_DARK)
+                .apply()
+        }
+    }
 
     var apiKey: String
         get() = prefs.getString(KEY_API_KEY, "") ?: ""
@@ -42,10 +62,10 @@ class SettingsManager(context: Context) {
         get() = prefs.getString(KEY_FOLDER_URI, null)
         set(value) = prefs.edit().putString(KEY_FOLDER_URI, value).apply()
 
-    /** true = sombre, false = clair. */
-    var themeIsDark: Boolean
-        get() = prefs.getBoolean(KEY_THEME_DARK, true)
-        set(value) = prefs.edit().putBoolean(KEY_THEME_DARK, value).apply()
+    /** Mode de thème : Système / Clair / Sombre (voir [ThemeMode]). */
+    var themeMode: ThemeMode
+        get() = ThemeMode.entries.firstOrNull { it.name == prefs.getString(KEY_THEME_MODE, null) } ?: ThemeMode.SYSTEM
+        set(value) = prefs.edit().putString(KEY_THEME_MODE, value.name).apply()
 
     var onboardingDone: Boolean
         get() = prefs.getBoolean(KEY_ONBOARDING_DONE, false)
@@ -87,7 +107,8 @@ class SettingsManager(context: Context) {
         private const val KEY_AUTO_MODE = "auto_mode"
         private const val KEY_SMART_MODE = "smart_mode"
         private const val KEY_FOLDER_URI = "folder_uri"
-        private const val KEY_THEME_DARK = "theme_dark"
+        private const val KEY_THEME_MODE = "theme_mode"
+        private const val LEGACY_KEY_THEME_DARK = "theme_dark"
         private const val KEY_ONBOARDING_DONE = "onboarding_done"
         private const val KEY_ALWAYS_ALLOW = "always_allow_paths"
     }
