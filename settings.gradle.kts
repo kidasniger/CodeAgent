@@ -26,6 +26,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "My Application"
+rootProject.name = "CodeAgent"
 
 include(":app")

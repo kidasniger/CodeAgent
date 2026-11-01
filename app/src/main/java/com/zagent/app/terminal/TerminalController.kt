@@ -144,9 +144,9 @@ class TerminalController(
         state = State.Working("Recherche du système", null)
         scope.launch(Dispatchers.IO) {
             try {
-                val url = resolveBootstrapUrl(arch)
+                val (url, expectedSha) = resolveBootstrapUrl(arch)
                 val zip = File(baseDir, "bootstrap-$arch.zip")
-                download(url, zip)
+                download(url, zip, expectedSha)
                 setState(State.Working("Extraction", null))
                 extract(zip)
                 zip.delete()
@@ -163,8 +163,8 @@ class TerminalController(
         }
     }
 
-    /** Trouve le dernier bootstrap officiel Termux (variante Android 7+) pour l'architecture donnée. */
-    private fun resolveBootstrapUrl(arch: String): String {
+    /** Trouve le dernier bootstrap officiel Termux (variante Android 7+) : URL + empreinte SHA-256. */
+    private fun resolveBootstrapUrl(arch: String): Pair<String, String?> {
         val client = OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
@@ -182,7 +182,11 @@ class TerminalController(
                 val assets = rel.optJSONArray("assets") ?: continue
                 for (j in 0 until assets.length()) {
                     val a = assets.getJSONObject(j)
-                    if (a.optString("name") == "bootstrap-$arch.zip") return a.getString("browser_download_url")
+                    if (a.optString("name") == "bootstrap-$arch.zip") {
+                        val digest = a.optString("digest")
+                        val sha = if (digest.startsWith("sha256:", true)) digest.substring(7).lowercase() else null
+                        return a.getString("browser_download_url") to sha?.takeIf { it.length == 64 }
+                    }
                 }
             }
         }
@@ -191,7 +195,7 @@ class TerminalController(
 
     private suspend fun setState(s: State) = withContext(Dispatchers.Main) { state = s }
 
-    private suspend fun download(url: String, dest: File) {
+    private suspend fun download(url: String, dest: File, expectedSha256: String?) {
         baseDir.mkdirs()
         val client = OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
@@ -203,6 +207,7 @@ class TerminalController(
             val total = body.contentLength()
             var done = 0L
             var lastPct = -1
+            val digest = java.security.MessageDigest.getInstance("SHA-256")
             body.byteStream().use { input ->
                 FileOutputStream(dest).use { out ->
                     val buf = ByteArray(64 * 1024)
@@ -210,6 +215,7 @@ class TerminalController(
                         val n = input.read(buf)
                         if (n < 0) break
                         out.write(buf, 0, n)
+                        digest.update(buf, 0, n)
                         done += n
                         if (total > 0) {
                             val pct = (done * 100 / total).toInt()
@@ -219,6 +225,19 @@ class TerminalController(
                             }
                         }
                     }
+                }
+            }
+            // Intégrité : empreinte publiée par l'API GitHub, sinon signature ZIP.
+            val actual = digest.digest().joinToString("") { "%02x".format(it) }
+            if (expectedSha256 != null && actual != expectedSha256) {
+                dest.delete()
+                error("Empreinte du système invalide (téléchargement corrompu ou altéré)")
+            }
+            dest.inputStream().use { ins ->
+                val magic = ByteArray(2)
+                if (ins.read(magic) != 2 || !magic.contentEquals(byteArrayOf(0x50, 0x4B))) {
+                    dest.delete()
+                    error("Le fichier téléchargé n'est pas une archive ZIP valide")
                 }
             }
         }

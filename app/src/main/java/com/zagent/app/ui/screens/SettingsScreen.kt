@@ -86,8 +86,11 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
     var autoMode by rememberSaveable { mutableStateOf(viewModel.autoModeInput) }
     var model by rememberSaveable { mutableStateOf(viewModel.modelInput) }
 
-    // Sauvegarde automatique à chaque modification
+    // Sauvegarde automatique à chaque modification, avec un court délai :
+    // EncryptedSharedPreferences chiffre à chaque écriture, un enregistrement
+    // par frappe provoquait des à-coups de saisie sur les appareils modestes.
     LaunchedEffect(apiKey, model, baseUrl, autoMode) {
+        kotlinx.coroutines.delay(400)
         viewModel.saveSettings(apiKey, model, baseUrl, autoMode)
     }
 

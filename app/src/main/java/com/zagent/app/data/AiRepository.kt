@@ -7,6 +7,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
 class AiRepository {
     private val client = OkHttpClient.Builder()
@@ -14,6 +15,14 @@ class AiRepository {
         .readTimeout(180, TimeUnit.SECONDS)
         .writeTimeout(180, TimeUnit.SECONDS)
         .build()
+
+    /** Appel réseau en cours : permet de l'interrompre quand la conversation est vidée. */
+    private val activeCall = AtomicReference<Call?>(null)
+
+    /** Annule l'appel réseau en cours (sinon le flux SSE continue en tâche de fond après l'annulation). */
+    fun cancelActive() {
+        activeCall.getAndSet(null)?.cancel()
+    }
 
     sealed class ApiResponse {
         data class Success(
@@ -145,7 +154,10 @@ class AiRepository {
                 .build()
 
             try {
-                client.newCall(request).execute().use { response ->
+                val call = client.newCall(request)
+                activeCall.set(call)
+                try {
+                    call.execute().use { response ->
                     if (response.isSuccessful) {
                         return parseStream(response, onDelta)
                     } else {
@@ -180,6 +192,9 @@ class AiRepository {
                             return ApiResponse.Error("Erreur API (HTTP $code): $responseString")
                         }
                     }
+                    }
+                } finally {
+                    activeCall.compareAndSet(call, null)
                 }
             } catch (e: IOException) {
                 attempt++

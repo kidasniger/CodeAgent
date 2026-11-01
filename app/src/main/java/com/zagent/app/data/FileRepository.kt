@@ -248,11 +248,22 @@ class FileRepository(private val context: Context, private val rootPath: String?
         val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
         val target = resolveInside(root, path) ?: return "Erreur: Chemin invalide: $path"
         if (target.isDirectory) return "Erreur: C'est un dossier: $path"
+        val tmp = File(target.parentFile, target.name + ".zagent-tmp")
         return try {
             target.parentFile?.mkdirs()
-            target.writeBytes(content.toByteArray(Charsets.UTF_8))
-            "Succès: Fichier écrit $path"
+            // Écriture atomique : le fichier n'est remplacé qu'une fois le contenu
+            // intégralement enregistré (un crash ne laisse plus de fichier tronqué).
+            tmp.writeBytes(content.toByteArray(Charsets.UTF_8))
+            if (tmp.renameTo(target)) {
+                "Succès: Fichier écrit $path"
+            } else {
+                // Repli rare (file system différent) : copie directe.
+                target.writeBytes(tmp.readBytes())
+                tmp.delete()
+                "Succès: Fichier écrit $path"
+            }
         } catch (e: Exception) {
+            tmp.delete()
             "Erreur d'écriture: ${e.localizedMessage}"
         }
     }

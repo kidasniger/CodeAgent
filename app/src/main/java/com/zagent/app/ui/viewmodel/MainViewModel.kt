@@ -539,6 +539,7 @@ done; } 2>&1 | head -c 50000
     override fun onCleared() {
         terminal.onDevServerChanged = null
         terminal.stopDevServer()
+        aiRepository.cancelActive()
         super.onCleared()
     }
 
@@ -588,6 +589,7 @@ done; } 2>&1 | head -c 50000
     fun clearConversation() {
         agentJob?.cancel()
         agentJob = null
+        aiRepository.cancelActive()
         onWriteConfirmed = null
         pendingWrite = null
         onAskAnswered = null
@@ -1243,11 +1245,18 @@ done; } 2>&1 | head -c 50000
             // Un git push est toujours confirmé (même en mode Auto), avec la branche et le dépôt visés.
             val isPush = pushRegex.containsMatchIn(command)
             val isCommit = commitRegex.containsMatchIn(command)
+            // Une commande clairement destructrice est toujours confirmée, même en mode Auto.
+            val isDangerous = destructiveRegexes.any { it.containsMatchIn(command) }
             val note = if (isPush) describePushTarget(command) else null
             // Un git commit est toujours confirmé, avec le diff de tous les changements.
             val changes = if (isCommit) readGitChanges() else null
-            val footer = if (isCommit && !isPush) "Un git commit est toujours confirmé, même en mode Auto : vérifie les changements ci-dessus." else null
-            val allowed = (autoModeInput && !isPush && !isCommit) || waitForCommandConfirmation(command, tc.id, note, changes, footer)
+            val footer = when {
+                isCommit && !isPush -> "Un git commit est toujours confirmé, même en mode Auto : vérifie les changements ci-dessus."
+                isDangerous -> "Cette commande peut détruire des données hors du projet : elle est toujours confirmée, même en mode Auto."
+                else -> null
+            }
+            val allowed = (autoModeInput && !isPush && !isCommit && !isDangerous) ||
+                waitForCommandConfirmation(command, tc.id, note, changes, footer)
             if (!allowed) return "Refusé par l'utilisateur: la commande a été annulée."
             withContext(Dispatchers.Main) {
                 liveOutput = ""
@@ -1330,6 +1339,25 @@ done; } 2>&1 | head -c 50000
 
     private val pushRegex = Regex("""(^|[;&|\s])git(\s+-C\s+\S+)?\s+push(\s|$)""")
     private val commitRegex = Regex("""(^|[;&|\s])git(\s+-C\s+\S+)?\s+commit(\s|$)""")
+
+    /**
+     * Dernier rempart contre les commandes catastrophiques : même en mode Auto, elles
+     * passent par une confirmation manuelle. Liste volontairement non exhaustive, limitée
+     * aux cibles évidentes (racine, home, formatage, périphériques, fork bomb) pour ne
+     * pas casser les usages légitimes du projet.
+     */
+    private val destructiveRegexes = listOf(
+        // rm récursif visant la racine (« / », « /* »), le home (« ~ », « $HOME ») seuls
+        Regex("""\brm\b[^;&|]*(?:\s|\"|')?(?:/(?:\*|['"\s]|$)|~(?:['"\s]|$)|\$HOME(?:['"\s]|$))"""),
+        // formatage d'un système de fichiers
+        Regex("""\bmkfs(?:\.\w+)?\b"""),
+        // écriture brute sur un périphérique bloc
+        Regex("""\bdd\b[^;&|]*\bof=/dev/"""),
+        // chmod récursif ouvert sur la racine
+        Regex("""\bchmod\s+-R\b[^;&|]*\s/\s*$"""),
+        // fork bomb
+        Regex(""":\s*\(\s*\)\s*\{\s*:\s*\|\s*:\s*&\s*\}\s*;\s*:""")
+    )
 
     /** Branche courante et dépôt(s) distant(s) du projet, pour la confirmation d'un git push. */
     private suspend fun describePushTarget(command: String): String {
@@ -1477,6 +1505,12 @@ done; } 2>&1 | head -c 50000
             onWriteConfirmed = { allowed ->
                 pendingWrite = null
                 continuation.resume(allowed, null)
+            }
+            // Cohérent avec les autres confirmations : si la boucle de l'agent est
+            // annulée pendant l'attente, la carte ne doit plus rester à l'écran.
+            continuation.invokeOnCancellation {
+                pendingWrite = null
+                onWriteConfirmed = null
             }
         }
     }
