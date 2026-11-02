@@ -262,6 +262,18 @@ class SettingsManager(context: Context) {
             .putFloat(glassKey(KEY_GLASS_TINT, true), 0.35f)
             .putFloat(glassKey(KEY_GLASS_FILM, true), 0.22f)
             .putString(glassKey(KEY_GLASS_ACTIVE_TAB, true), "Chat")
+            .putString(glassKey(KEY_GLASS_MATERIAL_V2, false), "BALANCED")
+            .putString(glassKey(KEY_GLASS_COLOUR_V2, false), "")
+            .putFloat(glassKey(KEY_GLASS_FROST_DP, false), 6f)
+            .putFloat(glassKey(KEY_GLASS_COLOUR_INTENSITY, false), 0.70f)
+            .putFloat(glassKey(KEY_GLASS_FILM_V2, false), 0.60f)
+            .putFloat(glassKey(KEY_GLASS_ACTIVE_INTENSITY, false), 0.26f)
+            .putString(glassKey(KEY_GLASS_MATERIAL_V2, true), "BALANCED")
+            .putString(glassKey(KEY_GLASS_COLOUR_V2, true), "")
+            .putFloat(glassKey(KEY_GLASS_FROST_DP, true), 6f)
+            .putFloat(glassKey(KEY_GLASS_COLOUR_INTENSITY, true), 0.70f)
+            .putFloat(glassKey(KEY_GLASS_FILM_V2, true), 0.35f)
+            .putFloat(glassKey(KEY_GLASS_ACTIVE_INTENSITY, true), 0.26f)
             .apply()
         ZAccentOverride.value = null
     }
