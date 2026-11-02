@@ -34,6 +34,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.awaitEachGesture
+import androidx.compose.ui.input.pointer.awaitFirstDown
+import androidx.compose.ui.input.pointer.awaitPointerEvent
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalContext
 import com.zagent.app.agent.AgentNotifier
 import com.zagent.app.ui.screens.ChatScreen
@@ -164,7 +170,25 @@ private fun AppRoot(viewModel: MainViewModel, darkTheme: Boolean) {
     }
 
     CompositionLocalProvider(LocalGlass provides viewModel.glassSettings, LocalHazeState provides hazeState) {
-        Box(Modifier.fillMaxSize().nestedScroll(navScrollConnection).haze(state = hazeState)) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .nestedScroll(navScrollConnection)
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                        var totalY = 0f
+                        do {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                            totalY += change.positionChange().y
+                            if (totalY < -24f) navVisible = false
+                            else if (totalY > 24f) navVisible = true
+                        } while (event.changes.any { it.pressed })
+                    }
+                }
+                .haze(state = hazeState)
+        ) {
         val underlyingScreen = if (viewModel.currentScreen == com.zagent.app.ui.viewmodel.AppScreen.SETTINGS) {
             viewModel.navigationPreviousScreen()
         } else {
@@ -200,7 +224,7 @@ private fun AppRoot(viewModel: MainViewModel, darkTheme: Boolean) {
             com.zagent.app.ui.screens.ProjectPickerDialog(viewModel)
         }
         AnimatedVisibility(
-            visible = navVisible && viewModel.currentScreen != com.zagent.app.ui.viewmodel.AppScreen.SETTINGS && viewModel.currentScreen != com.zagent.app.ui.viewmodel.AppScreen.TERMINAL && !viewModel.isProjectPickerOpen,
+            visible = navVisible && viewModel.currentScreen != com.zagent.app.ui.viewmodel.AppScreen.SETTINGS && !viewModel.isProjectPickerOpen,
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
             FloatingTabBar(
