@@ -77,7 +77,7 @@ class MainActivity : ComponentActivity() {
             }
             ZAgentTheme(
                 darkTheme = dark,
-                stylePreset = settings.stylePresetId,
+                stylePreset = if (settings.stylePresetId == com.zagent.app.ui.theme.StylePresetIds.CUSTOM) settings.styleBasePresetId else settings.stylePresetId,
                 oledBlack = viewModel.oledBlack,
                 dynamicColors = viewModel.dynamicSystemColors,
                 cornerRadius = viewModel.cornerRadius
