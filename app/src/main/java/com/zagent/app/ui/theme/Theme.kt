@@ -13,7 +13,7 @@ import androidx.compose.ui.unit.dp
 
 /** Accès court aux tokens étendus : `Zcolors.text2`. */
 val Zcolors: ZColors
-    @Composable get() = LocalZColors.current
+    @Composable get() = ZAccentOverride.value?.let { LocalZColors.current.withAccent(it) } ?: LocalZColors.current
 
 /**
  * Paramètres d'un style visuel complet.
