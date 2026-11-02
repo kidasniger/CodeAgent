@@ -32,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -579,9 +580,16 @@ fun GlassPreviewCard(
     val blurLevel = blur.coerceIn(0f, 1f)
     val tintLevel = tint.coerceIn(0f, 1f)
     val filmLevel = film.coerceIn(0f, 1f)
-    val surfaceAlpha = (0.12f + blurLevel * 0.20f + filmLevel * 0.28f).coerceIn(0.12f, 0.60f)
+    val surfaceAlpha = when (material.lowercase()) {
+        "solid" -> 0.90f
+        "frosted" -> (0.38f + blurLevel * 0.18f + filmLevel * 0.18f).coerceIn(0.38f, 0.74f)
+        else -> (0.12f + blurLevel * 0.20f + filmLevel * 0.28f).coerceIn(0.12f, 0.60f)
+    }
     val surfaceColor = glassColor.copy(alpha = surfaceAlpha)
-    val outlineColor = glassColor.copy(alpha = (0.20f + tintLevel * 0.48f).coerceIn(0.20f, 0.68f))
+    val outlineColor = glassColor.copy(
+        alpha = if (material.equals("Solid", ignoreCase = true)) 0.95f
+        else (0.20f + tintLevel * 0.48f).coerceIn(0.20f, 0.68f)
+    )
     val tabs = listOf("Chat", "Fichiers", "Éditeur", "Terminal", "Réglages")
 
     Box(
@@ -592,19 +600,19 @@ fun GlassPreviewCard(
             .background(
                 Brush.linearGradient(
                     colors = listOf(
-                        glassColor.copy(alpha = 0.95f),
-                        c.violet.copy(alpha = 0.92f),
-                        c.cyan.copy(alpha = 0.82f)
+                        glassColor.copy(alpha = 0.98f),
+                        c.violet.copy(alpha = 0.72f),
+                        glassColor.copy(alpha = 0.82f)
                     )
                 )
             )
     ) {
-        Canvas(Modifier.matchParentSize()) {
+        Canvas(Modifier.matchParentSize().blur((blurLevel * 10f).dp)) {
             val stripeGap = 18.dp.toPx()
             var x = -size.height
             while (x < size.width) {
                 drawLine(
-                    color = Color.White.copy(alpha = 0.07f + filmLevel * 0.10f),
+                    color = Color.White.copy(alpha = 0.07f + filmLevel * 0.16f),
                     start = Offset(x, 0f),
                     end = Offset(x + size.height, size.height),
                     strokeWidth = 7.dp.toPx()
