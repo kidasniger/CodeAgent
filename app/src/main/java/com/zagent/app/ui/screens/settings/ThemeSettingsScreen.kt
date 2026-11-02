@@ -11,6 +11,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.Switch
+import androidx.compose.material3.OutlinedTextField
+import android.os.Build
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,6 +26,11 @@ import com.zagent.app.ui.viewmodel.MainViewModel
 
 @Composable
 fun ThemeSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
+    val settings = viewModel.settingsManager
+    var darkTime by remember { mutableStateOf(settings.scheduledDarkTime) }
+    var lightTime by remember { mutableStateOf(settings.scheduledLightTime) }
+    var oled by remember { mutableStateOf(settings.oledBlack) }
+    var dynamic by remember { mutableStateOf(settings.dynamicSystemColors) }
     SettingsPageScaffold(title = "Thème", onBack = onBack) {
         SettingsSectionLabel("MODE")
         SettingsCard {
@@ -35,10 +44,62 @@ fun ThemeSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             }
         }
         Spacer(Modifier.height(4.dp))
-        SettingsInfoRow(
-            title = "Thème de l’application",
-            description = "Le mode Système suit automatiquement l’apparence définie dans les réglages Android."
-        )
+        if (viewModel.themeMode == ThemeMode.SCHEDULED) {
+            SettingsSectionLabel("HORAIRES")
+            SettingsCard {
+                OutlinedTextField(
+                    value = darkTime,
+                    onValueChange = { value ->
+                        if (value.matches(Regex("\\d{0,2}:?\\d{0,2}"))) {
+                            darkTime = value
+                            if (value.matches(Regex("\\d{2}:\\d{2}")) && value.substring(0, 2).toIntOrNull() in 0..23 && value.substring(3, 5).toIntOrNull() in 0..59) settings.scheduledDarkTime = value
+                        }
+                    },
+                    label = { Text("Passage en sombre (HH:mm)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = lightTime,
+                    onValueChange = { value ->
+                        if (value.matches(Regex("\\d{0,2}:?\\d{0,2}"))) {
+                            lightTime = value
+                            if (value.matches(Regex("\\d{2}:\\d{2}")) && value.substring(0, 2).toIntOrNull() in 0..23 && value.substring(3, 5).toIntOrNull() in 0..59) settings.scheduledLightTime = value
+                        }
+                    },
+                    label = { Text("Passage en clair (HH:mm)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+        SettingsSectionLabel("OPTIONS D’AFFICHAGE")
+        SettingsCard {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("Noir pur (OLED)", color = Zcolors.text)
+                    Text("Fond noir et surfaces profondes en mode sombre", color = Zcolors.text2, style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
+                }
+                Switch(checked = oled, onCheckedChange = { oled = it; settings.oledBlack = it })
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                SettingsInsetDivider()
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Couleurs du système", color = Zcolors.text)
+                        Text("Utiliser la palette dynamique Android", color = Zcolors.text2, style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
+                    }
+                    Switch(checked = dynamic, onCheckedChange = { dynamic = it; settings.dynamicSystemColors = it })
+                }
+            }
+        }
+        $after
     }
 }
 
@@ -49,11 +110,13 @@ private fun ThemeModeRow(mode: ThemeMode, selected: Boolean, onClick: () -> Unit
         ThemeMode.SYSTEM -> "Système"
         ThemeMode.LIGHT -> "Clair"
         ThemeMode.DARK -> "Sombre"
+        ThemeMode.SCHEDULED -> "Planifié"
     }
     val subtitle = when (mode) {
         ThemeMode.SYSTEM -> "Suit le réglage de votre appareil"
         ThemeMode.LIGHT -> "Utilise toujours le thème clair"
         ThemeMode.DARK -> "Utilise toujours le thème sombre"
+        ThemeMode.SCHEDULED -> "Bascule automatiquement selon les horaires définis"
     }
     Row(
         modifier = Modifier
