@@ -79,6 +79,7 @@ import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -108,6 +109,9 @@ import com.zagent.app.ui.editor.SyntaxHighlighter
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.Zcolors
+import com.zagent.app.ui.theme.LocalGlass
+import com.zagent.app.ui.theme.LocalHazeState
+import com.zagent.app.ui.theme.glassSurface
 import com.zagent.app.ui.viewmodel.MainViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -291,6 +295,7 @@ fun EditorScreen(
         if (!fs) Row(
             Modifier
                 .fillMaxWidth()
+                .glassSurface(LocalHazeState.current, LocalGlass.current, c.isDark, RoundedCornerShape(24.dp), LocalContext.current)
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
