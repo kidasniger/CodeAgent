@@ -216,7 +216,9 @@ fun GlassSettingsScreen(onBack: () -> Unit) {
                     blur = it
                     settings.setGlassBlurFor(editDark, it)
                     markCustom()
-                }
+                },
+                defaultValue = 0.55f,
+                onReset = { blur = 0.55f; settings.setGlassBlurFor(editDark, 0.55f); markCustom() }
             )
             SettingsInsetDivider()
             GlassSlider(
@@ -226,7 +228,9 @@ fun GlassSettingsScreen(onBack: () -> Unit) {
                     tint = it
                     settings.setGlassTintFor(editDark, it)
                     markCustom()
-                }
+                },
+                defaultValue = 0.35f,
+                onReset = { tint = 0.35f; settings.setGlassTintFor(editDark, 0.35f); markCustom() }
             )
             SettingsInsetDivider()
             GlassSlider(
@@ -236,7 +240,9 @@ fun GlassSettingsScreen(onBack: () -> Unit) {
                     film = it
                     settings.setGlassFilmFor(editDark, it)
                     markCustom()
-                }
+                },
+                defaultValue = 0.22f,
+                onReset = { film = 0.22f; settings.setGlassFilmFor(editDark, 0.22f); markCustom() }
             )
         }
 
@@ -268,7 +274,9 @@ fun GlassSettingsScreen(onBack: () -> Unit) {
 private fun GlassSlider(
     title: String,
     value: Float,
-    onValueChange: (Float) -> Unit
+    onValueChange: (Float) -> Unit,
+    defaultValue: Float,
+    onReset: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 7.dp),
@@ -280,7 +288,12 @@ private fun GlassSlider(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(title, color = Zcolors.text)
-            Text("${(value * 100).toInt()} %", color = Zcolors.text2)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("${(value * 100).toInt()} %", color = Zcolors.text2)
+                if (kotlin.math.abs(value - defaultValue) > 0.001f) {
+                    TextButton(onClick = onReset) { Text("Réinitialiser") }
+                }
+            }
         }
         Slider(
             value = value,
