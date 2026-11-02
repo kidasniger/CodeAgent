@@ -31,7 +31,6 @@ import androidx.compose.material.icons.filled.Contrast
 import androidx.compose.material.icons.filled.DensityMedium
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -54,6 +53,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.ui.components.GlassAlertDialog
 import com.zagent.app.ui.components.CircleIconButton
 import com.zagent.app.ui.theme.StylePresetIds
 import com.zagent.app.ui.theme.GlassMaterial
@@ -131,7 +131,7 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         "density" -> DensitySettingsScreen(viewModel, onBack = { destination = null })
         else -> SettingsPageScaffold(title = "Apparence", onBack = onBack) {
             if (showResetAppearance) {
-                AlertDialog(
+                GlassAlertDialog(
                     onDismissRequest = { showResetAppearance = false },
                     title = { Text("Tout réinitialiser ?") },
                     text = { Text("Tous les réglages d’apparence seront restaurés : thème, presets, accents, verre clair et sombre, OLED, couleurs système, rayons et horaires. Les clés API et les projets ne seront pas modifiés.") },
