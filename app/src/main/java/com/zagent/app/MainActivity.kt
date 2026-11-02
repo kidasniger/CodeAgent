@@ -11,6 +11,11 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.align
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.Alignment
 import androidx.compose.runtime.CompositionLocalProvider
 import dev.chrisbanes.haze.HazeState
@@ -113,6 +118,16 @@ private fun SurfaceBackground() {
 @Composable
 private fun AppRoot(viewModel: MainViewModel, darkTheme: Boolean) {
     val hazeState = remember { HazeState() }
+    var navVisible by remember { mutableStateOf(true) }
+    val navScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y < -4f) navVisible = false
+                else if (available.y > 4f) navVisible = true
+                return Offset.Zero
+            }
+        }
+    }
     LaunchedEffect(darkTheme) { viewModel.reloadGlassSettings(darkTheme) }
     var showSplash by remember { mutableStateOf(true) }
 
@@ -150,7 +165,7 @@ private fun AppRoot(viewModel: MainViewModel, darkTheme: Boolean) {
     }
 
     CompositionLocalProvider(LocalGlass provides viewModel.glassSettings, LocalHazeState provides hazeState) {
-        Box(Modifier.fillMaxSize().haze(state = hazeState)) {
+        Box(Modifier.fillMaxSize().nestedScroll(navScrollConnection).haze(state = hazeState)) {
         val underlyingScreen = if (viewModel.currentScreen == com.zagent.app.ui.viewmodel.AppScreen.SETTINGS) {
             viewModel.navigationPreviousScreen()
         } else {
@@ -185,11 +200,13 @@ private fun AppRoot(viewModel: MainViewModel, darkTheme: Boolean) {
         if (viewModel.isProjectPickerOpen) {
             com.zagent.app.ui.screens.ProjectPickerDialog(viewModel)
         }
-        if (viewModel.currentScreen != com.zagent.app.ui.viewmodel.AppScreen.SETTINGS && !viewModel.isProjectPickerOpen) {
+        AnimatedVisibility(
+            visible = navVisible && viewModel.currentScreen != com.zagent.app.ui.viewmodel.AppScreen.SETTINGS && !viewModel.isProjectPickerOpen,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
             FloatingTabBar(
                 currentScreen = viewModel.currentScreen,
-                onNavigate = { viewModel.navigateTo(it) },
-                modifier = Modifier.align(Alignment.BottomCenter)
+                onNavigate = { viewModel.navigateTo(it) }
             )
         }
         }
