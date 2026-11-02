@@ -40,17 +40,11 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Key
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -135,7 +129,6 @@ fun ChatScreen(
     val messages by viewModel.messages.collectAsState()
     val listState = rememberLazyListState()
     var input by rememberSaveable { mutableStateOf("") }
-    var menuOpen by remember { mutableStateOf(false) }
 
     val chatRows = remember(messages) { buildChatRows(messages) }
     val lastFailedCmdId = remember(messages) {
@@ -162,12 +155,7 @@ fun ChatScreen(
         AmbientTopBar(
             viewModel = viewModel,
             scrolled = listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 8,
-            onOpenSettings = onOpenSettings,
-            onOpenExplorer = { viewModel.navigateTo(com.zagent.app.ui.viewmodel.AppScreen.FILE_BROWSER) },
-            onNewConversation = { viewModel.clearConversation() },
-            menuOpen = menuOpen,
-            onMenuToggle = { menuOpen = !menuOpen },
-            onMenuDismiss = { menuOpen = false }
+            onNewConversation = { viewModel.clearConversation() }
         )
 
         // Bannières d'état (erreur réseau, clé invalide, surcharge…)
@@ -351,12 +339,7 @@ fun ChatScreen(
 private fun AmbientTopBar(
     viewModel: MainViewModel,
     scrolled: Boolean,
-    onOpenSettings: () -> Unit,
-    onOpenExplorer: () -> Unit,
-    onNewConversation: () -> Unit,
-    menuOpen: Boolean,
-    onMenuToggle: () -> Unit,
-    onMenuDismiss: () -> Unit
+    onNewConversation: () -> Unit
 ) {
     val c = Zcolors
     Column(
@@ -410,47 +393,11 @@ private fun AmbientTopBar(
                 UsageLine(viewModel.totalTokens, viewModel.tokensEstimated, viewModel.estimatedCost)
             }
             Spacer(Modifier.width(10.dp))
-            Box {
-                CircleIconButton(Icons.Default.Menu, "Menu", onClick = onMenuToggle)
-                DropdownMenu(
-                    expanded = menuOpen,
-                    onDismissRequest = onMenuDismiss,
-                    shape = MaterialTheme.shapes.medium,
-                    containerColor = c.bg2,
-                    tonalElevation = 8.dp
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Nouvelle conversation", color = c.text) },
-                        leadingIcon = { Icon(Icons.Default.Refresh, null, tint = c.text2) },
-                        onClick = { onMenuDismiss(); onNewConversation() }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Explorateur", color = c.text) },
-                        leadingIcon = { Icon(Icons.Default.FolderOpen, null, tint = c.text2) },
-                        onClick = { onMenuDismiss(); onOpenExplorer() }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Terminal", color = c.text) },
-                        leadingIcon = { Icon(Icons.Default.Terminal, null, tint = c.text2) },
-                        onClick = { onMenuDismiss(); viewModel.navigateTo(com.zagent.app.ui.viewmodel.AppScreen.TERMINAL) }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Ouvrir dans le terminal", color = c.text) },
-                        leadingIcon = { Icon(Icons.Default.Terminal, null, tint = c.text2) },
-                        onClick = { onMenuDismiss(); viewModel.openTerminalInProject() }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Changements Git", color = c.text) },
-                        leadingIcon = { Icon(Icons.Default.Check, null, tint = c.text2) },
-                        onClick = { onMenuDismiss(); viewModel.openGitChanges() }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Réglages", color = c.text) },
-                        leadingIcon = { Icon(Icons.Default.Settings, null, tint = c.text2) },
-                        onClick = { onMenuDismiss(); onOpenSettings() }
-                    )
-                }
-            }
+            CircleIconButton(
+                Icons.Default.Refresh,
+                "Réinitialiser les discussions",
+                onClick = onNewConversation
+            )
         }
     }
 }
