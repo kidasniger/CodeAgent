@@ -75,6 +75,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         syncNavigationFlags()
     }
 
+    fun navigationPreviousScreen(): AppScreen =
+        navigationHistory.lastOrNull() ?: AppScreen.CHAT
+
     fun navigateBack(): Boolean {
         if (navigationHistory.isNotEmpty()) {
             currentScreen = navigationHistory.removeAt(navigationHistory.lastIndex)
