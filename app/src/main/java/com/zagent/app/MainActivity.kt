@@ -112,6 +112,7 @@ private fun SurfaceBackground() {
 
 @Composable
 private fun AppRoot(viewModel: MainViewModel, systemDark: Boolean) {
+    val hazeState = remember { HazeState() }
     var showSplash by remember { mutableStateOf(true) }
 
     if (showSplash) {
@@ -181,6 +182,14 @@ private fun AppRoot(viewModel: MainViewModel, systemDark: Boolean) {
 
         if (viewModel.isProjectPickerOpen) {
             com.zagent.app.ui.screens.ProjectPickerDialog(viewModel)
+        }
+        if (viewModel.currentScreen != com.zagent.app.ui.viewmodel.AppScreen.SETTINGS && !viewModel.isProjectPickerOpen) {
+            FloatingTabBar(
+                currentScreen = viewModel.currentScreen,
+                onNavigate = { viewModel.navigateTo(it) },
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
+        }
         }
     }
 }
