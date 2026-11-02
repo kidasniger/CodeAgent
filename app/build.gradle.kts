@@ -81,6 +81,8 @@ dependencies {
   implementation("com.github.termux.termux-app:terminal-emulator:v0.118.0")
   implementation(platform(libs.androidx.compose.bom))
   implementation(libs.androidx.activity.compose)
+  implementation(libs.haze)
+  implementation(libs.haze.materials)
   implementation(libs.androidx.compose.material.icons.core)
   implementation(libs.androidx.compose.material.icons.extended)
   implementation(libs.androidx.compose.material3)
