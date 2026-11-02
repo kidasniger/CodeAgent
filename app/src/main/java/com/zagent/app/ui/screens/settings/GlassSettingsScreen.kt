@@ -97,7 +97,7 @@ fun GlassSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
-                        if (current.material == item) Text("✓", color = Zcolors.primary, fontSize = 20.sp)
+                        if (current.material == item) Text("✓", color = Zcolors.cyan, fontSize = 20.sp)
                     }
                     if (index < GlassMaterial.entries.lastIndex) SettingsInsetDivider()
                 }
