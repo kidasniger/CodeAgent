@@ -16,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -32,6 +33,7 @@ fun FloatingTabBar(
     onNavigate: (AppScreen) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val glass = LocalGlass.current
     val haze = LocalHazeState.current
     val items = listOf(
@@ -43,7 +45,7 @@ fun FloatingTabBar(
     )
     Row(
         modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp)
-            .glassSurface(haze, glass, Zcolors.isDark, RoundedCornerShape(50.dp)),
+            .glassSurface(haze, glass, Zcolors.isDark, RoundedCornerShape(50.dp), context),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
