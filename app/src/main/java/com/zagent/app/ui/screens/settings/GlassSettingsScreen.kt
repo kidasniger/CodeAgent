@@ -96,12 +96,12 @@ fun GlassSettingsScreen(onBack: () -> Unit) {
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TextButton(onClick = { showResetDialog = true }) { Text("Tout réinitialiser") }
+            TextButton(onClick = { showResetDialog = true }) { Text("Réinitialiser le verre") }
         }
         if (showResetDialog) {
             AlertDialog(
                 onDismissRequest = { showResetDialog = false },
-                title = { Text("Réinitialiser l’apparence ?") },
+                title = { Text("Réinitialiser le verre ?") },
                 text = { Text("Les réglages Verre seront remis à leurs valeurs initiales pour les thèmes clair et sombre.") },
                 confirmButton = {
                     TextButton(onClick = {
