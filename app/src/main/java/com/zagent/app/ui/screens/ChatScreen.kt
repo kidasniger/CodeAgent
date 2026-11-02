@@ -159,7 +159,7 @@ fun ChatScreen(
         AmbientTopBar(
             viewModel = viewModel,
             onOpenSettings = onOpenSettings,
-            onOpenExplorer = { viewModel.isFileBrowserOpen = true },
+            onOpenExplorer = { viewModel.navigateTo(com.zagent.app.ui.viewmodel.AppScreen.FILE_BROWSER) },
             onNewConversation = { viewModel.clearConversation() },
             menuOpen = menuOpen,
             onMenuToggle = { menuOpen = !menuOpen },
@@ -283,7 +283,7 @@ fun ChatScreen(
                 input = ""
                 viewModel.sendMessage(t)
             },
-            onOpenExplorer = { viewModel.isFileBrowserOpen = true },
+            onOpenExplorer = { viewModel.navigateTo(com.zagent.app.ui.viewmodel.AppScreen.FILE_BROWSER) },
             enabled = !viewModel.isLoading
         )
     }
@@ -412,7 +412,7 @@ private fun AmbientTopBar(
                     DropdownMenuItem(
                         text = { Text("Terminal", color = c.text) },
                         leadingIcon = { Icon(Icons.Default.Terminal, null, tint = c.text2) },
-                        onClick = { onMenuDismiss(); viewModel.isTerminalOpen = true }
+                        onClick = { onMenuDismiss(); viewModel.navigateTo(com.zagent.app.ui.viewmodel.AppScreen.TERMINAL) }
                     )
                     DropdownMenuItem(
                         text = { Text("Ouvrir dans le terminal", color = c.text) },
