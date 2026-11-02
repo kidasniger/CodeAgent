@@ -308,8 +308,8 @@ fun CircleIconButton(
     Box(
         modifier = modifier
             .size(size)
-            .clip(CircleShape)
-            .background(tintBackground)
+            .glassSurface(LocalHazeState.current, LocalGlass.current, Zcolors.isDark, CircleShape)
+            .background(tintBackground.copy(alpha = if (LocalGlass.current.enabled) 0.12f else 1f))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
