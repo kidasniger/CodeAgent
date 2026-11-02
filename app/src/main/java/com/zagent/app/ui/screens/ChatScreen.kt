@@ -161,6 +161,7 @@ fun ChatScreen(
     ) {
         AmbientTopBar(
             viewModel = viewModel,
+            scrolled = listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 8,
             onOpenSettings = onOpenSettings,
             onOpenExplorer = { viewModel.navigateTo(com.zagent.app.ui.viewmodel.AppScreen.FILE_BROWSER) },
             onNewConversation = { viewModel.clearConversation() },
@@ -349,6 +350,7 @@ fun ChatScreen(
 @Composable
 private fun AmbientTopBar(
     viewModel: MainViewModel,
+    scrolled: Boolean,
     onOpenSettings: () -> Unit,
     onOpenExplorer: () -> Unit,
     onNewConversation: () -> Unit,
@@ -360,6 +362,15 @@ private fun AmbientTopBar(
     Column(
         Modifier
             .fillMaxWidth()
+            .then(
+                if (scrolled) Modifier.glassSurface(
+                    LocalHazeState.current,
+                    LocalGlass.current,
+                    c.isDark,
+                    RoundedCornerShape(24.dp),
+                    LocalContext.current
+                ) else Modifier
+            )
             .statusBarsPadding()
             .padding(horizontal = 16.dp, vertical = 10.dp)
     ) {
