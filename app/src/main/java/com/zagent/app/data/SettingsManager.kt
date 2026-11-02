@@ -6,6 +6,10 @@ import androidx.security.crypto.MasterKey
 import com.zagent.app.ui.theme.ThemeMode
 import com.zagent.app.ui.theme.StylePresetIds
 import com.zagent.app.ui.theme.ZAccentOverride
+import com.zagent.app.ui.theme.GlassMaterial
+import com.zagent.app.ui.theme.GlassSettings
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 
 class SettingsManager(context: Context) {
     private val masterKey = MasterKey.Builder(context)
@@ -114,6 +118,51 @@ class SettingsManager(context: Context) {
 
     private fun glassKey(base: String, dark: Boolean) = "${base}_${if (dark) "dark" else "light"}"
 
+
+    var glassEnabled: Boolean
+        get() = prefs.getBoolean(KEY_GLASS_ENABLED, true)
+        set(value) = prefs.edit().putBoolean(KEY_GLASS_ENABLED, value).apply()
+
+    var glassAlwaysRespectSetting: Boolean
+        get() = prefs.getBoolean(KEY_GLASS_RESPECT, false)
+        set(value) = prefs.edit().putBoolean(KEY_GLASS_RESPECT, value).apply()
+
+    fun loadGlassSettings(dark: Boolean): GlassSettings {
+        val materialName = prefs.getString(glassKey(KEY_GLASS_MATERIAL_V2, dark), "BALANCED") ?: "BALANCED"
+        val hex = prefs.getString(glassKey(KEY_GLASS_COLOUR_V2, dark), "") ?: ""
+        val colour = if (hex.isBlank()) Color.Unspecified else runCatching {
+            Color(android.graphics.Color.parseColor(hex))
+        }.getOrDefault(Color.Unspecified)
+        return GlassSettings(
+            material = GlassMaterial.entries.firstOrNull { it.name == materialName } ?: GlassMaterial.BALANCED,
+            colour = colour,
+            frost = prefs.getFloat(glassKey(KEY_GLASS_FROST_DP, dark), 6f).coerceIn(0f, 24f).dp,
+            tint = prefs.getFloat(glassKey(KEY_GLASS_COLOUR_INTENSITY, dark), 0.70f).coerceIn(0f, 1f),
+            film = prefs.getFloat(glassKey(KEY_GLASS_FILM_V2, dark), if (dark) 0.35f else 0.60f).coerceIn(0f, 1f),
+            activeTab = prefs.getFloat(glassKey(KEY_GLASS_ACTIVE_INTENSITY, dark), 0.26f).coerceIn(0f, 1f),
+            enabled = glassEnabled,
+            alwaysRespectSetting = glassAlwaysRespectSetting
+        )
+    }
+
+    fun saveGlassSettings(dark: Boolean, value: GlassSettings) {
+        val hex = if (value.colour == Color.Unspecified) "" else String.format(
+            "#%06X", 0xFFFFFF and android.graphics.Color.rgb(
+                (value.colour.red * 255).toInt(), (value.colour.green * 255).toInt(), (value.colour.blue * 255).toInt()
+            )
+        )
+        prefs.edit()
+            .putString(glassKey(KEY_GLASS_MATERIAL_V2, dark), value.material.name)
+            .putString(glassKey(KEY_GLASS_COLOUR_V2, dark), hex)
+            .putFloat(glassKey(KEY_GLASS_FROST_DP, dark), value.frost.value.coerceIn(0f, 24f))
+            .putFloat(glassKey(KEY_GLASS_COLOUR_INTENSITY, dark), value.tint.coerceIn(0f, 1f))
+            .putFloat(glassKey(KEY_GLASS_FILM_V2, dark), value.film.coerceIn(0f, 1f))
+            .putFloat(glassKey(KEY_GLASS_ACTIVE_INTENSITY, dark), value.activeTab.coerceIn(0f, 1f))
+            .putBoolean(KEY_GLASS_ENABLED, value.enabled)
+            .putBoolean(KEY_GLASS_RESPECT, value.alwaysRespectSetting)
+            .apply()
+    }
+
     /** Noir OLED et rayon global des composants. */
     var oledBlack: Boolean
         get() = prefs.getBoolean(KEY_OLED_BLACK, false)
@@ -199,6 +248,8 @@ class SettingsManager(context: Context) {
             .putFloat(KEY_GLASS_TINT, 0.35f)
             .putFloat(KEY_GLASS_FILM, 0.22f)
             .putString(KEY_GLASS_ACTIVE_TAB, "Chat")
+            .putBoolean(KEY_GLASS_ENABLED, true)
+            .putBoolean(KEY_GLASS_RESPECT, false)
             .putString(glassKey(KEY_GLASS_MATERIAL, false), "Liquid")
             .putString(glassKey(KEY_GLASS_COLOR, false), "#22D3EE")
             .putFloat(glassKey(KEY_GLASS_BLUR, false), 0.55f)
@@ -263,6 +314,14 @@ class SettingsManager(context: Context) {
         private const val KEY_GLASS_TINT = "glass_tint"
         private const val KEY_GLASS_FILM = "glass_film"
         private const val KEY_GLASS_ACTIVE_TAB = "glass_active_tab"
+        private const val KEY_GLASS_ENABLED = "glass_enabled"
+        private const val KEY_GLASS_RESPECT = "glass_always_respect"
+        private const val KEY_GLASS_MATERIAL_V2 = "glass_material_v2"
+        private const val KEY_GLASS_COLOUR_V2 = "glass_colour_v2"
+        private const val KEY_GLASS_FROST_DP = "glass_frost_dp"
+        private const val KEY_GLASS_COLOUR_INTENSITY = "glass_colour_intensity"
+        private const val KEY_GLASS_FILM_V2 = "glass_film_v2"
+        private const val KEY_GLASS_ACTIVE_INTENSITY = "glass_active_intensity"
         private const val KEY_OLED_BLACK = "oled_black"
         private const val KEY_CORNER_RADIUS = "corner_radius"
         private const val KEY_FONT_FAMILY = "font_family"
