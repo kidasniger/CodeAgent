@@ -26,6 +26,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -55,6 +58,49 @@ import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.Zcolors
 import kotlin.math.cos
 import kotlin.math.sin
+
+/**
+ * Curseur commun des réglages visuels avec valeur formatée et réinitialisation contextuelle.
+ */
+@Composable
+fun ZSliderRow(
+    label: String,
+    value: Float,
+    range: ClosedFloatingPointRange<Float>,
+    format: (Float) -> String,
+    onChange: (Float) -> Unit,
+    defaultValue: Float? = null,
+    onReset: (() -> Unit)? = null
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 7.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(label, color = Zcolors.text)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(format(value), color = Zcolors.text2)
+                if (defaultValue != null && onReset != null && kotlin.math.abs(value - defaultValue) > 0.001f) {
+                    TextButton(onClick = onReset) { Text("Réinitialiser") }
+                }
+            }
+        }
+        Slider(
+            value = value.coerceIn(range.start, range.endInclusive),
+            onValueChange = onChange,
+            valueRange = range,
+            colors = SliderDefaults.colors(
+                thumbColor = Color.White,
+                activeTrackColor = Zcolors.cyan,
+                inactiveTrackColor = Zcolors.border2
+            )
+        )
+    }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Logo Z (dessiné en Canvas : Z dégradé + étincelle + curseur terminal)
