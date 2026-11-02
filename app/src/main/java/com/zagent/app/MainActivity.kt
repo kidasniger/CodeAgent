@@ -80,7 +80,10 @@ class MainActivity : ComponentActivity() {
                 stylePreset = if (settings.stylePresetId == com.zagent.app.ui.theme.StylePresetIds.CUSTOM) settings.styleBasePresetId else settings.stylePresetId,
                 oledBlack = viewModel.oledBlack,
                 dynamicColors = viewModel.dynamicSystemColors,
-                cornerRadius = viewModel.cornerRadius
+                cornerRadius = viewModel.cornerRadius,
+                fontFamilyId = viewModel.fontFamilyId,
+                fontScale = viewModel.fontScale,
+                densityScale = viewModel.densityScale
             ) {
                 SurfaceBackground()
                 AppRoot(viewModel, systemDark)

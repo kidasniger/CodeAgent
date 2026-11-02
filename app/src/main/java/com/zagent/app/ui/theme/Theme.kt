@@ -17,6 +17,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.platform.LocalDensity
 
 /** Accès court aux tokens étendus : `Zcolors.text2`. */
 val Zcolors: ZColors
@@ -194,6 +199,9 @@ fun ZAgentTheme(
     oledBlack: Boolean = false,
     dynamicColors: Boolean = false,
     cornerRadius: Int = 16,
+    fontFamilyId: String = "INTER",
+    fontScale: Float = 1f,
+    densityScale: Float = 1f,
     content: @Composable () -> Unit
 ) {
     val minimal = stylePreset == StylePresetIds.MINIMAL
@@ -292,12 +300,51 @@ fun ZAgentTheme(
         large = RoundedCornerShape(radius),
         extraLarge = RoundedCornerShape(radius)
     )
-    CompositionLocalProvider(LocalZColors provides zcolors) {
+    val selectedFont = when (fontFamilyId) {
+        "SYSTEM" -> FontFamily.Default
+        "SPACE_GROTESK" -> SpaceGrotesk
+        else -> Inter
+    }
+    val typography = scaledTypography(selectedFont, fontScale.coerceIn(0.85f, 1.25f))
+    val currentDensity = LocalDensity.current
+    val scaledDensity = Density(
+        density = currentDensity.density * densityScale.coerceIn(0.88f, 1.12f),
+        fontScale = currentDensity.fontScale
+    )
+    CompositionLocalProvider(
+        LocalZColors provides zcolors,
+        LocalDensity provides scaledDensity
+    ) {
         MaterialTheme(
             colorScheme = scheme,
-            typography = ZTypography,
+            typography = typography,
             shapes = shapes,
             content = content
         )
     }
 }
+
+
+private fun TextStyle.withInterfaceFont(font: FontFamily, scale: Float): TextStyle = copy(
+    fontFamily = font,
+    fontSize = fontSize * scale,
+    lineHeight = lineHeight * scale
+)
+
+private fun scaledTypography(font: FontFamily, scale: Float) = ZTypography.copy(
+    displayLarge = ZTypography.displayLarge.withInterfaceFont(font, scale),
+    displayMedium = ZTypography.displayMedium.withInterfaceFont(font, scale),
+    displaySmall = ZTypography.displaySmall.withInterfaceFont(font, scale),
+    headlineLarge = ZTypography.headlineLarge.withInterfaceFont(font, scale),
+    headlineMedium = ZTypography.headlineMedium.withInterfaceFont(font, scale),
+    headlineSmall = ZTypography.headlineSmall.withInterfaceFont(font, scale),
+    titleLarge = ZTypography.titleLarge.withInterfaceFont(font, scale),
+    titleMedium = ZTypography.titleMedium.withInterfaceFont(font, scale),
+    titleSmall = ZTypography.titleSmall.withInterfaceFont(font, scale),
+    bodyLarge = ZTypography.bodyLarge.withInterfaceFont(font, scale),
+    bodyMedium = ZTypography.bodyMedium.withInterfaceFont(font, scale),
+    bodySmall = ZTypography.bodySmall.withInterfaceFont(font, scale),
+    labelLarge = ZTypography.labelLarge.withInterfaceFont(font, scale),
+    labelMedium = ZTypography.labelMedium.withInterfaceFont(font, scale),
+    labelSmall = ZTypography.labelSmall.withInterfaceFont(font, scale)
+)

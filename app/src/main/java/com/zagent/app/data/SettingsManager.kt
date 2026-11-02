@@ -160,6 +160,20 @@ class SettingsManager(context: Context) {
         get() = prefs.getString(KEY_GLASS_ACTIVE_TAB, "Chat") ?: "Chat"
         set(value) = prefs.edit().putString(KEY_GLASS_ACTIVE_TAB, value).apply()
 
+    /** Préférences typographiques globales. */
+    var fontFamilyId: String
+        get() = prefs.getString(KEY_FONT_FAMILY, "INTER") ?: "INTER"
+        set(value) = prefs.edit().putString(KEY_FONT_FAMILY, value).apply()
+
+    var fontScale: Float
+        get() = prefs.getFloat(KEY_FONT_SCALE, 1f).coerceIn(0.85f, 1.25f)
+        set(value) = prefs.edit().putFloat(KEY_FONT_SCALE, value.coerceIn(0.85f, 1.25f)).apply()
+
+    /** Échelle de densité appliquée aux dimensions dp de l'interface. */
+    var densityScale: Float
+        get() = prefs.getFloat(KEY_DENSITY_SCALE, 1f).coerceIn(0.88f, 1.12f)
+        set(value) = prefs.edit().putFloat(KEY_DENSITY_SCALE, value.coerceIn(0.88f, 1.12f)).apply()
+
     var onboardingDone: Boolean
         get() = prefs.getBoolean(KEY_ONBOARDING_DONE, false)
         set(value) = prefs.edit().putBoolean(KEY_ONBOARDING_DONE, value).apply()
@@ -174,6 +188,9 @@ class SettingsManager(context: Context) {
             .putBoolean(KEY_OLED_BLACK, false)
             .putBoolean(KEY_DYNAMIC_COLORS, false)
             .putInt(KEY_CORNER_RADIUS, 16)
+            .putString(KEY_FONT_FAMILY, "INTER")
+            .putFloat(KEY_FONT_SCALE, 1f)
+            .putFloat(KEY_DENSITY_SCALE, 1f)
             .putString(KEY_SCHEDULED_DARK, "19:00")
             .putString(KEY_SCHEDULED_LIGHT, "07:00")
             .putString(KEY_GLASS_MATERIAL, "Liquid")
@@ -248,6 +265,9 @@ class SettingsManager(context: Context) {
         private const val KEY_GLASS_ACTIVE_TAB = "glass_active_tab"
         private const val KEY_OLED_BLACK = "oled_black"
         private const val KEY_CORNER_RADIUS = "corner_radius"
+        private const val KEY_FONT_FAMILY = "font_family"
+        private const val KEY_FONT_SCALE = "font_scale"
+        private const val KEY_DENSITY_SCALE = "density_scale"
         private const val KEY_DYNAMIC_COLORS = "dynamic_system_colors"
         private const val KEY_SCHEDULED_DARK = "scheduled_dark_time"
         private const val KEY_SCHEDULED_LIGHT = "scheduled_light_time"

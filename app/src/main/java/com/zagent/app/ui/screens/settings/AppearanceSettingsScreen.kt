@@ -118,8 +118,8 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     when (destination) {
         "theme" -> ThemeSettingsScreen(viewModel, onBack = { destination = null })
         "glass" -> GlassSettingsScreen(onBack = { destination = null })
-        "font" -> FontSettingsScreen(onBack = { destination = null })
-        "density" -> DensitySettingsScreen(onBack = { destination = null })
+        "font" -> FontSettingsScreen(viewModel, onBack = { destination = null })
+        "density" -> DensitySettingsScreen(viewModel, onBack = { destination = null })
         else -> SettingsPageScaffold(title = "Apparence", onBack = onBack) {
             if (showResetAppearance) {
                 AlertDialog(
@@ -133,6 +133,9 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                             viewModel.updateOledBlack(false)
                             viewModel.updateDynamicSystemColors(false)
                             viewModel.updateCornerRadius(16)
+                            viewModel.updateFontFamily("INTER")
+                            viewModel.updateFontScale(1f)
+                            viewModel.updateDensityScale(1f)
                             viewModel.updateScheduledDarkTime("19:00")
                             viewModel.updateScheduledLightTime("07:00")
                             selectedStylePreset = StylePresetIds.GLASS

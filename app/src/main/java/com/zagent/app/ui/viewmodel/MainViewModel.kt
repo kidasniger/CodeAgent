@@ -134,6 +134,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var scheduledLightTime by mutableStateOf(settingsManager.scheduledLightTime)
         private set
+    var fontFamilyId by mutableStateOf(settingsManager.fontFamilyId)
+        private set
+    var fontScale by mutableStateOf(settingsManager.fontScale)
+        private set
+    var densityScale by mutableStateOf(settingsManager.densityScale)
+        private set
+
+    fun updateFontFamily(value: String) { fontFamilyId = value; settingsManager.fontFamilyId = value }
+    fun updateFontScale(value: Float) { fontScale = value.coerceIn(0.85f, 1.25f); settingsManager.fontScale = fontScale }
+    fun updateDensityScale(value: Float) { densityScale = value.coerceIn(0.88f, 1.12f); settingsManager.densityScale = densityScale }
 
     fun updateOledBlack(value: Boolean) { oledBlack = value; settingsManager.oledBlack = value }
     fun updateDynamicSystemColors(value: Boolean) { dynamicSystemColors = value; settingsManager.dynamicSystemColors = value }
