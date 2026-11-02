@@ -50,7 +50,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -85,6 +84,7 @@ import com.zagent.app.ui.components.AnsiText
 import com.zagent.app.ui.components.tailForDisplay
 import com.zagent.app.ui.components.AskCard
 import com.zagent.app.data.DiffUtil
+import com.zagent.app.ui.components.GlassModalBottomSheet
 import com.zagent.app.ui.components.CircleIconButton
 import com.zagent.app.ui.components.EmptyState
 import com.zagent.app.ui.components.GlassCard
@@ -1279,16 +1279,15 @@ private fun CommandConfirmSheet(
     val c = Zcolors
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    ModalBottomSheet(
+    GlassModalBottomSheet(
         onDismissRequest = { onResolve(false) },
         sheetState = sheetState,
-        containerColor = Color.Transparent,
-        dragHandle = { androidx.compose.material3.BottomSheetDefaults.DragHandle(color = c.text3.copy(alpha = 0.45f)) },
-        shape = RoundedCornerShape(28.dp, 28.dp, 0.dp, 0.dp)
     ) {
         Column(
             Modifier
                 .fillMaxWidth()
+                .imePadding()
+                .navigationBarsPadding()
                 .glassSurface(LocalHazeState.current, LocalGlass.current, c.isDark, RoundedCornerShape(28.dp), LocalContext.current)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
@@ -1400,16 +1399,15 @@ private fun DeleteConfirmSheet(
     val c = Zcolors
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    ModalBottomSheet(
+    GlassModalBottomSheet(
         onDismissRequest = { onResolve(false) },
         sheetState = sheetState,
-        containerColor = Color.Transparent,
-        dragHandle = { androidx.compose.material3.BottomSheetDefaults.DragHandle(color = c.text3.copy(alpha = 0.45f)) },
-        shape = RoundedCornerShape(28.dp, 28.dp, 0.dp, 0.dp)
     ) {
         Column(
             Modifier
                 .fillMaxWidth()
+                .imePadding()
+                .navigationBarsPadding()
                 .glassSurface(LocalHazeState.current, LocalGlass.current, c.isDark, RoundedCornerShape(28.dp), LocalContext.current)
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 24.dp)
@@ -1489,16 +1487,15 @@ private fun WriteConfirmSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var alwaysAllow by remember(pending.toolCallId) { mutableStateOf(false) }
 
-    ModalBottomSheet(
+    GlassModalBottomSheet(
         onDismissRequest = { onResolve(false, false) },
         sheetState = sheetState,
-        containerColor = Color.Transparent,
-        dragHandle = { androidx.compose.material3.BottomSheetDefaults.DragHandle(color = c.text3.copy(alpha = 0.45f)) },
-        shape = RoundedCornerShape(28.dp, 28.dp, 0.dp, 0.dp)
     ) {
         Column(
             Modifier
                 .fillMaxWidth()
+                .imePadding()
+                .navigationBarsPadding()
                 .glassSurface(LocalHazeState.current, LocalGlass.current, c.isDark, RoundedCornerShape(28.dp), LocalContext.current)
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 24.dp)
