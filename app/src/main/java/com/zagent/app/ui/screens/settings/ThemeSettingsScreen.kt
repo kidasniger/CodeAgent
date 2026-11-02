@@ -43,7 +43,7 @@ fun ThemeSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 ThemeModeRow(
                     mode = mode,
                     selected = viewModel.themeMode == mode,
-                    onClick = { viewModel.updateThemeMode(mode) }
+                    onClick = { viewModel.updateThemeMode(mode); settings.markStylePresetCustom() }
                 )
                 if (index != ThemeMode.entries.lastIndex) SettingsInsetDivider()
             }
@@ -57,7 +57,7 @@ fun ThemeSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     onValueChange = { value ->
                         if (value.matches(Regex("\\d{0,2}:?\\d{0,2}"))) {
                             darkTime = value
-                            if (value.matches(Regex("\\d{2}:\\d{2}")) && value.substring(0, 2).toIntOrNull()?.let { it in 0..23 } == true && value.substring(3, 5).toIntOrNull()?.let { it in 0..59 } == true) viewModel.updateScheduledDarkTime(value)
+                            if (value.matches(Regex("\\d{2}:\\d{2}")) && value.substring(0, 2).toIntOrNull()?.let { it in 0..23 } == true && value.substring(3, 5).toIntOrNull()?.let { it in 0..59 } == true) viewModel.updateScheduledDarkTime(value); settings.markStylePresetCustom()
                         }
                     },
                     label = { Text("Passage en sombre (HH:mm)") },
@@ -69,7 +69,7 @@ fun ThemeSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     onValueChange = { value ->
                         if (value.matches(Regex("\\d{0,2}:?\\d{0,2}"))) {
                             lightTime = value
-                            if (value.matches(Regex("\\d{2}:\\d{2}")) && value.substring(0, 2).toIntOrNull() in 0..23 && value.substring(3, 5).toIntOrNull() in 0..59) viewModel.updateScheduledLightTime(value)
+                            if (value.matches(Regex("\\d{2}:\\d{2}")) && value.substring(0, 2).toIntOrNull() in 0..23 && value.substring(3, 5).toIntOrNull() in 0..59) viewModel.updateScheduledLightTime(value); settings.markStylePresetCustom()
                         }
                     },
                     label = { Text("Passage en clair (HH:mm)") },
@@ -87,7 +87,7 @@ fun ThemeSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 listOf(8 to "Net", 16 to "Doux", 28 to "Très rond").forEach { (value, label) ->
                     FilterChip(
                         selected = radius == value,
-                        onClick = { radius = value; viewModel.updateCornerRadius(value) },
+                        onClick = { radius = value; viewModel.updateCornerRadius(value); settings.markStylePresetCustom() },
                         label = { Text(label) }
                     )
                 }
@@ -103,7 +103,7 @@ fun ThemeSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     Text("Noir pur (OLED)", color = Zcolors.text)
                     Text("Fond noir et surfaces profondes en mode sombre", color = Zcolors.text2, style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
                 }
-                Switch(checked = oled, onCheckedChange = { oled = it; viewModel.updateOledBlack(it) })
+                Switch(checked = oled, onCheckedChange = { oled = it; viewModel.updateOledBlack(it); settings.markStylePresetCustom() })
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 SettingsInsetDivider()
@@ -115,7 +115,7 @@ fun ThemeSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                         Text("Couleurs du système", color = Zcolors.text)
                         Text("Utiliser la palette dynamique Android", color = Zcolors.text2, style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
                     }
-                    Switch(checked = dynamic, onCheckedChange = { dynamic = it; viewModel.updateDynamicSystemColors(it) })
+                    Switch(checked = dynamic, onCheckedChange = { dynamic = it; viewModel.updateDynamicSystemColors(it); settings.markStylePresetCustom() })
                 }
             }
         }
