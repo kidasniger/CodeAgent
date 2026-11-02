@@ -93,6 +93,43 @@ class SettingsManager(context: Context) {
             }.getOrNull()
         }
 
+    /** Réglages Verre isolés pour les thèmes clair et sombre. Les anciennes clés globales servent de valeur de migration. */
+    fun glassMaterialFor(dark: Boolean): String = prefs.getString(glassKey(KEY_GLASS_MATERIAL, dark), glassMaterial) ?: glassMaterial
+    fun setGlassMaterialFor(dark: Boolean, value: String) = prefs.edit().putString(glassKey(KEY_GLASS_MATERIAL, dark), value).apply()
+    fun glassColorFor(dark: Boolean): String = prefs.getString(glassKey(KEY_GLASS_COLOR, dark), glassColor) ?: glassColor
+    fun setGlassColorFor(dark: Boolean, value: String) = prefs.edit().putString(glassKey(KEY_GLASS_COLOR, dark), value).apply()
+    fun glassBlurFor(dark: Boolean): Float = prefs.getFloat(glassKey(KEY_GLASS_BLUR, dark), glassBlur).coerceIn(0f, 1f)
+    fun setGlassBlurFor(dark: Boolean, value: Float) = prefs.edit().putFloat(glassKey(KEY_GLASS_BLUR, dark), value.coerceIn(0f, 1f)).apply()
+    fun glassTintFor(dark: Boolean): Float = prefs.getFloat(glassKey(KEY_GLASS_TINT, dark), glassTint).coerceIn(0f, 1f)
+    fun setGlassTintFor(dark: Boolean, value: Float) = prefs.edit().putFloat(glassKey(KEY_GLASS_TINT, dark), value.coerceIn(0f, 1f)).apply()
+    fun glassFilmFor(dark: Boolean): Float = prefs.getFloat(glassKey(KEY_GLASS_FILM, dark), glassFilm).coerceIn(0f, 1f)
+    fun setGlassFilmFor(dark: Boolean, value: Float) = prefs.edit().putFloat(glassKey(KEY_GLASS_FILM, dark), value.coerceIn(0f, 1f)).apply()
+    fun glassActiveTabFor(dark: Boolean): String = prefs.getString(glassKey(KEY_GLASS_ACTIVE_TAB, dark), glassActiveTab) ?: glassActiveTab
+    fun setGlassActiveTabFor(dark: Boolean, value: String) = prefs.edit().putString(glassKey(KEY_GLASS_ACTIVE_TAB, dark), value).apply()
+
+    private fun glassKey(base: String, dark: Boolean) = "${base}_${if (dark) "dark" else "light"}"
+
+    /** Noir OLED et rayon global des composants. */
+    var oledBlack: Boolean
+        get() = prefs.getBoolean(KEY_OLED_BLACK, false)
+        set(value) = prefs.edit().putBoolean(KEY_OLED_BLACK, value).apply()
+
+    var cornerRadius: Int
+        get() = prefs.getInt(KEY_CORNER_RADIUS, 16).coerceIn(8, 28)
+        set(value) = prefs.edit().putInt(KEY_CORNER_RADIUS, value.coerceIn(8, 28)).apply()
+
+    var dynamicSystemColors: Boolean
+        get() = prefs.getBoolean(KEY_DYNAMIC_COLORS, false)
+        set(value) = prefs.edit().putBoolean(KEY_DYNAMIC_COLORS, value).apply()
+
+    var scheduledDarkTime: String
+        get() = prefs.getString(KEY_SCHEDULED_DARK, "19:00") ?: "19:00"
+        set(value) = prefs.edit().putString(KEY_SCHEDULED_DARK, value).apply()
+
+    var scheduledLightTime: String
+        get() = prefs.getString(KEY_SCHEDULED_LIGHT, "07:00") ?: "07:00"
+        set(value) = prefs.edit().putString(KEY_SCHEDULED_LIGHT, value).apply()
+
     /** Configuration persistante de l'aperçu et des surfaces Verre. */
     var glassMaterial: String
         get() = prefs.getString(KEY_GLASS_MATERIAL, "Liquid") ?: "Liquid"
@@ -169,6 +206,11 @@ class SettingsManager(context: Context) {
         private const val KEY_GLASS_TINT = "glass_tint"
         private const val KEY_GLASS_FILM = "glass_film"
         private const val KEY_GLASS_ACTIVE_TAB = "glass_active_tab"
+        private const val KEY_OLED_BLACK = "oled_black"
+        private const val KEY_CORNER_RADIUS = "corner_radius"
+        private const val KEY_DYNAMIC_COLORS = "dynamic_system_colors"
+        private const val KEY_SCHEDULED_DARK = "scheduled_dark_time"
+        private const val KEY_SCHEDULED_LIGHT = "scheduled_light_time"
         private const val KEY_ALWAYS_ALLOW = "always_allow_paths"
     }
 }
