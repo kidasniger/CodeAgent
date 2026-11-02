@@ -455,7 +455,7 @@ fun EditorScreen(
                     SmallIcon(Icons.Default.KeyboardArrowDown, "Suivant") { goTo(safeIdx + 1) }
                     Box(
                         Modifier
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(MaterialTheme.shapes.small)
                             .background(if (caseSensitive) c.cyanBg else c.surface2)
                             .clickable { caseSensitive = !caseSensitive }
                             .padding(horizontal = 8.dp, vertical = 6.dp)
@@ -790,7 +790,7 @@ private fun SmallIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, des
     Box(
         Modifier
             .size(34.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(MaterialTheme.shapes.small)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -821,9 +821,9 @@ private fun SearchField(
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(MaterialTheme.shapes.extraSmall)
                     .background(c.surface2)
-                    .border(1.dp, c.border, RoundedCornerShape(10.dp))
+                    .border(1.dp, c.border, MaterialTheme.shapes.extraSmall)
                     .padding(horizontal = 12.dp, vertical = 9.dp)
             ) {
                 if (value.isEmpty()) {
@@ -935,7 +935,7 @@ private fun SymbolBar(onInsert: (String) -> Unit) {
                 Modifier
                     .height(36.dp)
                     .widthIn(min = if (label == "Tab") 52.dp else 38.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(MaterialTheme.shapes.small)
                     .background(c.surface2)
                     .clickable { onInsert(value) },
                 contentAlignment = Alignment.Center
@@ -996,7 +996,7 @@ private fun ConsoleIcon(errors: Int, onClick: () -> Unit) {
     Box(
         Modifier
             .size(34.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(MaterialTheme.shapes.small)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
