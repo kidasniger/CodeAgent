@@ -15,6 +15,41 @@ import androidx.compose.ui.unit.dp
 val Zcolors: ZColors
     @Composable get() = LocalZColors.current
 
+/**
+ * Paramètres d'un style visuel complet.
+ * palette : identifiant de palette ; glassMaterial : matériau de surface ;
+ * colour : couleur d'accent hexadécimale ; frost/film : intensités normalisées ;
+ * activeTab : onglet mis en évidence ; radius : rayon des surfaces en dp.
+ */
+data class StylePreset(
+    val palette: String,
+    val glassMaterial: String,
+    val colour: String,
+    val frost: Float,
+    val film: Float,
+    val activeTab: String,
+    val radius: Float
+)
+
+object StylePresetIds {
+    const val MINIMAL = "MINIMAL"
+    const val GLASS = "GLASS"
+    const val CONTRAST = "CONTRAST"
+    const val CUSTOM = "CUSTOM"
+}
+
+object StylePresets {
+    val minimal = StylePreset("CLAUDE", "NONE", "#D97757", 0f, 0f, "Chat", 18f)
+    val glass = StylePreset("ZAGENT", "LIQUID_QUALITY", "#22D3EE", 0.82f, 0.32f, "Chat", 24f)
+    val contrast = StylePreset("HIGH_CONTRAST", "NONE", "#FFFFFF", 0f, 0f, "Chat", 12f)
+
+    fun fromId(id: String): StylePreset = when (id) {
+        StylePresetIds.MINIMAL -> minimal
+        StylePresetIds.CONTRAST -> contrast
+        else -> glass
+    }
+}
+
 /** Mode de thème choisi par l'utilisateur : suit le système, ou force clair/sombre. */
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
