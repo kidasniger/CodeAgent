@@ -365,9 +365,9 @@ fun SettingsCard(content: @Composable () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(MaterialTheme.shapes.large)
             .background(c.surface)
-            .border(1.dp, c.border, RoundedCornerShape(20.dp))
+            .border(1.dp, c.border, MaterialTheme.shapes.large)
     ) {
         content()
     }
@@ -400,7 +400,7 @@ fun AppearanceNavigationRow(
         androidx.compose.foundation.layout.Box(
             modifier = Modifier
                 .size(40.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .clip(MaterialTheme.shapes.small)
                 .background(c.violetBg),
             contentAlignment = Alignment.Center
         ) {
