@@ -1,5 +1,6 @@
 package com.zagent.app.ui.screens.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.Canvas
@@ -64,6 +65,11 @@ import com.zagent.app.ui.viewmodel.MainViewModel
 fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     val systemDark = isSystemInDarkTheme()
     var destination by rememberSaveable { mutableStateOf<String?>(null) }
+
+    // Les sous-écrans (Thème, Verre, Police, Densité) se ferment avant Apparence.
+    BackHandler(enabled = destination != null) {
+        destination = null
+    }
     var showResetAppearance by rememberSaveable { mutableStateOf(false) }
     var selectedStylePreset by rememberSaveable {
         mutableStateOf(viewModel.settingsManager.stylePresetId)
