@@ -72,6 +72,11 @@ class SettingsManager(context: Context) {
         get() = ThemeMode.entries.firstOrNull { it.name == prefs.getString(KEY_THEME_MODE, null) } ?: ThemeMode.SYSTEM
         set(value) = prefs.edit().putString(KEY_THEME_MODE, value.name).apply()
 
+    /** Preset de base conservé lorsque l'utilisateur passe en mode personnalisé. */
+    var styleBasePresetId: String
+        get() = prefs.getString(KEY_STYLE_BASE_PRESET, StylePresetIds.GLASS) ?: StylePresetIds.GLASS
+        set(value) = prefs.edit().putString(KEY_STYLE_BASE_PRESET, value).apply()
+
     /** Identifiant du preset actif ; CUSTOM indique une modification manuelle. */
     var stylePresetId: String
         get() = prefs.getString(KEY_STYLE_PRESET, StylePresetIds.GLASS) ?: StylePresetIds.GLASS
@@ -164,6 +169,7 @@ class SettingsManager(context: Context) {
         prefs.edit()
             .putString(KEY_THEME_MODE, ThemeMode.SYSTEM.name)
             .putString(KEY_STYLE_PRESET, StylePresetIds.GLASS)
+            .putString(KEY_STYLE_BASE_PRESET, StylePresetIds.GLASS)
             .putString(KEY_ACCENT_COLOR, "")
             .putBoolean(KEY_OLED_BLACK, false)
             .putBoolean(KEY_DYNAMIC_COLORS, false)
@@ -232,6 +238,7 @@ class SettingsManager(context: Context) {
         private const val LEGACY_KEY_THEME_DARK = "theme_dark"
         private const val KEY_ONBOARDING_DONE = "onboarding_done"
         private const val KEY_STYLE_PRESET = "style_preset"
+        private const val KEY_STYLE_BASE_PRESET = "style_base_preset"
         private const val KEY_ACCENT_COLOR = "accent_color"
         private const val KEY_GLASS_MATERIAL = "glass_material"
         private const val KEY_GLASS_COLOR = "glass_color"
