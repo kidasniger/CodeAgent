@@ -26,6 +26,7 @@ import com.zagent.app.data.SettingsManager
 import com.zagent.app.ui.editor.ConsoleState
 import com.zagent.app.ui.editor.EditorController
 import com.zagent.app.ui.theme.ThemeMode
+import com.zagent.app.ui.theme.GlassSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -150,6 +151,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun updateCornerRadius(value: Int) { cornerRadius = value; settingsManager.cornerRadius = value }
     fun updateScheduledDarkTime(value: String) { scheduledDarkTime = value; settingsManager.scheduledDarkTime = value }
     fun updateScheduledLightTime(value: String) { scheduledLightTime = value; settingsManager.scheduledLightTime = value }
+    var glassSettings by mutableStateOf(settingsManager.loadGlassSettings(false))
+    fun updateGlassSettings(dark: Boolean, value: GlassSettings) { glassSettings = value; settingsManager.saveGlassSettings(dark, value) }
+    fun reloadGlassSettings(dark: Boolean) { glassSettings = settingsManager.loadGlassSettings(dark) }
+
     var onboardingDone by mutableStateOf(settingsManager.onboardingDone)
 
     fun updateThemeMode(mode: ThemeMode) {
