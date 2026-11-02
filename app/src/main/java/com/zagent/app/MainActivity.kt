@@ -150,6 +150,6 @@ private fun AppRoot(viewModel: MainViewModel, systemDark: Boolean) {
 private fun SettingsScreenCompat(viewModel: MainViewModel) {
     SettingsScreen(
         viewModel = viewModel,
-        onDismiss = { viewModel.isSettingsOpen = false }
+        onDismiss = { viewModel.navigateBack() }
     )
 }
