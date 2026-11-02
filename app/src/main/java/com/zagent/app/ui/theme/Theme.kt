@@ -197,6 +197,7 @@ fun ZAgentTheme(
     content: @Composable () -> Unit
 ) {
     val minimal = stylePreset == StylePresetIds.MINIMAL
+    val contrast = stylePreset == StylePresetIds.CONTRAST
     val context = LocalContext.current
     val useDynamic = dynamicColors && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val baseScheme = when {
@@ -204,12 +205,34 @@ fun ZAgentTheme(
         useDynamic -> dynamicLightColorScheme(context)
         minimal && darkTheme -> MinimalDarkScheme
         minimal -> MinimalLightScheme
+        contrast && darkTheme -> DarkScheme.copy(
+            background = Color.Black, surface = Color(0xFF080808),
+            outline = Color.White, outlineVariant = Color(0xFFBDBDBD)
+        )
+        contrast -> LightScheme.copy(
+            background = Color.White, surface = Color.White,
+            outline = Color.Black, outlineVariant = Color(0xFF424242)
+        )
         darkTheme -> DarkScheme
         else -> LightScheme
     }
     val baseColors = when {
         minimal && darkTheme -> MinimalDarkZColors
         minimal -> MinimalLightZColors
+        contrast && darkTheme -> AuroraDarkZColors.copy(
+            bg = Color.Black, bg2 = Color(0xFF080808),
+            surface = Color(0xFF101010), surface2 = Color(0xFF181818),
+            surface3 = Color(0xFF242424), border = Color.White,
+            border2 = Color(0xFFBDBDBD), text = Color.White,
+            text2 = Color(0xFFE0E0E0), text3 = Color(0xFFBDBDBD)
+        )
+        contrast -> AuroraLightZColors.copy(
+            bg = Color.White, bg2 = Color.White,
+            surface = Color.White, surface2 = Color(0xFFF5F5F5),
+            surface3 = Color(0xFFEEEEEE), border = Color.Black,
+            border2 = Color(0xFF424242), text = Color.Black,
+            text2 = Color(0xFF212121), text3 = Color(0xFF424242)
+        )
         darkTheme -> AuroraDarkZColors
         else -> AuroraLightZColors
     }
