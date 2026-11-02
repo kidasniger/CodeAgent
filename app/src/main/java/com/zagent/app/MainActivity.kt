@@ -148,7 +148,8 @@ private fun AppRoot(viewModel: MainViewModel, systemDark: Boolean) {
         }
     }
 
-    CompositionLocalProvider(LocalGlass provides viewModel.glassSettings, LocalHazeState provides hazeState) {\n    Box(Modifier.fillMaxSize().haze(state = hazeState)) {
+    CompositionLocalProvider(LocalGlass provides viewModel.glassSettings, LocalHazeState provides hazeState) {
+        Box(Modifier.fillMaxSize().haze(state = hazeState)) {
         val underlyingScreen = if (viewModel.currentScreen == com.zagent.app.ui.viewmodel.AppScreen.SETTINGS) {
             viewModel.navigationPreviousScreen()
         } else {
