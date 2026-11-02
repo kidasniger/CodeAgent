@@ -85,22 +85,28 @@ class FileRepository(private val context: Context, private val rootPath: String?
      * Liste plate et structurée d'un dossier (pour l'explorateur).
      * [path] = "." ou chemin relatif. Tri : dossiers d'abord puis alphabétique.
      */
-    fun listEntries(path: String = "."): List<Entry> {
-        if (!validatePath(path)) return emptyList()
-        val root = getRootFolder() ?: return emptyList()
-        val target = resolveExisting(root, path) ?: return emptyList()
-        if (!target.isDirectory) return emptyList()
+    fun listEntries(path: String = "."): List<Entry> =
+        listEntriesResult(path).getOrDefault(emptyList())
+
+    /** Variante diagnostique : distingue un dossier réellement vide d'un dossier illisible/invalide. */
+    fun listEntriesResult(path: String = "."): Result<List<Entry>> = runCatching {
+        require(!path.contains("..")) { "Chemin invalide : .. n'est pas autorisé." }
+        val root = getRootFolder()
+            ?: throw IllegalStateException("Aucun dossier de projet valide n'est sélectionné.")
+        val target = resolveExisting(root, path)
+            ?: throw IllegalStateException("Dossier introuvable : $path")
+        require(target.isDirectory) { "Ce chemin n'est pas un dossier : $path" }
         val base = if (path == "." || path.isEmpty() || path == "/") "" else path.removePrefix("./").removePrefix("/")
-        return (target.listFiles() ?: emptyArray())
-            .map { f ->
-                Entry(
-                    name = f.name,
-                    isDir = f.isDirectory,
-                    size = f.length(),
-                    path = if (base.isEmpty()) f.name else "$base/${f.name}"
-                )
-            }
-            .sortedWith(compareByDescending<Entry> { it.isDir }.thenBy { it.name.lowercase() })
+        val files = target.listFiles()
+            ?: throw SecurityException("Accès refusé au dossier : $path")
+        files.map { f ->
+            Entry(
+                name = f.name,
+                isDir = f.isDirectory,
+                size = f.length(),
+                path = if (base.isEmpty()) f.name else "$base/${f.name}"
+            )
+        }.sortedWith(compareByDescending<Entry> { it.isDir }.thenBy { it.name.lowercase() })
     }
 
     /** URI de partage d'un fichier du projet (via FileProvider). */
