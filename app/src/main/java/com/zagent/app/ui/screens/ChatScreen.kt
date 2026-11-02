@@ -1226,7 +1226,7 @@ private fun InputBar(
         Modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 88.dp)
     ) {
         Row(
             modifier = Modifier
