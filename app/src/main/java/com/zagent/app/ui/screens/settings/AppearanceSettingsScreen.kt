@@ -129,6 +129,7 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                             viewModel.updateScheduledDarkTime("19:00")
                             viewModel.updateScheduledLightTime("07:00")
                             selectedStylePreset = StylePresetIds.GLASS
+                            viewModel.settingsManager.styleBasePresetId = StylePresetIds.GLASS
                             accentHex = ""
                             accentHue = 0f
                             showResetAppearance = false
@@ -158,6 +159,7 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                             val preset = StylePresets.fromId(id)
                             val settings = viewModel.settingsManager
                             settings.stylePresetId = id
+                            settings.styleBasePresetId = id
                             settings.accentColorHex = preset.colour
                             viewModel.updateCornerRadius(preset.radius.toInt().coerceIn(8, 28))
                             listOf(false, true).forEach { dark ->
