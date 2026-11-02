@@ -35,9 +35,7 @@ import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
@@ -64,6 +62,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zagent.app.data.FileRepository
+import com.zagent.app.ui.components.GlassAlertDialog
+import com.zagent.app.ui.components.GlassDropdownMenu
 import com.zagent.app.ui.components.CircleIconButton
 import com.zagent.app.ui.components.GlassCard
 import com.zagent.app.ui.components.StatusBadge
@@ -136,10 +136,9 @@ fun FileBrowserScreen(
                 Spacer(Modifier.width(10.dp))
                 Box {
                     CircleIconButton(Icons.Default.Add, "Nouveau", onClick = { menuNew = true })
-                    DropdownMenu(
+                    GlassDropdownMenu(
                         expanded = menuNew,
                         onDismissRequest = { menuNew = false },
-                        containerColor = c.bg2
                     ) {
                         DropdownMenuItem(
                             text = { Text("Nouveau fichier", color = c.text) },
@@ -282,9 +281,8 @@ fun FileBrowserScreen(
     }
 
     viewModel.browserFilePreview?.let { preview ->
-        AlertDialog(
+        GlassAlertDialog(
             onDismissRequest = { viewModel.closeBrowserFilePreview() },
-            containerColor = c.bg2,
             title = { Text(preview.path, color = c.text, fontFamily = JetBrainsMono, maxLines = 2) },
             text = {
                 Column(Modifier.fillMaxWidth().height(360.dp).verticalScroll(rememberScrollState())) {
@@ -301,9 +299,8 @@ fun FileBrowserScreen(
 
     createKind?.let { kind ->
         var name by remember(kind, createPrefix) { mutableStateOf(createPrefix) }
-        AlertDialog(
+        GlassAlertDialog(
             onDismissRequest = { createKind = null },
-            containerColor = c.bg2,
             title = {
                 Text(
                     if (kind == "file") "Nouveau fichier" else "Nouveau dossier",
@@ -341,9 +338,8 @@ fun FileBrowserScreen(
 
     renameTarget?.let { e ->
         var name by remember(e.path) { mutableStateOf(e.name) }
-        AlertDialog(
+        GlassAlertDialog(
             onDismissRequest = { renameTarget = null },
-            containerColor = c.bg2,
             title = { Text("Renommer", fontFamily = SpaceGrotesk, color = c.text) },
             text = {
                 OutlinedTextField(
@@ -366,9 +362,8 @@ fun FileBrowserScreen(
     }
 
     deleteTarget?.let { e ->
-        AlertDialog(
+        GlassAlertDialog(
             onDismissRequest = { deleteTarget = null },
-            containerColor = c.bg2,
             title = { Text("Supprimer ?", fontFamily = SpaceGrotesk, color = c.text) },
             text = {
                 Text(
@@ -560,10 +555,9 @@ private fun RowMenu(e: FileRepository.Entry, onAction: (String) -> Unit) {
         ) {
             Icon(Icons.Default.MoreVert, "Actions", tint = c.text3, modifier = Modifier.size(18.dp))
         }
-        DropdownMenu(
+        GlassDropdownMenu(
             expanded = open,
             onDismissRequest = { open = false },
-            containerColor = c.bg2
         ) {
             if (e.isDir) {
                 DropdownMenuItem(
