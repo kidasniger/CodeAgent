@@ -206,7 +206,7 @@ fun FileBrowserScreen(
                 contentPadding = PaddingValues(0.dp)
             ) {
                 LazyColumn(
-                    Modifier.fillMaxSize().then(LocalHazeState.current?.let { Modifier.haze(state = it) } ?: Modifier),
+                    Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 104.dp)
                 ) {
                     items(rows, key = { "${it.entry.path}:${it.depth}" }) { row ->
