@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -204,7 +205,7 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                                         color = if (accentHex.equals(hex, ignoreCase = true)) Zcolors.text else Zcolors.border2,
                                         shape = CircleShape
                                     )
-                                    .clickable { selectAccent(hex) }
+                                    .clickable(onClickLabel = label) { selectAccent(hex) }
                             )
                         }
                     }
