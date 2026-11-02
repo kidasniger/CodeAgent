@@ -18,6 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
@@ -57,7 +58,7 @@ fun GitDiffView(
     maxHeight: Dp = 320.dp
 ) {
     val c = Zcolors
-    val shape = RoundedCornerShape(12.dp)
+    val shape = MaterialTheme.shapes.small
     val rows = remember(status, diff) {
         val out = ArrayList<Pair<Boolean, String>>()
         status.lines().filter { it.isNotBlank() }.forEach { out.add(true to it) }
@@ -292,7 +293,7 @@ fun DevServerBar(
 ) {
     val c = Zcolors
     var showLog by remember { mutableStateOf(false) }
-    val shape = RoundedCornerShape(14.dp)
+    val shape = MaterialTheme.shapes.medium
     Column(
         Modifier
             .fillMaxWidth()
@@ -352,7 +353,7 @@ private fun BarAction(label: String, color: Color, bg: Color, onClick: () -> Uni
         color = color,
         fontSize = 11.5.sp,
         modifier = Modifier
-            .clip(RoundedCornerShape(9.dp))
+            .clip(MaterialTheme.shapes.extraSmall)
             .background(bg)
             .clickable { onClick() }
             .padding(horizontal = 9.dp, vertical = 5.dp)
