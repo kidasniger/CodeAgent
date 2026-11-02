@@ -19,9 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -44,7 +43,12 @@ import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.SpaceGrotesk
 import com.zagent.app.ui.theme.Zcolors
+import com.zagent.app.ui.theme.LocalGlass
+import com.zagent.app.ui.theme.LocalHazeState
+import com.zagent.app.ui.theme.glassSurface
 import java.util.Locale
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 
 private const val MAX_DIFF_ROWS = 500
 
@@ -154,15 +158,16 @@ fun GitChangesSheet(
 ) {
     val c = Zcolors
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(
+    GlassModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = sheetState,
-        containerColor = c.bg2,
-        shape = RoundedCornerShape(24.dp, 24.dp, 0.dp, 0.dp)
     ) {
         Column(
             Modifier
                 .fillMaxWidth()
+                .imePadding()
+                .navigationBarsPadding()
+                .glassSurface(LocalHazeState.current, LocalGlass.current, c.isDark, RoundedCornerShape(28.dp), LocalContext.current)
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 24.dp)
         ) {
@@ -196,9 +201,8 @@ fun ModelPickerDialog(
     val c = Zcolors
     var custom by remember { mutableStateOf("") }
     val known = listOf("glm-4.5-flash", "glm-4.7-flash").filter { it != globalModel }
-    AlertDialog(
+    GlassAlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = c.bg2,
         title = { Text("Modèle de la conversation", fontFamily = SpaceGrotesk, color = c.text) },
         text = {
             Column(Modifier.fillMaxWidth()) {
