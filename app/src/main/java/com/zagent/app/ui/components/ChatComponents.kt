@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -78,9 +79,9 @@ fun ToolChip(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
+                .clip(MaterialTheme.shapes.medium)
                 .background(c.surface)
-                .border(1.dp, c.border, RoundedCornerShape(14.dp))
+                .border(1.dp, c.border, MaterialTheme.shapes.medium)
                 .then(if (hasResult) Modifier.clickable { expanded = !expanded } else Modifier)
                 .padding(horizontal = 10.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -89,7 +90,7 @@ fun ToolChip(
             Box(
                 modifier = Modifier
                     .size(30.dp)
-                    .clip(RoundedCornerShape(9.dp))
+                    .clip(MaterialTheme.shapes.extraSmall)
                     .background(c.violetBg),
                 contentAlignment = Alignment.Center
             ) {
@@ -161,9 +162,9 @@ fun ToolChip(
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(MaterialTheme.shapes.small)
                     .background(c.surface2)
-                    .border(1.dp, c.border, RoundedCornerShape(12.dp))
+                    .border(1.dp, c.border, MaterialTheme.shapes.small)
                     .padding(10.dp)
             ) {
                 val preview = resultText!!.lines().take(8).joinToString("\n").take(1500)
@@ -276,9 +277,9 @@ fun CodeBlock(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(MaterialTheme.shapes.medium)
             .background(c.codeBg)
-            .border(1.dp, c.codeBorder, RoundedCornerShape(16.dp))
+            .border(1.dp, c.codeBorder, MaterialTheme.shapes.medium)
     ) {
         // En-tête
         Row(
@@ -302,7 +303,7 @@ fun CodeBlock(
             if (language != null) {
                 Box(
                     Modifier
-                        .clip(RoundedCornerShape(6.dp))
+                        .clip(MaterialTheme.shapes.extraSmall)
                         .background(c.violetBg)
                         .padding(horizontal = 7.dp, vertical = 2.dp)
                 ) {
@@ -316,7 +317,7 @@ fun CodeBlock(
             }
             Row(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(MaterialTheme.shapes.small)
                     .background(Color(0x1A94A3BA))
                     .clickable {
                         clipboard.setText(AnnotatedString(code))
@@ -391,9 +392,9 @@ fun DiffPanel(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(MaterialTheme.shapes.medium)
             .background(c.codeBg)
-            .border(1.dp, c.codeBorder, RoundedCornerShape(14.dp))
+            .border(1.dp, c.codeBorder, MaterialTheme.shapes.medium)
     ) {
         shown.forEach { line ->
             val (bg, textColor, sign) = when (line.kind) {
