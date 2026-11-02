@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -556,4 +558,147 @@ fun CardDivider(modifier: Modifier = Modifier) {
             .height(1.dp)
             .background(Zcolors.border)
     )
+}
+
+
+/**
+ * Aperçu isolé des surfaces Liquid Glass.
+ *
+ * Les paramètres sont volontairement fournis par l'écran parent : leurs changements
+ * ne forcent pas la recomposition des autres sections de la page.
+ */
+@Composable
+fun GlassPreviewCard(
+    modifier: Modifier = Modifier,
+    material: String = "Liquid",
+    glassColor: Color = Zcolors.cyan,
+    blur: Float = 0.55f,
+    tint: Float = 0.35f,
+    film: Float = 0.22f,
+    activeTab: String = "Chat"
+) {
+    val c = Zcolors
+    val blurLevel = blur.coerceIn(0f, 1f)
+    val tintLevel = tint.coerceIn(0f, 1f)
+    val filmLevel = film.coerceIn(0f, 1f)
+    val surfaceAlpha = (0.12f + blurLevel * 0.20f + filmLevel * 0.28f).coerceIn(0.12f, 0.60f)
+    val surfaceColor = glassColor.copy(alpha = surfaceAlpha)
+    val outlineColor = glassColor.copy(alpha = (0.20f + tintLevel * 0.48f).coerceIn(0.20f, 0.68f))
+    val tabs = listOf("Chat", "Fichiers", "Éditeur", "Terminal", "Réglages")
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(120.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(
+                        glassColor.copy(alpha = 0.95f),
+                        c.violet.copy(alpha = 0.92f),
+                        c.cyan.copy(alpha = 0.82f)
+                    )
+                )
+            )
+    ) {
+        Canvas(Modifier.matchParentSize()) {
+            val stripeGap = 18.dp.toPx()
+            var x = -size.height
+            while (x < size.width) {
+                drawLine(
+                    color = Color.White.copy(alpha = 0.07f + filmLevel * 0.10f),
+                    start = Offset(x, 0f),
+                    end = Offset(x + size.height, size.height),
+                    strokeWidth = 7.dp.toPx()
+                )
+                x += stripeGap
+            }
+            drawCircle(
+                color = Color.White.copy(alpha = 0.10f + blurLevel * 0.10f),
+                radius = size.height * 0.58f,
+                center = Offset(size.width * 0.82f, size.height * 0.16f)
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(50))
+                    .background(surfaceColor)
+                    .border(1.dp, outlineColor, RoundedCornerShape(50))
+                    .padding(horizontal = 11.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    Modifier
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.9f))
+                )
+                Spacer(Modifier.width(7.dp))
+                Text(
+                    "Écrire un message…",
+                    color = Color.White.copy(alpha = 0.88f),
+                    fontFamily = Inter,
+                    fontSize = 10.sp,
+                    maxLines = 1
+                )
+                Spacer(Modifier.weight(1f))
+                Text(
+                    material,
+                    color = Color.White.copy(alpha = 0.78f),
+                    fontFamily = JetBrainsMono,
+                    fontSize = 8.sp,
+                    maxLines = 1
+                )
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(50))
+                    .background(surfaceColor.copy(alpha = (surfaceAlpha + 0.12f).coerceAtMost(0.72f)))
+                    .border(1.dp, outlineColor.copy(alpha = 0.78f), RoundedCornerShape(50))
+                    .padding(horizontal = 5.dp, vertical = 5.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                tabs.forEach { tab ->
+                    val selected = tab == activeTab
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(50))
+                            .background(
+                                if (selected) Color.White.copy(alpha = 0.20f + tintLevel * 0.20f)
+                                else Color.Transparent
+                            )
+                            .padding(horizontal = 2.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = when (tab) {
+                                "Fichiers" -> "Fich."
+                                "Réglages" -> "Régl."
+                                else -> tab
+                            },
+                            color = Color.White.copy(alpha = if (selected) 1f else 0.72f),
+                            fontFamily = Inter,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                            fontSize = 7.sp,
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
