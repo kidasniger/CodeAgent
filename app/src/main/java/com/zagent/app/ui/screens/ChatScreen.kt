@@ -75,7 +75,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -1318,11 +1317,13 @@ private fun CommandConfirmSheet(
         onDismissRequest = { onResolve(false) },
         sheetState = sheetState,
         containerColor = Color.Transparent,
+        dragHandle = { androidx.compose.material3.BottomSheetDefaults.DragHandle(color = c.text3.copy(alpha = 0.45f)) },
         shape = RoundedCornerShape(28.dp, 28.dp, 0.dp, 0.dp)
     ) {
         Column(
             Modifier
                 .fillMaxWidth()
+                .glassSurface(LocalHazeState.current, LocalGlass.current, c.isDark, RoundedCornerShape(28.dp), LocalContext.current)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 24.dp)
@@ -1432,6 +1433,7 @@ private fun DeleteConfirmSheet(
         Column(
             Modifier
                 .fillMaxWidth()
+                .glassSurface(LocalHazeState.current, LocalGlass.current, c.isDark, RoundedCornerShape(28.dp), LocalContext.current)
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 24.dp)
         ) {
