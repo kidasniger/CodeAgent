@@ -1,6 +1,8 @@
 package com.zagent.app.ui.screens.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +19,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -29,7 +32,11 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -51,6 +58,44 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     var destination by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedStylePreset by rememberSaveable {
         mutableStateOf(viewModel.settingsManager.stylePresetId)
+    }
+    var accentHex by rememberSaveable {
+        mutableStateOf(viewModel.settingsManager.accentColorHex)
+    }
+    var accentHue by rememberSaveable {
+        mutableStateOf(
+            accentHex.takeIf { it.isNotBlank() }?.let { hex ->
+                runCatching {
+                    val hsv = FloatArray(3)
+                    android.graphics.Color.colorToHSV(android.graphics.Color.parseColor(hex), hsv)
+                    hsv[0]
+                }.getOrDefault(0f)
+            } ?: 0f
+        )
+    }
+    val accentSwatches = listOf(
+        "Bleu-gris" to "#64748B",
+        "Rouge" to "#EF4444",
+        "Orange" to "#F97316",
+        "Jaune" to "#EAB308",
+        "Vert" to "#22C55E",
+        "Cyan" to "#06B6D4",
+        "Bleu" to "#3B82F6",
+        "Violet" to "#8B5CF6",
+        "Rose" to "#EC4899"
+    )
+    fun selectAccent(hex: String) {
+        accentHex = hex
+        viewModel.settingsManager.accentColorHex = hex
+        viewModel.settingsManager.markStylePresetCustom()
+        if (hex.isNotBlank()) {
+            val hsv = FloatArray(3)
+            android.graphics.Color.colorToHSV(android.graphics.Color.parseColor(hex), hsv)
+            accentHue = hsv[0]
+        } else {
+            accentHue = 0f
+        }
+        selectedStylePreset = viewModel.settingsManager.stylePresetId
     }
     val styleOptions = listOf(
         StylePresetIds.MINIMAL to "Minimal",
@@ -88,6 +133,93 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                         onClick = {},
                         label = { Text("Perso") }
                     )
+                }
+            }
+
+            SettingsSectionLabel("TEINTE")
+            SettingsCard {
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Couleur d'accent", color = Zcolors.text, style = MaterialTheme.typography.titleMedium)
+                        FilterChip(
+                            selected = accentHex.isBlank(),
+                            onClick = { selectAccent("") },
+                            label = { Text("Aucune") }
+                        )
+                    }
+                    Text(
+                        if (accentHex.isBlank()) "Palette d'origine" else accentHex.uppercase(),
+                        color = Zcolors.text2,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Text("ARC-EN-CIEL", color = Zcolors.text3, style = MaterialTheme.typography.labelSmall, letterSpacing = 1.4.sp)
+                    Box(Modifier.fillMaxWidth().height(38.dp), contentAlignment = Alignment.Center) {
+                        Canvas(Modifier.fillMaxWidth().height(9.dp).clip(CircleShape)) {
+                            drawRoundRect(
+                                brush = Brush.horizontalGradient(
+                                    listOf(Color.Red, Color(0xFFFF8A00), Color.Yellow, Color.Green, Color.Cyan, Color.Blue, Color(0xFF8B00FF), Color.Red)
+                                ),
+                                cornerRadius = CornerRadius(size.height / 2f)
+                            )
+                        }
+                        Slider(
+                            value = accentHue,
+                            onValueChange = { hue ->
+                                accentHue = hue
+                                val argb = android.graphics.Color.HSVToColor(floatArrayOf(hue, 0.82f, 0.95f))
+                                selectAccent(String.format("#%06X", 0xFFFFFF and argb))
+                            },
+                            valueRange = 0f..360f,
+                            colors = SliderDefaults.colors(
+                                thumbColor = Color.White,
+                                activeTrackColor = Color.Transparent,
+                                inactiveTrackColor = Color.Transparent,
+                                activeTickColor = Color.Transparent,
+                                inactiveTickColor = Color.Transparent
+                            )
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text("COULEURS RAPIDES", color = Zcolors.text3, style = MaterialTheme.typography.labelSmall, letterSpacing = 1.4.sp)
+                    Spacer(Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        accentSwatches.forEach { (label, hex) ->
+                            val swatch = Color(android.graphics.Color.parseColor(hex))
+                            Box(
+                                modifier = Modifier
+                                    .size(29.dp)
+                                    .clip(CircleShape)
+                                    .background(swatch)
+                                    .border(
+                                        width = if (accentHex.equals(hex, ignoreCase = true)) 3.dp else 1.dp,
+                                        color = if (accentHex.equals(hex, ignoreCase = true)) Zcolors.text else Zcolors.border2,
+                                        shape = CircleShape
+                                    )
+                                    .clickable { selectAccent(hex) }
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(5.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        accentSwatches.forEach { (label, _) ->
+                            Text(
+                                text = label.take(1),
+                                color = Zcolors.text3,
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.width(29.dp),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
                 }
             }
 
