@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.material3.Switch
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.FilterChip
 import android.os.Build
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.Composable
@@ -31,6 +32,7 @@ fun ThemeSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     var lightTime by remember { mutableStateOf(settings.scheduledLightTime) }
     var oled by remember { mutableStateOf(settings.oledBlack) }
     var dynamic by remember { mutableStateOf(settings.dynamicSystemColors) }
+    var radius by remember { mutableStateOf(settings.cornerRadius) }
     SettingsPageScaffold(title = "Thème", onBack = onBack) {
         SettingsSectionLabel("MODE")
         SettingsCard {
@@ -73,7 +75,22 @@ fun ThemeSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 )
             }
         }
-        SettingsSectionLabel("OPTIONS D’AFFICHAGE")
+        SettingsSectionLabel("RAYON DES ANGLES")
+        SettingsCard {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)
+            ) {
+                listOf(8 to "Net", 16 to "Doux", 28 to "Très rond").forEach { (value, label) ->
+                    FilterChip(
+                        selected = radius == value,
+                        onClick = { radius = value; settings.cornerRadius = value },
+                        label = { Text(label) }
+                    )
+                }
+            }
+        }
+        $marker
         SettingsCard {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
