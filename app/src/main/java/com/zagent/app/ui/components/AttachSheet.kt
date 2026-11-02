@@ -104,7 +104,7 @@ fun AttachSheet(
                     onClick = onPickFile
                 )
                 AttachTile(
-                    icon = PhotoIcon,
+                    icon = Icons.Default.PhotoIcon,
                     tint = c.violet,
                     title = "Image",
                     description = "Photo ou capture d'écran",
