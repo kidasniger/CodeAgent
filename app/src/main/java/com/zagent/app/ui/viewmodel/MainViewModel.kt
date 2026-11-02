@@ -205,7 +205,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var reduceAnimations by mutableStateOf(settingsManager.reduceAnimations)
         private set
 
-    fun setReduceAnimations(value: Boolean) {
+    fun updateReduceAnimations(value: Boolean) {
         reduceAnimations = value
         settingsManager.reduceAnimations = value
     }

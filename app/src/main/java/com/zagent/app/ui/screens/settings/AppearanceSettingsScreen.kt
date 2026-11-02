@@ -362,7 +362,7 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { viewModel.setReduceAnimations(!viewModel.reduceAnimations) }
+                        .clickable { viewModel.updateReduceAnimations(!viewModel.reduceAnimations) }
                         .padding(horizontal = 16.dp, vertical = 15.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -383,7 +383,7 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     }
                     Switch(
                         checked = viewModel.reduceAnimations,
-                        onCheckedChange = { viewModel.setReduceAnimations(it) }
+                        onCheckedChange = { viewModel.updateReduceAnimations(it) }
                     )
                 }
             }
