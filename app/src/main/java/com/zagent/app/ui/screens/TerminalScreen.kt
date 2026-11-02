@@ -169,7 +169,7 @@ private fun HeaderText(label: String, onClick: () -> Unit) {
         color = c.text2,
         style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
+            .clip(MaterialTheme.shapes.small)
             .clickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 8.dp)
     )
@@ -190,7 +190,7 @@ private fun TabsRow(controller: TerminalController, showAgent: Boolean, onAgent:
             val on = !showAgent && controller.activeTab == i
             Row(
                 Modifier
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(MaterialTheme.shapes.extraSmall)
                     .background(if (on) c.cyan else c.bg2)
                     .clickable {
                         controller.activeTab = i
@@ -210,7 +210,7 @@ private fun TabsRow(controller: TerminalController, showAgent: Boolean, onAgent:
                         color = if (on) c.bg else c.text3,
                         style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold),
                         modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
+                            .clip(MaterialTheme.shapes.extraSmall)
                             .clickable { controller.closeTab(i) }
                             .padding(horizontal = 8.dp)
                     )
@@ -219,7 +219,7 @@ private fun TabsRow(controller: TerminalController, showAgent: Boolean, onAgent:
         }
         Box(
             Modifier
-                .clip(RoundedCornerShape(10.dp))
+                .clip(MaterialTheme.shapes.extraSmall)
                 .background(c.bg2)
                 .clickable {
                     controller.addTab()
@@ -231,7 +231,7 @@ private fun TabsRow(controller: TerminalController, showAgent: Boolean, onAgent:
         }
         Box(
             Modifier
-                .clip(RoundedCornerShape(10.dp))
+                .clip(MaterialTheme.shapes.extraSmall)
                 .background(if (showAgent) c.cyan else c.bg2)
                 .clickable { onAgent(true) }
                 .padding(horizontal = 14.dp, vertical = 7.dp)
@@ -274,7 +274,7 @@ private fun AgentLogPane(controller: TerminalController, modifier: Modifier) {
                     color = c.amber,
                     style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold),
                     modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(MaterialTheme.shapes.small)
                         .clickable { controller.clearAgentLog() }
                         .padding(horizontal = 10.dp, vertical = 6.dp)
                 )
@@ -362,7 +362,7 @@ private fun RowScope.Key(label: String? = null, icon: ImageVector? = null, activ
         Modifier
             .weight(1f)
             .height(40.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(MaterialTheme.shapes.small)
             .background(if (active) c.cyan else c.bg)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
@@ -382,7 +382,7 @@ private fun RowScope.IconKey(icon: ImageVector, description: String, onClick: ()
         Modifier
             .weight(1f)
             .height(40.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(MaterialTheme.shapes.small)
             .background(c.bg)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
