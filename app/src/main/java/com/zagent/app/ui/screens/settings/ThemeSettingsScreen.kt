@@ -57,7 +57,10 @@ fun ThemeSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     onValueChange = { value ->
                         if (value.matches(Regex("\\d{0,2}:?\\d{0,2}"))) {
                             darkTime = value
-                            if (value.matches(Regex("\\d{2}:\\d{2}")) && value.substring(0, 2).toIntOrNull()?.let { it in 0..23 } == true && value.substring(3, 5).toIntOrNull()?.let { it in 0..59 } == true) viewModel.updateScheduledDarkTime(value); settings.markStylePresetCustom()
+                            if (value.matches(Regex("\\d{2}:\\d{2}")) && value.substring(0, 2).toIntOrNull()?.let { it in 0..23 } == true && value.substring(3, 5).toIntOrNull()?.let { it in 0..59 } == true) {
+                                viewModel.updateScheduledDarkTime(value)
+                                settings.markStylePresetCustom()
+                            }
                         }
                     },
                     label = { Text("Passage en sombre (HH:mm)") },
@@ -69,7 +72,10 @@ fun ThemeSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     onValueChange = { value ->
                         if (value.matches(Regex("\\d{0,2}:?\\d{0,2}"))) {
                             lightTime = value
-                            if (value.matches(Regex("\\d{2}:\\d{2}")) && value.substring(0, 2).toIntOrNull() in 0..23 && value.substring(3, 5).toIntOrNull() in 0..59) viewModel.updateScheduledLightTime(value); settings.markStylePresetCustom()
+                            if (value.matches(Regex("\\d{2}:\\d{2}")) && value.substring(0, 2).toIntOrNull() in 0..23 && value.substring(3, 5).toIntOrNull() in 0..59) {
+                                viewModel.updateScheduledLightTime(value)
+                                settings.markStylePresetCustom()
+                            }
                         }
                     },
                     label = { Text("Passage en clair (HH:mm)") },
