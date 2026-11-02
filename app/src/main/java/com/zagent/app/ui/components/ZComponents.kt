@@ -179,7 +179,7 @@ fun AmbientBackground(modifier: Modifier = Modifier) {
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
-    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(20.dp),
+    shape: androidx.compose.ui.graphics.Shape = MaterialTheme.shapes.large,
     backgroundColor: Color = Zcolors.surface,
     borderColor: Color = Zcolors.border,
     contentPadding: PaddingValues = PaddingValues(16.dp),
@@ -351,7 +351,7 @@ fun IconBadge(
     Box(
         modifier = modifier
             .size(size)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(MaterialTheme.shapes.small)
             .background(bg),
         contentAlignment = Alignment.Center
     ) {
@@ -365,13 +365,13 @@ fun ModelChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: M
     val c = Zcolors
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(MaterialTheme.shapes.small)
             .background(
                 if (selected) {
                     if (c.isDark) Color(0xFF2B2142) else Color(0xFFF0EBFF)
                 } else c.bg2
             )
-            .border(1.dp, if (selected) c.violet else c.border2, RoundedCornerShape(12.dp))
+            .border(1.dp, if (selected) c.violet else c.border2, MaterialTheme.shapes.small)
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 9.dp),
         contentAlignment = Alignment.Center
@@ -596,7 +596,7 @@ fun GlassPreviewCard(
         modifier = modifier
             .fillMaxWidth()
             .height(120.dp)
-            .clip(RoundedCornerShape(22.dp))
+            .clip(MaterialTheme.shapes.extraLarge)
             .background(
                 Brush.linearGradient(
                     colors = listOf(
