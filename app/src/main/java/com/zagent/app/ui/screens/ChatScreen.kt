@@ -1543,8 +1543,9 @@ private fun WriteConfirmSheet(
     ModalBottomSheet(
         onDismissRequest = { onResolve(false, false) },
         sheetState = sheetState,
-        containerColor = c.bg2,
-        shape = RoundedCornerShape(24.dp, 24.dp, 0.dp, 0.dp)
+        containerColor = Color.Transparent,
+        dragHandle = { androidx.compose.material3.BottomSheetDefaults.DragHandle(color = c.text3.copy(alpha = 0.45f)) },
+        shape = RoundedCornerShape(28.dp, 28.dp, 0.dp, 0.dp)
     ) {
         Column(
             Modifier
