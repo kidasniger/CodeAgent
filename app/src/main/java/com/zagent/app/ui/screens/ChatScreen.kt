@@ -75,6 +75,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -1220,6 +1221,7 @@ private fun InputBar(
     enabled: Boolean
 ) {
     val c = Zcolors
+    val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
     Column(
         Modifier
@@ -1230,7 +1232,7 @@ private fun InputBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .glassSurface(LocalHazeState.current, LocalGlass.current, c.isDark, RoundedCornerShape(50.dp))
+                .glassSurface(LocalHazeState.current, LocalGlass.current, c.isDark, RoundedCornerShape(50.dp), context)
                 .background(c.surface2.copy(alpha = if (LocalGlass.current.enabled) 0.18f else 1f))
                 .border(1.dp, c.border2.copy(alpha = 0.5f), RoundedCornerShape(50))
                 .padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
