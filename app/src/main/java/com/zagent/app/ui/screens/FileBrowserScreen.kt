@@ -70,6 +70,8 @@ import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.SpaceGrotesk
 import com.zagent.app.ui.theme.Zcolors
+import com.zagent.app.ui.theme.LocalHazeState
+import dev.chrisbanes.haze.haze
 import com.zagent.app.ui.viewmodel.MainViewModel
 import java.util.Locale
 
@@ -96,7 +98,6 @@ fun FileBrowserScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(c.bg)
             .statusBarsPadding()
             .navigationBarsPadding()
             .imePadding()
@@ -204,7 +205,10 @@ fun FileBrowserScreen(
                     .padding(horizontal = 16.dp),
                 contentPadding = PaddingValues(0.dp)
             ) {
-                LazyColumn(Modifier.fillMaxSize()) {
+                LazyColumn(
+                    Modifier.fillMaxSize().then(LocalHazeState.current?.let { Modifier.haze(state = it) } ?: Modifier),
+                    contentPadding = PaddingValues(bottom = 104.dp)
+                ) {
                     items(rows, key = { "${it.entry.path}:${it.depth}" }) { row ->
                         BrowserRow(row, viewModel) { action, e ->
                             val prefix = if (e.isDir) e.path + "/" else ""
