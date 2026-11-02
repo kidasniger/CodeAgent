@@ -31,11 +31,11 @@ import com.zagent.app.ui.viewmodel.MainViewModel
 @Composable
 fun ThemeSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     val settings = viewModel.settingsManager
-    var darkTime by remember { mutableStateOf(settings.scheduledDarkTime) }
-    var lightTime by remember { mutableStateOf(settings.scheduledLightTime) }
-    var oled by remember { mutableStateOf(settings.oledBlack) }
-    var dynamic by remember { mutableStateOf(settings.dynamicSystemColors) }
-    var radius by remember { mutableStateOf(settings.cornerRadius) }
+    var darkTime by remember { mutableStateOf(viewModel.scheduledDarkTime) }
+    var lightTime by remember { mutableStateOf(viewModel.scheduledLightTime) }
+    var oled by remember { mutableStateOf(viewModel.oledBlack) }
+    var dynamic by remember { mutableStateOf(viewModel.dynamicSystemColors) }
+    var radius by remember { mutableStateOf(viewModel.cornerRadius) }
     SettingsPageScaffold(title = "Thème", onBack = onBack) {
         SettingsSectionLabel("MODE")
         SettingsCard {
@@ -57,7 +57,7 @@ fun ThemeSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     onValueChange = { value ->
                         if (value.matches(Regex("\\d{0,2}:?\\d{0,2}"))) {
                             darkTime = value
-                            if (value.matches(Regex("\\d{2}:\\d{2}")) && value.substring(0, 2).toIntOrNull() in 0..23 && value.substring(3, 5).toIntOrNull() in 0..59) settings.scheduledDarkTime = value
+                            if (value.matches(Regex("\\d{2}:\\d{2}")) && value.substring(0, 2).toIntOrNull() in 0..23 && value.substring(3, 5).toIntOrNull() in 0..59) viewModel.setScheduledDarkTime(value)
                         }
                     },
                     label = { Text("Passage en sombre (HH:mm)") },
@@ -69,7 +69,7 @@ fun ThemeSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     onValueChange = { value ->
                         if (value.matches(Regex("\\d{0,2}:?\\d{0,2}"))) {
                             lightTime = value
-                            if (value.matches(Regex("\\d{2}:\\d{2}")) && value.substring(0, 2).toIntOrNull() in 0..23 && value.substring(3, 5).toIntOrNull() in 0..59) settings.scheduledLightTime = value
+                            if (value.matches(Regex("\\d{2}:\\d{2}")) && value.substring(0, 2).toIntOrNull() in 0..23 && value.substring(3, 5).toIntOrNull() in 0..59) viewModel.setScheduledLightTime(value)
                         }
                     },
                     label = { Text("Passage en clair (HH:mm)") },
@@ -87,7 +87,7 @@ fun ThemeSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 listOf(8 to "Net", 16 to "Doux", 28 to "Très rond").forEach { (value, label) ->
                     FilterChip(
                         selected = radius == value,
-                        onClick = { radius = value; settings.cornerRadius = value },
+                        onClick = { radius = value; viewModel.setCornerRadius(value) },
                         label = { Text(label) }
                     )
                 }
@@ -103,7 +103,7 @@ fun ThemeSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     Text("Noir pur (OLED)", color = Zcolors.text)
                     Text("Fond noir et surfaces profondes en mode sombre", color = Zcolors.text2, style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
                 }
-                Switch(checked = oled, onCheckedChange = { oled = it; settings.oledBlack = it })
+                Switch(checked = oled, onCheckedChange = { oled = it; viewModel.setOledBlack(it) })
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 SettingsInsetDivider()
@@ -115,7 +115,7 @@ fun ThemeSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                         Text("Couleurs du système", color = Zcolors.text)
                         Text("Utiliser la palette dynamique Android", color = Zcolors.text2, style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
                     }
-                    Switch(checked = dynamic, onCheckedChange = { dynamic = it; settings.dynamicSystemColors = it })
+                    Switch(checked = dynamic, onCheckedChange = { dynamic = it; viewModel.setDynamicSystemColors(it) })
                 }
             }
         }
