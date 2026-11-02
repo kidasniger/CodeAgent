@@ -3,7 +3,6 @@ package com.zagent.app.ui.screens
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
@@ -52,7 +51,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -101,6 +99,8 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.ui.components.GlassAlertDialog
+import com.zagent.app.ui.components.GlassDropdownMenu
 import com.zagent.app.ui.components.CircleIconButton
 import com.zagent.app.ui.editor.EditorTab
 import com.zagent.app.ui.editor.Kind
@@ -761,9 +761,8 @@ fun EditorScreen(
         if (t == null) {
             confirmClose = null
         } else {
-            AlertDialog(
+            GlassAlertDialog(
                 onDismissRequest = { confirmClose = null },
-                containerColor = c.bg2,
                 title = { Text("Modifications non enregistrées", color = c.text, fontFamily = Inter, fontSize = 17.sp) },
                 text = { Text(t.name, color = c.text2, fontFamily = JetBrainsMono, fontSize = 13.sp) },
                 confirmButton = {
@@ -980,7 +979,7 @@ private fun FullscreenBar(
             ConsoleIcon(errors) { onConsole() }
             Box {
                 SmallIcon(Icons.Default.MoreVert, "Menu") { onMenu(true) }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { onMenu(false) }) {
+                GlassDropdownMenu(expanded = menuOpen, onDismissRequest = { onMenu(false) }) {
                     DropdownMenuItem(text = { Text("Recharger") }, onClick = { onMenu(false); onRefresh() })
                     DropdownMenuItem(text = { Text("Console") }, onClick = { onMenu(false); onConsole() })
                     DropdownMenuItem(text = { Text("Quitter le plein écran") }, onClick = { onMenu(false); onExit() })
