@@ -56,13 +56,13 @@ fun FloatingTabBar(
                     .then(
                         if (selected) Modifier.glassSurface(
                             haze,
-                            glass.copy(film = 0.22f, tint = 0f, frost = 2.dp),
+                            glass,
                             Zcolors.isDark,
                             CircleShape,
                             context
                         ) else Modifier
                     )
-                    .background(if (selected) Color.White.copy(alpha = glass.activeTab.coerceIn(0f, 1f)) else Color.Transparent, CircleShape)
+                    .background(if (selected) Zcolors.cyan.copy(alpha = glass.activeTab.coerceIn(0f, 1f)) else Color.Transparent, CircleShape)
                     .clickable { onNavigate(screen) }
                     .padding(vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
