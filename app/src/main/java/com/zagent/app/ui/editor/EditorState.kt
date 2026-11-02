@@ -10,6 +10,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import com.zagent.app.data.FileRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -138,7 +139,9 @@ class EditorTab(val path: String, initial: String, val crlf: Boolean) {
 /** Gère les onglets ouverts, le chargement et la sauvegarde. */
 class EditorController(
     private val scope: CoroutineScope,
-    private val repo: () -> FileRepository
+    private val repo: () -> FileRepository,
+    /** Appelé à chaque changement d'onglets (chemins ouverts + index actif) pour les mémoriser (MA79). */
+    private val persistSession: (List<String>, Int) -> Unit = { _, _ -> }
 ) {
     val tabs = mutableStateListOf<EditorTab>()
     var activeIndex by mutableIntStateOf(0)
@@ -154,6 +157,39 @@ class EditorController(
 
     val active: EditorTab? get() = tabs.getOrNull(activeIndex)
 
+    private var restoreJob: Job? = null
+
+    private fun persist() {
+        persistSession(tabs.map { it.path }, activeIndex)
+    }
+
+    /** Rouvre les onglets mémorisés (MA79) sans changer d'écran ; les fichiers disparus sont ignorés. */
+    fun restore(paths: List<String>, active: Int) {
+        if (paths.isEmpty()) return
+        restoreJob?.cancel()
+        restoreJob = scope.launch(Dispatchers.IO) {
+            val loaded = ArrayList<Triple<String, String, Boolean>>()
+            for (p in paths) {
+                repo().readFileForEdit(p).onSuccess { raw ->
+                    val crlf = raw.contains("\r\n")
+                    loaded.add(Triple(p, if (crlf) raw.replace("\r\n", "\n") else raw, crlf))
+                }
+            }
+            withContext(Dispatchers.Main) {
+                if (loaded.isEmpty()) return@withContext
+                val wasEmpty = tabs.isEmpty()
+                for ((p, text, crlf) in loaded) {
+                    if (tabs.none { it.path == p }) tabs.add(EditorTab(p, text, crlf))
+                }
+                if (wasEmpty) {
+                    val activePath = paths.getOrNull(active)
+                    activeIndex = tabs.indexOfFirst { it.path == activePath }.coerceAtLeast(0)
+                }
+                persist()
+            }
+        }
+    }
+
     fun open(path: String, onOpened: () -> Unit = {}) {
         openAtLine(path, null, onOpened)
     }
@@ -167,6 +203,7 @@ class EditorController(
         val existing = tabs.indexOfFirst { it.path == path }
         if (existing >= 0) {
             activeIndex = existing
+            persist()
             onOpened()
             return
         }
@@ -182,6 +219,7 @@ class EditorController(
                     val text = if (crlf) raw.replace("\r\n", "\n") else raw
                     tabs.add(EditorTab(path, text, crlf))
                     activeIndex = tabs.lastIndex
+                    persist()
                     onOpened()
                 }.onFailure {
                     error = it.message ?: "Impossible d'ouvrir $path"
@@ -191,7 +229,22 @@ class EditorController(
     }
 
     fun select(index: Int) {
-        if (index in tabs.indices) activeIndex = index
+        if (index in tabs.indices) {
+            activeIndex = index
+            persist()
+        }
+    }
+
+    /**
+     * Ferme tous les onglets sauf [keep] (MA79). Les onglets modifiés sont conservés pour ne
+     * rien perdre ; renvoie leur nombre.
+     */
+    fun closeOthers(keep: EditorTab): Int {
+        val kept = tabs.count { it !== keep && it.dirty }
+        tabs.removeAll { it !== keep && !it.dirty }
+        activeIndex = tabs.indexOf(keep).coerceAtLeast(0)
+        persist()
+        return kept
     }
 
     fun close(index: Int) {
@@ -203,6 +256,7 @@ class EditorController(
             activeIndex >= tabs.size -> tabs.lastIndex
             else -> activeIndex
         }
+        persist()
     }
 
     fun save(tab: EditorTab, onDone: (Boolean) -> Unit = {}) {
@@ -259,7 +313,9 @@ class EditorController(
         }
     }
 
+    /** Vide les onglets sans toucher à la session mémorisée (changement de projet). */
     fun clear() {
+        restoreJob?.cancel()
         tabs.clear()
         activeIndex = 0
     }

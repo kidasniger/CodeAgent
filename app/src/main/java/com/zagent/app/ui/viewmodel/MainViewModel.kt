@@ -790,6 +790,8 @@ done; } 2>&1 | head -c 50000
         browserChildren.clear()
         expandedDirs.clear()
         editor.clear()
+        val session = settingsManager.loadEditorSession(path)
+        editor.restore(session.first, session.second)
         if (currentScreen == AppScreen.EDITOR) navigateBack()
         refreshFolderLabel()
         // MA53 : recharge la liste des fichiers pour l'autocomplétion « @ ».
@@ -883,7 +885,11 @@ done; } 2>&1 | head -c 50000
     }
 
     // ── Éditeur de code ─────────────────────────────────────────────────────
-    val editor = EditorController(viewModelScope) { getFileRepo() }
+    val editor = EditorController(
+        viewModelScope,
+        { getFileRepo() },
+        { paths, active -> workingFolderUriString?.let { settingsManager.saveEditorSession(it, paths, active) } }
+    )
 
     // ── Explorateur de fichiers ─────────────────────────────────────────────
 
@@ -892,6 +898,11 @@ done; } 2>&1 | head -c 50000
 
     init {
         terminal.projectDir = workingFolderUriString
+        // MA79 : rouvre les onglets du projet au démarrage.
+        workingFolderUriString?.let { p ->
+            val session = settingsManager.loadEditorSession(p)
+            editor.restore(session.first, session.second)
+        }
         terminal.onDevServerChanged = { running ->
             AgentService.devServerActive = running
             if (running) {

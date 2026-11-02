@@ -344,6 +344,27 @@ class SettingsManager(context: Context) {
         get() = prefs.getBoolean(KEY_REDUCE_ANIMATIONS, false)
         set(value) = prefs.edit().putBoolean(KEY_REDUCE_ANIMATIONS, value).apply()
 
+    /**
+     * MA79 : onglets de l'éditeur ouverts dans un projet (index actif puis chemins relatifs,
+     * un par ligne), pour les rouvrir au redémarrage.
+     */
+    fun loadEditorSession(project: String): Pair<List<String>, Int> {
+        val raw = prefs.getString(KEY_EDITOR_SESSION + project.hashCode(), null)
+            ?: return Pair(emptyList(), 0)
+        val lines = raw.split('\n')
+        val idx = lines.firstOrNull()?.toIntOrNull() ?: 0
+        return Pair(lines.drop(1).filter { it.isNotBlank() }, idx)
+    }
+
+    fun saveEditorSession(project: String, paths: List<String>, active: Int) {
+        val key = KEY_EDITOR_SESSION + project.hashCode()
+        if (paths.isEmpty()) {
+            prefs.edit().remove(key).apply()
+        } else {
+            prefs.edit().putString(key, (listOf(active.toString()) + paths).joinToString("\n")).apply()
+        }
+    }
+
     /** Fichiers que l'utilisateur autorise toujours (écritures automatiques). */
     var alwaysAllowedPaths: Set<String>
         get() = prefs.getStringSet(KEY_ALWAYS_ALLOW, emptySet()) ?: emptySet()
@@ -490,5 +511,6 @@ class SettingsManager(context: Context) {
         private const val KEY_SEARCH_HISTORY = "search_history"
         private const val KEY_PROJECT_INSTR = "project_instructions"
         private const val KEY_REDUCE_ANIMATIONS = "reduce_animations"
+        private const val KEY_EDITOR_SESSION = "editor_session_"
     }
 }
