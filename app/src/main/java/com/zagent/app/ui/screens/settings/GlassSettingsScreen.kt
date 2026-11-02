@@ -3,206 +3,148 @@ package com.zagent.app.ui.screens.settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BlurOn
+import androidx.compose.material.icons.filled.Opacity
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.zagent.app.data.SettingsManager
+import androidx.compose.ui.unit.sp
 import com.zagent.app.ui.components.GlassPreviewCard
-import com.zagent.app.ui.components.ZSliderRow
-import com.zagent.app.ui.theme.StylePresetIds
-import com.zagent.app.ui.theme.Zcolors
+import com.zagent.app.ui.theme.*
+import com.zagent.app.ui.viewmodel.MainViewModel
 
-private val glassColorOptions = listOf(
-    "#22D3EE" to "Cyan",
-    "#8B5CF6" to "Violet",
-    "#D97757" to "Corail",
-    "#34D399" to "Menthe",
-    "#F5F5F5" to "Blanc",
-    "#F59E0B" to "Ambre"
+private val glassSwatches = listOf(
+    "" to "Aucune", "#D97757" to "Corail", "#8B5CF6" to "Violet", "#34D399" to "Menthe",
+    "#F5F5F5" to "Blanc", "#F59E0B" to "Ambre", "#22D3EE" to "Cyan",
+    "#3B82F6" to "Bleu", "#EC4899" to "Rose", "#64748B" to "Ardoise"
 )
 
-private val glassMaterials = listOf("Liquid", "Frosted", "Solid")
-private val glassTabs = listOf("Chat", "Fichiers", "Éditeur", "Terminal", "Réglages")
-
 @Composable
-fun GlassSettingsScreen(onBack: () -> Unit) {
-    val context = LocalContext.current
-    val settings = remember(context) { SettingsManager(context) }
-
+fun GlassSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
+    val manager = viewModel.settingsManager
     var editDark by remember { mutableStateOf(false) }
-    var material by remember { mutableStateOf(settings.glassMaterialFor(false)) }
-    var colorHex by remember { mutableStateOf(settings.glassColorFor(false)) }
-    var blur by remember { mutableStateOf(settings.glassBlurFor(false)) }
-    var tint by remember { mutableStateOf(settings.glassTintFor(false)) }
-    var film by remember { mutableStateOf(settings.glassFilmFor(false)) }
-    var activeTab by remember { mutableStateOf(settings.glassActiveTabFor(false)) }
-    var isCustom by remember { mutableStateOf(settings.stylePresetId == StylePresetIds.CUSTOM) }
-    var showResetDialog by remember { mutableStateOf(false) }
+    var current by remember { mutableStateOf(manager.loadGlassSettings(false)) }
+    var resetDialog by remember { mutableStateOf(false) }
 
-    fun markCustom() {
-        settings.markStylePresetCustom()
-        isCustom = true
+    fun save(value: GlassSettings) {
+        current = value
+        viewModel.updateGlassSettings(editDark, value)
+        manager.markStylePresetCustom()
     }
-
-    val previewColor = remember(colorHex) {
-        runCatching { Color(android.graphics.Color.parseColor(colorHex)) }
-            .getOrDefault(Color.Cyan)
+    fun load(dark: Boolean) {
+        editDark = dark
+        current = manager.loadGlassSettings(dark)
+        viewModel.updateGlassSettings(dark, current)
     }
 
     SettingsPageScaffold(title = "Verre", onBack = onBack) {
+        SettingsSectionLabel("ACTIVATION")
+        SettingsCard {
+            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Liquid Glass", color = Zcolors.text, style = MaterialTheme.typography.titleMedium)
+                    Text("Surfaces flottantes translucides", color = Zcolors.text2, style = MaterialTheme.typography.bodySmall)
+                }
+                Switch(checked = current.enabled, onCheckedChange = { save(current.copy(enabled = it)) })
+            }
+        }
+
         SettingsSectionLabel("MODIFIER POUR")
         SettingsCard {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = !editDark, onClick = {
-                    editDark = false
-                    material = settings.glassMaterialFor(false)
-                    colorHex = settings.glassColorFor(false)
-                    blur = settings.glassBlurFor(false)
-                    tint = settings.glassTintFor(false)
-                    film = settings.glassFilmFor(false)
-                    activeTab = settings.glassActiveTabFor(false)
-                }, label = { Text("Clair") })
-                FilterChip(selected = editDark, onClick = {
-                    editDark = true
-                    material = settings.glassMaterialFor(true)
-                    colorHex = settings.glassColorFor(true)
-                    blur = settings.glassBlurFor(true)
-                    tint = settings.glassTintFor(true)
-                    film = settings.glassFilmFor(true)
-                    activeTab = settings.glassActiveTabFor(true)
-                }, label = { Text("Sombre") })
+            Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(selected = !editDark, onClick = { load(false) }, label = { Text("Clair") })
+                FilterChip(selected = editDark, onClick = { load(true) }, label = { Text("Sombre") })
             }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TextButton(onClick = { showResetDialog = true }) { Text("Réinitialiser le verre") }
-        }
-        if (showResetDialog) {
-            AlertDialog(
-                onDismissRequest = { showResetDialog = false },
-                title = { Text("Réinitialiser le verre ?") },
-                text = { Text("Les réglages Verre seront remis à leurs valeurs initiales pour les thèmes clair et sombre.") },
-                confirmButton = {
-                    TextButton(onClick = {
-                        listOf(false, true).forEach { dark ->
-                            settings.setGlassMaterialFor(dark, "Liquid")
-                            settings.setGlassColorFor(dark, "#22D3EE")
-                            settings.setGlassBlurFor(dark, 0.55f)
-                            settings.setGlassTintFor(dark, 0.35f)
-                            settings.setGlassFilmFor(dark, 0.22f)
-                            settings.setGlassActiveTabFor(dark, "Chat")
-                        }
-                        material = "Liquid"; colorHex = "#22D3EE"; blur = 0.55f
-                        tint = 0.35f; film = 0.22f; activeTab = "Chat"
-                        settings.stylePresetId = StylePresetIds.GLASS
-                        settings.styleBasePresetId = StylePresetIds.GLASS
-                        isCustom = false
-                        showResetDialog = false
-                    }) { Text("Réinitialiser") }
-                },
-                dismissButton = { TextButton(onClick = { showResetDialog = false }) { Text("Annuler") } }
-            )
-        }
+
+        SettingsSectionLabel("APERÇU")
         GlassPreviewCard(
             modifier = Modifier.fillMaxWidth(),
-            material = material,
-            glassColor = previewColor,
-            blur = blur,
-            tint = tint,
-            film = film,
-            activeTab = activeTab
+            material = current.material.label(),
+            glassColor = if (current.colour == Color.Unspecified) Zcolors.cyan else current.colour,
+            blur = current.frost.value / 24f,
+            tint = current.tint,
+            film = current.film,
+            activeTab = "Chat"
         )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
-        ) {
-            if (isCustom) {
-                FilterChip(
-                    selected = true,
-                    onClick = {},
-                    label = { Text("Perso") }
-                )
-            }
-        }
 
         SettingsSectionLabel("MATÉRIAU")
         SettingsCard {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                glassMaterials.forEach { option ->
-                    FilterChip(
-                        selected = material == option,
-                        onClick = {
-                            material = option
-                            settings.setGlassMaterialFor(editDark, option)
-                            markCustom()
-                        },
-                        label = { Text(option) }
-                    )
+            Column {
+                GlassMaterial.entries.forEachIndexed { index, item ->
+                    Row(
+                        Modifier.fillMaxWidth().clickable { save(current.copy(material = item)) }.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(item.label(), color = Zcolors.text, style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                when (item) {
+                                    GlassMaterial.FASTEST -> "Translucide, sans flou"
+                                    GlassMaterial.BALANCED -> "Flou léger, consommation modérée"
+                                    GlassMaterial.QUALITY -> "Flou complet, reflet et bordure spéculaire"
+                                },
+                                color = Zcolors.text2,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        if (current.material == item) Text("✓", color = Zcolors.primary, fontSize = 20.sp)
+                    }
+                    if (index < GlassMaterial.entries.lastIndex) SettingsInsetDivider()
                 }
             }
         }
 
+        SettingsCard {
+            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Toujours respecter mon réglage", color = Zcolors.text)
+                    Text("Ignore l'allègement automatique", color = Zcolors.text2, style = MaterialTheme.typography.bodySmall)
+                }
+                Switch(checked = current.alwaysRespectSetting, onCheckedChange = { save(current.copy(alwaysRespectSetting = it)) })
+            }
+        }
+
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val activity = context.getSystemService(android.content.Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
+        val power = context.getSystemService(android.content.Context.POWER_SERVICE) as? android.os.PowerManager
+        if (!current.alwaysRespectSetting && (android.os.Build.VERSION.SDK_INT < 31 || activity?.isLowRamDevice == true || power?.isPowerSaveMode == true)) {
+            Text(
+                when {
+                    android.os.Build.VERSION.SDK_INT < 31 -> "Verre allégé : flou matériel indisponible avant Android 12"
+                    power?.isPowerSaveMode == true -> "Verre allégé : économiseur de batterie actif"
+                    else -> "Verre allégé : appareil à mémoire limitée"
+                },
+                color = Zcolors.text3,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 12.dp)
+            )
+        }
+
         SettingsSectionLabel("COULEUR")
         SettingsCard {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Couleur du verre", color = Zcolors.text)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(15.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    glassColorOptions.forEach { (hex, label) ->
-                        val color = Color(android.graphics.Color.parseColor(hex))
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(5.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(34.dp)
-                                    .background(color, CircleShape)
-                                    .then(
-                                        if (colorHex == hex) Modifier.border(
-                                            width = 3.dp,
-                                            color = Zcolors.text,
-                                            shape = CircleShape
-                                        ) else Modifier.border(1.dp, Zcolors.border2, CircleShape)
-                                    )
-                                    .clickable {
-                                        colorHex = hex
-                                        settings.setGlassColorFor(editDark, hex)
-                                        markCustom()
-                                    }
-                            )
-                            Text(label, color = Zcolors.text2)
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Teinte appliquée uniquement aux surfaces flottantes", color = Zcolors.text2, style = MaterialTheme.typography.bodySmall)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    glassSwatches.take(5).forEach { (hex, label) ->
+                        GlassSwatch(hex, label, current.colour) {
+                            save(current.copy(colour = if (hex.isBlank()) Color.Unspecified else Color(android.graphics.Color.parseColor(hex))))
+                        }
+                    }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    glassSwatches.drop(5).forEach { (hex, label) ->
+                        GlassSwatch(hex, label, current.colour) {
+                            save(current.copy(colour = if (hex.isBlank()) Color.Unspecified else Color(android.graphics.Color.parseColor(hex))))
                         }
                     }
                 }
@@ -211,69 +153,83 @@ fun GlassSettingsScreen(onBack: () -> Unit) {
 
         SettingsSectionLabel("EFFETS")
         SettingsCard {
-            ZSliderRow(
-                label = "Flou",
-                value = blur,
-                range = 0f..1f,
-                format = { "${(it * 100).toInt()} %" },
-                onChange = {
-                    blur = it
-                    settings.setGlassBlurFor(editDark, it)
-                    markCustom()
-                },
-                defaultValue = 0.55f,
-                onReset = { blur = 0.55f; settings.setGlassBlurFor(editDark, 0.55f); markCustom() }
-            )
+            GlassSliderRow("Couleur", Icons.Default.Opacity, current.tint, 0f..1f, { String.format("%d %%", (it * 100).toInt()) }) {
+                save(current.copy(tint = it))
+            }
             SettingsInsetDivider()
-            ZSliderRow(
-                label = "Teinte",
-                value = tint,
-                range = 0f..1f,
-                format = { "${(it * 100).toInt()} %" },
-                onChange = {
-                    tint = it
-                    settings.setGlassTintFor(editDark, it)
-                    markCustom()
-                },
-                defaultValue = 0.35f,
-                onReset = { tint = 0.35f; settings.setGlassTintFor(editDark, 0.35f); markCustom() }
-            )
+            GlassSliderRow("Flou", Icons.Default.BlurOn, current.frost.value, 0f..24f, { String.format("%d dp", it.toInt()) }) {
+                save(current.copy(frost = it.dp))
+            }
+            if (current.material == GlassMaterial.QUALITY && current.frost > 16.dp) {
+                Text("Peut ralentir les anciens téléphones", color = Zcolors.text3, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 16.dp, bottom = 8.dp))
+            }
             SettingsInsetDivider()
-            ZSliderRow(
-                label = "Film",
-                value = film,
-                range = 0f..1f,
-                format = { "${(it * 100).toInt()} %" },
-                onChange = {
-                    film = it
-                    settings.setGlassFilmFor(editDark, it)
-                    markCustom()
-                },
-                defaultValue = 0.22f,
-                onReset = { film = 0.22f; settings.setGlassFilmFor(editDark, 0.22f); markCustom() }
-            )
-        }
-
-        SettingsSectionLabel("ONGLET ACTIF")
-        SettingsCard {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                glassTabs.forEach { tab ->
-                    FilterChip(
-                        selected = activeTab == tab,
-                        onClick = {
-                            activeTab = tab
-                            settings.setGlassActiveTabFor(editDark, tab)
-                            markCustom()
-                        },
-                        label = { Text(tab) }
-                    )
-                }
+            GlassSliderRow("Film", Icons.Default.Tune, current.film, 0f..1f, { String.format("%d %%", (it * 100).toInt()) }) {
+                save(current.copy(film = it))
+            }
+            SettingsInsetDivider()
+            GlassSliderRow("Onglet actif", Icons.Default.Tune, current.activeTab, 0f..1f, { String.format("%d %%", (it * 100).toInt()) }) {
+                save(current.copy(activeTab = it))
             }
         }
+
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            TextButton(onClick = { resetDialog = true }) { Text("Réinitialiser") }
+        }
+        if (resetDialog) {
+            AlertDialog(
+                onDismissRequest = { resetDialog = false },
+                title = { Text("Réinitialiser le verre ?") },
+                text = { Text("Les réglages clair et sombre seront restaurés.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        val light = GlassSettings(film = 0.60f)
+                        val dark = GlassSettings(film = 0.35f)
+                        manager.saveGlassSettings(false, light)
+                        manager.saveGlassSettings(true, dark)
+                        current = if (editDark) dark else light
+                        viewModel.updateGlassSettings(editDark, current)
+                        resetDialog = false
+                    }) { Text("Réinitialiser") }
+                },
+                dismissButton = { TextButton(onClick = { resetDialog = false }) { Text("Annuler") } }
+            )
+        }
+    }
+}
+
+@Composable
+private fun GlassSwatch(hex: String, label: String, selected: Color, onClick: () -> Unit) {
+    val color = if (hex.isBlank()) Color(0xFFE9E5DD) else Color(android.graphics.Color.parseColor(hex))
+    val chosen = if (hex.isBlank()) selected == Color.Unspecified else selected == color
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Box(
+            Modifier.size(31.dp).clip(CircleShape).background(color)
+                .border(if (chosen) 3.dp else 1.dp, if (chosen) Zcolors.text else Zcolors.border2, CircleShape)
+                .clickable(onClick = onClick)
+        )
+        Text(label, color = Zcolors.text3, fontSize = 9.sp)
+    }
+}
+
+@Composable
+private fun GlassSliderRow(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    value: Float,
+    range: ClosedFloatingPointRange<Float>,
+    format: (Float) -> String,
+    onChange: (Float) -> Unit
+) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(32.dp).clip(RoundedCornerShape(11.dp)).background(Color(0xFFF1E7DC)), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = Color(0xFF9B7058), modifier = Modifier.size(17.dp))
+            }
+            Spacer(Modifier.width(10.dp))
+            Text(label, Modifier.weight(1f), color = Zcolors.text, style = MaterialTheme.typography.titleSmall)
+            Text(format(value), color = Zcolors.text2, style = MaterialTheme.typography.labelMedium)
+        }
+        Slider(value = value, onValueChange = onChange, valueRange = range)
     }
 }
