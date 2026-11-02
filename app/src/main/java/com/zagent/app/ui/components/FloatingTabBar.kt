@@ -53,13 +53,13 @@ fun FloatingTabBar(
             val selected = currentScreen == screen
             Column(
                 Modifier.weight(1f).clip(CircleShape)
-                    .background(if (selected) Zcolors.primary.copy(alpha = glass.activeTab.coerceIn(0f, 1f)) else Color.Transparent)
+                    .background(if (selected) Zcolors.cyan.copy(alpha = glass.activeTab.coerceIn(0f, 1f)) else Color.Transparent)
                     .clickable { onNavigate(screen) }
                     .padding(vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
-                Icon(icon, contentDescription = label, tint = if (selected) Zcolors.primary else Zcolors.text2, modifier = Modifier.size(19.dp))
+                Icon(icon, contentDescription = label, tint = if (selected) Zcolors.cyan else Zcolors.text2, modifier = Modifier.size(19.dp))
                 Text(label, color = if (selected) Zcolors.text else Zcolors.text2, fontSize = 10.sp, maxLines = 1)
             }
         }
