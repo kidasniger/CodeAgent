@@ -7,6 +7,15 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import com.zagent.app.ui.theme.LocalGlass
+import com.zagent.app.ui.theme.LocalHazeState
+import com.zagent.app.ui.theme.glassSurface
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -179,50 +188,26 @@ fun ZLogo(modifier: Modifier = Modifier, progress: Float = 1f, sparkAlpha: Float
 @Composable
 fun AmbientBackground(modifier: Modifier = Modifier) {
     val c = Zcolors
-    Canvas(modifier = modifier) {
+    val glass = LocalGlass.current
+    val transition = rememberInfiniteTransition(label = "fond-ambiant")
+    val drift by transition.animateFloat(-0.12f, 0.12f, infiniteRepeatable(tween(26000), RepeatMode.Reverse), label = "deplacement")
+    val intensity = if (glass.enabled) 0.12f else 0.025f
+    Canvas(modifier.drawWithCache {
         val w = size.width
         val h = size.height
-
-        // Blobs radiaux
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(c.cyan.copy(alpha = if (c.isDark) 0.10f else 0.14f), Color.Transparent),
-                center = Offset(w * 0.12f, h * 0.05f),
-                radius = w * 0.9f
-            ),
-            center = Offset(w * 0.12f, h * 0.05f),
-            radius = w * 0.9f
-        )
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(c.violet.copy(alpha = if (c.isDark) 0.13f else 0.10f), Color.Transparent),
-                center = Offset(w * 0.95f, h * 0.92f),
-                radius = w * 1.0f
-            ),
-            center = Offset(w * 0.95f, h * 0.92f),
-            radius = w * 1.0f
-        )
-
-        // Grille 8 dp très discrète
-        val step = 40.dp.toPx()
-        var x = 0f
-        while (x < w) {
-            drawLine(c.gridline, Offset(x, 0f), Offset(x, h), 1f)
-            x += step
+        onDrawBehind {
+            drawRect(c.bg)
+            if (glass.enabled) {
+                val p1 = Offset(w * (0.18f + drift), h * 0.12f)
+                val p2 = Offset(w * 0.86f, h * (0.78f - drift))
+                drawCircle(Brush.radialGradient(listOf(c.cyan.copy(alpha = intensity), Color.Transparent), p1, w * 0.72f), p1, w * 0.72f)
+                drawCircle(Brush.radialGradient(listOf(c.violet.copy(alpha = intensity * 0.85f), Color.Transparent), p2, w * 0.62f), p2, w * 0.62f)
+            }
         }
-        var y = 0f
-        while (y < h) {
-            drawLine(c.gridline, Offset(0f, y), Offset(w, y), 1f)
-            y += step
-        }
-    }
+    })
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Cartes glass
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
     shape: androidx.compose.ui.graphics.Shape = MaterialTheme.shapes.large,
@@ -316,7 +301,7 @@ fun CircleIconButton(
     contentDescription: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    size: Dp = 44.dp,
+    size: Dp = 40.dp,
     iconTint: Color = Zcolors.text,
     tintBackground: Color = Zcolors.surface2
 ) {
