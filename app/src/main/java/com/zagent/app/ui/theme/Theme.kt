@@ -4,9 +4,16 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import android.os.Build
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -54,7 +61,7 @@ object StylePresets {
 }
 
 /** Mode de thème choisi par l'utilisateur : suit le système, ou force clair/sombre. */
-enum class ThemeMode { SYSTEM, LIGHT, DARK }
+enum class ThemeMode { SYSTEM, LIGHT, DARK, SCHEDULED }
 
 /**
  * Convertit le mode choisi en thème effectif.
@@ -64,6 +71,7 @@ fun ThemeMode.resolveDarkTheme(systemDark: Boolean): Boolean = when (this) {
     ThemeMode.SYSTEM -> systemDark
     ThemeMode.LIGHT -> false
     ThemeMode.DARK -> true
+    ThemeMode.SCHEDULED -> false
 }
 
 // Rayons du design system : 8 / 16 / 24 / full
@@ -186,23 +194,60 @@ fun ZAgentTheme(
     content: @Composable () -> Unit
 ) {
     val minimal = stylePreset == StylePresetIds.MINIMAL
-    val scheme = when {
+    val context = LocalContext.current
+    val useDynamic = dynamicColors && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val baseScheme = when {
+        useDynamic && darkTheme -> dynamicDarkColorScheme(context)
+        useDynamic -> dynamicLightColorScheme(context)
         minimal && darkTheme -> MinimalDarkScheme
         minimal -> MinimalLightScheme
         darkTheme -> DarkScheme
         else -> LightScheme
     }
-    val zcolors = when {
+    val baseColors = when {
         minimal && darkTheme -> MinimalDarkZColors
         minimal -> MinimalLightZColors
         darkTheme -> AuroraDarkZColors
         else -> AuroraLightZColors
     }
+    val oledColors = if (oledBlack && darkTheme) baseColors.copy(
+        bg = Color.Black, bg2 = Color(0xFF080808),
+        surface = Color(0xFF0A0A0A), surface2 = Color(0xFF111111),
+        surface3 = Color(0xFF181818), border = Color(0xFF292929),
+        border2 = Color(0xFF3A3A3A)
+    ) else baseColors
+    val zcolors = oledColors.copy(
+        bg = animateColorAsState(oledColors.bg, tween(300), label = "theme-bg").value,
+        bg2 = animateColorAsState(oledColors.bg2, tween(300), label = "theme-bg2").value,
+        surface = animateColorAsState(oledColors.surface, tween(300), label = "theme-surface").value,
+        surface2 = animateColorAsState(oledColors.surface2, tween(300), label = "theme-surface2").value,
+        surface3 = animateColorAsState(oledColors.surface3, tween(300), label = "theme-surface3").value,
+        border = animateColorAsState(oledColors.border, tween(300), label = "theme-border").value,
+        border2 = animateColorAsState(oledColors.border2, tween(300), label = "theme-border2").value,
+        text = animateColorAsState(oledColors.text, tween(300), label = "theme-text").value,
+        text2 = animateColorAsState(oledColors.text2, tween(300), label = "theme-text2").value,
+        text3 = animateColorAsState(oledColors.text3, tween(300), label = "theme-text3").value,
+        cyan = animateColorAsState(oledColors.cyan, tween(300), label = "theme-accent").value,
+        violet = animateColorAsState(oledColors.violet, tween(300), label = "theme-accent2").value
+    )
+    val scheme = if (useDynamic) baseScheme.copy(
+        primary = baseScheme.primary,
+        secondary = baseScheme.secondary,
+        tertiary = baseScheme.tertiary
+    ) else baseScheme
+    val radius = cornerRadius.coerceIn(8, 28).dp
+    val shapes = Shapes(
+        extraSmall = RoundedCornerShape((radius.value * 0.5f).dp),
+        small = RoundedCornerShape((radius.value * 0.65f).dp),
+        medium = RoundedCornerShape(radius),
+        large = RoundedCornerShape((radius.value * 1.15f).dp),
+        extraLarge = RoundedCornerShape((radius.value * 1.5f).dp)
+    )
     CompositionLocalProvider(LocalZColors provides zcolors) {
         MaterialTheme(
             colorScheme = scheme,
             typography = ZTypography,
-            shapes = ZShapes,
+            shapes = shapes,
             content = content
         )
     }
