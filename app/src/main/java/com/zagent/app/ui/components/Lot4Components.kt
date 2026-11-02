@@ -161,7 +161,8 @@ fun GitChangesSheet(
     error: String?,
     loading: Boolean,
     onRefresh: () -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    onOpenFull: (() -> Unit)? = null
 ) {
     val c = Zcolors
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -185,6 +186,11 @@ fun GitChangesSheet(
                     color = c.text,
                     modifier = Modifier.weight(1f)
                 )
+                if (onOpenFull != null) {
+                    TextButton(onClick = onOpenFull) {
+                        Text("Écran complet", color = c.violet)
+                    }
+                }
                 TextButton(onClick = onRefresh, enabled = !loading) {
                     Text(if (loading) "Chargement…" else "Actualiser", color = c.cyan)
                 }

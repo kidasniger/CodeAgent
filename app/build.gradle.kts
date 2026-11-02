@@ -91,6 +91,8 @@ dependencies {
   implementation(libs.androidx.compose.ui.tooling.preview)
   // MA49 : vignettes des images jointes dans la barre de saisie
   implementation(libs.coil.compose)
+  // MA62 : génération du QR code de l'adresse locale dans l'aperçu plein écran
+  implementation(libs.zxing.core)
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.lifecycle.runtime.ktx)

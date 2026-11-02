@@ -2,6 +2,10 @@ package com.zagent.app.data
 
 /** Recherche de texte dans les fichiers du projet (outil search_in_files) + autocomplétion « @ » (MA53). */
 object ProjectSearch {
+
+    /** Un résultat de recherche de code structuré (MA58) : fichier, ligne, extrait. */
+    data class CodeHit(val path: String, val line: Int, val text: String)
+
     private val ignoredDirs = setOf(".git", "node_modules", ".godot", "build", ".gradle", ".idea")
     private const val MAX_RESULTS = 100
     private const val MAX_FILES = 400
@@ -86,5 +90,43 @@ object ProjectSearch {
             if (ok) scored.add(f to lower.length)
         }
         return scored.sortedBy { it.second }.map { it.first }.take(limit)
+    }
+
+    /**
+     * Recherche de code structurée pour l'écran Recherche globale (MA58) :
+     * renvoie des [CodeHit] (chemin, ligne, extrait), même parcours que [search].
+     */
+    fun codeSearch(repo: FileRepository, query: String, maxHits: Int = 120): List<CodeHit> {
+        val q = query.trim()
+        if (q.isEmpty()) return emptyList()
+        val results = ArrayList<CodeHit>()
+        var scanned = 0
+        var truncated = false
+
+        fun walk(dir: String, depth: Int) {
+            if (truncated || depth > 8) return
+            for (e in repo.listEntries(dir)) {
+                if (truncated) return
+                if (e.isDir) {
+                    if (e.name !in ignoredDirs) walk(e.path, depth + 1)
+                    continue
+                }
+                if (!repo.isTextFile(e.path) || e.size > MAX_FILE_BYTES) continue
+                if (scanned >= MAX_FILES) { truncated = true; return }
+                scanned++
+                val text = repo.readFileForEdit(e.path).getOrNull() ?: continue
+                var n = 0
+                for (line in text.lineSequence()) {
+                    n++
+                    if (line.contains(q, ignoreCase = true)) {
+                        results.add(CodeHit(e.path, n, line.trim().take(200)))
+                        if (results.size >= maxHits) { truncated = true; return }
+                    }
+                }
+            }
+        }
+
+        walk(".", 0)
+        return results
     }
 }

@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Terminal
@@ -594,6 +595,7 @@ fun EditorScreen(
                     )
                     SmallIcon(Icons.Default.Refresh, "Recharger") { reloadTick++ }
                     SmallIcon(Icons.Default.Terminal, "Console") { showConsole = !showConsole }
+                    SmallIcon(Icons.Default.OpenInNew, "Écran complet") { viewModel.openPreviewScreen(entry) }
                     SmallIcon(
                         if (previewFull) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
                         "Plein écran"

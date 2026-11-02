@@ -21,6 +21,15 @@ import com.zagent.app.data.parseAskQuestions
 import com.zagent.app.data.TodoItem
 import com.zagent.app.data.parseTodos
 import com.zagent.app.data.DiffUtil
+import com.zagent.app.data.ActivityEvent
+import com.zagent.app.data.ActivityRepository
+import com.zagent.app.data.ActivityStatus
+import com.zagent.app.data.ConversationMeta
+import com.zagent.app.data.ConversationRepository
+import com.zagent.app.data.StoredMessage
+import com.zagent.app.data.StoredToolCall
+import com.zagent.app.data.UsageEntry
+import com.zagent.app.data.UsageRepository
 import com.zagent.app.data.FileRepository
 import com.zagent.app.data.ProjectSearch
 import com.zagent.app.data.SettingsManager
@@ -103,6 +112,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     val settingsManager = SettingsManager(application)
     private val aiRepository = AiRepository()
+
+    // ── Dépôts de données du LOT 5 (MA56/MA60/MA65) ─────────────────────
+    private val conversationRepo = ConversationRepository(application)
+    private val usageRepo = UsageRepository(application)
+    private val activityRepo = ActivityRepository(application)
 
     // ── Réglages (miroirs d'état pour l'UI) ─────────────────────────────────
     var apiKeyInput by mutableStateOf(settingsManager.apiKey)
@@ -744,6 +758,7 @@ done; } 2>&1 | head -c 50000
     }
 
     fun clearConversation() {
+        persistCurrentConversation()
         agentJob?.cancel()
         agentJob = null
         aiRepository.cancelActive()
@@ -1109,6 +1124,7 @@ done; } 2>&1 | head -c 50000
                     _messages.value = _messages.value + ChatMessage("user", stored)
                     attachments.clear()
                 }
+                persistCurrentConversation()
                 runAgentLoop()
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
@@ -1268,7 +1284,8 @@ done; } 2>&1 | head -c 50000
         val rules = fileRepo.readFile("AGENT.md")
         val projectRules = if (rules.startsWith("Erreur") || rules.isBlank()) ""
             else "\n\nRègles du projet (fichier AGENT.md), à respecter :\n" + rules.take(6000)
-        val custom = customInstructionsInput.trim().let {
+        val customInstrSource = settingsManager.projectInstructionsFor(folderLabel).ifBlank { customInstructionsInput }
+        val custom = customInstrSource.trim().let {
             if (it.isEmpty()) "" else "\n\nInstructions personnalisées de l'utilisateur :\n" + it.take(4000)
         }
         val systemPrompt = basePrompt + projectRules + custom
@@ -1382,6 +1399,8 @@ done; } 2>&1 | head -c 50000
                     promptTokens += usedIn ?: estIn
                     completionTokens += usedOut ?: estOut
                     if (usedIn == null || usedOut == null) tokensEstimated = true
+                    // MA60 : journal d'usage pour l'écran Usage & coûts.
+                    recordUsage(usedIn ?: estIn, usedOut ?: estOut, effectiveModel)
 
                     if (toolCalls.isNullOrEmpty()) {
                         val reasoning = liveReasoning.ifBlank { result.reasoningContent ?: "" }
@@ -1394,6 +1413,7 @@ done; } 2>&1 | head -c 50000
                             isLoading = false
                             statusMessage = ""
                         }
+                        persistCurrentConversation()
                         finished = true
                         break
                     } else {
@@ -1488,6 +1508,7 @@ done; } 2>&1 | head -c 50000
         liveReasoning = ""
         isLoading = false
         statusMessage = "Génération interrompue."
+        persistCurrentConversation()
     }
 
     /** Remplace un message utilisateur et supprime toute la suite, puis relance l'agent (MA37). */
@@ -1573,6 +1594,10 @@ done; } 2>&1 | head -c 50000
 
     /** Porte d'écriture : Auto / fichier toujours autorisé / confirmation manuelle. */
     private suspend fun executeToolWithGate(fileRepo: FileRepository, tc: AiRepository.ToolCallData): String {
+        // MA64 : interrupteur global « Toujours autoriser la lecture ».
+        if (!settingsManager.allowRead && tc.name in READ_TOOLS) {
+            return "Refusé par réglage: la lecture n'est pas autorisée (Permissions & sécurité)."
+        }
         if (tc.name == "write_file") {
             val parsedArgs = try {
                 Json.parseToJsonElement(tc.arguments).jsonObject
@@ -1621,9 +1646,15 @@ done; } 2>&1 | head -c 50000
             }
             val path = args["path"]?.jsonPrimitive?.content?.trim().orEmpty()
             if (path.isEmpty()) return "Erreur: chemin manquant pour delete_file."
-            val allowed = autoModeInput || waitForDeleteConfirmation(path, tc.id)
+            val allowed = autoModeInput || settingsManager.allowDelete || waitForDeleteConfirmation(path, tc.id)
             if (!allowed) return "Refusé par l'utilisateur: la suppression de $path a été annulée."
+            val t0Del = System.currentTimeMillis()
             val res = fileRepo.deletePath(path)
+            logActivity(
+                "suppression", path, res.take(140),
+                if (res.startsWith("Succès")) ActivityStatus.OK else ActivityStatus.ERREUR,
+                System.currentTimeMillis() - t0Del
+            )
             if (res.startsWith("Succès")) {
                 withContext(Dispatchers.Main) {
                     summaryFiles.add("$path (supprimé)")
@@ -1656,6 +1687,7 @@ done; } 2>&1 | head -c 50000
                 else -> null
             }
             val allowed = (autoModeInput && !isPush && !isCommit && !isDangerous) ||
+                (settingsManager.allowExecute && !isPush && !isCommit && !isDangerous) ||
                 waitForCommandConfirmation(command, tc.id, note, changes, footer)
             if (!allowed) return "Refusé par l'utilisateur: la commande a été annulée."
             withContext(Dispatchers.Main) {
@@ -1666,8 +1698,17 @@ done; } 2>&1 | head -c 50000
                 liveCommand = command
                 statusMessage = "Commande : " + command.take(60) + "…"
             }
+            val t0Cmd = System.currentTimeMillis()
             try {
-                return terminal.runCommand(command, workingFolderUriString, timeout) { out -> liveOutput = out }
+                val out = terminal.runCommand(command, workingFolderUriString, timeout) { out -> liveOutput = out }
+                // MA64/MA65 : la commande est consignée dans l'activité (et dans l'historique des commandes approuvées).
+                logActivity(
+                    "commande", command,
+                    out.lineSequence().firstOrNull().orEmpty().take(160),
+                    if (out.startsWith("Erreur")) ActivityStatus.ERREUR else ActivityStatus.OK,
+                    System.currentTimeMillis() - t0Cmd
+                )
+                return out
             } finally {
                 withContext(NonCancellable + Dispatchers.Main) {
                     liveCommand = null
@@ -1711,7 +1752,20 @@ done; } 2>&1 | head -c 50000
             return answers
                 ?: "L'utilisateur a ignoré les questions : continue avec des choix raisonnables par défaut."
         }
-        return AgentTools.executeTool(fileRepo, tc.name, tc.arguments)
+        val t0Tool = System.currentTimeMillis()
+        val toolRes = AgentTools.executeTool(fileRepo, tc.name, tc.arguments)
+        logActivity(
+            tc.name,
+            describeTool(tc.name, tc.arguments).removeSuffix("…"),
+            toolRes.lineSequence().firstOrNull().orEmpty().take(160),
+            if (toolRes.startsWith("Erreur")) ActivityStatus.ERREUR else ActivityStatus.OK,
+            System.currentTimeMillis() - t0Tool
+        )
+        return toolRes
+    }
+
+    private companion object {
+        val READ_TOOLS = setOf("read_file", "list_dir", "search_in_files")
     }
 
     private suspend fun waitForDeleteConfirmation(path: String, toolCallId: String): Boolean {
@@ -1846,7 +1900,8 @@ done; } 2>&1 | head -c 50000
         val full = if (exists) fileRepo.readFileForEdit(path).getOrNull() else null
         val oldForDiff: String? = if (!exists) null else (full ?: raw)
 
-        val auto = autoModeInput || path in settingsManager.alwaysAllowedPaths ||
+        val auto = autoModeInput || settingsManager.allowWrite ||
+            path in settingsManager.alwaysAllowedPaths ||
             (smartModeInput && (!exists || isEdit))
         val allowed = if (auto) {
             if (autoModeInput) {
@@ -1858,6 +1913,7 @@ done; } 2>&1 | head -c 50000
         }
         if (!allowed) return "Refusé par l'utilisateur: l'écriture de $path a été annulée."
 
+        val t0Write = System.currentTimeMillis()
         val res = fileRepo.writeFile(path, content)
         if (res.startsWith("Succès")) {
             withContext(Dispatchers.Main) {
@@ -1871,6 +1927,15 @@ done; } 2>&1 | head -c 50000
                 fileDiffCounts[path] = (prev.first + d.added) to (prev.second + d.removed)
             }
         }
+        // MA65 : journal d'activité avec snapshot d'avant écriture (pour « Annuler »).
+        logActivity(
+            "écriture", path,
+            (if (exists) "modification" else "création") + " · " + content.length + " caractères",
+            if (res.startsWith("Succès")) ActivityStatus.OK else ActivityStatus.ERREUR,
+            System.currentTimeMillis() - t0Write,
+            undoPath = path,
+            undoContent = oldForDiff?.take(80_000)
+        )
         return res
     }
 
@@ -1928,5 +1993,603 @@ done; } 2>&1 | head -c 50000
         onWriteConfirmed?.invoke(allowed)
         onWriteConfirmed = null
         pendingWrite = null
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // LOT 5 (MA56 → MA70) — nouveaux écrans, journaux et feuilles de partage.
+    // ═════════════════════════════════════════════════════════════════════════
+
+    // ── MA56 : historique des conversations ──────────────────────────────────
+    var conversationList by mutableStateOf<List<ConversationMeta>>(emptyList())
+        private set
+
+    fun refreshConversations() {
+        conversationList = conversationRepo.loadIndex()
+    }
+
+    /** Archive la conversation courante (index + messages) sur le thread IO. */
+    fun persistCurrentConversation() {
+        val msgs = _messages.value
+        val id = conversationId
+        if (msgs.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val firstUser = msgs.firstOrNull { it.role == "user" }?.content?.let { it.substringBefore(CTX_MARKER) }
+            val lastVisible = msgs.lastOrNull { it.role == "assistant" }?.content
+                ?: msgs.lastOrNull()?.content
+            val index = conversationRepo.loadIndex().toMutableList()
+            val existing = index.firstOrNull { it.id == id }
+            val meta = ConversationMeta(
+                id = id,
+                title = existing?.title ?: conversationRepo.autoTitle(firstUser),
+                preview = conversationRepo.autoPreview(lastVisible),
+                updatedAt = System.currentTimeMillis(),
+                messageCount = msgs.size,
+                pinned = existing?.pinned ?: false
+            )
+            index.removeAll { it.id == id }
+            index.add(meta)
+            conversationRepo.saveIndex(index)
+            conversationRepo.saveMessages(id, msgs.map { m ->
+                StoredMessage(
+                    role = m.role,
+                    content = m.content?.take(200_000),
+                    time = m.time,
+                    reasoning = m.reasoning,
+                    toolCallId = m.toolCallId,
+                    name = m.name,
+                    toolLog = m.toolLog,
+                    toolCalls = m.toolCalls?.map { StoredToolCall(it.id, it.name, it.arguments) }
+                )
+            })
+            val fresh = conversationRepo.loadIndex()
+            withContext(Dispatchers.Main) { conversationList = fresh }
+        }
+    }
+
+    /** Rouvre une conversation sauvegardée : archive la courante puis charge les messages. */
+    fun switchToConversation(id: String) {
+        if (id == conversationId) return
+        persistCurrentConversation()
+        viewModelScope.launch(Dispatchers.IO) {
+            val stored = conversationRepo.loadMessages(id)
+            val restored = stored.map { m ->
+                ChatMessage(
+                    role = m.role,
+                    content = m.content,
+                    toolCalls = m.toolCalls?.map { AiRepository.ToolCallData(it.id, it.name, it.arguments) },
+                    toolCallId = m.toolCallId,
+                    name = m.name,
+                    toolLog = m.toolLog,
+                    time = m.time,
+                    reasoning = m.reasoning
+                )
+            }
+            withContext(Dispatchers.Main) {
+                if (_messages.value.isNotEmpty()) persistCurrentConversation()
+                _messages.value = restored
+                conversationId = id
+                settingsManager.lastConversationId = id
+                chatModel = null
+                todos = emptyList()
+                summaryFiles.clear()
+                summaryCommands.clear()
+                fileDiffCounts.clear()
+                agentUndo.clear()
+                isLoading = false
+                statusMessage = ""
+                liveText = ""
+                liveReasoning = ""
+                liveCommand = null
+                liveCommandId = null
+                draftSaveJob?.cancel()
+            }
+        }
+    }
+
+    /** Supprime une conversation de l'historique (MA56). */
+    fun deleteConversation(id: String) {
+        if (id == conversationId) {
+            clearConversation()
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            conversationRepo.deleteMessages(id)
+            val index = conversationRepo.loadIndex().filter { it.id != id }
+            conversationRepo.saveIndex(index)
+            val fresh = conversationRepo.loadIndex()
+            withContext(Dispatchers.Main) { conversationList = fresh }
+        }
+    }
+
+    /** Épingle / désépingle une conversation (glisser vers la droite, MA56). */
+    fun toggleConversationPin(id: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val index = conversationRepo.loadIndex().toMutableList()
+            val i = index.indexOfFirst { it.id == id }
+            if (i >= 0) {
+                index[i] = index[i].copy(pinned = !index[i].pinned)
+                conversationRepo.saveIndex(index)
+            }
+            val fresh = conversationRepo.loadIndex()
+            withContext(Dispatchers.Main) { conversationList = fresh }
+        }
+    }
+
+    // ── MA57 : projets favoris + racine publique ─────────────────────────────
+    fun projectsRootPublic(): java.io.File = projectsRoot()
+
+    fun toggleProjectFavorite(name: String) {
+        val favs = settingsManager.favoriteProjects
+        settingsManager.favoriteProjects = if (name in favs) favs - name else favs + name
+    }
+
+    // ── MA58 : recherche globale ─────────────────────────────────────────────
+    var searchHistory by mutableStateOf<List<String>>(emptyList())
+        private set
+
+    fun refreshSearchHistory() {
+        searchHistory = settingsManager.searchHistory
+    }
+
+    fun addSearchQuery(query: String) {
+        settingsManager.addSearchQuery(query)
+        searchHistory = settingsManager.searchHistory
+    }
+
+    /** Recherche globale : conversations sauvegardées + code du projet, en IO. */
+    fun runGlobalSearch(
+        query: String,
+        onDone: (List<com.zagent.app.data.ConversationHit>, List<ProjectSearch.CodeHit>) -> Unit
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val convs = conversationRepo.searchContent(query)
+            val files = if (workingFolderUriString != null) {
+                ProjectSearch.codeSearch(getFileRepo(), query)
+            } else emptyList()
+            withContext(Dispatchers.Main) { onDone(convs, files) }
+        }
+    }
+
+    // ── MA59 : modèle global et URL personnalisée ────────────────────────────
+    fun selectGlobalModel(id: String) {
+        val v = id.trim()
+        if (v.isEmpty()) return
+        modelInput = v
+        settingsManager.model = v
+    }
+
+    fun saveBaseUrl(url: String) {
+        val v = url.trim()
+        if (v.isNotEmpty()) {
+            baseUrlInput = v
+            settingsManager.baseUrl = v
+        }
+    }
+
+    // ── MA60 : usage & coûts ─────────────────────────────────────────────────
+    fun usageRepoSnapshot(): List<UsageEntry> = usageRepo.load()
+
+    fun clearUsage() {
+        usageRepo.clear()
+    }
+
+    private fun recordUsage(inTok: Int, outTok: Int, model: String) {
+        val cost = if (priceInInput <= 0f && priceOutInput <= 0f) 0.0
+        else inTok * priceInInput / 1_000_000.0 + outTok * priceOutInput / 1_000_000.0
+        usageRepo.add(UsageEntry(System.currentTimeMillis(), model, folderLabel, inTok, outTok, cost))
+    }
+
+    // ── MA61 : Git plein écran ───────────────────────────────────────────────
+    data class GitCommit(val hash: String, val author: String, val date: Long, val subject: String)
+    data class GitBranch(val name: String, val current: Boolean)
+
+    var gitLog by mutableStateOf<List<GitCommit>>(emptyList())
+    var gitBranches by mutableStateOf<List<GitBranch>>(emptyList())
+    var gitBranchBusy by mutableStateOf(false)
+    var gitCommitDiff by mutableStateOf<String?>(null)
+        private set
+    var gitCommitDiffHash by mutableStateOf<String?>(null)
+        private set
+    var gitCommitMessage by mutableStateOf("")
+    var isGeneratingCommitMsg by mutableStateOf(false)
+
+    fun refreshGitLog() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val res = terminal.runCommand(
+                "git log --pretty=format:%h|%an|%at|%s -30 2>&1",
+                workingFolderUriString, 20, silent = true
+            ) { }
+            val list = res.lines().filter { it.contains('|') }.mapNotNull {
+                val p = it.split("|", limit = 4)
+                if (p.size < 4) null
+                else GitCommit(p[0].trim(), p[1].trim(), (p[2].toLongOrNull() ?: 0L) * 1000L, p[3].trim())
+            }
+            withContext(Dispatchers.Main) {
+                gitLog = if (res.startsWith("Erreur") || res.contains("fatal") || res.contains("NOREPO")) emptyList() else list
+            }
+        }
+    }
+
+    fun refreshGitBranches() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val res = terminal.runCommand(
+                "git branch --format=%(HEAD)|%(refname:short) 2>&1",
+                workingFolderUriString, 15, silent = true
+            ) { }
+            val list = res.lines().filter { it.contains('|') }.map {
+                val p = it.split("|", limit = 2)
+                GitBranch(p.getOrNull(1)?.trim().orEmpty(), p.getOrNull(0)?.trim() == "*")
+            }.filter { it.name.isNotEmpty() }
+            withContext(Dispatchers.Main) { gitBranches = list }
+        }
+    }
+
+    fun showCommitDiff(hash: String) {
+        if (gitCommitDiffHash == hash) {
+            gitCommitDiff = null
+            gitCommitDiffHash = null
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            val res = terminal.runCommand(
+                "git show " + hash + " --no-color --no-ext-diff --stat --patch 2>&1 | head -c 30000",
+                workingFolderUriString, 20, silent = true, outLimit = 32000
+            ) { }
+            withContext(Dispatchers.Main) {
+                gitCommitDiff = res
+                gitCommitDiffHash = hash
+            }
+        }
+    }
+
+    /** Indexe ou désindexe un fichier (case à cocher, MA61). */
+    fun gitToggleStage(path: String, currentlyStaged: Boolean) {
+        val cmd = if (currentlyStaged) "git reset -q -- \"" + path + "\"" else "git add -q -- \"" + path + "\""
+        viewModelScope.launch(Dispatchers.IO) {
+            terminal.runCommand(cmd, workingFolderUriString, 15, silent = true) { }
+            val r = readGitChanges()
+            withContext(Dispatchers.Main) { gitChanges = r }
+        }
+    }
+
+    fun gitCommit(message: String, onDone: () -> Unit) {
+        val msg = message.trim()
+        if (msg.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val quoted = msg.replace("\"", "'")
+            val res = terminal.runCommand(
+                "git commit -m \"" + quoted + "\" 2>&1",
+                workingFolderUriString, 60, silent = true
+            ) { }
+            val r = readGitChanges()
+            withContext(Dispatchers.Main) {
+                gitChanges = r
+                statusMessage = if (res.startsWith("Erreur") || res.contains("nothing to commit")) {
+                    res.lineSequence().firstOrNull()?.take(140) ?: "Commit impossible."
+                } else {
+                    "Commit créé : " + res.lineSequence().firstOrNull()?.take(80).orEmpty()
+                }
+                onDone()
+            }
+        }
+    }
+
+    /** Génère un message de commit avec l'IA à partir du diff courant (MA61). */
+    fun generateCommitMessage() {
+        if (isGeneratingCommitMsg) return
+        val diffText = gitChanges?.diff.orEmpty()
+        if (diffText.isBlank()) {
+            statusMessage = "Aucun changement à commenter."
+            return
+        }
+        isGeneratingCommitMsg = true
+        gitCommitMessage = ""
+        viewModelScope.launch(Dispatchers.IO) {
+            val prompt = buildJsonArray {
+                add(buildJsonObject {
+                    put("role", "system")
+                    put("content", "Tu écris des messages de commit Git en français, style conventionnel « type: résumé au présent » (72 caractères max). Réponds UNIQUEMENT avec le message, sans guillemets ni explication.")
+                })
+                add(buildJsonObject {
+                    put("role", "user")
+                    put("content", "Voici le diff des changements en cours :\n\n" + diffText.take(12000))
+                })
+            }
+            val buf = StringBuilder()
+            runCatching {
+                aiRepository.callChatCompletions(
+                    baseUrl = baseUrlInput,
+                    apiKey = apiKeyInput,
+                    model = effectiveModel,
+                    messages = prompt,
+                    onRetryUpdate = { },
+                    onDelta = { piece ->
+                        buf.append(piece)
+                        gitCommitMessage = buf.toString().trim().take(200)
+                    }
+                )
+            }
+            withContext(Dispatchers.Main) {
+                isGeneratingCommitMsg = false
+                if (gitCommitMessage.isBlank()) gitCommitMessage = "Mise à jour du projet"
+            }
+        }
+    }
+
+    fun gitCheckout(branch: String) {
+        if (gitBranchBusy || branch.isBlank()) return
+        gitBranchBusy = true
+        viewModelScope.launch(Dispatchers.IO) {
+            val res = terminal.runCommand(
+                "git checkout \"" + branch.replace("\"", "'") + "\" 2>&1",
+                workingFolderUriString, 30, silent = true
+            ) { }
+            val r = readGitChanges()
+            withContext(Dispatchers.Main) {
+                statusMessage = res.lineSequence().firstOrNull()?.take(120) ?: ""
+                gitChanges = r
+                refreshGitBranches()
+                refreshProjectFiles()
+                gitBranchBusy = false
+            }
+        }
+    }
+
+    // ── MA62 : aperçu plein écran ────────────────────────────────────────────
+    var isPreviewScreenOpen by mutableStateOf(false)
+    var previewScreenPath by mutableStateOf("")
+
+    fun openPreviewScreen(path: String) {
+        if (path.isBlank()) return
+        previewScreenPath = path
+        previewTick++
+        isPreviewScreenOpen = true
+    }
+
+    // ── MA63 : instructions par projet ───────────────────────────────────────
+    fun projectInstructionsText(): String = settingsManager.projectInstructionsFor(folderLabel)
+
+    fun setProjectInstructionsForCurrent(value: String) {
+        settingsManager.setProjectInstructions(folderLabel, value)
+    }
+
+    // ── MA64 : permissions ───────────────────────────────────────────────────
+    fun removeAlwaysAllowedPath(path: String) {
+        settingsManager.alwaysAllowedPaths = settingsManager.alwaysAllowedPaths - path
+    }
+
+    fun activityRepoSnapshot(): List<ActivityEvent> = activityRepo.load()
+
+    /** Consigne un événement d'activité (jamais sur le thread principal). */
+    private fun logActivity(
+        kind: String,
+        label: String,
+        detail: String,
+        status: String,
+        durationMs: Long,
+        undoPath: String? = null,
+        undoContent: String? = null
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            activityRepo.add(
+                ActivityEvent(
+                    id = System.nanoTime(),
+                    ts = System.currentTimeMillis(),
+                    kind = kind,
+                    label = label.take(160),
+                    detail = detail.take(300),
+                    status = status,
+                    durationMs = durationMs,
+                    conversationId = conversationId,
+                    undoPath = undoPath,
+                    undoContent = undoContent
+                )
+            )
+        }
+    }
+
+    // ── MA65 : annulation d'une écriture depuis le journal d'activité ────────
+    fun undoActivityEntry(event: ActivityEvent, onDone: () -> Unit) {
+        val path = event.undoPath
+        if (path == null || event.status != ActivityStatus.OK) {
+            onDone()
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            val repo = getFileRepo()
+            val old = event.undoContent
+            val res = if (old == null) repo.deletePath(path) else repo.writeFile(path, old)
+            if (res.startsWith("Succès")) activityRepo.markUndone(event.id)
+            withContext(Dispatchers.Main) {
+                if (res.startsWith("Succès")) {
+                    if (old == null) forgetPath(path) else editor.onExternalWrite(path, old)
+                    refreshBrowser()
+                } else {
+                    statusMessage = res.take(140)
+                }
+                onDone()
+            }
+        }
+    }
+
+    // ── MA68 : templates de projet ───────────────────────────────────────────
+    fun applyTemplate(
+        templateLabel: String,
+        files: Map<String, String>,
+        firstMessage: String,
+        onDone: (Boolean) -> Unit
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            withContext(Dispatchers.Main) {
+                transferStatus = "Création du projet « " + templateLabel + " »…"
+            }
+            val base = sanitizeProjectName(templateLabel.replace(" ", "-").lowercase(Locale.ROOT))
+            val name = uniqueProjectName(base)
+            var ok = false
+            withContext(Dispatchers.Main) {
+                ok = createProject(name) == null
+            }
+            ok = ok && runCatching {
+                val repo = getFileRepo()
+                for ((path, content) in files) {
+                    val res = repo.writeFile(path, content)
+                    if (!res.startsWith("Succès")) return@runCatching false
+                }
+                true
+            }.getOrDefault(false)
+            if (ok) refreshProjectFiles()
+            val success = ok
+            withContext(Dispatchers.Main) {
+                transferStatus = if (success) "Projet créé : $name" else "Erreur lors de la création du projet"
+                if (success) {
+                    isTemplatesOpen = false
+                    sendMessage(firstMessage)
+                }
+                onDone(success)
+            }
+        }
+    }
+
+    // ── MA70 : export / partage de la conversation ───────────────────────────
+    fun buildConversationMarkdown(includeTools: Boolean, hidePaths: Boolean): String {
+        val df = java.text.SimpleDateFormat("d MMM yyyy · HH:mm", java.util.Locale.getDefault())
+        val sb = StringBuilder()
+        sb.append("# Conversation ZAgent\n\n")
+        sb.append("_Projet : ").append(folderLabel).append(" · ").append(df.format(java.util.Date())).append("_\n\n")
+        for (m in _messages.value) {
+            val raw = m.content.orEmpty()
+            val content = if (m.role == "user") raw.substringBefore(CTX_MARKER) else raw
+            if (m.role == "tool" && !includeTools) continue
+            if (content.isBlank() && !(includeTools && !m.toolCalls.isNullOrEmpty())) continue
+            when (m.role) {
+                "user" -> sb.append("## Toi\n\n")
+                "assistant" -> sb.append("## ZAgent\n\n")
+                "tool" -> sb.append("### Outil : ").append(m.name.orEmpty()).append("\n\n")
+                else -> { }
+            }
+            var body = content
+            if (hidePaths) body = hideLocalPaths(body)
+            if (body.isNotBlank()) sb.append(body.take(20_000)).append("\n\n")
+            if (includeTools && !m.toolCalls.isNullOrEmpty()) {
+                for (tc in m.toolCalls) {
+                    sb.append("- Appel `").append(tc.name).append("` : `").append(tc.arguments.take(200)).append("`\n")
+                }
+                sb.append("\n")
+            }
+        }
+        return sb.toString()
+    }
+
+    private fun hideLocalPaths(text: String): String {
+        val root = workingFolderUriString
+        var out = text
+        if (!root.isNullOrBlank()) out = out.replace(root, "…")
+        val home = java.io.File(getApplication<Application>().filesDir, "home").absolutePath
+        return out.replace(home, "…")
+    }
+
+    fun exportConversationMarkdown(uri: android.net.Uri, includeTools: Boolean, hidePaths: Boolean, onDone: (Boolean) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val md = buildConversationMarkdown(includeTools, hidePaths)
+            val ok = runCatching {
+                getApplication<Application>().contentResolver.openOutputStream(uri)?.use { it.write(md.toByteArray(Charsets.UTF_8)) } != null
+            }.getOrDefault(false)
+            withContext(Dispatchers.Main) { onDone(ok) }
+        }
+    }
+
+    fun exportConversationPdf(uri: android.net.Uri, includeTools: Boolean, hidePaths: Boolean, onDone: (Boolean) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val md = buildConversationMarkdown(includeTools, hidePaths)
+            val ok = runCatching { writeConversationPdf(md, uri) }.getOrDefault(false)
+            withContext(Dispatchers.Main) { onDone(ok) }
+        }
+    }
+
+    /** Écrit un PDF paginé A4 (texte simple, repli propre API 26+). */
+    private fun writeConversationPdf(text: String, uri: android.net.Uri): Boolean {
+        val doc = android.graphics.pdf.PdfDocument()
+        try {
+            val bodyPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                color = android.graphics.Color.rgb(20, 20, 19)
+                textSize = 11f
+                typeface = android.graphics.Typeface.SERIF
+            }
+            val titlePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                color = android.graphics.Color.rgb(201, 100, 66)
+                textSize = 15f
+                typeface = android.graphics.Typeface.SERIF
+                isFakeBoldText = true
+            }
+            val pageW = 595
+            val pageH = 842
+            val margin = 48f
+            val lineHeight = 15f
+            val maxChars = 92
+            val lines = ArrayList<Pair<Boolean, String>>()
+            for (raw in text.lines()) {
+                var line = raw
+                if (line.length <= maxChars) {
+                    lines.add(line.startsWith("#") to line)
+                } else {
+                    while (line.length > maxChars) {
+                        lines.add(line.startsWith("#") to line.take(maxChars))
+                        line = line.drop(maxChars)
+                    }
+                    lines.add(line.startsWith("#") to line)
+                }
+            }
+            var pageIdx = 1
+            var page = doc.startPage(android.graphics.pdf.PdfDocument.PageInfo.Builder(pageW, pageH, pageIdx).create())
+            var canvas = page.canvas
+            var y = margin + 12f
+            canvas.drawText("Conversation ZAgent", margin, y, titlePaint)
+            y += lineHeight * 1.6f
+            for ((isTitle, line) in lines) {
+                if (y > pageH - margin) {
+                    doc.finishPage(page)
+                    pageIdx++
+                    page = doc.startPage(android.graphics.pdf.PdfDocument.PageInfo.Builder(pageW, pageH, pageIdx).create())
+                    canvas = page.canvas
+                    y = margin + 12f
+                }
+                if (line.isBlank()) {
+                    y += lineHeight * 0.6f
+                    continue
+                }
+                canvas.drawText(line.replace("\t", "    "), margin, y, if (isTitle) titlePaint else bodyPaint)
+                y += if (isTitle) lineHeight * 1.3f else lineHeight
+            }
+            doc.finishPage(page)
+            val ok = runCatching {
+                getApplication<Application>().contentResolver.openOutputStream(uri)?.use { doc.writeTo(it) } != null
+            }.getOrDefault(false)
+            return ok
+        } finally {
+            doc.close()
+        }
+    }
+
+    // ── Overlays LOT 5 (rendus par AppRoot) ──────────────────────────────────
+    var isHistoryOpen by mutableStateOf(false)
+    var isSearchOpen by mutableStateOf(false)
+    var isGitScreenOpen by mutableStateOf(false)
+    var isTemplatesOpen by mutableStateOf(false)
+    var isShareSheetOpen by mutableStateOf(false)
+
+    val isLot5OverlayOpen: Boolean
+        get() = isHistoryOpen || isSearchOpen || isGitScreenOpen || isTemplatesOpen ||
+            isPreviewScreenOpen || isShareSheetOpen || isProjectPickerOpen
+
+    /** Ouvre la recherche globale : rafraîchit historique + fichiers du projet. */
+    fun openSearchScreen() {
+        refreshSearchHistory()
+        refreshProjectFiles()
+        isSearchOpen = true
+    }
+
+    /** Essai du verre depuis l'onboarding (MA69) : l'interrupteur global du verre. */
+    fun setGlassTrialEnabled(enabled: Boolean) {
+        glassSettings = glassSettings.copy(enabled = enabled)
+        settingsManager.glassEnabled = enabled
     }
 }

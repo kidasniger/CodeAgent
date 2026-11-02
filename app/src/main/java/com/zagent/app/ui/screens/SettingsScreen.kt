@@ -36,6 +36,12 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.SsidChart
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -74,6 +80,14 @@ import com.zagent.app.ui.theme.SpaceGrotesk
 import com.zagent.app.ui.theme.ThemeMode
 import com.zagent.app.ui.theme.Zcolors
 import com.zagent.app.ui.screens.settings.AppearanceSettingsScreen
+import com.zagent.app.ui.screens.ModelsScreen
+import com.zagent.app.ui.screens.UsageScreen
+import com.zagent.app.ui.screens.InstructionsScreen
+import com.zagent.app.ui.screens.PermissionsScreen
+import com.zagent.app.ui.screens.ActivityScreen
+import com.zagent.app.ui.screens.AboutScreen
+import com.zagent.app.ui.screens.HelpScreen
+import com.zagent.app.ui.components.Lot5Row
 import com.zagent.app.ui.viewmodel.MainViewModel
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -97,6 +111,34 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
         )
         return
     }
+
+    // ── Sous-écrans du LOT 5 (MA56 → MA70) ───────────────────────────────
+    var showModels by rememberSaveable { mutableStateOf(false) }
+    var showUsage by rememberSaveable { mutableStateOf(false) }
+    var showInstructions by rememberSaveable { mutableStateOf(false) }
+    var showPermissions by rememberSaveable { mutableStateOf(false) }
+    var showActivity by rememberSaveable { mutableStateOf(false) }
+    var showAbout by rememberSaveable { mutableStateOf(false) }
+    var showHelp by rememberSaveable { mutableStateOf(false) }
+    val anyLot5 = showModels || showUsage || showInstructions || showPermissions ||
+        showActivity || showAbout || showHelp
+    fun closeLot5() {
+        showModels = false
+        showUsage = false
+        showInstructions = false
+        showPermissions = false
+        showActivity = false
+        showAbout = false
+        showHelp = false
+    }
+    BackHandler(enabled = anyLot5) { closeLot5() }
+    if (showModels) { ModelsScreen(viewModel) { closeLot5() }; return }
+    if (showUsage) { UsageScreen(viewModel) { closeLot5() }; return }
+    if (showInstructions) { InstructionsScreen(viewModel) { closeLot5() }; return }
+    if (showPermissions) { PermissionsScreen(viewModel) { closeLot5() }; return }
+    if (showActivity) { ActivityScreen(viewModel) { closeLot5() }; return }
+    if (showAbout) { AboutScreen(viewModel) { closeLot5() }; return }
+    if (showHelp) { HelpScreen(viewModel) { closeLot5() }; return }
 
     var apiKey by rememberSaveable { mutableStateOf(viewModel.apiKeyInput) }
     var baseUrl by rememberSaveable { mutableStateOf(viewModel.baseUrlInput) }
@@ -137,6 +179,56 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp)
         ) {
+            // ── Espace agent (LOT 5) ──────────────────────────────────────
+            SectionLabel("Espace agent")
+            Spacer(Modifier.height(8.dp))
+            GlassCard(contentPadding = PaddingValues(0.dp)) {
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Lot5Row(
+                        Icons.Default.Tune, "Modèles",
+                        "Catalogue, vitesse, modèle personnalisé",
+                        tint = c.violet,
+                        onClick = { showModels = true }
+                    )
+                    Lot5Row(
+                        Icons.Default.SsidChart, "Usage & coûts",
+                        "Tokens sur 7 / 30 jours, coût, export CSV",
+                        tint = c.cyan,
+                        onClick = { showUsage = true }
+                    )
+                    Lot5Row(
+                        Icons.Default.Edit, "Instructions personnalisées",
+                        "Style de l'agent, global et par projet",
+                        tint = c.amber,
+                        onClick = { showInstructions = true }
+                    )
+                    Lot5Row(
+                        Icons.Default.Security, "Permissions & sécurité",
+                        "Autorisations par action et historique",
+                        tint = c.red,
+                        onClick = { showPermissions = true }
+                    )
+                    Lot5Row(
+                        Icons.Default.History, "Journal d'activité",
+                        "Tout ce que l'agent a fait, annulable",
+                        tint = c.green,
+                        onClick = { showActivity = true }
+                    )
+                    Lot5Row(
+                        Icons.Default.HelpOutline, "Raccourcis & gestes",
+                        "Gestes, commandes slash, clavier",
+                        tint = c.cyan,
+                        onClick = { showHelp = true }
+                    )
+                    Lot5Row(
+                        Icons.Default.Info, "À propos & mises à jour",
+                        "Version, nouveautés, licences",
+                        tint = c.violet,
+                        onClick = { showAbout = true }
+                    )
+                }
+            }
+            Spacer(Modifier.height(20.dp))
             // ── CLÉ & MODÈLE ────────────────────────────────────────────────
             SectionLabel("Clé & modèle")
             Spacer(Modifier.height(8.dp))

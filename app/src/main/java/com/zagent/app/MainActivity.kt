@@ -45,9 +45,15 @@ import com.zagent.app.agent.AgentNotifier
 import com.zagent.app.ui.screens.ChatScreen
 import com.zagent.app.ui.screens.EditorScreen
 import com.zagent.app.ui.screens.FileBrowserScreen
+import com.zagent.app.ui.screens.GitScreen
+import com.zagent.app.ui.screens.HistoryDrawer
 import com.zagent.app.ui.screens.OnboardingScreen
+import com.zagent.app.ui.screens.ProjectsScreen
+import com.zagent.app.ui.screens.SearchScreen
 import com.zagent.app.ui.screens.SettingsScreen
+import com.zagent.app.ui.screens.ShareSheet
 import com.zagent.app.ui.screens.SplashScreen
+import com.zagent.app.ui.screens.TemplatesScreen
 import com.zagent.app.ui.screens.TerminalScreen
 import com.zagent.app.ui.theme.ZAgentTheme
 import com.zagent.app.ui.theme.Zcolors
@@ -145,10 +151,13 @@ private fun AppRoot(viewModel: MainViewModel, darkTheme: Boolean) {
         OnboardingScreen(
             currentModel = viewModel.modelInput,
             onModelSelected = { m -> viewModel.saveSettings(viewModel.apiKeyInput, m, viewModel.baseUrlInput, viewModel.autoModeInput) },
-            onFolderPicked = { },
+            onFolderPicked = { uri -> viewModel.importFolder(uri) },
             onApiKeySaved = { key -> viewModel.saveSettings(key, viewModel.modelInput, viewModel.baseUrlInput, viewModel.autoModeInput) },
             initialApiKey = viewModel.apiKeyInput,
-            onFinished = { viewModel.completeOnboarding() }
+            onFinished = { viewModel.completeOnboarding() },
+            initialThemeMode = viewModel.themeMode,
+            onThemeSelected = { mode -> viewModel.updateThemeMode(mode) },
+            onGlassTrial = { enabled -> viewModel.setGlassTrialEnabled(enabled) }
         )
         return
     }
@@ -224,11 +233,30 @@ private fun AppRoot(viewModel: MainViewModel, darkTheme: Boolean) {
 
         UpdateHost()
 
+        // ── Overlays du LOT 5 (MA56 → MA70) ─────────────────────────────────
         if (viewModel.isProjectPickerOpen) {
-            com.zagent.app.ui.screens.ProjectPickerDialog(viewModel)
+            ProjectsScreen(viewModel, onClose = { viewModel.isProjectPickerOpen = false })
+        }
+        if (viewModel.isHistoryOpen) {
+            HistoryDrawer(viewModel, onClose = { viewModel.isHistoryOpen = false })
+        }
+        if (viewModel.isSearchOpen) {
+            SearchScreen(viewModel, onClose = { viewModel.isSearchOpen = false })
+        }
+        if (viewModel.isGitScreenOpen) {
+            GitScreen(viewModel, onClose = { viewModel.isGitScreenOpen = false })
+        }
+        if (viewModel.isTemplatesOpen) {
+            TemplatesScreen(viewModel, onClose = { viewModel.isTemplatesOpen = false })
+        }
+        if (viewModel.isPreviewScreenOpen) {
+            com.zagent.app.ui.editor.PreviewScreen(viewModel, onClose = { viewModel.isPreviewScreenOpen = false })
+        }
+        if (viewModel.isShareSheetOpen) {
+            ShareSheet(viewModel, onClose = { viewModel.isShareSheetOpen = false })
         }
         AnimatedVisibility(
-            visible = navVisible && viewModel.currentScreen != com.zagent.app.ui.viewmodel.AppScreen.SETTINGS && !viewModel.isProjectPickerOpen,
+            visible = navVisible && viewModel.currentScreen != com.zagent.app.ui.viewmodel.AppScreen.SETTINGS && !viewModel.isLot5OverlayOpen,
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
             FloatingTabBar(

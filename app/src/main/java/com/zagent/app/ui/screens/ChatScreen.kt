@@ -53,7 +53,9 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
@@ -557,7 +559,11 @@ fun ChatScreen(
             error = g?.error,
             loading = viewModel.gitLoading,
             onRefresh = { viewModel.refreshGitChanges() },
-            onClose = { viewModel.gitSheetOpen = false }
+            onClose = { viewModel.gitSheetOpen = false },
+            onOpenFull = {
+                viewModel.gitSheetOpen = false
+                viewModel.isGitScreenOpen = true
+            }
         )
     }
 
@@ -647,7 +653,9 @@ private fun AmbientTopBar(
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TopBarPillIcon(Icons.Default.Refresh, "Réinitialiser les discussions", onClick = onNewConversation)
+                TopBarPillIcon(Icons.Default.Menu, "Historique des conversations", onClick = { viewModel.isHistoryOpen = true })
+                TopBarPillIcon(Icons.Default.Search, "Recherche globale", onClick = { viewModel.openSearchScreen() })
+                TopBarPillIcon(Icons.Default.Share, "Partager la conversation", onClick = { viewModel.isShareSheetOpen = true })
                 TopBarPillIcon(Icons.Default.FolderOpen, "Explorateur de fichiers", onClick = { viewModel.navigateTo(com.zagent.app.ui.viewmodel.AppScreen.FILE_BROWSER) })
                 TopBarPillIcon(Icons.Default.Settings, "Réglages", onClick = onOpenSettings)
             }

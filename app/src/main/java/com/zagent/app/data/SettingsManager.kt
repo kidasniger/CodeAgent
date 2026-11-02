@@ -11,6 +11,10 @@ import com.zagent.app.ui.theme.GlassMaterial
 import com.zagent.app.ui.theme.GlassSettings
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.Json
 
 class SettingsManager(context: Context) {
     private val masterKey = MasterKey.Builder(context)
@@ -334,6 +338,75 @@ class SettingsManager(context: Context) {
         get() = prefs.getStringSet(KEY_ALWAYS_ALLOW, emptySet()) ?: emptySet()
         set(value) = prefs.edit().putStringSet(KEY_ALWAYS_ALLOW, value).apply()
 
+    // ── LOT 5 ────────────────────────────────────────────────────────────────
+
+    /** Projets épinglés en favoris, affichés en haut de l'écran Projets (MA57). */
+    var favoriteProjects: Set<String>
+        get() = prefs.getStringSet(KEY_FAV_PROJECTS, emptySet()) ?: emptySet()
+        set(value) = prefs.edit().putStringSet(KEY_FAV_PROJECTS, value).apply()
+
+    /** Interrupteurs d'autorisation par type d'action de l'agent (MA64). */
+    var allowRead: Boolean
+        get() = prefs.getBoolean(KEY_ALLOW_READ, true)
+        set(value) = prefs.edit().putBoolean(KEY_ALLOW_READ, value).apply()
+
+    var allowWrite: Boolean
+        get() = prefs.getBoolean(KEY_ALLOW_WRITE, false)
+        set(value) = prefs.edit().putBoolean(KEY_ALLOW_WRITE, value).apply()
+
+    var allowDelete: Boolean
+        get() = prefs.getBoolean(KEY_ALLOW_DELETE, false)
+        set(value) = prefs.edit().putBoolean(KEY_ALLOW_DELETE, value).apply()
+
+    var allowExecute: Boolean
+        get() = prefs.getBoolean(KEY_ALLOW_EXECUTE, false)
+        set(value) = prefs.edit().putBoolean(KEY_ALLOW_EXECUTE, value).apply()
+
+    private val prefJson = Json { ignoreUnknownKeys = true }
+
+    /** Historique des dernières recherches globales (MA58), du plus récent au plus ancien. */
+    var searchHistory: List<String>
+        get() = runCatching {
+            val raw = prefs.getString(KEY_SEARCH_HISTORY, "") ?: ""
+            if (raw.isBlank()) emptyList()
+            else prefJson.decodeFromString(ListSerializer(String.serializer()), raw)
+        }.getOrNull().orEmpty()
+        private set
+
+    /** Ajoute une requête à l'historique (dédupliquée, plafonnée à 10 entrées). */
+    fun addSearchQuery(query: String) {
+        val q = query.trim()
+        if (q.isEmpty()) return
+        val next = (listOf(q) + searchHistory.filter { !it.equals(q, ignoreCase = true) }).take(10)
+        runCatching {
+            prefs.edit().putString(KEY_SEARCH_HISTORY, prefJson.encodeToString(ListSerializer(String.serializer()), next)).apply()
+        }
+    }
+
+    fun clearSearchHistory() {
+        prefs.edit().remove(KEY_SEARCH_HISTORY).apply()
+    }
+
+    private val instrSerializer = MapSerializer(String.serializer(), String.serializer())
+
+    /** Instructions personnalisées par projet (nom du dossier → texte), MA63. */
+    private fun loadProjectInstructions(): Map<String, String> = runCatching {
+        val raw = prefs.getString(KEY_PROJECT_INSTR, "") ?: ""
+        if (raw.isBlank()) emptyMap()
+        else prefJson.decodeFromString(instrSerializer, raw)
+    }.getOrNull().orEmpty()
+
+    fun projectInstructionsFor(project: String): String =
+        loadProjectInstructions()[project].orEmpty()
+
+    fun setProjectInstructions(project: String, value: String) {
+        val map = loadProjectInstructions().toMutableMap()
+        if (value.isBlank()) map.remove(project) else map[project] = value
+        runCatching {
+            prefs.edit().putString(KEY_PROJECT_INSTR, prefJson.encodeToString(instrSerializer, map)).apply()
+        }
+    }
+
     /** Instructions personnalisées ajoutées au prompt de l'agent à chaque demande. */
     var customInstructions: String
         get() = prefs.getString(KEY_CUSTOM_INSTR, "") ?: ""
@@ -399,5 +472,12 @@ class SettingsManager(context: Context) {
         private const val KEY_ALWAYS_ALLOW = "always_allow_paths"
         private const val KEY_LAST_CONVERSATION = "last_conversation_id"
         private const val KEY_DRAFT_PREFIX = "draft_"
+        private const val KEY_FAV_PROJECTS = "favorite_projects"
+        private const val KEY_ALLOW_READ = "allow_read"
+        private const val KEY_ALLOW_WRITE = "allow_write"
+        private const val KEY_ALLOW_DELETE = "allow_delete"
+        private const val KEY_ALLOW_EXECUTE = "allow_execute"
+        private const val KEY_SEARCH_HISTORY = "search_history"
+        private const val KEY_PROJECT_INSTR = "project_instructions"
     }
 }

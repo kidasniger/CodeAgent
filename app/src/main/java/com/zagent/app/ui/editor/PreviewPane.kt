@@ -97,11 +97,13 @@ fun PreviewPane(
     readResource: (String) -> ByteArray?,
     console: ConsoleState,
     onTitle: (String) -> Unit = {},
+    onUrl: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val latestRead by rememberUpdatedState(readResource)
     val latestTitle by rememberUpdatedState(onTitle)
+    val latestUrl by rememberUpdatedState(onUrl)
     val server = remember { PreviewServer { res -> latestRead(res) } }
     var port by remember { mutableStateOf<Int?>(null) }
     val webView = remember {
@@ -185,8 +187,10 @@ fun PreviewPane(
                     if (isUrl) {
                         // serveur de développement : adresse locale directe
                         wv.loadUrl(path)
+                        latestUrl(path)
                     } else if (p > 0) {
                         wv.loadUrl("http://127.0.0.1:" + p + "/" + Uri.encode(path, "/"))
+                        latestUrl("http://127.0.0.1:" + p + "/" + path)
                     } else {
                         wv.loadDataWithBaseURL(
                             null,
