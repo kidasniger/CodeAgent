@@ -94,7 +94,7 @@ class MainActivity : ComponentActivity() {
                 densityScale = viewModel.densityScale
             ) {
                 SurfaceBackground()
-                AppRoot(viewModel, systemDark)
+                AppRoot(viewModel, dark)
             }
         }
     }
@@ -111,8 +111,9 @@ private fun SurfaceBackground() {
 }
 
 @Composable
-private fun AppRoot(viewModel: MainViewModel, systemDark: Boolean) {
+private fun AppRoot(viewModel: MainViewModel, darkTheme: Boolean) {
     val hazeState = remember { HazeState() }
+    LaunchedEffect(darkTheme) { viewModel.reloadGlassSettings(darkTheme) }
     var showSplash by remember { mutableStateOf(true) }
 
     if (showSplash) {
