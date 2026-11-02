@@ -166,4 +166,79 @@ val LightZColors = ZColors(
     isDark = false
 )
 
+
+/** Anciennes palettes ZAgent, conservées sous le nom Aurora. */
+val AuroraDarkZColors = DarkZColors
+val AuroraLightZColors = LightZColors
+
+/** Palette Minimal inspirée de Claude — mode clair. */
+val MinimalLightZColors = ZColors(
+    bg = Color(0xFFFAF9F5),
+    bg2 = Color(0xFFFFFFFF),
+    surface = Color(0xFFFFFFFF),
+    surface2 = Color(0xFFFFFFFF),
+    surface3 = Color(0xFFF4F3EF),
+    border = Color(0x14141413),
+    border2 = Color(0x24141413),
+    text = Color(0xFF141413),
+    text2 = Color(0xFF5E5D59),
+    text3 = Color(0xFF85837D),
+    cyan = Color(0xFFC96442),
+    violet = Color(0xFFC96442),
+    green = ZGreenL,
+    amber = ZAmberL,
+    red = ZRedL,
+    onGrad = Color.White,
+    cyanBg = Color(0x14C96442),
+    violetBg = Color(0x14C96442),
+    greenBg = Color(0x1C0E9F6E),
+    amberBg = Color(0x1CD97706),
+    redBg = Color(0x17DC2626),
+    codeBg = ZCodeBg,
+    codeBorder = Color(0x24141413),
+    codePlain = Color(0xFFC9D4E8),
+    scrim = Color(0x730D0D0C),
+    grad = Brush.solidColor(Color(0xFFC96442)),
+    gradBtn = Brush.solidColor(Color(0xFFC96442)),
+    gradGlow = Color(0x40C96442),
+    gradLine = Brush.verticalGradient(listOf(Color(0xFFC96442), Color(0xFFC96442))),
+    gridline = Color(0x0A141413),
+    isDark = false
+)
+
+/** Palette Minimal inspirée de Claude — mode sombre. */
+val MinimalDarkZColors = ZColors(
+    bg = Color(0xFF262624),
+    bg2 = Color(0xFF30302E),
+    surface = Color(0xFF30302E),
+    surface2 = Color(0xFF383835),
+    surface3 = Color(0xFF41413D),
+    border = Color(0x24141413),
+    border2 = Color(0x3DFFFFFF),
+    text = Color(0xFFF0EEE6),
+    text2 = Color(0xFFA8A69E),
+    text3 = Color(0xFF817F78),
+    cyan = Color(0xFFE08A68),
+    violet = Color(0xFFE08A68),
+    green = ZGreenD,
+    amber = ZAmberD,
+    red = ZRedD,
+    onGrad = Color(0xFF262624),
+    cyanBg = Color(0x26E08A68),
+    violetBg = Color(0x26E08A68),
+    greenBg = Color(0x2434D399),
+    amberBg = Color(0x21FBBF24),
+    redBg = Color(0x21F87171),
+    codeBg = ZCodeBgDark,
+    codeBorder = Color(0x3DFFFFFF),
+    codePlain = Color(0xFFC9D4E8),
+    scrim = Color(0xB3262624),
+    grad = Brush.solidColor(Color(0xFFE08A68)),
+    gradBtn = Brush.solidColor(Color(0xFFE08A68)),
+    gradGlow = Color(0x40E08A68),
+    gradLine = Brush.verticalGradient(listOf(Color(0xFFE08A68), Color(0xFFE08A68))),
+    gridline = Color(0x14FFFFFF),
+    isDark = true
+)
+
 val LocalZColors = staticCompositionLocalOf { DarkZColors }
