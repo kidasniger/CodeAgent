@@ -50,7 +50,7 @@ object StylePresets {
     val minimal = StylePreset("CLAUDE", "NONE", "#C96442", 0f, 0f, "Chat", 18f)
     val aurora = StylePreset("AURORA", "LIQUID_QUALITY", "#22D3EE", 0.82f, 0.32f, "Chat", 24f)
     val glass = StylePreset("ZAGENT", "LIQUID_QUALITY", "#22D3EE", 0.82f, 0.32f, "Chat", 24f)
-    val contrast = StylePreset("HIGH_CONTRAST", "NONE", "#FFFFFF", 0f, 0f, "Chat", 12f)
+    val contrast = StylePreset("HIGH_CONTRAST", "NONE", "#005FCC", 0f, 0f, "Chat", 12f)
 
     fun fromId(id: String): StylePreset = when (id) {
         StylePresetIds.MINIMAL -> minimal
