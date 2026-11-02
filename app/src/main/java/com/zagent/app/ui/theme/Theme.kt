@@ -272,18 +272,25 @@ fun ZAgentTheme(
         gradGlow = animateColorAsState(dynamicPalette.gradGlow, tween(300), label = "theme-gradient-glow").value,
         gridline = animateColorAsState(dynamicPalette.gridline, tween(300), label = "theme-gridline").value
     )
-    val scheme = if (useDynamic) baseScheme.copy(
-        primary = baseScheme.primary,
-        secondary = baseScheme.secondary,
-        tertiary = baseScheme.tertiary
-    ) else baseScheme
+    val scheme = if (oledBlack && darkTheme) {
+        baseScheme.copy(
+            background = Color.Black,
+            surface = Color(0xFF0A0A0A),
+            surfaceVariant = Color(0xFF111111),
+            surfaceContainer = Color(0xFF0A0A0A),
+            surfaceContainerHigh = Color(0xFF111111),
+            surfaceContainerHighest = Color(0xFF181818),
+            outline = Color(0xFF292929),
+            outlineVariant = Color(0xFF3A3A3A)
+        )
+    } else baseScheme
     val radius = cornerRadius.coerceIn(8, 28).dp
     val shapes = Shapes(
         extraSmall = RoundedCornerShape((radius.value * 0.5f).dp),
         small = RoundedCornerShape((radius.value * 0.65f).dp),
         medium = RoundedCornerShape(radius),
-        large = RoundedCornerShape((radius.value * 1.15f).dp),
-        extraLarge = RoundedCornerShape((radius.value * 1.5f).dp)
+        large = RoundedCornerShape(radius),
+        extraLarge = RoundedCornerShape(radius)
     )
     CompositionLocalProvider(LocalZColors provides zcolors) {
         MaterialTheme(
