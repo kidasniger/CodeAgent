@@ -2,7 +2,7 @@ package com.zagent.app.ui.theme
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -258,4 +258,4 @@ fun ZColors.withAccent(color: Color): ZColors = copy(
     gradGlow = color.copy(alpha = 0.45f)
 )
 
-val LocalZColors = staticCompositionLocalOf { DarkZColors }
+val LocalZColors = compositionLocalOf { DarkZColors }
