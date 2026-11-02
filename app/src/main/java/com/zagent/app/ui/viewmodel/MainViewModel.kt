@@ -61,7 +61,38 @@ data class ChatMessage(
     val time: Long = System.currentTimeMillis()
 )
 
+enum class AppScreen { CHAT, SETTINGS, TERMINAL, EDITOR, FILE_BROWSER }
+
 class MainViewModel(application: Application) : AndroidViewModel(application) {
+    private val navigationHistory = mutableStateListOf<AppScreen>()
+    var currentScreen by mutableStateOf(AppScreen.CHAT)
+        private set
+
+    fun navigateTo(screen: AppScreen) {
+        if (currentScreen == screen) return
+        navigationHistory.add(currentScreen)
+        currentScreen = screen
+        syncNavigationFlags()
+    }
+
+    fun navigateBack(): Boolean {
+        if (navigationHistory.isNotEmpty()) {
+            currentScreen = navigationHistory.removeAt(navigationHistory.lastIndex)
+        } else if (currentScreen != AppScreen.CHAT) {
+            currentScreen = AppScreen.CHAT
+        } else {
+            return false
+        }
+        syncNavigationFlags()
+        return true
+    }
+
+    private fun syncNavigationFlags() {
+        isSettingsOpen = currentScreen == AppScreen.SETTINGS
+        isTerminalOpen = currentScreen == AppScreen.TERMINAL
+        isEditorOpen = currentScreen == AppScreen.EDITOR
+        isFileBrowserOpen = currentScreen == AppScreen.FILE_BROWSER
+    }
     val settingsManager = SettingsManager(application)
     private val aiRepository = AiRepository()
 
@@ -191,8 +222,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     /** Ouverture de l'aperçu, uniquement sur action de l'utilisateur. */
     fun openPreview(path: String) {
         console.clear()
-        editor.open(path) { isEditorOpen = true }
-        isEditorOpen = true
+        editor.open(path) { navigateTo(AppScreen.EDITOR) }
+        navigateTo(AppScreen.EDITOR)
         previewTick++
         previewRequest = path
     }
@@ -328,7 +359,7 @@ done; } 2>&1 | head -c 50000
     fun openDevPreview() {
         val url = terminal.devUrl ?: return
         console.clear()
-        isEditorOpen = true
+        navigateTo(AppScreen.EDITOR)
         previewTick++
         previewRequest = url
     }
@@ -583,7 +614,7 @@ done; } 2>&1 | head -c 50000
         browserChildren.clear()
         expandedDirs.clear()
         editor.clear()
-        isEditorOpen = false
+        if (currentScreen == AppScreen.EDITOR) navigateBack() else isEditorOpen = false
         refreshFolderLabel()
     }
 
@@ -790,7 +821,7 @@ done; } 2>&1 | head -c 50000
                 if (res.startsWith("Succès")) {
                     expandParents(path)
                     refreshBrowser()
-                    editor.open(path) { isEditorOpen = true }
+                    editor.open(path) { navigateTo(AppScreen.EDITOR) }
                 } else {
                     browserError = res
                 }
@@ -852,7 +883,7 @@ done; } 2>&1 | head -c 50000
                 if (repository.isTextFile(path)) {
                     withContext(Dispatchers.Main) {
                         browserFileLoading = false
-                        editor.open(path) { isEditorOpen = true }
+                        editor.open(path) { navigateTo(AppScreen.EDITOR) }
                     }
                 } else {
                     val uri = repository.fileUri(path)
@@ -907,7 +938,7 @@ done; } 2>&1 | head -c 50000
         if (userText.isBlank()) return
         if (isLoading) return
         if (apiKeyInput.isBlank()) {
-            isSettingsOpen = true
+            navigateTo(AppScreen.SETTINGS)
             statusMessage = "Veuillez entrer une clé API dans les réglages."
             return
         }
@@ -1147,7 +1178,7 @@ done; } 2>&1 | head -c 50000
 
     /** Ouvre l'écran Terminal et place le shell dans le dossier du projet actif. */
     fun openTerminalInProject() {
-        isTerminalOpen = true
+        navigateTo(AppScreen.TERMINAL)
         terminal.cdToProject()
     }
 
