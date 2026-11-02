@@ -180,7 +180,7 @@ fun ChatScreen(
             } else {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize().then(LocalHazeState.current?.let { Modifier.haze(state = it) } ?: Modifier),
+                    modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 176.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
@@ -1197,8 +1197,8 @@ private fun InputBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .background(c.surface2.copy(alpha = if (LocalGlass.current.enabled) 0.10f else 1f))
                 .glassSurface(LocalHazeState.current, LocalGlass.current, c.isDark, RoundedCornerShape(50.dp), context)
-                .background(c.surface2.copy(alpha = if (LocalGlass.current.enabled) 0.18f else 1f))
                 .border(1.dp, c.border2.copy(alpha = 0.5f), RoundedCornerShape(50))
                 .padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically
