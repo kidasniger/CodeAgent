@@ -124,6 +124,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // ── Apparence & flux de démarrage ───────────────────────────────────────
     var themeMode by mutableStateOf(settingsManager.themeMode)
+    var oledBlack by mutableStateOf(settingsManager.oledBlack)
+        private set
+    var dynamicSystemColors by mutableStateOf(settingsManager.dynamicSystemColors)
+        private set
+    var cornerRadius by mutableStateOf(settingsManager.cornerRadius)
+        private set
+    var scheduledDarkTime by mutableStateOf(settingsManager.scheduledDarkTime)
+        private set
+    var scheduledLightTime by mutableStateOf(settingsManager.scheduledLightTime)
+        private set
+
+    fun setOledBlack(value: Boolean) { oledBlack = value; settingsManager.oledBlack = value }
+    fun setDynamicSystemColors(value: Boolean) { dynamicSystemColors = value; settingsManager.dynamicSystemColors = value }
+    fun setCornerRadius(value: Int) { cornerRadius = value; settingsManager.cornerRadius = value }
+    fun setScheduledDarkTime(value: String) { scheduledDarkTime = value; settingsManager.scheduledDarkTime = value }
+    fun setScheduledLightTime(value: String) { scheduledLightTime = value; settingsManager.scheduledLightTime = value }
     var onboardingDone by mutableStateOf(settingsManager.onboardingDone)
 
     fun updateThemeMode(mode: ThemeMode) {
