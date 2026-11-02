@@ -1,6 +1,7 @@
 package com.zagent.app.ui.screens.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.border
@@ -54,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zagent.app.ui.components.CircleIconButton
 import com.zagent.app.ui.theme.StylePresetIds
+import com.zagent.app.ui.theme.GlassMaterial
 import com.zagent.app.ui.theme.StylePresets
 import com.zagent.app.ui.theme.Zcolors
 import com.zagent.app.ui.viewmodel.MainViewModel
@@ -179,7 +181,18 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                                 settings.setGlassTintFor(dark, preset.film)
                                 settings.setGlassFilmFor(dark, preset.film)
                                 settings.setGlassActiveTabFor(dark, preset.activeTab)
+                                val modernGlass = settings.loadGlassSettings(dark).copy(
+                                    enabled = id != StylePresetIds.MINIMAL && id != StylePresetIds.CONTRAST,
+                                    material = if (preset.glassMaterial.contains("QUALITY")) GlassMaterial.QUALITY else GlassMaterial.BALANCED
+                                )
+                                settings.saveGlassSettings(dark, modernGlass)
                             }
+                            val activeDark = when (viewModel.themeMode) {
+                                com.zagent.app.ui.theme.ThemeMode.DARK -> true
+                                com.zagent.app.ui.theme.ThemeMode.LIGHT -> false
+                                else -> isSystemInDarkTheme()
+                            }
+                            viewModel.reloadGlassSettings(activeDark)
                             accentHex = preset.colour
                         },
                         label = { Text(label) }
