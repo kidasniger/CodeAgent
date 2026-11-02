@@ -367,7 +367,13 @@ private fun AmbientTopBar(
             ZLogo(modifier = Modifier.size(30.dp))
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Text("ZAgent", style = MaterialTheme.typography.titleLarge, color = c.text)
+                Text(
+                    "ZAgent",
+                    style = TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Serif, fontSize = 20.sp, fontWeight = FontWeight.Medium),
+                    color = c.text,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val (dot, label) = when {
                         viewModel.isLoading -> c.cyan to "Agent actif"
