@@ -62,6 +62,7 @@ import com.zagent.app.ui.viewmodel.MainViewModel
 
 @Composable
 fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
+    val systemDark = isSystemInDarkTheme()
     var destination by rememberSaveable { mutableStateOf<String?>(null) }
     var showResetAppearance by rememberSaveable { mutableStateOf(false) }
     var selectedStylePreset by rememberSaveable {
@@ -190,7 +191,7 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                             val activeDark = when (viewModel.themeMode) {
                                 com.zagent.app.ui.theme.ThemeMode.DARK -> true
                                 com.zagent.app.ui.theme.ThemeMode.LIGHT -> false
-                                else -> isSystemInDarkTheme()
+                                else -> systemDark
                             }
                             viewModel.reloadGlassSettings(activeDark)
                             accentHex = preset.colour
