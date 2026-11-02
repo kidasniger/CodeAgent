@@ -196,10 +196,10 @@ fun AmbientBackground(modifier: Modifier = Modifier) {
             if (glass.enabled) {
                 val p1 = Offset(w * (0.18f + drift), h * 0.12f)
                 val p2 = Offset(w * 0.86f, h * (0.78f - drift))
-                drawCircle(Brush.radialGradient(listOf(c.cyan.copy(alpha = intensity), Color.Transparent), p1, w * 0.72f), p1, w * 0.72f)
-                drawCircle(Brush.radialGradient(listOf(c.violet.copy(alpha = intensity * 0.85f), Color.Transparent), p2, w * 0.62f), p2, w * 0.62f)
+                drawCircle(brush = Brush.radialGradient(listOf(c.cyan.copy(alpha = intensity), Color.Transparent), p1, w * 0.72f), radius = w * 0.72f, center = p1)
+                drawCircle(brush = Brush.radialGradient(listOf(c.violet.copy(alpha = intensity * 0.85f), Color.Transparent), p2, w * 0.62f), radius = w * 0.62f, center = p2)
                 val p3 = Offset(w * 0.48f, h * 0.48f)
-                drawCircle(Brush.radialGradient(listOf(c.amber.copy(alpha = intensity * 0.42f), Color.Transparent), p3, w * 0.38f), p3, w * 0.38f)
+                drawCircle(brush = Brush.radialGradient(listOf(c.amber.copy(alpha = intensity * 0.42f), Color.Transparent), p3, w * 0.38f), radius = w * 0.38f, center = p3)
             }
         }
     }, onDraw = {})
