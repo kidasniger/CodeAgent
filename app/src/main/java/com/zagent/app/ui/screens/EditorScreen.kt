@@ -652,7 +652,7 @@ fun EditorScreen(
                                         TextButton(onClick = {
                                             val msg = "La page " + entry + " a des erreurs dans la console :\n" +
                                                 console.errorsAsText() + "\nCorrige-les."
-                                            viewModel.isEditorOpen = false
+                                            viewModel.navigateBack()
                                             viewModel.sendMessage(msg)
                                         }) { Text("Corriger avec l'IA", color = c.cyan, fontSize = 12.sp) }
                                     }
@@ -702,7 +702,7 @@ fun EditorScreen(
                             TextButton(onClick = {
                                 val msg = "La page " + entry + " a des erreurs dans la console :\n" +
                                     console.errorsAsText() + "\nCorrige-les."
-                                viewModel.isEditorOpen = false
+                                viewModel.navigateBack()
                                 viewModel.sendMessage(msg)
                             }) { Text("Corriger avec l'IA", color = c.cyan, fontSize = 12.sp) }
                         }
