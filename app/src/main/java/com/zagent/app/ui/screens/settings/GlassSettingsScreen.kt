@@ -49,12 +49,13 @@ fun GlassSettingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val settings = remember(context) { SettingsManager(context) }
 
-    var material by remember { mutableStateOf(settings.glassMaterial) }
-    var colorHex by remember { mutableStateOf(settings.glassColor) }
-    var blur by remember { mutableStateOf(settings.glassBlur) }
-    var tint by remember { mutableStateOf(settings.glassTint) }
-    var film by remember { mutableStateOf(settings.glassFilm) }
-    var activeTab by remember { mutableStateOf(settings.glassActiveTab) }
+    var editDark by remember { mutableStateOf(false) }
+    var material by remember { mutableStateOf(settings.glassMaterialFor(false)) }
+    var colorHex by remember { mutableStateOf(settings.glassColorFor(false)) }
+    var blur by remember { mutableStateOf(settings.glassBlurFor(false)) }
+    var tint by remember { mutableStateOf(settings.glassTintFor(false)) }
+    var film by remember { mutableStateOf(settings.glassFilmFor(false)) }
+    var activeTab by remember { mutableStateOf(settings.glassActiveTabFor(false)) }
     var isCustom by remember { mutableStateOf(settings.stylePresetId == StylePresetIds.CUSTOM) }
 
     fun markCustom() {
@@ -68,6 +69,29 @@ fun GlassSettingsScreen(onBack: () -> Unit) {
     }
 
     SettingsPageScaffold(title = "Verre", onBack = onBack) {
+        SettingsSectionLabel("MODIFIER POUR")
+        SettingsCard {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(selected = !editDark, onClick = {
+                    editDark = false
+                    material = settings.glassMaterialFor(false)
+                    colorHex = settings.glassColorFor(false)
+                    blur = settings.glassBlurFor(false)
+                    tint = settings.glassTintFor(false)
+                    film = settings.glassFilmFor(false)
+                    activeTab = settings.glassActiveTabFor(false)
+                }, label = { Text("Clair") })
+                FilterChip(selected = editDark, onClick = {
+                    editDark = true
+                    material = settings.glassMaterialFor(true)
+                    colorHex = settings.glassColorFor(true)
+                    blur = settings.glassBlurFor(true)
+                    tint = settings.glassTintFor(true)
+                    film = settings.glassFilmFor(true)
+                    activeTab = settings.glassActiveTabFor(true)
+                }, label = { Text("Sombre") })
+            }
+        }
         GlassPreviewCard(
             modifier = Modifier.fillMaxWidth(),
             material = material,
@@ -104,7 +128,7 @@ fun GlassSettingsScreen(onBack: () -> Unit) {
                         selected = material == option,
                         onClick = {
                             material = option
-                            settings.glassMaterial = option
+                            settings.setGlassMaterialFor(editDark, option)
                             markCustom()
                         },
                         label = { Text(option) }
@@ -141,7 +165,7 @@ fun GlassSettingsScreen(onBack: () -> Unit) {
                                     )
                                     .clickable {
                                         colorHex = hex
-                                        settings.glassColor = hex
+                                        settings.setGlassColorFor(editDark, hex)
                                         markCustom()
                                     }
                             )
@@ -159,7 +183,7 @@ fun GlassSettingsScreen(onBack: () -> Unit) {
                 value = blur,
                 onValueChange = {
                     blur = it
-                    settings.glassBlur = it
+                    settings.setGlassBlurFor(editDark, it)
                     markCustom()
                 }
             )
@@ -169,7 +193,7 @@ fun GlassSettingsScreen(onBack: () -> Unit) {
                 value = tint,
                 onValueChange = {
                     tint = it
-                    settings.glassTint = it
+                    settings.setGlassTintFor(editDark, it)
                     markCustom()
                 }
             )
@@ -179,7 +203,7 @@ fun GlassSettingsScreen(onBack: () -> Unit) {
                 value = film,
                 onValueChange = {
                     film = it
-                    settings.glassFilm = it
+                    settings.setGlassFilmFor(editDark, it)
                     markCustom()
                 }
             )
@@ -198,7 +222,7 @@ fun GlassSettingsScreen(onBack: () -> Unit) {
                         selected = activeTab == tab,
                         onClick = {
                             activeTab = tab
-                            settings.glassActiveTab = tab
+                            settings.setGlassActiveTabFor(editDark, tab)
                             markCustom()
                         },
                         label = { Text(tab) }
