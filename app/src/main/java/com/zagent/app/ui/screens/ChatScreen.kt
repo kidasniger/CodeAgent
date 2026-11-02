@@ -1362,6 +1362,16 @@ private fun CommandConfirmSheet(
                 }
             }
 
+            if (pending.command.contains("sudo", ignoreCase = true) || pending.command.contains("rm -rf", ignoreCase = true)) {
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "COMMANDE SENSIBLE",
+                    color = c.red,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.clip(RoundedCornerShape(50)).background(c.red.copy(alpha = 0.12f)).padding(horizontal = 10.dp, vertical = 6.dp)
+                )
+            }
+
             Spacer(Modifier.height(14.dp))
 
             Box(
@@ -1444,8 +1454,9 @@ private fun DeleteConfirmSheet(
     ModalBottomSheet(
         onDismissRequest = { onResolve(false) },
         sheetState = sheetState,
-        containerColor = c.bg2,
-        shape = RoundedCornerShape(24.dp, 24.dp, 0.dp, 0.dp)
+        containerColor = Color.Transparent,
+        dragHandle = { androidx.compose.material3.BottomSheetDefaults.DragHandle(color = c.text3.copy(alpha = 0.45f)) },
+        shape = RoundedCornerShape(28.dp, 28.dp, 0.dp, 0.dp)
     ) {
         Column(
             Modifier
@@ -1538,6 +1549,7 @@ private fun WriteConfirmSheet(
         Column(
             Modifier
                 .fillMaxWidth()
+                .glassSurface(LocalHazeState.current, LocalGlass.current, c.isDark, RoundedCornerShape(28.dp), LocalContext.current)
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 24.dp)
                 .verticalScroll(rememberScrollState())
