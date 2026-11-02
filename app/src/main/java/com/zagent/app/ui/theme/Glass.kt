@@ -11,6 +11,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -93,7 +94,18 @@ fun Modifier.glassSurface(
 
     // Le fond de secours est dessiné AVANT hazeChild : il ne recouvre donc plus
     // le flou Haze comme c'était le cas avec l'ancien ordre des modificateurs.
-    var result = this.clip(shape).background(fallback)
+    var result = this
+        .shadow(
+            elevation = when (material) {
+                GlassMaterial.FASTEST -> 2.dp
+                GlassMaterial.BALANCED -> 10.dp
+                GlassMaterial.QUALITY -> 18.dp
+            },
+            shape = shape,
+            clip = false
+        )
+        .clip(shape)
+        .background(fallback)
     if (material != GlassMaterial.FASTEST && Build.VERSION.SDK_INT >= 31 && state != null) {
         result = result.hazeChild(state = state, style = style)
     }
