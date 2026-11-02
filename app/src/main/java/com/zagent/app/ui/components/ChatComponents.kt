@@ -1,5 +1,6 @@
 package com.zagent.app.ui.components
 
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -125,7 +126,7 @@ fun ToolChip(
                     style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp),
                     color = c.text3,
                     maxLines = 1,
-                    overflow = TextOverflow.MiddleEllipsis,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
                 )
             } else {
@@ -874,7 +875,7 @@ private fun UnifiedDiff(lines: List<DiffUtil.Line>, theme: CodeTheme) {
             val range = wordRanges[index]
             val annotated = remember(line.text, range, textColor) {
                 buildAnnotatedString {
-                    if (range != IntRange.EMPTY && line.text.isNotEmpty()) {
+                    if (range != null && range != IntRange.EMPTY && line.text.isNotEmpty()) {
                         append(line.text.substring(0, range.first.coerceAtMost(line.text.length)))
                         withStyle(SpanStyle(background = textColor.copy(alpha = 0.22f), fontWeight = FontWeight.SemiBold)) {
                             append(line.text.substring(range.first.coerceIn(0, line.text.length), range.last + 1))

@@ -76,7 +76,7 @@ object DiffUtil {
         while (endOld > start && endNew > start && old[endOld - 1] == new[endNew - 1]) {
             endOld--; endNew--
         }
-        return start until endOld to start until endNew
+        return (start until endOld) to (start until endNew)
     }
 
     private enum class OpKind { EQ, ADD, DEL }

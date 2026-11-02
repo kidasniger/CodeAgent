@@ -1173,7 +1173,7 @@ done; } 2>&1 | head -c 50000
                     if (usedIn == null || usedOut == null) tokensEstimated = true
 
                     if (toolCalls.isNullOrEmpty()) {
-                        val reasoning = liveReasoning.ifBlank { result.reasoningContent }
+                        val reasoning = liveReasoning.ifBlank { result.reasoningContent ?: "" }
                         val assistantMsg = ChatMessage("assistant", content ?: "", reasoning = reasoning.ifBlank { null })
                         alertUser("L'agent a terminé", (content ?: "Tâche terminée.").trim().take(140))
                         withContext(Dispatchers.Main) {
@@ -1186,7 +1186,7 @@ done; } 2>&1 | head -c 50000
                         finished = true
                         break
                     } else {
-                        val reasoning = liveReasoning.ifBlank { result.reasoningContent }
+                        val reasoning = liveReasoning.ifBlank { result.reasoningContent ?: "" }
                         val assistantMsg = ChatMessage("assistant", content, toolCalls = toolCalls, reasoning = reasoning.ifBlank { null })
                         withContext(Dispatchers.Main) {
                             _messages.value = _messages.value + assistantMsg

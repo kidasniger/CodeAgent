@@ -6,6 +6,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -32,7 +33,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.stickyHeader
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -86,6 +86,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -93,7 +94,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Cap
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.Color
@@ -151,7 +151,6 @@ import com.zagent.app.ui.theme.glassSurface
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withFrameNanos
 import com.zagent.app.ui.viewmodel.MainViewModel
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -162,6 +161,7 @@ import java.util.Locale
 // Écran principal : conversation avec l'agent (style minimaliste — LOT 3)
 // ─────────────────────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ChatScreen(
     viewModel: MainViewModel,
@@ -1044,6 +1044,7 @@ private fun UserBubble(
 ) {
     val c = Zcolors
     val clipboard = LocalClipboardManager.current
+    val ctx = LocalContext.current
     var menuOpen by remember { mutableStateOf(false) }
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
         Box(
@@ -1082,7 +1083,7 @@ private fun UserBubble(
                     text = { Text("Sélectionner", color = c.text) },
                     onClick = {
                         menuOpen = false
-                        Toast.makeText(LocalContext.current, "Maintiens ton doigt sur le texte pour le sélectionner", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(ctx, "Maintiens ton doigt sur le texte pour le sélectionner", Toast.LENGTH_SHORT).show()
                     }
                 )
                 DropdownMenuItem(
@@ -1280,7 +1281,7 @@ private fun MessageActionsBar(
     canRegenerate: Boolean,
     onToggle: () -> Unit,
     onRegenerate: () -> Unit,
-    onQuote: () -> Unit,
+    onQuote: (String) -> Unit,
     onDelete: () -> Unit
 ) {
     val c = Zcolors
@@ -1311,7 +1312,7 @@ private fun MessageActionsBar(
             }
             ActionIcon(Icons.Default.MoreHoriz, "Plus") { menuOpen = !menuOpen }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                DropdownMenuItem(text = { Text("Citer", color = c.text) }, onClick = { menuOpen = false; onQuote() })
+                DropdownMenuItem(text = { Text("Citer", color = c.text) }, onClick = { menuOpen = false; onQuote(messageText) })
                 DropdownMenuItem(
                     text = { Text("Sélectionner", color = c.text) },
                     onClick = {
@@ -1676,7 +1677,7 @@ private fun TaskSummary(
                             style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp, lineHeight = 15.sp),
                             color = c.text2,
                             maxLines = 1,
-                            overflow = TextOverflow.MiddleEllipsis,
+                            overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f)
                         )
                         Spacer(Modifier.width(8.dp))
