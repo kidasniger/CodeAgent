@@ -72,15 +72,15 @@ class MainActivity : ComponentActivity() {
                 com.zagent.app.ui.theme.ThemeMode.DARK -> true
                 com.zagent.app.ui.theme.ThemeMode.SCHEDULED -> {
                     scheduleTick
-                    isWithinScheduledDarkPeriod(settings.scheduledDarkTime, settings.scheduledLightTime)
+                    isWithinScheduledDarkPeriod(viewModel.scheduledDarkTime, viewModel.scheduledLightTime)
                 }
             }
             ZAgentTheme(
                 darkTheme = dark,
                 stylePreset = settings.stylePresetId,
-                oledBlack = settings.oledBlack,
-                dynamicColors = settings.dynamicSystemColors,
-                cornerRadius = settings.cornerRadius
+                oledBlack = viewModel.oledBlack,
+                dynamicColors = viewModel.dynamicSystemColors,
+                cornerRadius = viewModel.cornerRadius
             ) {
                 SurfaceBackground()
                 AppRoot(viewModel, systemDark)
