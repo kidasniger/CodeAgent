@@ -41,7 +41,9 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Check
@@ -139,6 +141,9 @@ import com.zagent.app.ui.components.CodeBlock
 import com.zagent.app.ui.components.DiffPanel
 import com.zagent.app.ui.components.ToolChip
 import com.zagent.app.ui.components.ToolState
+import com.zagent.app.ui.components.ZMenu
+import com.zagent.app.ui.components.ZMenuItem
+import com.zagent.app.ui.components.ZMenuSeparator
 import com.zagent.app.ui.components.buildInlineMarkdown
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
@@ -593,6 +598,8 @@ private fun AmbientTopBar(
     onOpenSettings: () -> Unit
 ) {
     val c = Zcolors
+    // MA78 : menu « ⋯ » unifié regroupant les actions secondaires.
+    var moreMenuOpen by remember { mutableStateOf(false) }
     Column(
         Modifier
             .fillMaxWidth()
@@ -656,8 +663,53 @@ private fun AmbientTopBar(
                 TopBarPillIcon(Icons.Default.Menu, "Historique des conversations", onClick = { viewModel.isHistoryOpen = true })
                 TopBarPillIcon(Icons.Default.Search, "Recherche globale", onClick = { viewModel.openSearchScreen() })
                 TopBarPillIcon(Icons.Default.Share, "Partager la conversation", onClick = { viewModel.isShareSheetOpen = true })
-                TopBarPillIcon(Icons.Default.FolderOpen, "Explorateur de fichiers", onClick = { viewModel.navigateTo(com.zagent.app.ui.viewmodel.AppScreen.FILE_BROWSER) })
-                TopBarPillIcon(Icons.Default.Settings, "Réglages", onClick = onOpenSettings)
+                // MA78 : un seul menu déroulant en verre pour les actions secondaires.
+                Box {
+                    TopBarPillIcon(Icons.Default.MoreHoriz, "Plus d'actions", onClick = { moreMenuOpen = true })
+                    ZMenu(expanded = moreMenuOpen, onDismiss = { moreMenuOpen = false }) {
+                        ZMenuItem(
+                            label = "Explorateur de fichiers",
+                            icon = Icons.Default.FolderOpen,
+                            onClick = {
+                                moreMenuOpen = false
+                                viewModel.navigateTo(com.zagent.app.ui.viewmodel.AppScreen.FILE_BROWSER)
+                            }
+                        )
+                        ZMenuItem(
+                            label = "Git",
+                            icon = Icons.Default.AccountTree,
+                            onClick = {
+                                moreMenuOpen = false
+                                viewModel.isGitScreenOpen = true
+                            }
+                        )
+                        ZMenuItem(
+                            label = "Modèles",
+                            icon = Icons.Default.Bolt,
+                            onClick = {
+                                moreMenuOpen = false
+                                viewModel.isModelDialogOpen = true
+                            }
+                        )
+                        ZMenuItem(
+                            label = "Modèles de prompts",
+                            icon = Icons.Default.AutoAwesome,
+                            onClick = {
+                                moreMenuOpen = false
+                                viewModel.isTemplatesOpen = true
+                            }
+                        )
+                        ZMenuSeparator()
+                        ZMenuItem(
+                            label = "Réglages",
+                            icon = Icons.Default.Settings,
+                            onClick = {
+                                moreMenuOpen = false
+                                onOpenSettings()
+                            }
+                        )
+                    }
+                }
             }
         }
     }

@@ -60,6 +60,10 @@ android {
     compose = true
     buildConfig = true
   }
+  // MA74 : le geste retour prédictif est activé via android:enableOnBackInvokedCallback
+  // dans AndroidManifest.xml. Effet complet (animation système) à partir d'Android 13
+  // (API 33) ; sur API 26–32 PredictiveBackHandler repose sur le dispatcher classique,
+  // donc le comportement de retour reste identique.
   lint { disable += "ExpiredTargetSdkVersion" }
   testOptions { unitTests { isIncludeAndroidResources = true } }
   dependenciesInfo {
@@ -81,6 +85,10 @@ dependencies {
   implementation("com.github.termux.termux-app:terminal-emulator:v0.118.0")
   implementation(platform(libs.androidx.compose.bom))
   implementation(libs.androidx.activity.compose)
+  // MA71 : navigation par NavHost avec routes typées
+  implementation(libs.androidx.navigation.compose)
+  // MA75 : WindowSizeClass pour les mises en page tablettes / pliables
+  implementation(libs.androidx.compose.material3.window.size.class)
   implementation(libs.haze)
   implementation(libs.haze.materials)
   implementation(libs.androidx.compose.material.icons.core)

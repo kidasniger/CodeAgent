@@ -27,6 +27,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenuItemDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -748,4 +751,92 @@ fun GlassPreviewCard(
             }
         }
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MA78 — Menu « ⋯ » contextuel unifié en verre
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Menu déroulant unifié (MA78) : conteneur en verre arrondi partagé par le chat,
+ * l'éditeur, les fichiers et la barre d'onglets. À placer dans un Box parent —
+ * il s'ancre sur ce parent (comme DropdownMenu). Les éléments destructifs
+ * s'affichent en rouge via ZMenuItem(destructive = true), les raccourcis
+ * clavier/touches apparaissent à droite en police mono.
+ */
+@Composable
+fun ZMenu(
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    GlassDropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismiss,
+        modifier = modifier,
+        content = content
+    )
+}
+
+/** Élément du menu unifié : icône + libellé, raccourci facultatif à droite, style destructif en rouge. */
+@Composable
+fun ZMenuItem(
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    shortcut: String? = null,
+    destructive: Boolean = false
+) {
+    val c = Zcolors
+    DropdownMenuItem(
+        text = {
+            Text(
+                label,
+                style = TextStyle(
+                    fontFamily = Inter,
+                    fontSize = 13.5.sp,
+                    fontWeight = if (destructive) FontWeight.Medium else FontWeight.Normal
+                ),
+                color = if (destructive) c.red else c.text
+            )
+        },
+        leadingIcon = {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = if (destructive) c.red else c.text2,
+                modifier = Modifier.size(18.dp)
+            )
+        },
+        trailingIcon = if (shortcut != null) {
+            {
+                Text(
+                    shortcut,
+                    style = TextStyle(fontFamily = JetBrainsMono, fontSize = 10.5.sp),
+                    color = c.text3
+                )
+            }
+        } else null,
+        onClick = onClick,
+        colors = DropdownMenuItemDefaults.colors(
+            containerColor = Color.Transparent,
+            textColor = if (destructive) c.red else c.text,
+            leadingIconColor = if (destructive) c.red else c.text2,
+            trailingIconColor = c.text3
+        ),
+        modifier = modifier
+    )
+}
+
+/** Séparateur fin du menu unifié (MA78). */
+@Composable
+fun ZMenuSeparator() {
+    val c = Zcolors
+    HorizontalDivider(
+        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+        thickness = 1.dp,
+        color = c.text3.copy(alpha = 0.14f)
+    )
 }

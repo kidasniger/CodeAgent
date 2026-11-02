@@ -94,10 +94,14 @@ import com.zagent.app.ui.viewmodel.MainViewModel
 // Réglages : clé & modèle · agent · mises à jour · apparence
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * @param openAppearance MA71 : ouvre directement la sous-vue Apparence
+ * (utilisé par la route settings/appearance et le deep link zagent://settings/appearance).
+ */
 @Composable
-fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
+fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearance: Boolean = false) {
     val c = Zcolors
-    var showAppearanceSettings by rememberSaveable { mutableStateOf(false) }
+    var showAppearanceSettings by rememberSaveable { mutableStateOf(openAppearance) }
 
     // Le retour système dépile d'abord Apparence, sans changer l'onglet principal.
     BackHandler(enabled = showAppearanceSettings) {

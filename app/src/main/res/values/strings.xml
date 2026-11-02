@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">ZAgent</string>
+    <!-- MA77 : libellés des raccourcis d'application -->
+    <string name="shortcut_new_chat">Nouvelle conversation</string>
+    <string name="shortcut_new_chat_long">Démarrer une nouvelle conversation</string>
+    <string name="shortcut_open_terminal">Terminal</string>
+    <string name="shortcut_open_terminal_long">Ouvrir le terminal</string>
+    <string name="shortcut_last_project">Dernier projet</string>
+    <string name="shortcut_last_project_long">Ouvrir le dernier projet</string>
 </resources>

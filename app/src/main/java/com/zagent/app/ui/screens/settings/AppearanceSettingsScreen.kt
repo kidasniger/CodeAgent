@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Contrast
+import androidx.compose.material.icons.filled.Animation
 import androidx.compose.material.icons.filled.DensityMedium
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Layers
@@ -38,6 +39,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Brush
@@ -352,6 +354,38 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     subtitle = "Espacement et compacité",
                     onClick = { destination = "density" }
                 )
+            }
+
+            // MA72 : coupe les transitions de navigation (fondu + glissement).
+            SettingsSectionLabel("ANIMATIONS")
+            SettingsCard {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { viewModel.setReduceAnimations(!viewModel.reduceAnimations) }
+                        .padding(horizontal = 16.dp, vertical = 15.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(MaterialTheme.shapes.small)
+                            .background(Zcolors.cyanBg),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Animation, contentDescription = null, tint = Zcolors.cyan)
+                    }
+                    Spacer(Modifier.size(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Réduire les animations", style = MaterialTheme.typography.titleMedium, color = c.text)
+                        Spacer(Modifier.height(2.dp))
+                        Text("Transitions de navigation instantanées", style = MaterialTheme.typography.bodySmall, color = c.text2)
+                    }
+                    Switch(
+                        checked = viewModel.reduceAnimations,
+                        onCheckedChange = { viewModel.setReduceAnimations(it) }
+                    )
+                }
             }
         }
     }

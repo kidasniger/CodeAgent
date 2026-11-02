@@ -8,6 +8,7 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
@@ -37,6 +38,7 @@ import com.zagent.app.ui.editor.ConsoleState
 import com.zagent.app.ui.editor.EditorController
 import com.zagent.app.ui.theme.ThemeMode
 import com.zagent.app.ui.theme.GlassSettings
+import com.zagent.app.ui.navigation.ZRoutes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -79,37 +81,65 @@ data class ChatMessage(
 enum class AppScreen { CHAT, SETTINGS, TERMINAL, EDITOR, FILE_BROWSER }
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
+    // ── Navigation (MA71) ──────────────────────────────────────────────────
+    // Le NavHost de ZNavHost.kt est la source de vérité du back stack. Les écrans
+    // continuent d'appeler navigateTo / navigateBack (API inchangée) ; ces demandes
+    // sont traduites en requêtes de route typées que ZNavHost exécute sur le
+    // NavHost Compose. currentScreen est ensuite resynchronisé depuis la route
+    // réellement affichée, ce qui remplace les anciens booléens
+    // isSettingsOpen / isTerminalOpen / isEditorOpen / isFileBrowserOpen.
+
+    /** Route demandée (ex. "terminal", "editor?path=...") ; consommée par ZNavHost. */
+    var navRouteRequest by mutableStateOf<String?>(null)
+        private set
+
+    /** Compteur de demandes de retour ; ZNavHost effectue le pop du back stack. */
+    var navBackRequest by mutableIntStateOf(0)
+        private set
+
     private val navigationHistory = mutableStateListOf<AppScreen>()
     var currentScreen by mutableStateOf(AppScreen.CHAT)
         private set
 
-    fun navigateTo(screen: AppScreen) {
+    fun navigateTo(screen: AppScreen, editorPath: String? = null) {
         if (currentScreen == screen) return
         navigationHistory.add(currentScreen)
-        currentScreen = screen
-        syncNavigationFlags()
+        navRouteRequest = when (screen) {
+            AppScreen.EDITOR -> ZRoutes.editor(editorPath ?: editor.active?.path)
+            else -> ZRoutes.of(screen)
+        }
     }
 
     fun navigationPreviousScreen(): AppScreen =
         navigationHistory.lastOrNull() ?: AppScreen.CHAT
 
     fun navigateBack(): Boolean {
-        if (navigationHistory.isNotEmpty()) {
-            currentScreen = navigationHistory.removeAt(navigationHistory.lastIndex)
-        } else if (currentScreen != AppScreen.CHAT) {
-            currentScreen = AppScreen.CHAT
-        } else {
-            return false
-        }
-        syncNavigationFlags()
+        navBackRequest++
         return true
     }
 
-    private fun syncNavigationFlags() {
-        isSettingsOpen = currentScreen == AppScreen.SETTINGS
-        isTerminalOpen = currentScreen == AppScreen.TERMINAL
-        isEditorOpen = currentScreen == AppScreen.EDITOR
-        isFileBrowserOpen = currentScreen == AppScreen.FILE_BROWSER
+    /** Consomme la requête de route après son exécution par le NavHost. */
+    fun consumeNavRouteRequest() {
+        navRouteRequest = null
+    }
+
+    /**
+     * Resynchronise l'état depuis la route réellement affichée par le NavHost
+     * (y compris après un retour système, un deep link ou un raccourci).
+     */
+    fun syncScreenFromRoute(route: String?) {
+        val screen = when {
+            route == null -> AppScreen.CHAT
+            route.startsWith("editor") -> AppScreen.EDITOR
+            route.startsWith("files") -> AppScreen.FILE_BROWSER
+            route.startsWith("terminal") -> AppScreen.TERMINAL
+            route.startsWith("settings") -> AppScreen.SETTINGS
+            else -> AppScreen.CHAT
+        }
+        if (currentScreen != screen) {
+            currentScreen = screen
+            navigationHistory.clear()
+        }
     }
     val settingsManager = SettingsManager(application)
     private val aiRepository = AiRepository()
@@ -140,9 +170,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     var showKeyVisible by mutableStateOf(false)
-    var isSettingsOpen by mutableStateOf(false)
 
-    // ── Apparence & flux de démarrage ───────────────────────────────────────
+    // ── Apparence & flux de démarrage ─────────────────────────────────────────
     var themeMode by mutableStateOf(settingsManager.themeMode)
     var oledBlack by mutableStateOf(settingsManager.oledBlack)
         private set
@@ -171,6 +200,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun updateScheduledDarkTime(value: String) { scheduledDarkTime = value; settingsManager.scheduledDarkTime = value }
     fun updateScheduledLightTime(value: String) { scheduledLightTime = value; settingsManager.scheduledLightTime = value }
     var glassSettings by mutableStateOf(settingsManager.loadGlassSettings(false))
+
+    /** MA72 : coupe les transitions de navigation (fondu/glissement) quand il est actif. */
+    var reduceAnimations by mutableStateOf(settingsManager.reduceAnimations)
+        private set
+
+    fun setReduceAnimations(value: Boolean) {
+        reduceAnimations = value
+        settingsManager.reduceAnimations = value
+    }
     fun updateGlassSettings(dark: Boolean, value: GlassSettings) { glassSettings = value; settingsManager.saveGlassSettings(dark, value) }
     fun reloadGlassSettings(dark: Boolean) { glassSettings = settingsManager.loadGlassSettings(dark) }
 
@@ -752,7 +790,7 @@ done; } 2>&1 | head -c 50000
         browserChildren.clear()
         expandedDirs.clear()
         editor.clear()
-        if (currentScreen == AppScreen.EDITOR) navigateBack() else isEditorOpen = false
+        if (currentScreen == AppScreen.EDITOR) navigateBack()
         refreshFolderLabel()
         // MA53 : recharge la liste des fichiers pour l'autocomplétion « @ ».
         refreshProjectFiles()
@@ -846,13 +884,10 @@ done; } 2>&1 | head -c 50000
 
     // ── Éditeur de code ─────────────────────────────────────────────────────
     val editor = EditorController(viewModelScope) { getFileRepo() }
-    var isEditorOpen by mutableStateOf(false)
 
     // ── Explorateur de fichiers ─────────────────────────────────────────────
-    var isFileBrowserOpen by mutableStateOf(false)
 
     // ── Terminal embarqué ───────────────────────────────────────────────────
-    var isTerminalOpen by mutableStateOf(false)
     val terminal = com.zagent.app.terminal.TerminalController(application, viewModelScope)
 
     init {
@@ -1155,6 +1190,44 @@ done; } 2>&1 | head -c 50000
 
         /** Outils de lecture seule : refusés si « Toujours autoriser la lecture » est désactivé (MA64). */
         val READ_TOOLS = setOf("read_file", "list_dir", "search_in_files")
+
+        // MA77 : actions des raccourcis d'application (appui long sur l'icône).
+        const val ACTION_SHORTCUT_NEW_CHAT = "com.zagent.app.action.NEW_CHAT"
+        const val ACTION_SHORTCUT_OPEN_TERMINAL = "com.zagent.app.action.OPEN_TERMINAL"
+        const val ACTION_SHORTCUT_LAST_PROJECT = "com.zagent.app.action.LAST_PROJECT"
+    }
+
+    /**
+     * MA73 : nombre de confirmations en attente dans la conversation
+     * (écriture, question, suppression, commande) ; alimente le badge de l'onglet Chat.
+     */
+    val pendingConfirmationCount: Int
+        get() = listOfNotNull(pendingWrite, pendingAsk, pendingDelete, pendingCommand).size
+
+    /**
+     * MA77 : applique l'action d'un raccourci d'application (Nouvelle conversation,
+     * Ouvrir le terminal, Dernier projet). Retourne true si l'action est reconnue.
+     */
+    fun handleAppShortcut(action: String?): Boolean {
+        return when (action) {
+            ACTION_SHORTCUT_NEW_CHAT -> {
+                clearConversation()
+                navRouteRequest = ZRoutes.CHAT
+                true
+            }
+            ACTION_SHORTCUT_OPEN_TERMINAL -> {
+                navRouteRequest = ZRoutes.TERMINAL
+                true
+            }
+            ACTION_SHORTCUT_LAST_PROJECT -> {
+                // Dernier projet connu : on affiche directement l'explorateur ;
+                // sinon l'écran de sélection de projet s'ouvre par-dessus.
+                if (workingFolderUriString.isNullOrBlank()) isProjectPickerOpen = true
+                navRouteRequest = ZRoutes.FILES
+                true
+            }
+            else -> false
+        }
     }
 
     /**

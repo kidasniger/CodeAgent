@@ -333,6 +333,17 @@ class SettingsManager(context: Context) {
         ZAccentOverrideDark.value = null
     }
 
+    // ── LOT 6 ────────────────────────────────────────────────────────────────
+
+    /**
+     * MA72 : quand cette option est active, les transitions de navigation
+     * (fondu + glissement horizontal, glissement du bas des feuilles) sont
+     * désactivées et les écrans changent instantanément.
+     */
+    var reduceAnimations: Boolean
+        get() = prefs.getBoolean(KEY_REDUCE_ANIMATIONS, false)
+        set(value) = prefs.edit().putBoolean(KEY_REDUCE_ANIMATIONS, value).apply()
+
     /** Fichiers que l'utilisateur autorise toujours (écritures automatiques). */
     var alwaysAllowedPaths: Set<String>
         get() = prefs.getStringSet(KEY_ALWAYS_ALLOW, emptySet()) ?: emptySet()
@@ -478,5 +489,6 @@ class SettingsManager(context: Context) {
         private const val KEY_ALLOW_EXECUTE = "allow_execute"
         private const val KEY_SEARCH_HISTORY = "search_history"
         private const val KEY_PROJECT_INSTR = "project_instructions"
+        private const val KEY_REDUCE_ANIMATIONS = "reduce_animations"
     }
 }

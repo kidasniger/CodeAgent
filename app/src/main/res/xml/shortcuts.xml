@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MA77 : raccourcis d'application (appui long sur l'icône du lanceur). -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="new_chat"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_chat"
+        android:shortcutShortLabel="@string/shortcut_new_chat"
+        android:shortcutLongLabel="@string/shortcut_new_chat_long">
+        <intent
+            android:action="com.zagent.app.action.NEW_CHAT"
+            android:targetPackage="com.zagent"
+            android:targetClass="com.zagent.app.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="open_terminal"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_terminal"
+        android:shortcutShortLabel="@string/shortcut_open_terminal"
+        android:shortcutLongLabel="@string/shortcut_open_terminal_long">
+        <intent
+            android:action="com.zagent.app.action.OPEN_TERMINAL"
+            android:targetPackage="com.zagent"
+            android:targetClass="com.zagent.app.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="last_project"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_folder"
+        android:shortcutShortLabel="@string/shortcut_last_project"
+        android:shortcutLongLabel="@string/shortcut_last_project_long">
+        <intent
+            android:action="com.zagent.app.action.LAST_PROJECT"
+            android:targetPackage="com.zagent"
+            android:targetClass="com.zagent.app.MainActivity" />
+    </shortcut>
+</shortcuts>

@@ -1,8 +1,10 @@
 package com.zagent.app
 
+import android.content.Intent
+import android.content.res.Configuration
 import android.os.Bundle
-import androidx.activity.compose.BackHandler
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -10,7 +12,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
+import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -21,15 +25,16 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
 import com.zagent.app.ui.components.AmbientBackground
 import com.zagent.app.ui.components.FloatingTabBar
+import com.zagent.app.ui.navigation.ZNavHost
 import com.zagent.app.ui.theme.LocalGlass
 import com.zagent.app.ui.theme.LocalHazeState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableIntStateOf
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import java.time.LocalTime
 import java.time.Duration
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,24 +45,21 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import com.zagent.app.agent.AgentNotifier
-import com.zagent.app.ui.screens.ChatScreen
-import com.zagent.app.ui.screens.EditorScreen
-import com.zagent.app.ui.screens.FileBrowserScreen
-import com.zagent.app.ui.screens.GitScreen
 import com.zagent.app.ui.screens.HistoryDrawer
 import com.zagent.app.ui.screens.OnboardingScreen
 import com.zagent.app.ui.screens.ProjectsScreen
 import com.zagent.app.ui.screens.SearchScreen
-import com.zagent.app.ui.screens.SettingsScreen
 import com.zagent.app.ui.screens.ShareSheet
 import com.zagent.app.ui.screens.SplashScreen
 import com.zagent.app.ui.screens.TemplatesScreen
+import com.zagent.app.ui.screens.GitScreen
 import com.zagent.app.ui.screens.TerminalScreen
 import com.zagent.app.ui.theme.ZAgentTheme
 import com.zagent.app.ui.theme.Zcolors
-import com.zagent.app.ui.theme.resolveDarkTheme
+import com.zagent.app.ui.viewmodel.AppScreen
 import com.zagent.app.ui.viewmodel.MainViewModel
 import com.zagent.app.update.UpdateHost
 
@@ -78,6 +80,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         AgentNotifier.ensureChannels(this)
+        // MA77 : raccourcis d'application (appui long sur l'icône) — démarrage à froid.
+        handleShortcutIntent(intent)
         setContent {
             val systemDark = isSystemInDarkTheme()
             var scheduleTick by remember { mutableIntStateOf(0) }
@@ -99,6 +103,8 @@ class MainActivity : ComponentActivity() {
                     isWithinScheduledDarkPeriod(viewModel.scheduledDarkTime, viewModel.scheduledLightTime)
                 }
             }
+            // MA75 : classes de taille de fenêtre pour tablettes et pliables.
+            val windowSizeClass = calculateWindowSizeClass(this@MainActivity)
             ZAgentTheme(
                 darkTheme = dark,
                 stylePreset = if (settings.stylePresetId == com.zagent.app.ui.theme.StylePresetIds.CUSTOM) settings.styleBasePresetId else settings.stylePresetId,
@@ -110,8 +116,25 @@ class MainActivity : ComponentActivity() {
                 densityScale = viewModel.densityScale
             ) {
                 SurfaceBackground()
-                AppRoot(viewModel, dark)
+                AppRoot(viewModel, dark, windowSizeClass.widthSizeClass)
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // MA77 : raccourcis pendant que l'activité est déjà au premier plan (singleTop).
+        handleShortcutIntent(intent)
+    }
+
+    /** MA77 : applique l'action d'un raccourci d'application, si reconnue. */
+    private fun handleShortcutIntent(intent: Intent?) {
+        val action = intent?.action ?: return
+        if (action == MainViewModel.ACTION_SHORTCUT_NEW_CHAT ||
+            action == MainViewModel.ACTION_SHORTCUT_OPEN_TERMINAL ||
+            action == MainViewModel.ACTION_SHORTCUT_LAST_PROJECT
+        ) {
+            viewModel.handleAppShortcut(action)
         }
     }
 }
@@ -126,8 +149,13 @@ private fun SurfaceBackground() {
     )
 }
 
+@OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
 @Composable
-private fun AppRoot(viewModel: MainViewModel, darkTheme: Boolean) {
+private fun AppRoot(
+    viewModel: MainViewModel,
+    darkTheme: Boolean,
+    widthSizeClass: WindowWidthSizeClass
+) {
     val hazeState = remember { HazeState() }
     var navVisible by remember { mutableStateOf(true) }
     val navScrollConnection = remember {
@@ -164,17 +192,30 @@ private fun AppRoot(viewModel: MainViewModel, darkTheme: Boolean) {
 
     val context = LocalContext.current
     var lastBackPress by remember { mutableStateOf(0L) }
-    val canGoBack = viewModel.currentScreen != com.zagent.app.ui.viewmodel.AppScreen.CHAT
-    BackHandler(enabled = canGoBack) {
-        viewModel.navigateBack()
-    }
-    BackHandler(enabled = !canGoBack) {
-        val now = System.currentTimeMillis()
-        if (now - lastBackPress < 2000) {
-            (context as? android.app.Activity)?.finish()
-        } else {
-            lastBackPress = now
-            android.widget.Toast.makeText(context, "Appuyez encore pour quitter", android.widget.Toast.LENGTH_SHORT).show()
+    val configuration = LocalConfiguration.current
+    val landscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val isRoot = viewModel.currentScreen == AppScreen.CHAT
+
+    // MA74 — Geste retour prédictif : actif sur l'écran racine uniquement, où la
+    // double pression pour quitter est conservée. Sur les autres écrans, le back
+    // stack du NavHost (MA71) est dépilé par le système, puis MainViewModel est
+    // resynchronisé via syncScreenFromRoute. Sur API 26–32, PredictiveBackHandler
+    // passe par le dispatcher classique : le comportement de retour est identique.
+    // L'animation complète du geste nécessite Android 13+ et targetSdk ≥ 33
+    // (voir la note de migration targetSdk 34 dans le CHANGELOG du LOT 6).
+    PredictiveBackHandler(enabled = isRoot) { progress ->
+        try {
+            progress.collect()
+            // Geste terminé : logique de double pression conservée.
+            val now = System.currentTimeMillis()
+            if (now - lastBackPress < 2000) {
+                (context as? android.app.Activity)?.finish()
+            } else {
+                lastBackPress = now
+                android.widget.Toast.makeText(context, "Appuyez encore pour quitter", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: CancellationException) {
+            // Geste annulé par l'utilisateur : aucune action.
         }
     }
 
@@ -201,39 +242,17 @@ private fun AppRoot(viewModel: MainViewModel, darkTheme: Boolean) {
         // Fond animé réel de l'application, placé derrière les écrans et les surfaces Haze.
         AmbientBackground(Modifier.fillMaxSize())
 
-        val underlyingScreen = if (viewModel.currentScreen == com.zagent.app.ui.viewmodel.AppScreen.SETTINGS) {
-            viewModel.navigationPreviousScreen()
-        } else {
-            viewModel.currentScreen
-        }
-
-        when (underlyingScreen) {
-            com.zagent.app.ui.viewmodel.AppScreen.TERMINAL -> TerminalScreen(
-                controller = viewModel.terminal,
-                showExtraKeys = !navVisible,
-                onBack = { viewModel.navigateBack() }
-            )
-            com.zagent.app.ui.viewmodel.AppScreen.EDITOR -> EditorScreen(
-                viewModel = viewModel,
-                onBack = { viewModel.navigateBack() }
-            )
-            com.zagent.app.ui.viewmodel.AppScreen.FILE_BROWSER -> FileBrowserScreen(
-                viewModel = viewModel,
-                onBack = { viewModel.navigateBack() }
-            )
-            else -> ChatScreen(
-                viewModel = viewModel,
-                onOpenSettings = { viewModel.navigateTo(com.zagent.app.ui.viewmodel.AppScreen.SETTINGS) }
-            )
-        }
-
-        if (viewModel.currentScreen == com.zagent.app.ui.viewmodel.AppScreen.SETTINGS) {
-            SettingsScreenCompat(viewModel)
-        }
+        // MA71 : hôte de navigation unique (routes typées, back stack, deep links).
+        ZNavHost(
+            viewModel = viewModel,
+            widthSizeClass = widthSizeClass,
+            landscape = landscape,
+            showExtraKeys = !navVisible
+        )
 
         UpdateHost()
 
-        // ── Overlays du LOT 5 (MA56 → MA70) ─────────────────────────────────
+        // ── Overlays du LOT 5 (MA56 → MA70), feuilles au-dessus du NavHost ───
         if (viewModel.isProjectPickerOpen) {
             ProjectsScreen(viewModel, onClose = { viewModel.isProjectPickerOpen = false })
         }
@@ -255,25 +274,20 @@ private fun AppRoot(viewModel: MainViewModel, darkTheme: Boolean) {
         if (viewModel.isShareSheetOpen) {
             ShareSheet(viewModel, onClose = { viewModel.isShareSheetOpen = false })
         }
-        AnimatedVisibility(
-            visible = navVisible && viewModel.currentScreen != com.zagent.app.ui.viewmodel.AppScreen.SETTINGS && !viewModel.isLot5OverlayOpen,
-            modifier = Modifier.align(Alignment.BottomCenter)
-        ) {
-            FloatingTabBar(
-                currentScreen = viewModel.currentScreen,
-                onNavigate = { viewModel.navigateTo(it) }
-            )
-        }
+
+        // MA73 : la barre d'onglets gère elle-même son glissement de masquage.
+        FloatingTabBar(
+            currentScreen = viewModel.currentScreen,
+            onNavigate = { viewModel.navigateTo(it) },
+            modifier = Modifier.align(Alignment.BottomCenter),
+            visible = navVisible && viewModel.currentScreen != AppScreen.SETTINGS && !viewModel.isLot5OverlayOpen,
+            chatBadge = viewModel.pendingConfirmationCount,
+            onNewChat = { viewModel.clearConversation() },
+            onChangeProject = { viewModel.isProjectPickerOpen = true },
+            onNewTerminal = { viewModel.terminal.addTab() }
+        )
         }
     }
-}
-
-@Composable
-private fun SettingsScreenCompat(viewModel: MainViewModel) {
-    SettingsScreen(
-        viewModel = viewModel,
-        onDismiss = { viewModel.navigateBack() }
-    )
 }
 
 
