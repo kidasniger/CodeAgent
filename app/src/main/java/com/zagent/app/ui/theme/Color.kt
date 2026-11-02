@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tokens de marque (issus du design system ZAgent)
@@ -198,8 +199,8 @@ val MinimalLightZColors = ZColors(
     codeBorder = Color(0x24141413),
     codePlain = Color(0xFFC9D4E8),
     scrim = Color(0x730D0D0C),
-    grad = Brush.solidColor(Color(0xFFC96442)),
-    gradBtn = Brush.solidColor(Color(0xFFC96442)),
+    grad = SolidColor(Color(0xFFC96442)),
+    gradBtn = SolidColor(Color(0xFFC96442)),
     gradGlow = Color(0x40C96442),
     gradLine = Brush.verticalGradient(listOf(Color(0xFFC96442), Color(0xFFC96442))),
     gridline = Color(0x0A141413),
@@ -233,8 +234,8 @@ val MinimalDarkZColors = ZColors(
     codeBorder = Color(0x3DFFFFFF),
     codePlain = Color(0xFFC9D4E8),
     scrim = Color(0xB3262624),
-    grad = Brush.solidColor(Color(0xFFE08A68)),
-    gradBtn = Brush.solidColor(Color(0xFFE08A68)),
+    grad = SolidColor(Color(0xFFE08A68)),
+    gradBtn = SolidColor(Color(0xFFE08A68)),
     gradGlow = Color(0x40E08A68),
     gradLine = Brush.verticalGradient(listOf(Color(0xFFE08A68), Color(0xFFE08A68))),
     gridline = Color(0x14FFFFFF),
