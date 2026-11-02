@@ -58,7 +58,11 @@ import com.zagent.app.terminal.TerminalController
 import com.zagent.app.ui.theme.Zcolors
 
 @Composable
-fun TerminalScreen(controller: TerminalController, onBack: () -> Unit) {
+fun TerminalScreen(
+    controller: TerminalController,
+    showExtraKeys: Boolean,
+    onBack: () -> Unit
+) {
     val c = Zcolors
     val state = controller.state
     val termBg = c.bg.toArgb()
@@ -154,7 +158,9 @@ fun TerminalScreen(controller: TerminalController, onBack: () -> Unit) {
                     AgentLogPane(controller, Modifier.weight(1f).fillMaxWidth())
                 } else {
                     ShellPane(controller, termBg, Modifier.weight(1f).fillMaxWidth())
-                    ExtraKeys(controller)
+                    if (showExtraKeys) {
+                        ExtraKeys(controller)
+                    }
                 }
             }
         }
