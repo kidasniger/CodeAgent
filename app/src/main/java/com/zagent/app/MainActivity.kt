@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.runtime.CompositionLocalProvider
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
+import com.zagent.app.ui.components.AmbientBackground
 import com.zagent.app.ui.components.FloatingTabBar
 import com.zagent.app.ui.theme.LocalGlass
 import com.zagent.app.ui.theme.LocalHazeState
@@ -188,6 +189,9 @@ private fun AppRoot(viewModel: MainViewModel, darkTheme: Boolean) {
                 }
                 .haze(state = hazeState)
         ) {
+        // Fond animé réel de l'application, placé derrière les écrans et les surfaces Haze.
+        AmbientBackground(Modifier.fillMaxSize())
+
         val underlyingScreen = if (viewModel.currentScreen == com.zagent.app.ui.viewmodel.AppScreen.SETTINGS) {
             viewModel.navigationPreviousScreen()
         } else {
