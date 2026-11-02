@@ -5,6 +5,7 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.zagent.app.ui.theme.ThemeMode
 import com.zagent.app.ui.theme.StylePresetIds
+import com.zagent.app.ui.theme.ZAccentOverride
 
 class SettingsManager(context: Context) {
     private val masterKey = MasterKey.Builder(context)
@@ -21,6 +22,9 @@ class SettingsManager(context: Context) {
 
     init {
         migrateThemeKey()
+        accentColorHex.takeIf { it.isNotBlank() }?.let { hex ->
+            runCatching { ZAccentOverride.value = androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(hex)) }
+        }
     }
 
     /**
@@ -77,6 +81,17 @@ class SettingsManager(context: Context) {
     fun markStylePresetCustom() {
         stylePresetId = StylePresetIds.CUSTOM
     }
+
+    /** Couleur d'accent personnalisée ; chaîne vide = palette native (« Aucune »). */
+    var accentColorHex: String
+        get() = prefs.getString(KEY_ACCENT_COLOR, "") ?: ""
+        set(value) {
+            val normalized = value.trim()
+            prefs.edit().putString(KEY_ACCENT_COLOR, normalized).apply()
+            ZAccentOverride.value = if (normalized.isBlank()) null else runCatching {
+                androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(normalized))
+            }.getOrNull()
+        }
 
     /** Configuration persistante de l'aperçu et des surfaces Verre. */
     var glassMaterial: String
@@ -147,6 +162,7 @@ class SettingsManager(context: Context) {
         private const val LEGACY_KEY_THEME_DARK = "theme_dark"
         private const val KEY_ONBOARDING_DONE = "onboarding_done"
         private const val KEY_STYLE_PRESET = "style_preset"
+        private const val KEY_ACCENT_COLOR = "accent_color"
         private const val KEY_GLASS_MATERIAL = "glass_material"
         private const val KEY_GLASS_COLOR = "glass_color"
         private const val KEY_GLASS_BLUR = "glass_blur"
