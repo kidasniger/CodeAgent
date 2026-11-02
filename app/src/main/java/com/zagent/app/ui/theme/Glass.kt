@@ -73,7 +73,7 @@ fun Modifier.glassSurface(
         },
         noiseFactor = if (material == GlassMaterial.QUALITY) 0.04f else 0f
     )
-    var result = clip(shape)
+    var result = this.clip(shape)
     result = if (material != GlassMaterial.FASTEST && Build.VERSION.SDK_INT >= 31 && state != null) {
         result.hazeChild(state = state, style = style)
     } else {
