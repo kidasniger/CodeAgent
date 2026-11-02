@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.ui.components.GlassAlertDialog
 import com.zagent.app.ui.components.GlassPreviewCard
 import com.zagent.app.ui.theme.*
 import com.zagent.app.ui.viewmodel.MainViewModel
@@ -177,7 +178,7 @@ fun GlassSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             TextButton(onClick = { resetDialog = true }) { Text("Réinitialiser") }
         }
         if (resetDialog) {
-            AlertDialog(
+            GlassAlertDialog(
                 onDismissRequest = { resetDialog = false },
                 title = { Text("Réinitialiser le verre ?") },
                 text = { Text("Les réglages clair et sombre seront restaurés.") },
