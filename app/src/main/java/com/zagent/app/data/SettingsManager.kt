@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.zagent.app.ui.theme.ThemeMode
+import com.zagent.app.ui.theme.StylePresetIds
 
 class SettingsManager(context: Context) {
     private val masterKey = MasterKey.Builder(context)
