@@ -777,9 +777,15 @@ done; } 2>&1 | head -c 50000
         if (browserChildren.containsKey(path) || loadingDirectories.containsKey(path)) return
         loadingDirectories[path] = true
         viewModelScope.launch(Dispatchers.IO) {
-            val result = runCatching { getFileRepo().listEntries(path) }
+            val result = getFileRepo().listEntriesResult(path)
             withContext(Dispatchers.Main) {
-                result.onSuccess { browserChildren[path] = it }
+                result.onSuccess {
+                    browserChildren[path] = it
+                    if (path == ".") browserError = null
+                }.onFailure {
+                    browserError = it.localizedMessage ?: "Impossible de lire le dossier."
+                    if (path == ".") browserChildren[path] = emptyList()
+                }
                 loadingDirectories.remove(path)
             }
         }
@@ -801,9 +807,16 @@ done; } 2>&1 | head -c 50000
         val dirs = listOf(".") + expandedDirs.keys.toList()
         viewModelScope.launch(Dispatchers.IO) {
             val repo = getFileRepo()
-            val loaded = dirs.map { it to repo.listEntries(it) }
+            val loaded = dirs.map { it to repo.listEntriesResult(it) }
             withContext(Dispatchers.Main) {
-                for ((p, list) in loaded) browserChildren[p] = list
+                val rootResult = loaded.firstOrNull { it.first == "." }?.second
+                rootResult?.onSuccess { browserError = null }?.onFailure {
+                    browserError = it.localizedMessage ?: "Impossible de lire le dossier du projet."
+                }
+                for ((p, result) in loaded) {
+                    result.onSuccess { browserChildren[p] = it }
+                    if (result.isFailure && p == ".") browserChildren[p] = emptyList()
+                }
                 browserChildren.keys.toList().forEach { k ->
                     if (k != "." && !expandedDirs.containsKey(k)) browserChildren.remove(k)
                 }
