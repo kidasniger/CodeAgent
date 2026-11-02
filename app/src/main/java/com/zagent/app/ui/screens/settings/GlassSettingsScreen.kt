@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.zagent.app.data.SettingsManager
 import com.zagent.app.ui.components.GlassPreviewCard
+import com.zagent.app.ui.components.ZSliderRow
 import com.zagent.app.ui.theme.StylePresetIds
 import com.zagent.app.ui.theme.Zcolors
 
@@ -210,10 +211,12 @@ fun GlassSettingsScreen(onBack: () -> Unit) {
 
         SettingsSectionLabel("EFFETS")
         SettingsCard {
-            GlassSlider(
-                title = "Flou",
+            ZSliderRow(
+                label = "Flou",
                 value = blur,
-                onValueChange = {
+                range = 0f..1f,
+                format = { "${(it * 100).toInt()} %" },
+                onChange = {
                     blur = it
                     settings.setGlassBlurFor(editDark, it)
                     markCustom()
@@ -222,10 +225,12 @@ fun GlassSettingsScreen(onBack: () -> Unit) {
                 onReset = { blur = 0.55f; settings.setGlassBlurFor(editDark, 0.55f); markCustom() }
             )
             SettingsInsetDivider()
-            GlassSlider(
-                title = "Teinte",
+            ZSliderRow(
+                label = "Teinte",
                 value = tint,
-                onValueChange = {
+                range = 0f..1f,
+                format = { "${(it * 100).toInt()} %" },
+                onChange = {
                     tint = it
                     settings.setGlassTintFor(editDark, it)
                     markCustom()
@@ -234,10 +239,12 @@ fun GlassSettingsScreen(onBack: () -> Unit) {
                 onReset = { tint = 0.35f; settings.setGlassTintFor(editDark, 0.35f); markCustom() }
             )
             SettingsInsetDivider()
-            GlassSlider(
-                title = "Film",
+            ZSliderRow(
+                label = "Film",
                 value = film,
-                onValueChange = {
+                range = 0f..1f,
+                format = { "${(it * 100).toInt()} %" },
+                onChange = {
                     film = it
                     settings.setGlassFilmFor(editDark, it)
                     markCustom()
@@ -268,38 +275,5 @@ fun GlassSettingsScreen(onBack: () -> Unit) {
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun GlassSlider(
-    title: String,
-    value: Float,
-    onValueChange: (Float) -> Unit,
-    defaultValue: Float,
-    onReset: () -> Unit
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 7.dp),
-        verticalArrangement = Arrangement.spacedBy(3.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(title, color = Zcolors.text)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("${(value * 100).toInt()} %", color = Zcolors.text2)
-                if (kotlin.math.abs(value - defaultValue) > 0.001f) {
-                    TextButton(onClick = onReset) { Text("Réinitialiser") }
-                }
-            }
-        }
-        Slider(
-            value = value,
-            onValueChange = onValueChange,
-            valueRange = 0f..1f
-        )
     }
 }
