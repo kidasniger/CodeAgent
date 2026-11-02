@@ -19,6 +19,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -81,7 +82,7 @@ fun AskCard(
 
     GlassCard(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
+        shape = MaterialTheme.shapes.large,
         contentPadding = PaddingValues(14.dp)
     ) {
         Row(
@@ -125,7 +126,7 @@ fun AskCard(
                         style = TextStyle(fontFamily = Inter, fontSize = 11.sp, fontWeight = FontWeight.Medium),
                         color = c.text2,
                         modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(MaterialTheme.shapes.small)
                             .background(c.surface2)
                             .padding(horizontal = 8.dp, vertical = 3.dp)
                     )
@@ -160,7 +161,7 @@ fun AskCard(
                     }
                 }
                 if (otherOn[i].value) {
-                    val shape = RoundedCornerShape(12.dp)
+                    val shape = MaterialTheme.shapes.small
                     BasicTextField(
                         value = otherText[i].value,
                         onValueChange = { otherText[i].value = it },
@@ -236,7 +237,7 @@ fun AskCard(
 @Composable
 private fun OptionChip(text: String, selected: Boolean, onClick: () -> Unit) {
     val c = Zcolors
-    val shape = RoundedCornerShape(14.dp)
+    val shape = MaterialTheme.shapes.medium
     Text(
         text,
         style = TextStyle(
