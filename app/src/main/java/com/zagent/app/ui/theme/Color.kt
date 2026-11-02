@@ -1,6 +1,7 @@
 package com.zagent.app.ui.theme
 
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -240,6 +241,21 @@ val MinimalDarkZColors = ZColors(
     gradLine = Brush.verticalGradient(listOf(Color(0xFFE08A68), Color(0xFFE08A68))),
     gridline = Color(0x14FFFFFF),
     isDark = true
+)
+
+/** Accent global persistant, observé par les composables qui lisent Zcolors. */
+val ZAccentOverride = mutableStateOf<Color?>(null)
+
+/** Applique une couleur d'accent à toute la palette sans modifier ses couleurs sémantiques. */
+fun ZColors.withAccent(color: Color): ZColors = copy(
+    cyan = color,
+    violet = color,
+    cyanBg = color.copy(alpha = 0.12f),
+    violetBg = color.copy(alpha = 0.16f),
+    grad = Brush.linearGradient(listOf(color, color)),
+    gradBtn = Brush.linearGradient(listOf(color, color)),
+    gradLine = Brush.verticalGradient(listOf(color, color)),
+    gradGlow = color.copy(alpha = 0.45f)
 )
 
 val LocalZColors = staticCompositionLocalOf { DarkZColors }
