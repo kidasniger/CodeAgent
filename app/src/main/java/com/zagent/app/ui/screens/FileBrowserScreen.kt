@@ -54,6 +54,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -70,6 +71,8 @@ import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.SpaceGrotesk
 import com.zagent.app.ui.theme.Zcolors
+import com.zagent.app.ui.theme.LocalGlass
+import com.zagent.app.ui.theme.glassSurface
 import com.zagent.app.ui.theme.LocalHazeState
 import dev.chrisbanes.haze.haze
 import com.zagent.app.ui.viewmodel.MainViewModel
@@ -103,7 +106,12 @@ fun FileBrowserScreen(
             .imePadding()
     ) {
         // Barre supérieure
-        Column(Modifier.padding(horizontal = 16.dp)) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .glassSurface(LocalHazeState.current, LocalGlass.current, c.isDark, RoundedCornerShape(24.dp), LocalContext.current)
+                .padding(horizontal = 16.dp)
+        ) {
             Row(
                 Modifier
                     .fillMaxWidth()
