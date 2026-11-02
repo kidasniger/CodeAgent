@@ -159,6 +159,39 @@ class SettingsManager(context: Context) {
         get() = prefs.getBoolean(KEY_ONBOARDING_DONE, false)
         set(value) = prefs.edit().putBoolean(KEY_ONBOARDING_DONE, value).apply()
 
+    /** Réinitialise uniquement les préférences d'apparence, sans toucher aux clés API ni aux projets. */
+    fun resetAppearance() {
+        prefs.edit()
+            .putString(KEY_THEME_MODE, ThemeMode.SYSTEM.name)
+            .putString(KEY_STYLE_PRESET, StylePresetIds.GLASS)
+            .putString(KEY_ACCENT_COLOR, "")
+            .putBoolean(KEY_OLED_BLACK, false)
+            .putBoolean(KEY_DYNAMIC_COLORS, false)
+            .putInt(KEY_CORNER_RADIUS, 16)
+            .putString(KEY_SCHEDULED_DARK, "19:00")
+            .putString(KEY_SCHEDULED_LIGHT, "07:00")
+            .putString(KEY_GLASS_MATERIAL, "Liquid")
+            .putString(KEY_GLASS_COLOR, "#22D3EE")
+            .putFloat(KEY_GLASS_BLUR, 0.55f)
+            .putFloat(KEY_GLASS_TINT, 0.35f)
+            .putFloat(KEY_GLASS_FILM, 0.22f)
+            .putString(KEY_GLASS_ACTIVE_TAB, "Chat")
+            .putString(glassKey(KEY_GLASS_MATERIAL, false), "Liquid")
+            .putString(glassKey(KEY_GLASS_COLOR, false), "#22D3EE")
+            .putFloat(glassKey(KEY_GLASS_BLUR, false), 0.55f)
+            .putFloat(glassKey(KEY_GLASS_TINT, false), 0.35f)
+            .putFloat(glassKey(KEY_GLASS_FILM, false), 0.22f)
+            .putString(glassKey(KEY_GLASS_ACTIVE_TAB, false), "Chat")
+            .putString(glassKey(KEY_GLASS_MATERIAL, true), "Liquid")
+            .putString(glassKey(KEY_GLASS_COLOR, true), "#22D3EE")
+            .putFloat(glassKey(KEY_GLASS_BLUR, true), 0.55f)
+            .putFloat(glassKey(KEY_GLASS_TINT, true), 0.35f)
+            .putFloat(glassKey(KEY_GLASS_FILM, true), 0.22f)
+            .putString(glassKey(KEY_GLASS_ACTIVE_TAB, true), "Chat")
+            .apply()
+        ZAccentOverride.value = null
+    }
+
     /** Fichiers que l'utilisateur autorise toujours (écritures automatiques). */
     var alwaysAllowedPaths: Set<String>
         get() = prefs.getStringSet(KEY_ALWAYS_ALLOW, emptySet()) ?: emptySet()
