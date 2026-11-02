@@ -113,6 +113,10 @@ import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.SpaceGrotesk
 import com.zagent.app.ui.theme.Zcolors
+import com.zagent.app.ui.theme.LocalGlass
+import com.zagent.app.ui.theme.LocalHazeState
+import com.zagent.app.ui.theme.glassSurface
+import dev.chrisbanes.haze.haze
 import com.zagent.app.ui.viewmodel.MainViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -153,7 +157,6 @@ fun ChatScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(c.bg)
             .imePadding()
     ) {
         AmbientTopBar(
@@ -186,8 +189,8 @@ fun ChatScreen(
             } else {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                    modifier = Modifier.fillMaxSize().then(LocalHazeState.current?.let { Modifier.haze(state = it) } ?: Modifier),
+                    contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 116.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(chatRows, key = { it.key }) { row ->
@@ -1227,9 +1230,9 @@ private fun InputBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(50))
-                .background(c.surface2)
-                .border(1.dp, c.border2, RoundedCornerShape(50))
+                .glassSurface(LocalHazeState.current, LocalGlass.current, c.isDark, RoundedCornerShape(50.dp))
+                .background(c.surface2.copy(alpha = if (LocalGlass.current.enabled) 0.18f else 1f))
+                .border(1.dp, c.border2.copy(alpha = 0.5f), RoundedCornerShape(50))
                 .padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1253,7 +1256,7 @@ private fun InputBar(
                     )
                 },
                 textStyle = TextStyle(fontFamily = Inter, fontSize = 15.sp, color = c.text),
-                maxLines = 4,
+                maxLines = 6,
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                     imeAction = androidx.compose.ui.text.input.ImeAction.Send
                 ),
@@ -1312,8 +1315,8 @@ private fun CommandConfirmSheet(
     ModalBottomSheet(
         onDismissRequest = { onResolve(false) },
         sheetState = sheetState,
-        containerColor = c.bg2,
-        shape = RoundedCornerShape(24.dp, 24.dp, 0.dp, 0.dp)
+        containerColor = Color.Transparent,
+        shape = RoundedCornerShape(28.dp, 28.dp, 0.dp, 0.dp)
     ) {
         Column(
             Modifier
