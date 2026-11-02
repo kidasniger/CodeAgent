@@ -94,14 +94,9 @@ private fun AppRoot(viewModel: MainViewModel, systemDark: Boolean) {
 
     val context = LocalContext.current
     var lastBackPress by remember { mutableStateOf(0L) }
-    val canGoBack = viewModel.isSettingsOpen || viewModel.isTerminalOpen || viewModel.isEditorOpen || viewModel.isFileBrowserOpen
+    val canGoBack = viewModel.currentScreen != com.zagent.app.ui.viewmodel.AppScreen.CHAT
     BackHandler(enabled = canGoBack) {
-        when {
-            viewModel.isSettingsOpen -> viewModel.isSettingsOpen = false
-            viewModel.isTerminalOpen -> viewModel.isTerminalOpen = false
-            viewModel.isEditorOpen -> viewModel.isEditorOpen = false
-            viewModel.isFileBrowserOpen -> viewModel.isFileBrowserOpen = false
-        }
+        viewModel.navigateBack()
     }
     BackHandler(enabled = !canGoBack) {
         val now = System.currentTimeMillis()
@@ -114,29 +109,32 @@ private fun AppRoot(viewModel: MainViewModel, systemDark: Boolean) {
     }
 
     Box(Modifier.fillMaxSize()) {
-        if (viewModel.isTerminalOpen) {
-            TerminalScreen(
-                controller = viewModel.terminal,
-                onBack = { viewModel.isTerminalOpen = false }
-            )
-        } else if (viewModel.isEditorOpen) {
-            EditorScreen(
-                viewModel = viewModel,
-                onBack = { viewModel.isEditorOpen = false }
-            )
-        } else if (viewModel.isFileBrowserOpen) {
-            FileBrowserScreen(
-                viewModel = viewModel,
-                onBack = { viewModel.isFileBrowserOpen = false }
-            )
+        val underlyingScreen = if (viewModel.currentScreen == com.zagent.app.ui.viewmodel.AppScreen.SETTINGS) {
+            viewModel.navigationPreviousScreen()
         } else {
-            ChatScreen(
+            viewModel.currentScreen
+        }
+
+        when (underlyingScreen) {
+            com.zagent.app.ui.viewmodel.AppScreen.TERMINAL -> TerminalScreen(
+                controller = viewModel.terminal,
+                onBack = { viewModel.navigateBack() }
+            )
+            com.zagent.app.ui.viewmodel.AppScreen.EDITOR -> EditorScreen(
                 viewModel = viewModel,
-                onOpenSettings = { viewModel.isSettingsOpen = true }
+                onBack = { viewModel.navigateBack() }
+            )
+            com.zagent.app.ui.viewmodel.AppScreen.FILE_BROWSER -> FileBrowserScreen(
+                viewModel = viewModel,
+                onBack = { viewModel.navigateBack() }
+            )
+            else -> ChatScreen(
+                viewModel = viewModel,
+                onOpenSettings = { viewModel.navigateTo(com.zagent.app.ui.viewmodel.AppScreen.SETTINGS) }
             )
         }
 
-        if (viewModel.isSettingsOpen) {
+        if (viewModel.currentScreen == com.zagent.app.ui.viewmodel.AppScreen.SETTINGS) {
             SettingsScreenCompat(viewModel)
         }
 
