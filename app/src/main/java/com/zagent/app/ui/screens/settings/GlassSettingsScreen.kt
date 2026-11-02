@@ -15,6 +15,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -57,6 +59,7 @@ fun GlassSettingsScreen(onBack: () -> Unit) {
     var film by remember { mutableStateOf(settings.glassFilmFor(false)) }
     var activeTab by remember { mutableStateOf(settings.glassActiveTabFor(false)) }
     var isCustom by remember { mutableStateOf(settings.stylePresetId == StylePresetIds.CUSTOM) }
+    var showResetDialog by remember { mutableStateOf(false) }
 
     fun markCustom() {
         settings.markStylePresetCustom()
@@ -91,6 +94,34 @@ fun GlassSettingsScreen(onBack: () -> Unit) {
                     activeTab = settings.glassActiveTabFor(true)
                 }, label = { Text("Sombre") })
             }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            TextButton(onClick = { showResetDialog = true }) { Text("Tout réinitialiser") }
+        }
+        if (showResetDialog) {
+            AlertDialog(
+                onDismissRequest = { showResetDialog = false },
+                title = { Text("Réinitialiser l’apparence ?") },
+                text = { Text("Les réglages Verre seront remis à leurs valeurs initiales pour les thèmes clair et sombre.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        listOf(false, true).forEach { dark ->
+                            settings.setGlassMaterialFor(dark, "Liquid")
+                            settings.setGlassColorFor(dark, "#22D3EE")
+                            settings.setGlassBlurFor(dark, 0.55f)
+                            settings.setGlassTintFor(dark, 0.35f)
+                            settings.setGlassFilmFor(dark, 0.22f)
+                            settings.setGlassActiveTabFor(dark, "Chat")
+                        }
+                        material = "Liquid"; colorHex = "#22D3EE"; blur = 0.55f
+                        tint = 0.35f; film = 0.22f; activeTab = "Chat"
+                        settings.stylePresetId = StylePresetIds.GLASS
+                        isCustom = false
+                        showResetDialog = false
+                    }) { Text("Réinitialiser") }
+                },
+                dismissButton = { TextButton(onClick = { showResetDialog = false }) { Text("Annuler") } }
+            )
         }
         GlassPreviewCard(
             modifier = Modifier.fillMaxWidth(),
