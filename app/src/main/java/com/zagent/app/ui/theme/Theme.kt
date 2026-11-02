@@ -34,18 +34,21 @@ data class StylePreset(
 object StylePresetIds {
     const val MINIMAL = "MINIMAL"
     const val GLASS = "GLASS"
+    const val AURORA = "AURORA"
     const val CONTRAST = "CONTRAST"
     const val CUSTOM = "CUSTOM"
 }
 
 object StylePresets {
-    val minimal = StylePreset("CLAUDE", "NONE", "#D97757", 0f, 0f, "Chat", 18f)
+    val minimal = StylePreset("CLAUDE", "NONE", "#C96442", 0f, 0f, "Chat", 18f)
+    val aurora = StylePreset("AURORA", "LIQUID_QUALITY", "#22D3EE", 0.82f, 0.32f, "Chat", 24f)
     val glass = StylePreset("ZAGENT", "LIQUID_QUALITY", "#22D3EE", 0.82f, 0.32f, "Chat", 24f)
     val contrast = StylePreset("HIGH_CONTRAST", "NONE", "#FFFFFF", 0f, 0f, "Chat", 12f)
 
     fun fromId(id: String): StylePreset = when (id) {
         StylePresetIds.MINIMAL -> minimal
         StylePresetIds.CONTRAST -> contrast
+        StylePresetIds.AURORA -> aurora
         else -> glass
     }
 }
@@ -124,13 +127,77 @@ private val LightScheme = lightColorScheme(
     scrim = Color(0x730D1930)
 )
 
+private val MinimalDarkScheme = darkColorScheme(
+    primary = Color(0xFFE08A68),
+    onPrimary = Color(0xFF262624),
+    primaryContainer = Color(0xFF49352D),
+    onPrimaryContainer = Color(0xFFF0EEE6),
+    secondary = Color(0xFFE08A68),
+    onSecondary = Color(0xFF262624),
+    tertiary = Color(0xFFE08A68),
+    background = Color(0xFF262624),
+    onBackground = Color(0xFFF0EEE6),
+    surface = Color(0xFF30302E),
+    onSurface = Color(0xFFF0EEE6),
+    surfaceVariant = Color(0xFF383835),
+    onSurfaceVariant = Color(0xFFA8A69E),
+    surfaceContainer = Color(0xFF30302E),
+    surfaceContainerHigh = Color(0xFF383835),
+    surfaceContainerHighest = Color(0xFF41413D),
+    outline = Color(0x3DFFFFFF),
+    outlineVariant = Color(0x24141413),
+    error = ZRedD,
+    onError = Color(0xFF262624),
+    errorContainer = Color(0x21F87171),
+    onErrorContainer = Color(0xFFF0EEE6),
+    scrim = Color(0xB3262624)
+)
+
+private val MinimalLightScheme = lightColorScheme(
+    primary = Color(0xFFC96442),
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFF4E4DC),
+    onPrimaryContainer = Color(0xFF141413),
+    secondary = Color(0xFFC96442),
+    onSecondary = Color.White,
+    tertiary = Color(0xFFC96442),
+    background = Color(0xFFFAF9F5),
+    onBackground = Color(0xFF141413),
+    surface = Color(0xFFFFFFFF),
+    onSurface = Color(0xFF141413),
+    surfaceVariant = Color(0xFFF4F3EF),
+    onSurfaceVariant = Color(0xFF5E5D59),
+    surfaceContainer = Color(0xFFFFFFFF),
+    surfaceContainerHigh = Color(0xFFF4F3EF),
+    surfaceContainerHighest = Color(0xFFECEBE6),
+    outline = Color(0x24141413),
+    outlineVariant = Color(0x14141413),
+    error = ZRedL,
+    onError = Color.White,
+    errorContainer = Color(0x17DC2626),
+    onErrorContainer = Color(0xFF141413),
+    scrim = Color(0x730D0D0C)
+)
+
 @Composable
 fun ZAgentTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    stylePreset: String = StylePresetIds.AURORA,
     content: @Composable () -> Unit
 ) {
-    val scheme = if (darkTheme) DarkScheme else LightScheme
-    val zcolors = if (darkTheme) DarkZColors else LightZColors
+    val minimal = stylePreset == StylePresetIds.MINIMAL
+    val scheme = when {
+        minimal && darkTheme -> MinimalDarkScheme
+        minimal -> MinimalLightScheme
+        darkTheme -> DarkScheme
+        else -> LightScheme
+    }
+    val zcolors = when {
+        minimal && darkTheme -> MinimalDarkZColors
+        minimal -> MinimalLightZColors
+        darkTheme -> AuroraDarkZColors
+        else -> AuroraLightZColors
+    }
     CompositionLocalProvider(LocalZColors provides zcolors) {
         MaterialTheme(
             colorScheme = scheme,
