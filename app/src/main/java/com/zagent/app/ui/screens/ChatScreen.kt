@@ -249,7 +249,7 @@ fun ChatScreen(
                         color = c.cyan,
                         fontSize = 12.sp,
                         modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(MaterialTheme.shapes.extraSmall)
                             .background(c.cyanBg)
                             .clickable { viewModel.openPreview(html) }
                             .padding(horizontal = 12.dp, vertical = 6.dp)
@@ -260,7 +260,7 @@ fun ChatScreen(
                     color = c.amber,
                     fontSize = 12.sp,
                     modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(MaterialTheme.shapes.extraSmall)
                         .background(c.amberBg)
                         .clickable { viewModel.undoAgentChanges() }
                         .padding(horizontal = 12.dp, vertical = 6.dp)
@@ -395,7 +395,7 @@ private fun AmbientTopBar(
                 DropdownMenu(
                     expanded = menuOpen,
                     onDismissRequest = onMenuDismiss,
-                    shape = RoundedCornerShape(16.dp),
+                    shape = MaterialTheme.shapes.medium,
                     containerColor = c.bg2,
                     tonalElevation = 8.dp
                 ) {
@@ -539,7 +539,7 @@ private fun StateBanner(
             .padding(horizontal = 16.dp, vertical = 6.dp),
         backgroundColor = bg,
         borderColor = tint.copy(alpha = 0.30f),
-        shape = RoundedCornerShape(18.dp),
+        shape = MaterialTheme.shapes.large,
         contentPadding = PaddingValues(14.dp)
     ) {
         Row(verticalAlignment = Alignment.Top) {
@@ -1036,7 +1036,7 @@ private fun CommandBlock(
                 fontSize = 12.sp,
                 modifier = Modifier
                     .padding(10.dp)
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(MaterialTheme.shapes.extraSmall)
                     .background(c.cyanBg)
                     .clickable { onFix(command, result) }
                     .padding(horizontal = 12.dp, vertical = 6.dp)
