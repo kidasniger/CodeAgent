@@ -57,10 +57,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             val systemDark = isSystemInDarkTheme()
             var scheduleTick by remember { mutableIntStateOf(0) }
-            LaunchedEffect(viewModel.themeMode) {
+            LaunchedEffect(viewModel.themeMode, viewModel.scheduledDarkTime, viewModel.scheduledLightTime) {
                 if (viewModel.themeMode == com.zagent.app.ui.theme.ThemeMode.SCHEDULED) {
                     while (true) {
-                        delay(30_000L)
+                        delay(millisUntilNextScheduledChange(viewModel.scheduledDarkTime, viewModel.scheduledLightTime))
                         scheduleTick++
                     }
                 }
@@ -182,6 +182,21 @@ private fun SettingsScreenCompat(viewModel: MainViewModel) {
     )
 }
 
+
+private fun millisUntilNextScheduledChange(darkStart: String, lightStart: String): Long {
+    fun parse(value: String, fallback: LocalTime): LocalTime =
+        runCatching { LocalTime.parse(value) }.getOrDefault(fallback)
+    val dark = parse(darkStart, LocalTime.of(19, 0))
+    val light = parse(lightStart, LocalTime.of(7, 0))
+    if (dark == light) return Duration.ofHours(24).toMillis()
+
+    val now = java.time.LocalDateTime.now()
+    val darkNow = isWithinScheduledDarkPeriod(darkStart, lightStart)
+    val target = if (darkNow) light else dark
+    var next = now.toLocalDate().atTime(target)
+    if (!next.isAfter(now)) next = next.plusDays(1)
+    return Duration.between(now, next).toMillis().coerceAtLeast(1_000L)
+}
 
 private fun isWithinScheduledDarkPeriod(darkStart: String, lightStart: String): Boolean {
     fun parse(value: String, fallback: LocalTime): LocalTime =
