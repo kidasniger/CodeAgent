@@ -52,8 +52,17 @@ fun FloatingTabBar(
         items.forEach { (label, icon, screen) ->
             val selected = currentScreen == screen
             Column(
-                Modifier.weight(1f).clip(CircleShape)
-                    .background(if (selected) Zcolors.cyan.copy(alpha = glass.activeTab.coerceIn(0f, 1f)) else Color.Transparent)
+                Modifier.weight(1f).padding(4.dp)
+                    .then(
+                        if (selected) Modifier.glassSurface(
+                            haze,
+                            glass.copy(film = 0.22f, tint = 0f, frost = 2.dp),
+                            Zcolors.isDark,
+                            CircleShape,
+                            context
+                        ) else Modifier
+                    )
+                    .background(if (selected) Color.White.copy(alpha = glass.activeTab.coerceIn(0f, 1f)) else Color.Transparent, CircleShape)
                     .clickable { onNavigate(screen) }
                     .padding(vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
