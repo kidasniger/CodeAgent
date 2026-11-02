@@ -135,11 +135,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var scheduledLightTime by mutableStateOf(settingsManager.scheduledLightTime)
         private set
 
-    fun setOledBlack(value: Boolean) { oledBlack = value; settingsManager.oledBlack = value }
-    fun setDynamicSystemColors(value: Boolean) { dynamicSystemColors = value; settingsManager.dynamicSystemColors = value }
-    fun setCornerRadius(value: Int) { cornerRadius = value; settingsManager.cornerRadius = value }
-    fun setScheduledDarkTime(value: String) { scheduledDarkTime = value; settingsManager.scheduledDarkTime = value }
-    fun setScheduledLightTime(value: String) { scheduledLightTime = value; settingsManager.scheduledLightTime = value }
+    fun updateOledBlack(value: Boolean) { oledBlack = value; settingsManager.oledBlack = value }
+    fun updateDynamicSystemColors(value: Boolean) { dynamicSystemColors = value; settingsManager.dynamicSystemColors = value }
+    fun updateCornerRadius(value: Int) { cornerRadius = value; settingsManager.cornerRadius = value }
+    fun updateScheduledDarkTime(value: String) { scheduledDarkTime = value; settingsManager.scheduledDarkTime = value }
+    fun updateScheduledLightTime(value: String) { scheduledLightTime = value; settingsManager.scheduledLightTime = value }
     var onboardingDone by mutableStateOf(settingsManager.onboardingDone)
 
     fun updateThemeMode(mode: ThemeMode) {
