@@ -191,6 +191,9 @@ private val MinimalLightScheme = lightColorScheme(
 fun ZAgentTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     stylePreset: String = StylePresetIds.AURORA,
+    oledBlack: Boolean = false,
+    dynamicColors: Boolean = false,
+    cornerRadius: Int = 16,
     content: @Composable () -> Unit
 ) {
     val minimal = stylePreset == StylePresetIds.MINIMAL
