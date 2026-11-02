@@ -74,7 +74,7 @@ class SettingsManager(context: Context) {
 
     /** Preset de base conservé lorsque l'utilisateur passe en mode personnalisé. */
     var styleBasePresetId: String
-        get() = prefs.getString(KEY_STYLE_BASE_PRESET, StylePresetIds.GLASS) ?: StylePresetIds.GLASS
+        get() = prefs.getString(KEY_STYLE_BASE_PRESET, null) ?: stylePresetId.takeIf { it != StylePresetIds.CUSTOM } ?: StylePresetIds.GLASS
         set(value) = prefs.edit().putString(KEY_STYLE_BASE_PRESET, value).apply()
 
     /** Identifiant du preset actif ; CUSTOM indique une modification manuelle. */
