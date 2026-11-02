@@ -16,6 +16,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.FilterChip
 import android.os.Build
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -90,7 +91,7 @@ fun ThemeSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 }
             }
         }
-        $marker
+        SettingsSectionLabel("OPTIONS D’AFFICHAGE")
         SettingsCard {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
@@ -116,7 +117,10 @@ fun ThemeSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 }
             }
         }
-        $after
+        SettingsInfoRow(
+            title = "Thème de l’application",
+            description = "Le mode Système suit automatiquement l’apparence définie dans les réglages Android."
+        )
     }
 }
 
