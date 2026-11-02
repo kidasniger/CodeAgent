@@ -56,6 +56,9 @@ import com.termux.view.TerminalView
 import com.zagent.app.R
 import com.zagent.app.terminal.TerminalController
 import com.zagent.app.ui.theme.Zcolors
+import com.zagent.app.ui.theme.LocalGlass
+import com.zagent.app.ui.theme.LocalHazeState
+import com.zagent.app.ui.theme.glassSurface
 
 @Composable
 fun TerminalScreen(
@@ -90,6 +93,7 @@ fun TerminalScreen(
         Row(
             Modifier
                 .fillMaxWidth()
+                .glassSurface(LocalHazeState.current, LocalGlass.current, c.isDark, RoundedCornerShape(24.dp), LocalContext.current)
                 .padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
