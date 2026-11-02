@@ -190,7 +190,7 @@ fun ChatScreen(
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize().then(LocalHazeState.current?.let { Modifier.haze(state = it) } ?: Modifier),
-                    contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 116.dp),
+                    contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 176.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(chatRows, key = { it.key }) { row ->
