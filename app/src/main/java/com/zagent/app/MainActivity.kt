@@ -10,6 +10,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.align
+import androidx.compose.ui.Alignment
+import androidx.compose.runtime.CompositionLocalProvider
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.haze
+import com.zagent.app.ui.components.FloatingTabBar
+import com.zagent.app.ui.theme.LocalGlass
+import com.zagent.app.ui.theme.LocalHazeState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableIntStateOf
 import kotlinx.coroutines.delay
@@ -139,7 +147,7 @@ private fun AppRoot(viewModel: MainViewModel, systemDark: Boolean) {
         }
     }
 
-    Box(Modifier.fillMaxSize()) {
+    CompositionLocalProvider(LocalGlass provides viewModel.glassSettings, LocalHazeState provides hazeState) {\n    Box(Modifier.fillMaxSize().haze(state = hazeState)) {
         val underlyingScreen = if (viewModel.currentScreen == com.zagent.app.ui.viewmodel.AppScreen.SETTINGS) {
             viewModel.navigationPreviousScreen()
         } else {
