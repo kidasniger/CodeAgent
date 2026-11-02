@@ -197,6 +197,7 @@ private fun AppRoot(viewModel: MainViewModel, darkTheme: Boolean) {
         when (underlyingScreen) {
             com.zagent.app.ui.viewmodel.AppScreen.TERMINAL -> TerminalScreen(
                 controller = viewModel.terminal,
+                showExtraKeys = !navVisible,
                 onBack = { viewModel.navigateBack() }
             )
             com.zagent.app.ui.viewmodel.AppScreen.EDITOR -> EditorScreen(
