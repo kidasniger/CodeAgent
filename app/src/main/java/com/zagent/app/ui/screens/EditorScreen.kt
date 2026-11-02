@@ -116,9 +116,6 @@ import kotlinx.coroutines.launch
 // Éditeur de code : onglets, coloration, annuler/refaire, recherche/remplacement
 // ─────────────────────────────────────────────────────────────────────────────
 
-private val EditorBg = Color(0xFF0F1526)
-private val EditorText = Color(0xFFC9D4E8)
-private val GutterText = Color(0xFF55627F)
 private val MatchBg = Color(0x55FBBF24)
 private val CurrentMatchBg = Color(0xAAFBBF24)
 
@@ -374,7 +371,7 @@ fun EditorScreen(
                     Row(
                         modifier = Modifier
                             .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp))
-                            .background(if (selected) EditorBg else c.surface2)
+                            .background(if (selected) c.bg else c.surface2)
                             .clickable { editor.select(index) }
                             .padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -386,7 +383,7 @@ fun EditorScreen(
                                 fontSize = 12.sp,
                                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
                             ),
-                            color = if (selected) EditorText else c.text2,
+                            color = if (selected) c.text else c.text2,
                             maxLines = 1
                         )
                         if (t.dirty) {
@@ -537,7 +534,7 @@ fun EditorScreen(
         if (!(showPreview && previewFull)) Box(Modifier.weight(1f).fillMaxWidth()) {
             if (tab == null || vScroll == null) {
                 Column(
-                    Modifier.fillMaxSize().background(EditorBg),
+                    Modifier.fillMaxSize().background(c.bg),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -848,7 +845,7 @@ private fun CodeEditor(
         fontFamily = JetBrainsMono,
         fontSize = 13.sp,
         lineHeight = 20.sp,
-        color = EditorText
+        color = c.text
     )
     val hScroll = rememberScrollState()
     val focus = remember { FocusRequester() }
@@ -862,7 +859,7 @@ private fun CodeEditor(
     BoxWithConstraints(
         Modifier
             .fillMaxSize()
-            .background(EditorBg)
+            .background(c.bg)
     ) {
         val viewportHeight = maxHeight
         val fieldMinWidth = (maxWidth - gutterWidth).coerceAtLeast(120.dp)
@@ -875,11 +872,11 @@ private fun CodeEditor(
             // Gouttière des numéros de ligne
             Text(
                 gutterText,
-                style = lineStyle.copy(color = GutterText, textAlign = TextAlign.End),
+                style = lineStyle.copy(color = c.text3, textAlign = TextAlign.End),
                 modifier = Modifier
                     .width(gutterWidth)
                     .heightIn(min = viewportHeight)
-                    .background(Color(0xFF0B1120))
+                    .background(c.bg2)
                     .padding(top = 10.dp, end = 10.dp, start = 4.dp)
             )
             // Champ de saisie, sans retour à la ligne (défilement horizontal)
