@@ -1,6 +1,7 @@
 package com.zagent.app.ui.screens
 
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -83,6 +84,11 @@ import com.zagent.app.ui.viewmodel.MainViewModel
 fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
     val c = Zcolors
     var showAppearanceSettings by rememberSaveable { mutableStateOf(false) }
+
+    // Le retour système dépile d'abord Apparence, sans changer l'onglet principal.
+    BackHandler(enabled = showAppearanceSettings) {
+        showAppearanceSettings = false
+    }
 
     if (showAppearanceSettings) {
         AppearanceSettingsScreen(
