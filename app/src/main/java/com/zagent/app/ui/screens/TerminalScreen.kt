@@ -80,8 +80,8 @@ fun TerminalScreen(controller: TerminalController, onBack: () -> Unit) {
             .fillMaxSize()
             .background(c.bg)
             .statusBarsPadding()
-            .navigationBarsPadding()
             .imePadding()
+            .navigationBarsPadding()
     ) {
         Row(
             Modifier
