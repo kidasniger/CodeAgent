@@ -11,6 +11,10 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableIntStateOf
+import kotlinx.coroutines.delay
+import java.time.LocalTime
+import java.time.Duration
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -52,8 +56,32 @@ class MainActivity : ComponentActivity() {
         AgentNotifier.ensureChannels(this)
         setContent {
             val systemDark = isSystemInDarkTheme()
-            val dark = viewModel.themeMode.resolveDarkTheme(systemDark)
-            ZAgentTheme(darkTheme = dark) {
+            var scheduleTick by remember { mutableIntStateOf(0) }
+            LaunchedEffect(viewModel.themeMode) {
+                if (viewModel.themeMode == com.zagent.app.ui.theme.ThemeMode.SCHEDULED) {
+                    while (true) {
+                        delay(30_000L)
+                        scheduleTick++
+                    }
+                }
+            }
+            val settings = viewModel.settingsManager
+            val dark = when (viewModel.themeMode) {
+                com.zagent.app.ui.theme.ThemeMode.SYSTEM -> systemDark
+                com.zagent.app.ui.theme.ThemeMode.LIGHT -> false
+                com.zagent.app.ui.theme.ThemeMode.DARK -> true
+                com.zagent.app.ui.theme.ThemeMode.SCHEDULED -> {
+                    scheduleTick
+                    isWithinScheduledDarkPeriod(settings.scheduledDarkTime, settings.scheduledLightTime)
+                }
+            }
+            ZAgentTheme(
+                darkTheme = dark,
+                stylePreset = settings.stylePresetId,
+                oledBlack = settings.oledBlack,
+                dynamicColors = settings.dynamicSystemColors,
+                cornerRadius = settings.cornerRadius
+            ) {
                 SurfaceBackground()
                 AppRoot(viewModel, systemDark)
             }
@@ -152,4 +180,16 @@ private fun SettingsScreenCompat(viewModel: MainViewModel) {
         viewModel = viewModel,
         onDismiss = { viewModel.navigateBack() }
     )
+}
+
+
+private fun isWithinScheduledDarkPeriod(darkStart: String, lightStart: String): Boolean {
+    fun parse(value: String, fallback: LocalTime): LocalTime =
+        runCatching { LocalTime.parse(value) }.getOrDefault(fallback)
+    val now = LocalTime.now()
+    val dark = parse(darkStart, LocalTime.of(19, 0))
+    val light = parse(lightStart, LocalTime.of(7, 0))
+    return if (dark == light) false
+    else if (dark.isAfter(light)) now >= dark || now < light
+    else now >= dark && now < light
 }
