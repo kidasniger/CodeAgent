@@ -179,7 +179,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                 unfocusedBorderColor = Color.Transparent,
                                 cursorColor = c.cyan
                             ),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = MaterialTheme.shapes.small,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -255,7 +255,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                 unfocusedBorderColor = Color.Transparent,
                                 cursorColor = c.cyan
                             ),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = MaterialTheme.shapes.small,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -397,7 +397,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                 unfocusedBorderColor = Color.Transparent,
                                 cursorColor = c.cyan
                             ),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = MaterialTheme.shapes.small,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -421,7 +421,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                             color = c.text,
                             fontSize = 18.sp,
                             modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
+                                .clip(MaterialTheme.shapes.extraSmall)
                                 .background(c.surface2)
                                 .clickable {
                                     steps = (steps - 5).coerceAtLeast(5)
@@ -440,7 +440,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                             color = c.text,
                             fontSize = 18.sp,
                             modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
+                                .clip(MaterialTheme.shapes.extraSmall)
                                 .background(c.surface2)
                                 .clickable {
                                     steps = (steps + 5).coerceAtMost(100)
@@ -511,7 +511,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                 keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
                             ),
                             colors = fieldColors,
-                            shape = RoundedCornerShape(12.dp),
+                            shape = MaterialTheme.shapes.small,
                             modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(Modifier.height(8.dp))
@@ -531,7 +531,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit) {
                                 keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
                             ),
                             colors = fieldColors,
-                            shape = RoundedCornerShape(12.dp),
+                            shape = MaterialTheme.shapes.small,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
