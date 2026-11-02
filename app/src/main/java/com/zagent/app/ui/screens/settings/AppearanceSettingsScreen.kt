@@ -38,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.runtime.getValue
@@ -66,6 +67,12 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     }
     var accentHex by rememberSaveable {
         mutableStateOf(viewModel.settingsManager.accentColorHex)
+    }
+    LaunchedEffect(destination) {
+        if (destination == null) {
+            selectedStylePreset = viewModel.settingsManager.stylePresetId
+            accentHex = viewModel.settingsManager.accentColorHex
+        }
     }
     var accentHue by rememberSaveable {
         mutableStateOf(
