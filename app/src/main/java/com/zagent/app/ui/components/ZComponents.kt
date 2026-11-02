@@ -301,10 +301,11 @@ fun CircleIconButton(
     iconTint: Color = Zcolors.text,
     tintBackground: Color = Zcolors.surface2
 ) {
+    val context = LocalContext.current
     Box(
         modifier = modifier
             .size(size)
-            .glassSurface(LocalHazeState.current, LocalGlass.current, Zcolors.isDark, CircleShape)
+            .glassSurface(LocalHazeState.current, LocalGlass.current, Zcolors.isDark, CircleShape, context)
             .background(tintBackground.copy(alpha = if (LocalGlass.current.enabled) 0.12f else 1f))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
