@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.filled.Contrast
 import androidx.compose.material.icons.filled.DensityMedium
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -40,12 +42,21 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zagent.app.ui.components.CircleIconButton
+import com.zagent.app.ui.theme.StylePresetIds
 import com.zagent.app.ui.theme.Zcolors
 import com.zagent.app.ui.viewmodel.MainViewModel
 
 @Composable
 fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     var destination by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedStylePreset by rememberSaveable {
+        mutableStateOf(viewModel.settingsManager.stylePresetId)
+    }
+    val styleOptions = listOf(
+        StylePresetIds.MINIMAL to "Minimal",
+        StylePresetIds.GLASS to "Verre",
+        StylePresetIds.CONTRAST to "Contraste"
+    )
 
     when (destination) {
         "theme" -> ThemeSettingsScreen(viewModel, onBack = { destination = null })
@@ -53,6 +64,33 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         "font" -> FontSettingsScreen(onBack = { destination = null })
         "density" -> DensitySettingsScreen(onBack = { destination = null })
         else -> SettingsPageScaffold(title = "Apparence", onBack = onBack) {
+            SettingsSectionLabel("STYLE")
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                styleOptions.forEach { (id, label) ->
+                    FilterChip(
+                        selected = selectedStylePreset == id,
+                        onClick = {
+                            selectedStylePreset = id
+                            viewModel.settingsManager.stylePresetId = id
+                        },
+                        label = { Text(label) }
+                    )
+                }
+                if (selectedStylePreset == StylePresetIds.CUSTOM) {
+                    FilterChip(
+                        selected = true,
+                        onClick = {},
+                        label = { Text("Perso") }
+                    )
+                }
+            }
+
             SettingsSectionLabel("PERSONNALISATION")
             SettingsCard {
                 AppearanceNavigationRow(
