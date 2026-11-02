@@ -67,6 +67,16 @@ class SettingsManager(context: Context) {
         get() = ThemeMode.entries.firstOrNull { it.name == prefs.getString(KEY_THEME_MODE, null) } ?: ThemeMode.SYSTEM
         set(value) = prefs.edit().putString(KEY_THEME_MODE, value.name).apply()
 
+    /** Identifiant du preset actif ; CUSTOM indique une modification manuelle. */
+    var stylePresetId: String
+        get() = prefs.getString(KEY_STYLE_PRESET, StylePresetIds.GLASS) ?: StylePresetIds.GLASS
+        set(value) = prefs.edit().putString(KEY_STYLE_PRESET, value).apply()
+
+    /** À appeler lorsqu'un curseur ou réglage visuel est modifié manuellement. */
+    fun markStylePresetCustom() {
+        stylePresetId = StylePresetIds.CUSTOM
+    }
+
     var onboardingDone: Boolean
         get() = prefs.getBoolean(KEY_ONBOARDING_DONE, false)
         set(value) = prefs.edit().putBoolean(KEY_ONBOARDING_DONE, value).apply()
@@ -110,6 +120,7 @@ class SettingsManager(context: Context) {
         private const val KEY_THEME_MODE = "theme_mode"
         private const val LEGACY_KEY_THEME_DARK = "theme_dark"
         private const val KEY_ONBOARDING_DONE = "onboarding_done"
+        private const val KEY_STYLE_PRESET = "style_preset"
         private const val KEY_ALWAYS_ALLOW = "always_allow_paths"
     }
 }
