@@ -377,9 +377,9 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     }
                     Spacer(Modifier.size(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Réduire les animations", style = MaterialTheme.typography.titleMedium, color = c.text)
+                        Text("Réduire les animations", style = MaterialTheme.typography.titleMedium, color = Zcolors.text)
                         Spacer(Modifier.height(2.dp))
-                        Text("Transitions de navigation instantanées", style = MaterialTheme.typography.bodySmall, color = c.text2)
+                        Text("Transitions de navigation instantanées", style = MaterialTheme.typography.bodySmall, color = Zcolors.text2)
                     }
                     Switch(
                         checked = viewModel.reduceAnimations,

@@ -76,6 +76,7 @@ class MainActivity : ComponentActivity() {
         super.onStop()
     }
 
+    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -205,7 +206,7 @@ private fun AppRoot(
     // (voir la note de migration targetSdk 34 dans le CHANGELOG du LOT 6).
     PredictiveBackHandler(enabled = isRoot) { progress ->
         try {
-            progress.collect()
+            progress.collect { }
             // Geste terminé : logique de double pression conservée.
             val now = System.currentTimeMillis()
             if (now - lastBackPress < 2000) {

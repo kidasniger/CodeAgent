@@ -28,7 +28,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.DropdownMenuItemDefaults
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -820,8 +820,7 @@ fun ZMenuItem(
             }
         } else null,
         onClick = onClick,
-        colors = DropdownMenuItemDefaults.colors(
-            containerColor = Color.Transparent,
+        colors = MenuDefaults.itemColors(
             textColor = if (destructive) c.red else c.text,
             leadingIconColor = if (destructive) c.red else c.text2,
             trailingIconColor = c.text3
