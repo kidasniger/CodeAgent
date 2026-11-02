@@ -198,6 +198,8 @@ fun AmbientBackground(modifier: Modifier = Modifier) {
                 val p2 = Offset(w * 0.86f, h * (0.78f - drift))
                 drawCircle(Brush.radialGradient(listOf(c.cyan.copy(alpha = intensity), Color.Transparent), p1, w * 0.72f), p1, w * 0.72f)
                 drawCircle(Brush.radialGradient(listOf(c.violet.copy(alpha = intensity * 0.85f), Color.Transparent), p2, w * 0.62f), p2, w * 0.62f)
+                val p3 = Offset(w * 0.48f, h * 0.48f)
+                drawCircle(Brush.radialGradient(listOf(c.amber.copy(alpha = intensity * 0.42f), Color.Transparent), p3, w * 0.38f), p3, w * 0.38f)
             }
         }
     })
