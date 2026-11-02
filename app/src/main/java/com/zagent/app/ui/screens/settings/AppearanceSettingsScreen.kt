@@ -117,7 +117,7 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
 
     when (destination) {
         "theme" -> ThemeSettingsScreen(viewModel, onBack = { destination = null })
-        "glass" -> GlassSettingsScreen(onBack = { destination = null })
+        "glass" -> GlassSettingsScreen(viewModel = viewModel, onBack = { destination = null })
         "font" -> FontSettingsScreen(viewModel, onBack = { destination = null })
         "density" -> DensitySettingsScreen(viewModel, onBack = { destination = null })
         else -> SettingsPageScaffold(title = "Apparence", onBack = onBack) {
