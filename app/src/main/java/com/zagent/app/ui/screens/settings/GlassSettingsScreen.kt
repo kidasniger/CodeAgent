@@ -64,7 +64,7 @@ fun GlassSettingsScreen(onBack: () -> Unit) {
 
     val previewColor = remember(colorHex) {
         runCatching { Color(android.graphics.Color.parseColor(colorHex)) }
-            .getOrDefault(Zcolors.cyan)
+            .getOrDefault(Color.Cyan)
     }
 
     SettingsPageScaffold(title = "Verre", onBack = onBack) {
