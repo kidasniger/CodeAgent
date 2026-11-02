@@ -78,6 +78,31 @@ class SettingsManager(context: Context) {
         stylePresetId = StylePresetIds.CUSTOM
     }
 
+    /** Configuration persistante de l'aperçu et des surfaces Verre. */
+    var glassMaterial: String
+        get() = prefs.getString(KEY_GLASS_MATERIAL, "Liquid") ?: "Liquid"
+        set(value) = prefs.edit().putString(KEY_GLASS_MATERIAL, value).apply()
+
+    var glassColor: String
+        get() = prefs.getString(KEY_GLASS_COLOR, "#22D3EE") ?: "#22D3EE"
+        set(value) = prefs.edit().putString(KEY_GLASS_COLOR, value).apply()
+
+    var glassBlur: Float
+        get() = prefs.getFloat(KEY_GLASS_BLUR, 0.55f).coerceIn(0f, 1f)
+        set(value) = prefs.edit().putFloat(KEY_GLASS_BLUR, value.coerceIn(0f, 1f)).apply()
+
+    var glassTint: Float
+        get() = prefs.getFloat(KEY_GLASS_TINT, 0.35f).coerceIn(0f, 1f)
+        set(value) = prefs.edit().putFloat(KEY_GLASS_TINT, value.coerceIn(0f, 1f)).apply()
+
+    var glassFilm: Float
+        get() = prefs.getFloat(KEY_GLASS_FILM, 0.22f).coerceIn(0f, 1f)
+        set(value) = prefs.edit().putFloat(KEY_GLASS_FILM, value.coerceIn(0f, 1f)).apply()
+
+    var glassActiveTab: String
+        get() = prefs.getString(KEY_GLASS_ACTIVE_TAB, "Chat") ?: "Chat"
+        set(value) = prefs.edit().putString(KEY_GLASS_ACTIVE_TAB, value).apply()
+
     var onboardingDone: Boolean
         get() = prefs.getBoolean(KEY_ONBOARDING_DONE, false)
         set(value) = prefs.edit().putBoolean(KEY_ONBOARDING_DONE, value).apply()
@@ -122,6 +147,12 @@ class SettingsManager(context: Context) {
         private const val LEGACY_KEY_THEME_DARK = "theme_dark"
         private const val KEY_ONBOARDING_DONE = "onboarding_done"
         private const val KEY_STYLE_PRESET = "style_preset"
+        private const val KEY_GLASS_MATERIAL = "glass_material"
+        private const val KEY_GLASS_COLOR = "glass_color"
+        private const val KEY_GLASS_BLUR = "glass_blur"
+        private const val KEY_GLASS_TINT = "glass_tint"
+        private const val KEY_GLASS_FILM = "glass_film"
+        private const val KEY_GLASS_ACTIVE_TAB = "glass_active_tab"
         private const val KEY_ALWAYS_ALLOW = "always_allow_paths"
     }
 }
