@@ -58,6 +58,7 @@ import com.zagent.app.ui.components.CircleIconButton
 import com.zagent.app.ui.theme.StylePresetIds
 import com.zagent.app.ui.theme.GlassMaterial
 import com.zagent.app.ui.theme.StylePresets
+import com.zagent.app.ui.theme.LocalZColors
 import com.zagent.app.ui.theme.Zcolors
 import com.zagent.app.ui.viewmodel.MainViewModel
 
@@ -74,26 +75,31 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     var selectedStylePreset by rememberSaveable {
         mutableStateOf(viewModel.settingsManager.stylePresetId)
     }
-    var accentHex by rememberSaveable {
-        mutableStateOf(viewModel.settingsManager.accentColorHex)
+    // L'accent est réglé séparément pour le clair et le sombre (mise à jour 7).
+    val activeIsDark = LocalZColors.current.isDark
+    var accentEditorDark by rememberSaveable { mutableStateOf(activeIsDark) }
+    var accentLightHex by rememberSaveable {
+        mutableStateOf(viewModel.settingsManager.accentColorHexFor(false))
     }
+    var accentDarkHex by rememberSaveable {
+        mutableStateOf(viewModel.settingsManager.accentColorHexFor(true))
+    }
+    val accentHex = if (accentEditorDark) accentDarkHex else accentLightHex
     LaunchedEffect(destination) {
         if (destination == null) {
             selectedStylePreset = viewModel.settingsManager.stylePresetId
-            accentHex = viewModel.settingsManager.accentColorHex
+            accentLightHex = viewModel.settingsManager.accentColorHexFor(false)
+            accentDarkHex = viewModel.settingsManager.accentColorHexFor(true)
         }
     }
-    var accentHue by rememberSaveable {
-        mutableStateOf(
-            accentHex.takeIf { it.isNotBlank() }?.let { hex ->
-                runCatching {
-                    val hsv = FloatArray(3)
-                    android.graphics.Color.colorToHSV(android.graphics.Color.parseColor(hex), hsv)
-                    hsv[0]
-                }.getOrDefault(0f)
-            } ?: 0f
-        )
-    }
+    fun hueOf(hex: String): Float = hex.takeIf { it.isNotBlank() }?.let {
+        runCatching {
+            val hsv = FloatArray(3)
+            android.graphics.Color.colorToHSV(android.graphics.Color.parseColor(it), hsv)
+            hsv[0]
+        }.getOrDefault(0f)
+    } ?: 0f
+    var accentHue by rememberSaveable { mutableStateOf(hueOf(accentHex)) }
     val accentSwatches = listOf(
         "Bleu-gris" to "#64748B",
         "Rouge" to "#EF4444",
@@ -106,17 +112,14 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         "Rose" to "#EC4899"
     )
     fun selectAccent(hex: String) {
-        accentHex = hex
-        viewModel.settingsManager.accentColorHex = hex
+        viewModel.settingsManager.setAccentColorHexFor(accentEditorDark, hex)
+        if (accentEditorDark) accentDarkHex = hex else accentLightHex = hex
         viewModel.settingsManager.markStylePresetCustom()
-        if (hex.isNotBlank()) {
-            val hsv = FloatArray(3)
-            android.graphics.Color.colorToHSV(android.graphics.Color.parseColor(hex), hsv)
-            accentHue = hsv[0]
-        } else {
-            accentHue = 0f
-        }
+        accentHue = hueOf(hex)
         selectedStylePreset = viewModel.settingsManager.stylePresetId
+    }
+    fun syncHueFromAccent() {
+        accentHue = hueOf(accentHex)
     }
     val styleOptions = listOf(
         StylePresetIds.MINIMAL to "Minimal",
@@ -149,7 +152,8 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                             viewModel.updateScheduledLightTime("07:00")
                             selectedStylePreset = StylePresetIds.GLASS
                             viewModel.settingsManager.styleBasePresetId = StylePresetIds.GLASS
-                            accentHex = ""
+                            accentLightHex = ""
+                            accentDarkHex = ""
                             accentHue = 0f
                             showResetAppearance = false
                         }) { Text("Réinitialiser") }
@@ -179,7 +183,9 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                             val settings = viewModel.settingsManager
                             settings.stylePresetId = id
                             settings.styleBasePresetId = id
-                            settings.accentColorHex = preset.colour
+                            listOf(false, true).forEach { mode ->
+                                settings.setAccentColorHexFor(mode, preset.colour)
+                            }
                             viewModel.updateCornerRadius(preset.radius.toInt().coerceIn(8, 28))
                             listOf(false, true).forEach { dark ->
                                 settings.setGlassMaterialFor(dark, if (preset.glassMaterial == "NONE") "Solid" else "Liquid")
@@ -200,7 +206,8 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                                 else -> systemDark
                             }
                             viewModel.reloadGlassSettings(activeDark)
-                            accentHex = preset.colour
+                            accentLightHex = preset.colour
+                            accentDarkHex = preset.colour
                         },
                         label = { Text(label) }
                     )
@@ -217,6 +224,21 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             SettingsSectionLabel("TEINTE")
             SettingsCard {
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+                    Text("MODIFIER POUR", color = Zcolors.text3, style = MaterialTheme.typography.labelSmall, letterSpacing = 1.4.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = !accentEditorDark,
+                            onClick = { accentEditorDark = false; syncHueFromAccent() },
+                            label = { Text("Clair") }
+                        )
+                        FilterChip(
+                            selected = accentEditorDark,
+                            onClick = { accentEditorDark = true; syncHueFromAccent() },
+                            label = { Text("Sombre") }
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,

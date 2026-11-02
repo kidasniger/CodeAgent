@@ -5,7 +5,8 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.zagent.app.ui.theme.ThemeMode
 import com.zagent.app.ui.theme.StylePresetIds
-import com.zagent.app.ui.theme.ZAccentOverride
+import com.zagent.app.ui.theme.ZAccentOverrideDark
+import com.zagent.app.ui.theme.ZAccentOverrideLight
 import com.zagent.app.ui.theme.GlassMaterial
 import com.zagent.app.ui.theme.GlassSettings
 import androidx.compose.ui.graphics.Color
@@ -26,9 +27,8 @@ class SettingsManager(context: Context) {
 
     init {
         migrateThemeKey()
-        accentColorHex.takeIf { it.isNotBlank() }?.let { hex ->
-            runCatching { ZAccentOverride.value = androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(hex)) }
-        }
+        migrateAccentKey()
+        refreshAccentOverrides()
     }
 
     /**
@@ -44,6 +44,32 @@ class SettingsManager(context: Context) {
                 .remove(LEGACY_KEY_THEME_DARK)
                 .apply()
         }
+    }
+
+    /**
+     * Migration de l'ancienne clé d'accent globale « accent_color » vers deux clés
+     * distinctes clair/sombre ; la couleur existante est copiée dans les deux modes.
+     * Ne s'exécute qu'une seule fois (l'ancienne clé disparaît après migration).
+     */
+    private fun migrateAccentKey() {
+        if (prefs.contains(KEY_ACCENT_COLOR)) {
+            val hex = prefs.getString(KEY_ACCENT_COLOR, "") ?: ""
+            prefs.edit()
+                .putString(KEY_ACCENT_LIGHT, hex)
+                .putString(KEY_ACCENT_DARK, hex)
+                .remove(KEY_ACCENT_COLOR)
+                .apply()
+        }
+    }
+
+    private fun parseAccent(hex: String): Color? = runCatching {
+        Color(android.graphics.Color.parseColor(hex))
+    }.getOrNull()
+
+    /** Rend les accents persistants visibles immédiatement par `Zcolors` au démarrage. */
+    private fun refreshAccentOverrides() {
+        ZAccentOverrideLight.value = accentColorHexFor(false).takeIf { it.isNotBlank() }?.let { parseAccent(it) }
+        ZAccentOverrideDark.value = accentColorHexFor(true).takeIf { it.isNotBlank() }?.let { parseAccent(it) }
     }
 
     var apiKey: String
@@ -91,16 +117,17 @@ class SettingsManager(context: Context) {
         stylePresetId = StylePresetIds.CUSTOM
     }
 
-    /** Couleur d'accent personnalisée ; chaîne vide = palette native (« Aucune »). */
-    var accentColorHex: String
-        get() = prefs.getString(KEY_ACCENT_COLOR, "") ?: ""
-        set(value) {
-            val normalized = value.trim()
-            prefs.edit().putString(KEY_ACCENT_COLOR, normalized).apply()
-            ZAccentOverride.value = if (normalized.isBlank()) null else runCatching {
-                androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(normalized))
-            }.getOrNull()
-        }
+    /** Couleur d'accent personnalisée pour le mode clair ou sombre ; chaîne vide = palette native (« Aucune »). */
+    fun accentColorHexFor(dark: Boolean): String =
+        prefs.getString(if (dark) KEY_ACCENT_DARK else KEY_ACCENT_LIGHT, "") ?: ""
+
+    /** Enregistre l'accent du mode choisi et met à jour l'override observable par `Zcolors`. */
+    fun setAccentColorHexFor(dark: Boolean, value: String) {
+        val normalized = value.trim()
+        prefs.edit().putString(if (dark) KEY_ACCENT_DARK else KEY_ACCENT_LIGHT, normalized).apply()
+        val parsed = normalized.takeIf { it.isNotBlank() }?.let { parseAccent(it) }
+        if (dark) ZAccentOverrideDark.value = parsed else ZAccentOverrideLight.value = parsed
+    }
 
     /** Réglages Verre isolés pour les thèmes clair et sombre. Les anciennes clés globales servent de valeur de migration. */
     fun glassMaterialFor(dark: Boolean): String = prefs.getString(glassKey(KEY_GLASS_MATERIAL, dark), glassMaterial) ?: glassMaterial
@@ -223,6 +250,11 @@ class SettingsManager(context: Context) {
         get() = prefs.getFloat(KEY_DENSITY_SCALE, 1f).coerceIn(0.88f, 1.12f)
         set(value) = prefs.edit().putFloat(KEY_DENSITY_SCALE, value.coerceIn(0.88f, 1.12f)).apply()
 
+    /** Affiche la ligne tokens/coût sous chaque message d'agent (MA45). */
+    var usageUnderMessages: Boolean
+        get() = prefs.getBoolean(KEY_USAGE_UNDER, false)
+        set(value) = prefs.edit().putBoolean(KEY_USAGE_UNDER, value).apply()
+
     var onboardingDone: Boolean
         get() = prefs.getBoolean(KEY_ONBOARDING_DONE, false)
         set(value) = prefs.edit().putBoolean(KEY_ONBOARDING_DONE, value).apply()
@@ -233,7 +265,8 @@ class SettingsManager(context: Context) {
             .putString(KEY_THEME_MODE, ThemeMode.SYSTEM.name)
             .putString(KEY_STYLE_PRESET, StylePresetIds.GLASS)
             .putString(KEY_STYLE_BASE_PRESET, StylePresetIds.GLASS)
-            .putString(KEY_ACCENT_COLOR, "")
+            .putString(KEY_ACCENT_LIGHT, "")
+            .putString(KEY_ACCENT_DARK, "")
             .putBoolean(KEY_OLED_BLACK, false)
             .putBoolean(KEY_DYNAMIC_COLORS, false)
             .putInt(KEY_CORNER_RADIUS, 16)
@@ -275,7 +308,8 @@ class SettingsManager(context: Context) {
             .putFloat(glassKey(KEY_GLASS_FILM_V2, true), 0.35f)
             .putFloat(glassKey(KEY_GLASS_ACTIVE_INTENSITY, true), 0.26f)
             .apply()
-        ZAccentOverride.value = null
+        ZAccentOverrideLight.value = null
+        ZAccentOverrideDark.value = null
     }
 
     /** Fichiers que l'utilisateur autorise toujours (écritures automatiques). */
@@ -320,6 +354,8 @@ class SettingsManager(context: Context) {
         private const val KEY_STYLE_PRESET = "style_preset"
         private const val KEY_STYLE_BASE_PRESET = "style_base_preset"
         private const val KEY_ACCENT_COLOR = "accent_color"
+        private const val KEY_ACCENT_LIGHT = "accent_color_light"
+        private const val KEY_ACCENT_DARK = "accent_color_dark"
         private const val KEY_GLASS_MATERIAL = "glass_material"
         private const val KEY_GLASS_COLOR = "glass_color"
         private const val KEY_GLASS_BLUR = "glass_blur"
@@ -339,6 +375,7 @@ class SettingsManager(context: Context) {
         private const val KEY_FONT_FAMILY = "font_family"
         private const val KEY_FONT_SCALE = "font_scale"
         private const val KEY_DENSITY_SCALE = "density_scale"
+        private const val KEY_USAGE_UNDER = "usage_under_messages"
         private const val KEY_DYNAMIC_COLORS = "dynamic_system_colors"
         private const val KEY_SCHEDULED_DARK = "scheduled_dark_time"
         private const val KEY_SCHEDULED_LIGHT = "scheduled_light_time"

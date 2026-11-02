@@ -419,6 +419,17 @@ fun EditorScreen(
         val vScroll = tab?.let { scrollStates.getOrPut(it.path) { ScrollState(0) } }
         val lineHeightPx = with(density) { 20.sp.toPx() }
 
+        // MA46 : défilement jusqu'à la ligne demandée depuis le chat (chemin tapé dans un message).
+        LaunchedEffect(tab?.path, editor.pendingFocusLine) {
+            val line = editor.pendingFocusLine
+            if (line > 0) {
+                kotlinx.coroutines.delay(250)
+                val target = ((line - 1) * lineHeightPx - lineHeightPx * 6).toInt().coerceAtLeast(0)
+                vScroll?.scrollTo(target)
+                editor.pendingFocusLine = -1
+            }
+        }
+
         fun goTo(idx: Int) {
             val t = tab ?: return
             if (matches.isEmpty()) return

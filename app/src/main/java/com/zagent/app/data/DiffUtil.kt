@@ -62,6 +62,23 @@ object DiffUtil {
         return DiffResult(out, added, removed, isUpdate = true)
     }
 
+    /**
+     * Surlignage mot à mot : retourne les plages de la partie réellement
+     * modifiée (préfixe/suffixe communs retirés) pour l'ancienne et la nouvelle ligne.
+     */
+    fun wordSpans(old: String, new: String): Pair<IntRange, IntRange> {
+        if (old == new) return IntRange.EMPTY to IntRange.EMPTY
+        var start = 0
+        val maxStart = minOf(old.length, new.length)
+        while (start < maxStart && old[start] == new[start]) start++
+        var endOld = old.length
+        var endNew = new.length
+        while (endOld > start && endNew > start && old[endOld - 1] == new[endNew - 1]) {
+            endOld--; endNew--
+        }
+        return start until endOld to start until endNew
+    }
+
     private enum class OpKind { EQ, ADD, DEL }
     private data class Op(val kind: OpKind, val text: String)
 

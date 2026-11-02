@@ -271,20 +271,76 @@ private fun ModelRow(label: String, selected: Boolean, onClick: () -> Unit) {
     }
 }
 
-/** Compteur discret sous le titre : tokens de la conversation et coût estimé. */
+/** Ligne d'usage en pied de message : tokens + coût, tap = détail entrée/sortie (MA45). */
 @Composable
-fun UsageLine(totalTokens: Int, estimated: Boolean, cost: Double?) {
+fun UsageLine(
+    totalTokens: Int,
+    estimated: Boolean,
+    cost: Double?,
+    promptTokens: Int = -1,
+    completionTokens: Int = -1,
+    showToggle: Boolean = false,
+    usageUnderMessages: Boolean = false,
+    onToggleUsageUnderMessages: (() -> Unit)? = null
+) {
     if (totalTokens <= 0) return
     val c = Zcolors
+    var open by remember { mutableStateOf(false) }
     val tokens = if (totalTokens >= 1000) String.format(Locale.US, "%.1f k", totalTokens / 1000.0) else totalTokens.toString()
     val costText = cost?.let { v ->
         "  ·  " + (if (estimated) "~" else "") + "$" + (if (v < 1.0) String.format(Locale.US, "%.4f", v) else String.format(Locale.US, "%.2f", v))
     }.orEmpty()
-    Text(
-        (if (estimated) "~" else "") + tokens + " tokens" + costText,
-        style = TextStyle(fontFamily = JetBrainsMono, fontSize = 10.sp),
-        color = c.text3
-    )
+    Column {
+        Text(
+            (if (estimated) "~" else "") + tokens + " tokens" + costText,
+            style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp),
+            color = c.text3,
+            modifier = Modifier.clickable { open = !open }
+        )
+        if (open) {
+            Spacer(Modifier.height(4.dp))
+            Column(
+                Modifier
+                    .clip(MaterialTheme.shapes.small)
+                    .background(c.surface2)
+                    .padding(horizontal = 10.dp, vertical = 8.dp)
+            ) {
+                if (promptTokens >= 0) {
+                    Text(
+                        "Entrée : $promptTokens tokens",
+                        style = TextStyle(fontFamily = JetBrainsMono, fontSize = 10.5.sp),
+                        color = c.text2
+                    )
+                    Text(
+                        "Sortie : $completionTokens tokens",
+                        style = TextStyle(fontFamily = JetBrainsMono, fontSize = 10.5.sp),
+                        color = c.text2
+                    )
+                    Spacer(Modifier.height(4.dp))
+                }
+                if (showToggle && onToggleUsageUnderMessages != null) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { onToggleUsageUnderMessages() },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Afficher l'usage sous les messages",
+                            style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp),
+                            color = c.text2,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Box(
+                            Modifier
+                                .size(10.dp)
+                                .background(if (usageUnderMessages) c.cyan else c.surface3, CircleShape)
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
 /** Barre affichée tant qu'un serveur de développement tourne : ouvrir l'aperçu, journal, arrêter. */

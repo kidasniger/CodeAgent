@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -61,6 +60,7 @@ import androidx.compose.ui.unit.sp
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.Zcolors
+import com.zagent.app.ui.theme.Zshapes
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -209,7 +209,7 @@ fun AmbientBackground(modifier: Modifier = Modifier) {
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
-    shape: androidx.compose.ui.graphics.Shape = MaterialTheme.shapes.large,
+    shape: androidx.compose.ui.graphics.Shape = Zshapes.card,
     backgroundColor: Color = Zcolors.surface,
     borderColor: Color = Zcolors.border,
     contentPadding: PaddingValues = PaddingValues(16.dp),
@@ -239,7 +239,7 @@ fun GradientButton(
     leading: (@Composable () -> Unit)? = null
 ) {
     val c = Zcolors
-    val shape = RoundedCornerShape(50)
+    val shape = Zshapes.pill
     Box(
         modifier = modifier
             .height(height)
@@ -272,7 +272,7 @@ fun SecondaryButton(
     leading: (@Composable () -> Unit)? = null
 ) {
     val c = Zcolors
-    val shape = RoundedCornerShape(50)
+    val shape = Zshapes.pill
     Box(
         modifier = modifier
             .height(height)
@@ -349,7 +349,7 @@ fun StatusBadge(text: String, color: Color, modifier: Modifier = Modifier) {
     }
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(50))
+            .clip(Zshapes.pill)
             .background(bg)
             .padding(horizontal = 10.dp, vertical = 3.dp)
     ) {
@@ -428,7 +428,7 @@ fun MonoChip(text: String, modifier: Modifier = Modifier, tint: Color = Zcolors.
     val c = Zcolors
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(50))
+            .clip(Zshapes.pill)
             .background(c.cyanBg)
             .padding(horizontal = 10.dp, vertical = 4.dp)
     ) {
@@ -447,9 +447,9 @@ fun MonoChip(text: String, modifier: Modifier = Modifier, tint: Color = Zcolors.
 // Animations & états
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** « Réflexion de l'agent ··· » — pastille animée au-dessus de la saisie. */
+/** Étape courante : trois points animés + texte + bouton Stop intégré (MA44). */
 @Composable
-fun TypingPill(label: String, modifier: Modifier = Modifier) {
+fun TypingPill(label: String, modifier: Modifier = Modifier, onStop: (() -> Unit)? = null) {
     val c = Zcolors
     val transition = rememberInfiniteTransition(label = "dots")
     val phase by transition.animateFloat(
@@ -459,24 +459,12 @@ fun TypingPill(label: String, modifier: Modifier = Modifier) {
     )
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(50))
+            .clip(Zshapes.pill)
             .background(c.surface2)
-            .border(1.dp, c.border, RoundedCornerShape(50))
-            .padding(horizontal = 16.dp, vertical = 9.dp),
+            .border(1.dp, c.border, Zshapes.pill)
+            .padding(start = 14.dp, end = if (onStop != null) 6.dp else 16.dp, top = 7.dp, bottom = 7.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(10.dp)
-                .background(Brush.linearGradient(listOf(c.cyan, c.violet)), CircleShape)
-        )
-        Spacer(Modifier.width(8.dp))
-        Text(
-            label,
-            style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.Medium, fontSize = 13.sp),
-            color = c.text
-        )
-        Spacer(Modifier.width(6.dp))
         Row {
             repeat(3) { i ->
                 val raw = ((phase - i) % 3f)
@@ -486,6 +474,28 @@ fun TypingPill(label: String, modifier: Modifier = Modifier) {
                         .padding(horizontal = 2.dp)
                         .size(4.dp)
                         .background(c.text2.copy(alpha = 0.25f + 0.75f * (1f - d)), CircleShape)
+                )
+            }
+        }
+        Spacer(Modifier.width(8.dp))
+        Text(
+            label,
+            style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.Medium, fontSize = 13.sp),
+            color = c.text
+        )
+        if (onStop != null) {
+            Spacer(Modifier.width(10.dp))
+            Box(
+                Modifier
+                    .clip(CircleShape)
+                    .background(c.red.copy(alpha = 0.12f))
+                    .clickable(onClick = onStop)
+                    .padding(horizontal = 10.dp, vertical = 5.dp)
+            ) {
+                Text(
+                    "Stop",
+                    style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
+                    color = c.red
                 )
             }
         }
@@ -548,7 +558,7 @@ fun EmptyState(
             Spacer(Modifier.height(10.dp))
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(50))
+                    .clip(Zshapes.pill)
                     .clickable(onClick = onSecondary)
                     .padding(horizontal = 20.dp, vertical = 10.dp)
             ) {
@@ -566,14 +576,14 @@ fun GradientProgress(progress: Float, modifier: Modifier = Modifier) {
         modifier
             .fillMaxWidth()
             .height(8.dp)
-            .clip(RoundedCornerShape(50))
+            .clip(Zshapes.pill)
             .background(c.surface3)
     ) {
         Box(
             Modifier
                 .fillMaxWidth(progress.coerceIn(0f, 1f))
                 .height(8.dp)
-                .clip(RoundedCornerShape(50))
+                .clip(Zshapes.pill)
                 .background(c.gradBtn)
         )
     }
@@ -627,7 +637,7 @@ fun GlassPreviewCard(
         modifier = modifier
             .fillMaxWidth()
             .height(120.dp)
-            .clip(MaterialTheme.shapes.extraLarge)
+            .clip(Zshapes.sheet)
             .background(
                 Brush.linearGradient(
                     colors = listOf(
@@ -667,9 +677,9 @@ fun GlassPreviewCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(50))
+                    .clip(Zshapes.pill)
                     .background(surfaceColor)
-                    .border(1.dp, outlineColor, RoundedCornerShape(50))
+                    .border(1.dp, outlineColor, Zshapes.pill)
                     .padding(horizontal = 11.dp, vertical = 7.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -700,9 +710,9 @@ fun GlassPreviewCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(50))
+                    .clip(Zshapes.pill)
                     .background(surfaceColor.copy(alpha = (surfaceAlpha + 0.12f).coerceAtMost(0.72f)))
-                    .border(1.dp, outlineColor.copy(alpha = 0.78f), RoundedCornerShape(50))
+                    .border(1.dp, outlineColor.copy(alpha = 0.78f), Zshapes.pill)
                     .padding(horizontal = 5.dp, vertical = 5.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -712,7 +722,7 @@ fun GlassPreviewCard(
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(50))
+                            .clip(Zshapes.pill)
                             .background(
                                 if (selected) Color.White.copy(alpha = 0.20f + tintLevel * 0.20f)
                                 else Color.Transparent

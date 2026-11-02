@@ -59,7 +59,8 @@ data class ChatMessage(
     val toolCallId: String? = null,
     val name: String? = null,
     val toolLog: String? = null,
-    val time: Long = System.currentTimeMillis()
+    val time: Long = System.currentTimeMillis(),
+    val reasoning: String? = null
 )
 
 enum class AppScreen { CHAT, SETTINGS, TERMINAL, EDITOR, FILE_BROWSER }
@@ -155,6 +156,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun updateGlassSettings(dark: Boolean, value: GlassSettings) { glassSettings = value; settingsManager.saveGlassSettings(dark, value) }
     fun reloadGlassSettings(dark: Boolean) { glassSettings = settingsManager.loadGlassSettings(dark) }
 
+    /** Usage tokens/coût sous les messages (MA45). */
+    var usageUnderMessages by mutableStateOf(settingsManager.usageUnderMessages)
+    fun toggleUsageUnderMessages() {
+        usageUnderMessages = !usageUnderMessages
+        settingsManager.usageUnderMessages = usageUnderMessages
+    }
+
     var onboardingDone by mutableStateOf(settingsManager.onboardingDone)
 
     fun updateThemeMode(mode: ThemeMode) {
@@ -221,12 +229,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     /** Texte de l'IA en cours d'écriture (affiché mot à mot avant d'être ajouté à la conversation). */
     var liveText by mutableStateOf("")
 
+    /** Réflexion du modèle en cours (champ reasoning_content du flux SSE) et heure de départ — MA35. */
+    var liveReasoning by mutableStateOf("")
+    var thinkingStartedAt by mutableStateOf(0L)
+
     /** Liste de tâches de l'agent (outil update_todos), affichée en haut du chat. */
     var todos by mutableStateOf<List<TodoItem>>(emptyList())
 
     /** Résumé de la demande en cours : fichiers touchés et commandes lancées. */
     val summaryFiles = mutableStateListOf<String>()
     val summaryCommands = mutableStateListOf<String>()
+
+    /** Compteurs de diff par fichier touché pendant la demande : chemin → (ajoutées, supprimées) — MA41. */
+    val fileDiffCounts = mutableStateMapOf<String, Pair<Int, Int>>()
 
     /** Questions à choix posées par l'agent (outil ask_user), en attente de réponse. */
     data class PendingAsk(val toolCallId: String, val questions: List<AskQuestion>)
@@ -666,9 +681,11 @@ done; } 2>&1 | head -c 50000
         pendingCommand = null
         liveCommand = null
         liveText = ""
+        liveReasoning = ""
         todos = emptyList()
         summaryFiles.clear()
         summaryCommands.clear()
+        fileDiffCounts.clear()
         agentUndo.clear()
         isLoading = false
         _messages.value = emptyList()
@@ -995,6 +1012,7 @@ done; } 2>&1 | head -c 50000
         todos = emptyList()
         summaryFiles.clear()
         summaryCommands.clear()
+        fileDiffCounts.clear()
         val newUserMessage = ChatMessage("user", userText)
         _messages.value = _messages.value + newUserMessage
 
@@ -1085,6 +1103,8 @@ done; } 2>&1 | head -c 50000
 
             withContext(Dispatchers.Main) {
                 liveText = ""
+                liveReasoning = ""
+                thinkingStartedAt = System.currentTimeMillis()
                 statusMessage = "Envoi à l'IA…"
             }
             val liveBuf = StringBuilder()
@@ -1107,6 +1127,16 @@ done; } 2>&1 | head -c 50000
                         if (liveText.isEmpty()) statusMessage = "L'IA écrit…"
                         liveText = liveBuf.toString()
                     }
+                },
+                onReasoningDelta = { piece ->
+                    val nowMs = System.currentTimeMillis()
+                    if (nowMs - lastPublish >= 120) {
+                        lastPublish = nowMs
+                        statusMessage = "Réflexion en cours…"
+                        liveReasoning += piece
+                    } else {
+                        liveReasoning += piece
+                    }
                 }
             )
 
@@ -1114,6 +1144,7 @@ done; } 2>&1 | head -c 50000
                 is AiRepository.ApiResponse.Error -> {
                     alertUser("L'agent s'est arrêté", result.errorMessage.take(120))
                     liveText = ""
+                    liveReasoning = ""
                     isLoading = false
                     statusMessage = result.errorMessage
                     isCode1305Error = result.isCode1305
@@ -1142,21 +1173,25 @@ done; } 2>&1 | head -c 50000
                     if (usedIn == null || usedOut == null) tokensEstimated = true
 
                     if (toolCalls.isNullOrEmpty()) {
-                        val assistantMsg = ChatMessage("assistant", content ?: "")
+                        val reasoning = liveReasoning.ifBlank { result.reasoningContent }
+                        val assistantMsg = ChatMessage("assistant", content ?: "", reasoning = reasoning.ifBlank { null })
                         alertUser("L'agent a terminé", (content ?: "Tâche terminée.").trim().take(140))
                         withContext(Dispatchers.Main) {
                             _messages.value = _messages.value + assistantMsg
                             liveText = ""
+                            liveReasoning = ""
                             isLoading = false
                             statusMessage = ""
                         }
                         finished = true
                         break
                     } else {
-                        val assistantMsg = ChatMessage("assistant", content, toolCalls = toolCalls)
+                        val reasoning = liveReasoning.ifBlank { result.reasoningContent }
+                        val assistantMsg = ChatMessage("assistant", content, toolCalls = toolCalls, reasoning = reasoning.ifBlank { null })
                         withContext(Dispatchers.Main) {
                             _messages.value = _messages.value + assistantMsg
                             liveText = ""
+                            liveReasoning = ""
                         }
 
                         for (tc in toolCalls) {
@@ -1221,6 +1256,81 @@ done; } 2>&1 | head -c 50000
     /** Arrête la commande en cours ; l'agent reçoit « arrêtée par l'utilisateur » et continue. */
     fun stopLiveCommand() {
         terminal.stopCurrentCommand()
+    }
+
+    /** Stop demandé par l'utilisateur pendant la génération : coupe l'appel réseau et la boucle (MA44). */
+    fun stopAgent() {
+        agentJob?.cancel()
+        agentJob = null
+        aiRepository.cancelActive()
+        onWriteConfirmed = null
+        pendingWrite = null
+        onAskAnswered = null
+        pendingAsk = null
+        onDeleteConfirmed = null
+        pendingDelete = null
+        onCommandConfirmed = null
+        pendingCommand = null
+        liveCommand = null
+        liveCommandId = null
+        liveText = ""
+        liveReasoning = ""
+        isLoading = false
+        statusMessage = "Génération interrompue."
+    }
+
+    /** Remplace un message utilisateur et supprime toute la suite, puis relance l'agent (MA37). */
+    fun editAndResend(messageIndex: Int, newText: String) {
+        if (isLoading || newText.isBlank()) return
+        val list = _messages.value
+        if (messageIndex !in list.indices || list[messageIndex].role != "user") return
+        val kept = list.subList(0, messageIndex)
+        _messages.value = kept + ChatMessage("user", newText.trim())
+        agentUndo.clear()
+        fileDiffCounts.clear()
+        summaryFiles.clear()
+        summaryCommands.clear()
+        todos = emptyList()
+        retryLast()
+    }
+
+    /** Supprime un message (et tout ce qui suit s'il vient de l'utilisateur) — menu contextuel MA36. */
+    fun deleteFromMessage(messageIndex: Int) {
+        if (isLoading) return
+        val list = _messages.value
+        if (messageIndex !in list.indices) return
+        _messages.value = if (list[messageIndex].role == "user") {
+            list.subList(0, messageIndex)
+        } else {
+            list.filterIndexed { i, _ -> i != messageIndex }
+        }
+    }
+
+    /** Régénère la réponse : supprime la fin (assistant + outils) jusqu'au dernier message utilisateur, puis relance (MA36). */
+    fun regenerateLast() {
+        if (isLoading) return
+        val list = _messages.value
+        var last = list.lastIndex
+        while (last >= 0 && list[last].role != "user") last--
+        if (last < 0) return
+        _messages.value = list.subList(0, last + 1)
+        agentUndo.clear()
+        fileDiffCounts.clear()
+        retryLast()
+    }
+
+    /** Ouvre un chemin de fichier repéré dans le chat, à la ligne si fournie (MA46). */
+    fun openFilePath(path: String, line: Int? = null) {
+        if (path.isBlank()) return
+        editor.openAtLine(path, line) { navigateTo(AppScreen.EDITOR) }
+    }
+
+    /** Applique un bloc de code du chat à un fichier (passe par la porte de confirmation habituelle — MA32). */
+    fun requestCodeApply(path: String, content: String) {
+        if (path.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            applyWrite(getFileRepo(), "user-apply", path.trim().trimStart('/'), content, isEdit = false)
+        }
     }
 
     /** Ouvre l'écran Terminal et place le shell dans le dossier du projet actif. */
@@ -1544,6 +1654,10 @@ done; } 2>&1 | head -c 50000
                 if (path !in summaryFiles) summaryFiles.add(path)
                 if (!exists || full != null) agentUndo.add(UndoEntry(path, full))
                 editor.onExternalWrite(path, content)
+                // Compteurs de diff pour le récapitulatif de fin de tâche (MA41).
+                val d = DiffUtil.diff(oldForDiff, content)
+                val prev = fileDiffCounts[path] ?: (0 to 0)
+                fileDiffCounts[path] = (prev.first + d.added) to (prev.second + d.removed)
             }
         }
         return res

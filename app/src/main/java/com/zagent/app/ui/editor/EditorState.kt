@@ -155,6 +155,15 @@ class EditorController(
     val active: EditorTab? get() = tabs.getOrNull(activeIndex)
 
     fun open(path: String, onOpened: () -> Unit = {}) {
+        openAtLine(path, null, onOpened)
+    }
+
+    /** Ligne à atteindre après la prochaine ouverture (MA46) ; -1 = aucune. */
+    var pendingFocusLine by mutableIntStateOf(-1)
+
+    /** Ouvre un fichier et fait défiler jusqu'à la ligne demandée si fournie (MA46). */
+    fun openAtLine(path: String, line: Int?, onOpened: () -> Unit = {}) {
+        pendingFocusLine = line ?: -1
         val existing = tabs.indexOfFirst { it.path == path }
         if (existing >= 0) {
             activeIndex = existing

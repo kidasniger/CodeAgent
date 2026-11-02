@@ -1,5 +1,6 @@
 package com.zagent.app.ui.screens.settings
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,6 +16,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,6 +31,32 @@ private val glassSwatches = listOf(
     "#F5F5F5" to "Blanc", "#F59E0B" to "Ambre", "#22D3EE" to "Cyan",
     "#3B82F6" to "Bleu", "#EC4899" to "Rose", "#64748B" to "Ardoise"
 )
+
+/** Teinte (0–360°) d'une couleur de verre ; « Aucune » (Unspecified) revient à 0°. */
+private fun glassHueOf(color: Color): Float {
+    if (color == Color.Unspecified) return 0f
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(
+        android.graphics.Color.argb(
+            (color.alpha * 255f).toInt().coerceIn(0, 255),
+            (color.red * 255f).toInt().coerceIn(0, 255),
+            (color.green * 255f).toInt().coerceIn(0, 255),
+            (color.blue * 255f).toInt().coerceIn(0, 255)
+        ),
+        hsv
+    )
+    return hsv[0]
+}
+
+/** Représentation hexadécimale compacte de la teinte choisie. */
+private fun glassHexOf(color: Color): String =
+    String.format(
+        "#%06X", 0xFFFFFF and android.graphics.Color.rgb(
+            (color.red * 255f).toInt().coerceIn(0, 255),
+            (color.green * 255f).toInt().coerceIn(0, 255),
+            (color.blue * 255f).toInt().coerceIn(0, 255)
+        )
+    )
 
 @Composable
 fun GlassSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
@@ -149,6 +178,37 @@ fun GlassSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                         }
                     }
                 }
+                Text("ARC-EN-CIEL", color = Zcolors.text3, style = MaterialTheme.typography.labelSmall, letterSpacing = 1.4.sp)
+                Box(Modifier.fillMaxWidth().height(38.dp), contentAlignment = Alignment.Center) {
+                    Canvas(Modifier.fillMaxWidth().height(9.dp).clip(CircleShape)) {
+                        drawRoundRect(
+                            brush = Brush.horizontalGradient(
+                                listOf(Color.Red, Color(0xFFFF8A00), Color.Yellow, Color.Green, Color.Cyan, Color.Blue, Color(0xFF8B00FF), Color.Red)
+                            ),
+                            cornerRadius = CornerRadius(size.height / 2f)
+                        )
+                    }
+                    Slider(
+                        value = glassHueOf(current.colour),
+                        onValueChange = { hue ->
+                            val argb = android.graphics.Color.HSVToColor(floatArrayOf(hue, 0.82f, 0.95f))
+                            save(current.copy(colour = Color(argb)))
+                        },
+                        valueRange = 0f..360f,
+                        colors = SliderDefaults.colors(
+                            thumbColor = Color.White,
+                            activeTrackColor = Color.Transparent,
+                            inactiveTrackColor = Color.Transparent,
+                            activeTickColor = Color.Transparent,
+                            inactiveTickColor = Color.Transparent
+                        )
+                    )
+                }
+                Text(
+                    if (current.colour == Color.Unspecified) "Neutre — palette d'origine" else glassHexOf(current.colour).uppercase(),
+                    color = Zcolors.text2,
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
         }
 

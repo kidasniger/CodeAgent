@@ -243,8 +243,12 @@ val MinimalDarkZColors = ZColors(
     isDark = true
 )
 
-/** Accent global persistant, observé par les composables qui lisent Zcolors. */
-val ZAccentOverride = mutableStateOf<Color?>(null)
+/**
+ * Accents personnalisés persistants, observés par [Zcolors] : un par mode,
+ * pour permettre des réglages d'accent distincts en clair et en sombre (mise à jour 7).
+ */
+val ZAccentOverrideLight = mutableStateOf<Color?>(null)
+val ZAccentOverrideDark = mutableStateOf<Color?>(null)
 
 /** Applique une couleur d'accent à toute la palette sans modifier ses couleurs sémantiques. */
 fun ZColors.withAccent(color: Color): ZColors = copy(

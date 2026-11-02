@@ -2,11 +2,17 @@ package com.zagent.app.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,55 +31,82 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.stickyHeader
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.filled.ThumbDown
+import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Cap
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zagent.app.data.AiRepository
@@ -85,21 +118,24 @@ import com.zagent.app.ui.components.tailForDisplay
 import com.zagent.app.ui.components.AskCard
 import com.zagent.app.data.DiffUtil
 import com.zagent.app.ui.components.GlassModalBottomSheet
-import com.zagent.app.ui.components.CircleIconButton
 import com.zagent.app.ui.components.EmptyState
+import com.zagent.app.ui.components.GlassAlertDialog
 import com.zagent.app.ui.components.GlassCard
 import com.zagent.app.ui.components.GradientButton
 import com.zagent.app.ui.components.IconBadge
+import com.zagent.app.ui.components.MarkdownText
 import com.zagent.app.ui.components.MonoChip
 import com.zagent.app.ui.components.SecondaryButton
 import com.zagent.app.ui.components.StatusBadge
+import com.zagent.app.ui.components.ThinkingBlock
+import com.zagent.app.ui.components.ToolGroupSummary
 import com.zagent.app.ui.components.TypingPill
+import com.zagent.app.ui.components.UsageLine
 import com.zagent.app.ui.components.ZLogo
 import com.zagent.app.ui.components.DevServerBar
 import com.zagent.app.ui.components.GitChangesSheet
 import com.zagent.app.ui.components.GitDiffView
 import com.zagent.app.ui.components.ModelPickerDialog
-import com.zagent.app.ui.components.UsageLine
 import com.zagent.app.ui.components.CodeBlock
 import com.zagent.app.ui.components.DiffPanel
 import com.zagent.app.ui.components.ToolChip
@@ -112,14 +148,18 @@ import com.zagent.app.ui.theme.Zcolors
 import com.zagent.app.ui.theme.LocalGlass
 import com.zagent.app.ui.theme.LocalHazeState
 import com.zagent.app.ui.theme.glassSurface
-import dev.chrisbanes.haze.haze
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withFrameNanos
 import com.zagent.app.ui.viewmodel.MainViewModel
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Écran principal : conversation avec l'agent
+// Écran principal : conversation avec l'agent (style minimaliste — LOT 3)
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
@@ -130,7 +170,11 @@ fun ChatScreen(
     val c = Zcolors
     val messages by viewModel.messages.collectAsState()
     val listState = rememberLazyListState()
+    val clipboard = LocalClipboardManager.current
+    val scope = rememberCoroutineScope()
     var input by rememberSaveable { mutableStateOf("") }
+    var editingIndex by rememberSaveable { mutableStateOf(-1) }
+    var applyCode by remember { mutableStateOf<String?>(null) }
 
     val chatRows = remember(messages) { buildChatRows(messages) }
     val lastFailedCmdId = remember(messages) {
@@ -139,15 +183,55 @@ fun ChatScreen(
         if (m != null && (r.startsWith("Erreur: code") || r.startsWith("Erreur: délai"))) m.toolCallId else null
     }
 
-    LaunchedEffect(messages.size) {
-        if (chatRows.isNotEmpty()) listState.animateScrollToItem(chatRows.size - 1)
+    // MA33 : streaming par frame (regroupe les mises à jour de texte pour éviter les saccades)
+    var displayLive by remember { mutableStateOf("") }
+    LaunchedEffect(viewModel.liveText) {
+        withFrameNanos { }
+        displayLive = viewModel.liveText
     }
 
-    LaunchedEffect(viewModel.liveText.length) {
-        if (viewModel.liveText.isNotEmpty() && listState.layoutInfo.totalItemsCount > chatRows.size) {
-            listState.scrollToItem(chatRows.size)
+    // MA33 : l'auto-scroll suit le flux seulement si l'utilisateur est déjà en bas
+    var userAtBottom by remember { mutableStateOf(true) }
+    LaunchedEffect(listState) {
+        androidx.compose.runtime.snapshotFlow {
+            val info = listState.layoutInfo
+            val last = info.visibleItemsInfo.lastOrNull()?.index ?: 0
+            last >= info.totalItemsCount - 2
+        }.collect { userAtBottom = it }
+    }
+    LaunchedEffect(chatRows.size, displayLive.length) {
+        if (userAtBottom && chatRows.isNotEmpty()) {
+            if (displayLive.isNotBlank()) listState.scrollToItem(chatRows.size)
+            else listState.animateScrollToItem(chatRows.size - 1)
         }
     }
+
+    // MA39 : les pastilles de date se fondent après 2 s d'inactivité de scroll
+    var dateAlphaTarget by remember { mutableStateOf(1f) }
+    var hideDatesJob by remember { mutableStateOf<Job?>(null) }
+    LaunchedEffect(listState) {
+        androidx.compose.runtime.snapshotFlow { listState.isScrollInProgress }.collect { scrolling ->
+            hideDatesJob?.cancel()
+            if (scrolling) {
+                dateAlphaTarget = 1f
+            } else {
+                hideDatesJob = launch { delay(2000); dateAlphaTarget = 0f }
+            }
+        }
+    }
+    val dateAlpha by animateFloatAsState(dateAlphaTarget, label = "dates")
+
+    // Chronomètre de réflexion (MA35)
+    var nowTick by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(viewModel.isLoading) {
+        while (viewModel.isLoading) {
+            nowTick = System.currentTimeMillis()
+            delay(1000)
+        }
+    }
+
+    val onFileTap: (String, Int?) -> Unit = { path, line -> viewModel.openFilePath(path, line) }
+    val thinkingSeconds = ((nowTick - viewModel.thinkingStartedAt) / 1000).toInt().coerceAtLeast(0)
 
     Column(
         modifier = Modifier
@@ -157,16 +241,19 @@ fun ChatScreen(
         AmbientTopBar(
             viewModel = viewModel,
             scrolled = listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 8,
-            onNewConversation = { viewModel.clearConversation() }
+            onNewConversation = { viewModel.clearConversation() },
+            onOpenSettings = onOpenSettings
         )
 
-        // Bannières d'état (erreur réseau, clé invalide, surcharge…)
-        StatusBanners(viewModel, onOpenSettings = onOpenSettings)
+        // MA43 : une seule notification discrète à la fois, en pilule de verre
+        GlassToastPill(viewModel = viewModel, onOpenSettings = onOpenSettings)
+        if (viewModel.isNetworkError) AutoRetryEffect(viewModel)
 
-        // Liste de tâches de l'agent
-        TodoPanel(viewModel.todos)
+        // Liste de tâches de l'agent (MA40)
+        TodoPanel(viewModel.todos, viewModel.isLoading)
 
-        // Liste des messages
+        // Liste des messages (MA38 : sélection de texte partout)
+        val selectionColors = TextSelectionColors(handleColor = c.cyan, backgroundColor = c.cyan.copy(alpha = 0.25f))
         Box(Modifier.weight(1f)) {
             if (messages.isEmpty()) {
                 Column(
@@ -175,41 +262,133 @@ fun ChatScreen(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.Center
                 ) {
-                    ChatEmptyState(viewModel, onOpenSettings, onPickFolder = { viewModel.isProjectPickerOpen = true })
+                    ChatEmptyState(
+                        viewModel, onOpenSettings,
+                        onPickFolder = { viewModel.isProjectPickerOpen = true },
+                        onSuggestion = { input = it; editingIndex = -1 }
+                    )
                 }
             } else {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 176.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    items(chatRows, key = { it.key }) { row ->
-                        when (row) {
-                            is ChatRow.Date -> DatePill(row.label)
-                            is ChatRow.User -> UserBubble(row.text)
-                            is ChatRow.Agent -> AgentCard(
-                                row.content,
-                                row.tools,
-                                fixId = if (viewModel.isLoading) null else lastFailedCmdId,
-                                onFix = { cmd, res -> viewModel.fixCommandWithAi(cmd, res) },
-                                liveId = viewModel.liveCommandId,
-                                liveOutput = { viewModel.liveOutput },
-                                liveStartedAt = viewModel.liveStartedAt,
-                                onStop = { viewModel.stopLiveCommand() }
-                            )
-                            is ChatRow.OrphanTool -> OrphanToolLine(row.text)
-                            is ChatRow.Ask -> AskCard(
-                                questions = row.questions,
-                                result = row.result,
-                                active = row.result == null &&
-                                    viewModel.pendingAsk?.toolCallId == row.toolCallId,
-                                onSubmit = { answers -> viewModel.resolvePendingAsk(answers) }
-                            )
+                CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
+                    SelectionContainer {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 176.dp),
+                            verticalArrangement = Arrangement.spacedBy(20.dp)
+                        ) {
+                            chatRows.forEachIndexed { index, row ->
+                                when (row) {
+                                    is ChatRow.Date -> stickyHeader(key = row.key, contentType = "date") {
+                                        DatePill(row.label, Modifier.alpha(dateAlpha))
+                                    }
+                                    is ChatRow.User -> item(key = row.key, contentType = "user") {
+                                        UserBubble(
+                                            text = row.text,
+                                            messageIndex = row.messageIndex,
+                                            onEdit = { i, t -> input = t; editingIndex = i },
+                                            onQuote = { t -> input = "> " + t.replace("\n", "\n> ") + "\n\n" },
+                                            onDelete = { viewModel.deleteFromMessage(it) }
+                                        )
+                                    }
+                                    is ChatRow.Agent -> item(key = row.key, contentType = "agent") {
+                                        val isLastAgent = index == chatRows.lastIndex && displayLive.isBlank()
+                                        AgentCard(
+                                            content = row.content,
+                                            tools = row.tools,
+                                            showLogo = chatRows.getOrNull(index - 1) !is ChatRow.Agent,
+                                            reasoning = row.reasoning,
+                                            thinkingSeconds = -1,
+                                            isLast = isLastAgent && !viewModel.isLoading,
+                                            messageIndex = row.messageIndex,
+                                            onFileTap = onFileTap,
+                                            onApplyCode = { applyCode = it },
+                                            onRegenerate = { viewModel.regenerateLast() },
+                                            onQuote = { t -> input = "> " + t.replace("\n", "\n> ") + "\n\n" },
+                                            onDeleteMessage = { viewModel.deleteFromMessage(row.messageIndex) },
+                                            fixId = if (viewModel.isLoading) null else lastFailedCmdId,
+                                            onFix = { cmd, res -> viewModel.fixCommandWithAi(cmd, res) },
+                                            liveId = viewModel.liveCommandId,
+                                            liveOutput = { viewModel.liveOutput },
+                                            liveStartedAt = viewModel.liveStartedAt,
+                                            onStop = { viewModel.stopLiveCommand() }
+                                        )
+                                    }
+                                    is ChatRow.OrphanTool -> item(key = row.key, contentType = "orphan") {
+                                        OrphanToolLine(row.text)
+                                    }
+                                    is ChatRow.Ask -> item(key = row.key, contentType = "ask") {
+                                        AskCard(
+                                            questions = row.questions,
+                                            result = row.result,
+                                            active = row.result == null &&
+                                                viewModel.pendingAsk?.toolCallId == row.toolCallId,
+                                            onSubmit = { answers -> viewModel.resolvePendingAsk(answers) }
+                                        )
+                                    }
+                                }
+                            }
+                            if (displayLive.isNotBlank()) {
+                                item(key = "live_text", contentType = "agent") {
+                                    AgentCard(
+                                        content = displayLive,
+                                        tools = emptyList(),
+                                        isStreaming = true,
+                                        reasoning = viewModel.liveReasoning,
+                                        thinkingSeconds = thinkingSeconds,
+                                        onFileTap = onFileTap,
+                                        onApplyCode = { applyCode = it }
+                                    )
+                                }
+                            }
+                            // MA45 : usage tokens/coût sous le dernier message
+                            val lastRow = chatRows.lastOrNull()
+                            if (displayLive.isBlank() && lastRow is ChatRow.Agent) {
+                                item(key = "usage_tail", contentType = "meta") {
+                                    Column(Modifier.padding(horizontal = 16.dp)) {
+                                        UsageLine(
+                                            totalTokens = viewModel.totalTokens,
+                                            estimated = viewModel.tokensEstimated,
+                                            cost = viewModel.estimatedCost,
+                                            promptTokens = viewModel.promptTokens,
+                                            completionTokens = viewModel.completionTokens,
+                                            showToggle = true,
+                                            usageUnderMessages = viewModel.usageUnderMessages,
+                                            onToggleUsageUnderMessages = { viewModel.toggleUsageUnderMessages() }
+                                        )
+                                    }
+                                }
+                            }
+                            // MA47 : erreur humaine dans le fil, sous le dernier message
+                            if (!viewModel.isLoading && (viewModel.hasBlockingError || viewModel.stepLimitReached || viewModel.statusMessage.isNotBlank())) {
+                                item(key = "error_inline", contentType = "meta") {
+                                    InlineErrorCard(viewModel = viewModel, onOpenSettings = onOpenSettings)
+                                }
+                            }
                         }
                     }
-                    if (viewModel.liveText.isNotBlank()) {
-                        item(key = "live_text") { AgentCard(viewModel.liveText, emptyList()) }
+                }
+
+                // MA33 : bouton flottant en verre quand l'utilisateur n'est pas en bas
+                if (!userAtBottom) {
+                    Row(
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 12.dp)
+                            .glassSurface(LocalHazeState.current, LocalGlass.current, c.isDark, RoundedCornerShape(50.dp), LocalContext.current)
+                            .background(c.surface2.copy(alpha = if (LocalGlass.current.enabled) 0.12f else 1f), RoundedCornerShape(50.dp))
+                            .clickable {
+                                scope.launch {
+                                    if (displayLive.isNotBlank()) listState.scrollToItem(chatRows.size)
+                                    else listState.animateScrollToItem(chatRows.size - 1)
+                                }
+                            }
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.ArrowDownward, null, tint = c.text2, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Nouveau message", style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.Medium, fontSize = 12.5.sp), color = c.text)
                     }
                 }
             }
@@ -223,11 +402,21 @@ fun ChatScreen(
                     .padding(horizontal = 16.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.Center
             ) {
-                TypingPill(viewModel.statusMessage.ifBlank { "L'agent travaille" })
+                TypingPill(
+                    viewModel.statusMessage.ifBlank { "L'agent travaille" },
+                    onStop = { viewModel.stopAgent() }
+                )
             }
         }
         if (!viewModel.isLoading && (viewModel.summaryFiles.isNotEmpty() || viewModel.summaryCommands.isNotEmpty())) {
-            TaskSummary(viewModel.summaryFiles.toList(), viewModel.summaryCommands.toList())
+            TaskSummary(
+                files = viewModel.summaryFiles.toList(),
+                commands = viewModel.summaryCommands.toList(),
+                stats = viewModel.fileDiffCounts.toMap(),
+                hasUndo = viewModel.agentUndo.isNotEmpty(),
+                onViewDiff = { viewModel.openGitChanges() },
+                onUndo = { viewModel.undoAgentChanges() }
+            )
         }
         if (!viewModel.isLoading && viewModel.agentUndo.isNotEmpty()) {
             Row(
@@ -269,16 +458,59 @@ fun ChatScreen(
                 onStop = { viewModel.stopDevServerByUser() }
             )
         }
+        if (editingIndex >= 0) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Modification d'un message — l'envoi remplacera la suite",
+                    style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp),
+                    color = c.amber,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    "Annuler",
+                    color = c.cyan,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier
+                        .clip(MaterialTheme.shapes.extraSmall)
+                        .clickable { editingIndex = -1; input = "" }
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+        }
         InputBar(
             value = input,
             onValueChange = { input = it },
             onSend = {
                 val t = input
                 input = ""
-                viewModel.sendMessage(t)
+                if (editingIndex >= 0) {
+                    val idx = editingIndex
+                    editingIndex = -1
+                    viewModel.editAndResend(idx, t)
+                } else {
+                    viewModel.sendMessage(t)
+                }
             },
             onOpenExplorer = { viewModel.navigateTo(com.zagent.app.ui.viewmodel.AppScreen.FILE_BROWSER) },
             enabled = !viewModel.isLoading
+        )
+    }
+
+    // MA32 : appliquer un bloc de code à un fichier (passe par la porte de confirmation)
+    applyCode?.let { code ->
+        ApplyCodeDialog(
+            code = code,
+            onApply = { path ->
+                viewModel.requestCodeApply(path, code)
+                applyCode = null
+            },
+            onDismiss = { applyCode = null }
         )
     }
 
@@ -341,7 +573,8 @@ fun ChatScreen(
 private fun AmbientTopBar(
     viewModel: MainViewModel,
     scrolled: Boolean,
-    onNewConversation: () -> Unit
+    onNewConversation: () -> Unit,
+    onOpenSettings: () -> Unit
 ) {
     val c = Zcolors
     Column(
@@ -395,170 +628,93 @@ private fun AmbientTopBar(
                 UsageLine(viewModel.totalTokens, viewModel.tokensEstimated, viewModel.estimatedCost)
             }
             Spacer(Modifier.width(10.dp))
-            CircleIconButton(
-                Icons.Default.Refresh,
-                "Réinitialiser les discussions",
-                onClick = onNewConversation
-            )
+            // Groupe de 3 actions (40 dp) dans une pilule de verre.
+            Row(
+                Modifier
+                    .glassSurface(LocalHazeState.current, LocalGlass.current, c.isDark, RoundedCornerShape(50.dp), LocalContext.current)
+                    .background(c.surface2.copy(alpha = if (LocalGlass.current.enabled) 0.12f else 1f), RoundedCornerShape(50.dp))
+                    .padding(horizontal = 5.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TopBarPillIcon(Icons.Default.Refresh, "Réinitialiser les discussions", onClick = onNewConversation)
+                TopBarPillIcon(Icons.Default.FolderOpen, "Explorateur de fichiers", onClick = { viewModel.navigateTo(com.zagent.app.ui.viewmodel.AppScreen.FILE_BROWSER) })
+                TopBarPillIcon(Icons.Default.Settings, "Réglages", onClick = onOpenSettings)
+            }
         }
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Bannières d'état
-// ─────────────────────────────────────────────────────────────────────────────
-
+/** Icône ronde de 40 dp du groupe d'actions de la barre du haut. */
 @Composable
-private fun StatusBanners(viewModel: MainViewModel, onOpenSettings: () -> Unit) {
-    val c = Zcolors
-    val ctx = LocalContext.current
-
-    when {
-        viewModel.isKeyInvalid -> StateBanner(
-            icon = Icons.Default.Key,
-            tint = c.red,
-            title = "Clé API invalide",
-            body = "La clé configurée a été refusée par l'API Z.ai (erreur 401). Vérifie-la dans les réglages.",
-            primary = "Ouvrir les réglages" to { onOpenSettings() },
-            secondary = "console.z.ai" to {
-                try {
-                    ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://console.z.ai")))
-                } catch (_: Exception) { }
-            }
-        )
-        viewModel.isNetworkError -> OfflineBanner(viewModel)
-        viewModel.showFallbackModelButton -> StateBanner(
-            icon = Icons.Default.Bolt,
-            tint = c.amber,
-            title = "Modèle surchargé",
-            body = "${viewModel.effectiveModel} est momentanément saturé. Bascule sur l'autre modèle ou réessaie dans un instant.",
-            primary = "Essayer l'autre modèle" to { viewModel.switchToOtherModel() },
-            secondary = "Réessayer" to { viewModel.retryLast() }
-        )
-        viewModel.stepLimitReached && !viewModel.isLoading -> StateBanner(
-            icon = Icons.Default.Bolt,
-            tint = c.amber,
-            title = "Limite d'étapes atteinte",
-            body = "L'agent s'est arrêté après " + viewModel.maxStepsInput + " étapes. Continue pour lui laisser un nouveau budget d'étapes, ou change la limite dans les réglages.",
-            primary = "Continuer" to { viewModel.continueAgent() }
-        )
-        !viewModel.isLoading && viewModel.statusMessage.isNotEmpty() -> StateBanner(
-            icon = Icons.Default.ErrorOutline,
-            tint = c.red,
-            title = "Une erreur est survenue",
-            body = viewModel.statusMessage,
-            primary = "Réessayer" to { viewModel.retryLast() }
-        )
-    }
-}
-
-@Composable
-private fun OfflineBanner(viewModel: MainViewModel) {
-    val c = Zcolors
-    var countdown by remember { mutableStateOf(30) }
-
-    LaunchedEffect(Unit) {
-        while (viewModel.autoRetryCount < 3) {
-            while (countdown > 0) {
-                kotlinx.coroutines.delay(1000)
-                countdown--
-            }
-            viewModel.retryLast(auto = true)
-            countdown = 30
-        }
-    }
-
-    StateBanner(
-        icon = Icons.Default.WifiOff,
-        tint = c.amber,
-        title = "Pas de connexion",
-        body = "ZAgent ne parvient pas à joindre l'API Z.ai. Tes fichiers locaux restent accessibles hors ligne.",
-        primary = "Réessayer" to {
-            countdown = 30
-            viewModel.retryLast()
-        },
-        footer = if (viewModel.autoRetryCount < 3 && countdown > 0) {
-            "Nouvelle tentative automatique dans $countdown s"
-        } else null
-    )
-}
-
-@Composable
-private fun StateBanner(
-    icon: ImageVector,
-    tint: Color,
-    title: String,
-    body: String,
-    modifier: Modifier = Modifier,
-    primary: Pair<String, () -> Unit>? = null,
-    secondary: Pair<String, () -> Unit>? = null,
-    footer: String? = null
-) {
-    val c = Zcolors
-    val bg = when (tint) {
-        c.red -> c.redBg
-        c.amber -> c.amberBg
-        c.green -> c.greenBg
-        c.cyan -> c.cyanBg
-        else -> c.violetBg
-    }
-    GlassCard(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        backgroundColor = bg,
-        borderColor = tint.copy(alpha = 0.30f),
-        shape = MaterialTheme.shapes.large,
-        contentPadding = PaddingValues(14.dp)
+private fun TopBarPillIcon(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
     ) {
-        Row(verticalAlignment = Alignment.Top) {
-            IconBadge(icon, tint)
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
+        Icon(icon, contentDescription = label, tint = Zcolors.text, modifier = Modifier.size(20.dp))
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Toast discret en pilule de verre (MA43)
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun GlassToastPill(viewModel: MainViewModel, onOpenSettings: () -> Unit) {
+    val c = Zcolors
+    val blocking = viewModel.hasBlockingError || viewModel.stepLimitReached
+    var visible by remember { mutableStateOf(true) }
+    LaunchedEffect(viewModel.statusMessage, blocking) {
+        visible = true
+        if (!blocking && viewModel.statusMessage.isNotBlank()) {
+            delay(4000)
+            visible = false
+        }
+    }
+    val data: ToastData? = when {
+        viewModel.isKeyInvalid -> ToastData(Icons.Default.Key, c.red, "Clé API manquante", "Réglages" to onOpenSettings)
+        viewModel.isNetworkError -> ToastData(Icons.Default.WifiOff, c.amber, "Hors ligne", "Réessayer" to { viewModel.retryLast() })
+        viewModel.showFallbackModelButton || viewModel.isCode1305Error ->
+            ToastData(Icons.Default.Bolt, c.amber, "Modèle surchargé", "Autre modèle" to { viewModel.switchToOtherModel() })
+        viewModel.stepLimitReached -> ToastData(Icons.Default.Bolt, c.amber, "Limite d'étapes atteinte", "Continuer" to { viewModel.continueAgent() })
+        !viewModel.isLoading && viewModel.statusMessage.isNotBlank() ->
+            ToastData(Icons.Default.ErrorOutline, c.amber, viewModel.statusMessage.take(60), "Réessayer" to { viewModel.retryLast() })
+        else -> null
+    }
+    AnimatedVisibility(visible = visible && data != null) {
+        data?.let { t ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    .glassSurface(LocalHazeState.current, LocalGlass.current, c.isDark, RoundedCornerShape(50.dp), LocalContext.current)
+                    .background(c.surface2.copy(alpha = if (LocalGlass.current.enabled) 0.12f else 1f), RoundedCornerShape(50.dp))
+                    .padding(horizontal = 12.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(t.icon, null, tint = t.tint, modifier = Modifier.size(15.dp))
+                Spacer(Modifier.width(8.dp))
                 Text(
-                    title,
-                    style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 14.5.sp),
-                    color = c.text
+                    t.text,
+                    style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.Medium, fontSize = 12.5.sp),
+                    color = c.text,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
                 )
-                Spacer(Modifier.height(3.dp))
-                Text(
-                    body,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = c.text2
-                )
-                if (primary != null || secondary != null) {
-                    Spacer(Modifier.height(10.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        if (primary != null) {
-                            GradientButton(
-                                primary.first,
-                                onClick = primary.second,
-                                modifier = Modifier.weight(1f, fill = false),
-                                height = 38.dp
-                            )
-                        }
-                        if (secondary != null) {
-                            Box(
-                                Modifier
-                                    .clip(RoundedCornerShape(50))
-                                    .clickable(onClick = secondary.second)
-                                    .padding(horizontal = 12.dp, vertical = 9.dp)
-                            ) {
-                                Text(
-                                    secondary.first,
-                                    style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
-                                    color = c.text2
-                                )
-                            }
-                        }
-                    }
-                }
-                if (footer != null) {
-                    Spacer(Modifier.height(8.dp))
+                t.action?.let { (label, onClick) ->
                     Text(
-                        footer,
-                        style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp),
-                        color = c.text3
+                        label,
+                        style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
+                        color = c.cyan,
+                        modifier = Modifier
+                            .clip(MaterialTheme.shapes.extraSmall)
+                            .clickable(onClick = onClick)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
             }
@@ -566,15 +722,101 @@ private fun StateBanner(
     }
 }
 
+/** Notification courte affichée dans la pilule de verre (MA43). */
+private data class ToastData(val icon: ImageVector, val tint: Color, val text: String, val action: Pair<String, () -> Unit>?)
+
+/** Relances automatiques en cas de perte de réseau (logique conservée de l'ancienne bannière). */
+@Composable
+private fun AutoRetryEffect(viewModel: MainViewModel) {
+    var countdown by remember { mutableStateOf(30) }
+    LaunchedEffect(Unit) {
+        while (viewModel.autoRetryCount < 3) {
+            while (countdown > 0) {
+                delay(1000)
+                countdown--
+            }
+            viewModel.retryLast(auto = true)
+            countdown = 30
+        }
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-// États vides
+// Erreur humaine dans le fil, avec actions (MA47)
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun InlineErrorCard(viewModel: MainViewModel, onOpenSettings: () -> Unit) {
+    val c = Zcolors
+    val title = when {
+        viewModel.isKeyInvalid -> "La clé API a été refusée"
+        viewModel.isNetworkError -> "Connexion indisponible"
+        viewModel.showFallbackModelButton || viewModel.isCode1305Error -> "Le modèle est surchargé"
+        viewModel.stepLimitReached -> "Limite d'étapes atteinte"
+        else -> "Une erreur est survenue"
+    }
+    GlassCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        backgroundColor = c.redBg,
+        borderColor = c.red.copy(alpha = 0.30f),
+        shape = MaterialTheme.shapes.large,
+        contentPadding = PaddingValues(14.dp)
+    ) {
+        Row(verticalAlignment = Alignment.Top) {
+            IconBadge(Icons.Default.ErrorOutline, c.red)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    title,
+                    style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 14.5.sp),
+                    color = c.text
+                )
+                if (viewModel.statusMessage.isNotBlank()) {
+                    Spacer(Modifier.height(3.dp))
+                    Text(
+                        viewModel.statusMessage,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = c.text2
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    GradientButton(
+                        "Réessayer",
+                        onClick = { viewModel.retryLast() },
+                        modifier = Modifier.weight(1f, fill = false),
+                        height = 38.dp
+                    )
+                    Box(
+                        Modifier
+                            .clip(RoundedCornerShape(50))
+                            .clickable(onClick = onOpenSettings)
+                            .padding(horizontal = 12.dp, vertical = 9.dp)
+                    ) {
+                        Text(
+                            "Ouvrir les Réglages",
+                            style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
+                            color = c.text2
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Écran d'accueil du chat minimaliste (MA30)
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun ChatEmptyState(
     viewModel: MainViewModel,
     onOpenSettings: () -> Unit,
-    onPickFolder: () -> Unit
+    onPickFolder: () -> Unit,
+    onSuggestion: (String) -> Unit
 ) {
     val c = Zcolors
     val noFolder = viewModel.workingFolderUriString.isNullOrEmpty()
@@ -599,14 +841,59 @@ private fun ChatEmptyState(
             primaryText = "Ouvrir les réglages",
             onPrimary = onOpenSettings
         )
-        else -> EmptyState(
-            icon = Icons.Default.Terminal,
-            tint = c.cyan,
-            title = "Prêt à coder",
-            body = "Décris une tâche : l'agent explore ton dossier, lit les fichiers et te propose les modifications avant d'écrire.",
-            secondaryText = "Changer de projet",
-            onSecondary = onPickFolder
-        )
+        else -> {
+            val hour = remember { Calendar.getInstance().get(Calendar.HOUR_OF_DAY) }
+            val greeting = when {
+                hour < 12 -> "Bonjour"
+                hour < 18 -> "Bon après-midi"
+                else -> "Bonsoir"
+            }
+            val suggestions = listOf("Corriger un bug", "Créer un écran", "Expliquer ce fichier", "Écrire des tests")
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Spacer(Modifier.height(56.dp))
+                Text(
+                    "$greeting, Ki",
+                    style = TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Serif, fontSize = 30.sp, fontWeight = FontWeight.Medium),
+                    color = c.text
+                )
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "Sur quoi travaillons-nous ?",
+                    style = TextStyle(fontFamily = Inter, fontSize = 15.sp),
+                    color = c.text3
+                )
+                Spacer(Modifier.height(32.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        SuggestionChipView(suggestions[0], onSuggestion)
+                        SuggestionChipView(suggestions[1], onSuggestion)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        SuggestionChipView(suggestions[2], onSuggestion)
+                        SuggestionChipView(suggestions[3], onSuggestion)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SuggestionChipView(label: String, onSuggestion: (String) -> Unit) {
+    val c = Zcolors
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(50))
+            .background(c.surface2)
+            .clickable { onSuggestion(label) }
+            .padding(horizontal = 14.dp, vertical = 9.dp)
+    ) {
+        Text(label, style = TextStyle(fontFamily = Inter, fontSize = 13.sp), color = c.text2)
     }
 }
 
@@ -617,18 +904,20 @@ private fun ChatEmptyState(
 private sealed interface ChatRow {
     val key: String
 
-    data class Date(val label: String) : ChatRow {
-        override val key: String get() = "date"
+    data class Date(val id: Int, val label: String) : ChatRow {
+        override val key: String get() = "date_$id"
     }
 
-    data class User(val id: Int, val text: String) : ChatRow {
+    data class User(val id: Int, val text: String, val messageIndex: Int) : ChatRow {
         override val key: String get() = "u_$id"
     }
 
     data class Agent(
         val id: Int,
         val content: String?,
-        val tools: List<Pair<AiRepository.ToolCallData, String?>>
+        val tools: List<Pair<AiRepository.ToolCallData, String?>>,
+        val messageIndex: Int,
+        val reasoning: String?
     ) : ChatRow {
         override val key: String get() = "a_$id"
     }
@@ -647,22 +936,38 @@ private sealed interface ChatRow {
     }
 }
 
+private fun dayLabelOf(time: Long, dayFmt: SimpleDateFormat): String {
+    val d = Calendar.getInstance().apply { timeInMillis = time }
+    val today = Calendar.getInstance()
+    val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
+    return when {
+        d.get(Calendar.YEAR) == today.get(Calendar.YEAR) && d.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR) -> "Aujourd'hui"
+        d.get(Calendar.YEAR) == yesterday.get(Calendar.YEAR) && d.get(Calendar.DAY_OF_YEAR) == yesterday.get(Calendar.DAY_OF_YEAR) -> "Hier"
+        else -> dayFmt.format(Date(time))
+    }
+}
+
 private fun buildChatRows(messages: List<com.zagent.app.ui.viewmodel.ChatMessage>): List<ChatRow> {
     val rows = mutableListOf<ChatRow>()
     var currentTools: MutableList<Pair<AiRepository.ToolCallData, String?>>? = null
     var nextId = 0
     val askRowIndex = HashMap<String, Int>()
-
     val timeFmt = SimpleDateFormat("HH:mm", Locale.getDefault())
+    val dayFmt = SimpleDateFormat("d MMMM", Locale.getDefault())
+    var lastDay = ""
 
-    for (m in messages) {
+    fun ensureDate(time: Long, last: String): String {
+        val label = dayLabelOf(time, dayFmt)
+        if (label != last) rows.add(ChatRow.Date(nextId++, label))
+        return label
+    }
+
+    messages.forEachIndexed { msgIndex, m ->
         when (m.role) {
             "user" -> {
                 currentTools = null
-                if (rows.none { it is ChatRow.Date }) {
-                    rows.add(ChatRow.Date("Aujourd'hui · ${timeFmt.format(Date(m.time))}"))
-                }
-                rows.add(ChatRow.User(nextId++, m.content ?: ""))
+                lastDay = ensureDate(m.time, lastDay)
+                rows.add(ChatRow.User(nextId++, m.content ?: "", msgIndex))
             }
             "assistant" -> {
                 val list = mutableListOf<Pair<AiRepository.ToolCallData, String?>>()
@@ -670,7 +975,8 @@ private fun buildChatRows(messages: List<com.zagent.app.ui.viewmodel.ChatMessage
                 val calls = m.toolCalls.orEmpty()
                 val visibleTools = calls.filter { it.name != "ask_user" && it.name != "update_todos" }
                 if (!m.content.isNullOrBlank() || visibleTools.isNotEmpty() || calls.isEmpty()) {
-                    rows.add(ChatRow.Agent(nextId++, m.content, list))
+                    lastDay = ensureDate(m.time, lastDay)
+                    rows.add(ChatRow.Agent(nextId++, m.content, list, msgIndex, m.reasoning))
                 }
                 visibleTools.forEach { tc -> list.add(tc to null) }
                 calls.filter { it.name == "ask_user" }.forEach { tc ->
@@ -704,11 +1010,12 @@ private fun buildChatRows(messages: List<com.zagent.app.ui.viewmodel.ChatMessage
     return rows
 }
 
+/** En-tête de date collant, petite pastille de verre (MA39). */
 @Composable
-private fun DatePill(label: String) {
+private fun DatePill(label: String, modifier: Modifier = Modifier) {
     val c = Zcolors
     Box(
-        Modifier
+        modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp),
         contentAlignment = Alignment.Center
@@ -718,40 +1025,75 @@ private fun DatePill(label: String) {
             style = TextStyle(fontFamily = Inter, fontSize = 12.sp, fontWeight = FontWeight.Medium),
             color = c.text2,
             modifier = Modifier
-                .clip(RoundedCornerShape(50))
-                .background(c.surface2)
-                .border(1.dp, c.border, RoundedCornerShape(50))
+                .glassSurface(LocalHazeState.current, LocalGlass.current, c.isDark, RoundedCornerShape(50.dp), LocalContext.current)
+                .background(c.surface2.copy(alpha = if (LocalGlass.current.enabled) 0.12f else 1f), RoundedCornerShape(50.dp))
                 .padding(horizontal = 14.dp, vertical = 6.dp)
         )
     }
 }
 
+/** Bulle utilisateur discrète : fond surface, rayon 20 dp, 85 % de largeur max (MA29/MA36/MA37). */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun UserBubble(text: String) {
+private fun UserBubble(
+    text: String,
+    messageIndex: Int,
+    onEdit: (Int, String) -> Unit,
+    onQuote: (String) -> Unit,
+    onDelete: (Int) -> Unit
+) {
     val c = Zcolors
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .padding(start = 56.dp),
-        contentAlignment = Alignment.CenterEnd
-    ) {
+    val clipboard = LocalClipboardManager.current
+    var menuOpen by remember { mutableStateOf(false) }
+    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
         Box(
-            modifier = Modifier
-                .widthIn(max = 300.dp)
-                .clip(RoundedCornerShape(22.dp, 22.dp, 6.dp, 22.dp))
-                .background(c.gradBtn)
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+            Modifier
+                .fillMaxWidth(0.85f)
+                .clip(RoundedCornerShape(20.dp))
+                .background(c.surface2)
+                .combinedClickable(onClick = {}, onLongClick = { menuOpen = true })
+                .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
-            Text(
-                buildInlineMarkdown(
-                    text,
-                    baseColor = c.onGrad,
-                    codeColor = c.onGrad,
-                    codeBg = Color(0x30FFFFFF)
-                ),
-                style = TextStyle(fontFamily = Inter, fontSize = 15.sp, lineHeight = 22.sp),
-                color = c.onGrad
-            )
+            Column {
+                Text(
+                    buildInlineMarkdown(text, baseColor = c.text, codeColor = c.cyan, codeBg = c.cyanBg),
+                    style = TextStyle(fontFamily = Inter, fontSize = 15.sp, lineHeight = 22.sp),
+                    color = c.text
+                )
+                Spacer(Modifier.height(6.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Spacer(Modifier.weight(1f))
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = "Modifier le message",
+                        tint = c.text3,
+                        modifier = Modifier
+                            .size(13.dp)
+                            .clickable { onEdit(messageIndex, text) }
+                    )
+                }
+            }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(
+                    text = { Text("Copier le texte", color = c.text) },
+                    onClick = { menuOpen = false; clipboard.setText(AnnotatedString(text)) }
+                )
+                DropdownMenuItem(
+                    text = { Text("Sélectionner", color = c.text) },
+                    onClick = {
+                        menuOpen = false
+                        Toast.makeText(LocalContext.current, "Maintiens ton doigt sur le texte pour le sélectionner", Toast.LENGTH_SHORT).show()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Citer", color = c.text) },
+                    onClick = { menuOpen = false; onQuote(text) }
+                )
+                DropdownMenuItem(
+                    text = { Text("Supprimer", color = c.red) },
+                    onClick = { menuOpen = false; onDelete(messageIndex) }
+                )
+            }
         }
     }
 }
@@ -785,10 +1127,39 @@ private fun splitContent(content: String): List<ContentSegment> {
     return segments
 }
 
+/** Curseur pulsé en fin de génération (MA33). */
+@Composable
+private fun StreamingCursor() {
+    val c = Zcolors
+    val transition = androidx.compose.animation.core.rememberInfiniteTransition(label = "curseur")
+    val alpha by transition.animateFloat(
+        initialValue = 0.15f, targetValue = 1f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            androidx.compose.animation.core.tween(600),
+            androidx.compose.animation.core.RepeatMode.Reverse
+        ),
+        label = "pulse"
+    )
+    Text("●", color = c.cyan.copy(alpha = alpha), fontSize = 15.sp, modifier = Modifier.padding(start = 2.dp))
+}
+
+/** Réponse de l'agent : texte pleine largeur sur le fond, sans bulle (MA29). */
 @Composable
 private fun AgentCard(
     content: String?,
     tools: List<Pair<AiRepository.ToolCallData, String?>>,
+    modifier: Modifier = Modifier,
+    showLogo: Boolean = false,
+    isStreaming: Boolean = false,
+    reasoning: String? = null,
+    thinkingSeconds: Int = 0,
+    isLast: Boolean = false,
+    messageIndex: Int = -1,
+    onFileTap: (String, Int?) -> Unit = { _, _ -> },
+    onApplyCode: ((String) -> Unit)? = null,
+    onRegenerate: () -> Unit = {},
+    onQuote: (String) -> Unit = {},
+    onDeleteMessage: () -> Unit = {},
     fixId: String? = null,
     onFix: (String, String) -> Unit = { _, _ -> },
     liveId: String? = null,
@@ -797,53 +1168,167 @@ private fun AgentCard(
     onStop: () -> Unit = {}
 ) {
     val c = Zcolors
-    GlassCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(end = 40.dp),
-        shape = RoundedCornerShape(22.dp, 22.dp, 22.dp, 6.dp),
-        contentPadding = PaddingValues(14.dp)
-    ) {
+    var actionsRevealed by remember(messageIndex) { mutableStateOf(false) }
+    var toolsOpen by remember(messageIndex) { mutableStateOf(tools.size < 4) }
+    val grouped = tools.size >= 4
+
+    Column(modifier = modifier.fillMaxWidth().widthIn(max = 680.dp)) {
+        // Petit logo au-dessus du premier message d'une série (MA29)
+        if (showLogo) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 6.dp)) {
+                ZLogo(modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "ZAgent",
+                    style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.Medium, fontSize = 11.sp),
+                    color = c.text3
+                )
+            }
+        }
+
+        // MA35 : bloc « Réflexion »
+        ThinkingBlock(
+            reasoning = reasoning ?: "",
+            running = isStreaming && !reasoning.isNullOrBlank(),
+            seconds = thinkingSeconds
+        )
+
         if (!content.isNullOrBlank()) {
             splitContent(content).forEachIndexed { i, seg ->
                 if (seg.isCode) {
-                    CodeBlockFor(seg)
+                    CodeBlockFor(seg, onApply = onApplyCode)
                 } else if (seg.text.isNotBlank()) {
-                    Text(
-                        buildInlineMarkdown(
-                            seg.text.trim(),
-                            baseColor = c.text,
-                            codeColor = c.cyan,
-                            codeBg = c.cyanBg
-                        ),
-                        style = TextStyle(fontFamily = Inter, fontSize = 15.sp, lineHeight = 23.sp),
-                        color = c.text
+                    MarkdownText(
+                        seg.text.trim(),
+                        fontSize = 16.sp,
+                        lineHeight = 26.sp,
+                        onFileTap = onFileTap
                     )
                 }
-                if (i < (tools.size + 1)) Spacer(Modifier.height(8.dp))
+                if (i < (tools.size + 1)) Spacer(Modifier.height(10.dp))
+            }
+            if (isStreaming) StreamingCursor()
+        }
+
+        // MA34 : outils compacts, regroupés au-delà de 4 appels
+        if (grouped && !toolsOpen) {
+            ToolGroupSummary(tools.size, expanded = false, onToggle = { toolsOpen = true })
+        } else {
+            tools.forEachIndexed { tIdx, (tc, result) ->
+                if (tc.name == "run_command") {
+                    CommandBlock(
+                        tc, result,
+                        canFix = tc.id == fixId,
+                        onFix = onFix,
+                        isLive = result == null && tc.id == liveId,
+                        liveOutput = liveOutput,
+                        liveStartedAt = liveStartedAt,
+                        onStop = onStop
+                    )
+                } else {
+                    ToolChip(
+                        name = tc.name,
+                        arg = toolArgShort(tc.arguments),
+                        state = toolStateOf(result),
+                        resultText = result,
+                        expandKey = tc.id
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                if (grouped && tIdx == tools.lastIndex) {
+                    ToolGroupSummary(tools.size, expanded = true, onToggle = { toolsOpen = false })
+                }
             }
         }
-        tools.forEach { (tc, result) ->
-            if (tc.name == "run_command") {
-                CommandBlock(
-                    tc, result,
-                    canFix = tc.id == fixId,
-                    onFix = onFix,
-                    isLive = result == null && tc.id == liveId,
-                    liveOutput = liveOutput,
-                    liveStartedAt = liveStartedAt,
-                    onStop = onStop
-                )
-            } else {
-                ToolChip(
-                    name = tc.name,
-                    arg = toolArgShort(tc.arguments),
-                    state = toolStateOf(result),
-                    resultText = result,
-                    expandKey = tc.id
-                )
+
+        // MA36 : barre d'actions sous la réponse
+        if (!isStreaming && !content.isNullOrBlank()) {
+            MessageActionsBar(
+                messageKey = "msg_$messageIndex",
+                messageText = content,
+                full = isLast || actionsRevealed,
+                canRegenerate = isLast,
+                onToggle = { actionsRevealed = true },
+                onRegenerate = onRegenerate,
+                onQuote = onQuote,
+                onDelete = onDeleteMessage
+            )
+        }
+    }
+}
+
+/** Icône d'action discrète (MA36). */
+@Composable
+private fun ActionIcon(icon: ImageVector, label: String, tint: Color = Zcolors.text3, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(28.dp)
+            .clip(CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(15.dp))
+    }
+}
+
+/** Copier · Régénérer · 👍 · 👎 · Partager + menu contextuel (MA36). */
+@Composable
+private fun MessageActionsBar(
+    messageKey: String,
+    messageText: String,
+    full: Boolean,
+    canRegenerate: Boolean,
+    onToggle: () -> Unit,
+    onRegenerate: () -> Unit,
+    onQuote: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val c = Zcolors
+    val clipboard = LocalClipboardManager.current
+    val ctx = LocalContext.current
+    var feedback by rememberSaveable(messageKey) { mutableStateOf(0) }
+    var menuOpen by remember { mutableStateOf(false) }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        if (!full) {
+            ActionIcon(Icons.Default.MoreHoriz, "Actions") { onToggle() }
+        } else {
+            ActionIcon(Icons.Default.ContentCopy, "Copier") { clipboard.setText(AnnotatedString(messageText)) }
+            if (canRegenerate) ActionIcon(Icons.Default.Refresh, "Régénérer") { onRegenerate() }
+            ActionIcon(
+                Icons.Default.ThumbUp, "Utile",
+                tint = if (feedback == 1) c.green else c.text3
+            ) { feedback = if (feedback == 1) 0 else 1 }
+            ActionIcon(
+                Icons.Default.ThumbDown, "Pas utile",
+                tint = if (feedback == -1) c.red else c.text3
+            ) { feedback = if (feedback == -1) 0 else -1 }
+            ActionIcon(Icons.Default.Share, "Partager") {
+                val send = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, messageText)
+                }
+                runCatching { ctx.startActivity(Intent.createChooser(send, "Partager le message")) }
             }
-            Spacer(Modifier.height(8.dp))
+            ActionIcon(Icons.Default.MoreHoriz, "Plus") { menuOpen = !menuOpen }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(text = { Text("Citer", color = c.text) }, onClick = { menuOpen = false; onQuote() })
+                DropdownMenuItem(
+                    text = { Text("Sélectionner", color = c.text) },
+                    onClick = {
+                        menuOpen = false
+                        Toast.makeText(ctx, "Maintiens ton doigt sur le texte pour le sélectionner", Toast.LENGTH_SHORT).show()
+                    }
+                )
+                DropdownMenuItem(text = { Text("Supprimer", color = c.red) }, onClick = { menuOpen = false; onDelete() })
+            }
+        }
+        if (feedback != 0) {
+            Spacer(Modifier.width(6.dp))
+            Text(
+                if (feedback == 1) "Merci pour ton retour" else "Noté",
+                style = TextStyle(fontFamily = Inter, fontSize = 11.sp),
+                color = c.text3
+            )
         }
     }
 }
@@ -1014,13 +1499,17 @@ private fun CommandBlock(
     }
 }
 
-/** Liste de tâches de l'agent, cochée au fur et à mesure. */
+/** Liste de tâches : anneau de progression repliable (MA40). */
 @Composable
-private fun TodoPanel(todos: List<TodoItem>) {
+private fun TodoPanel(todos: List<TodoItem>, isLoading: Boolean) {
     if (todos.isEmpty()) return
     val c = Zcolors
-    var open by rememberSaveable { mutableStateOf(true) }
+    var open by rememberSaveable { mutableStateOf(false) }
     val done = todos.count { it.done }
+    val progress = done / todos.size.toFloat()
+    val animatedProgress by animateFloatAsState(progress, label = "todos")
+    val currentIdx = todos.indexOfFirst { !it.done }
+
     Column(
         Modifier
             .fillMaxWidth()
@@ -1036,6 +1525,8 @@ private fun TodoPanel(todos: List<TodoItem>) {
                 .padding(horizontal = 12.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            TodoRing(animatedProgress)
+            Spacer(Modifier.width(10.dp))
             Text(
                 "Tâches  $done/${todos.size}",
                 style = TextStyle(fontFamily = Inter, fontSize = 13.sp, fontWeight = FontWeight.SemiBold),
@@ -1049,7 +1540,7 @@ private fun TodoPanel(todos: List<TodoItem>) {
                 modifier = Modifier.size(18.dp)
             )
         }
-        if (open) {
+        AnimatedVisibility(visible = open) {
             Column(
                 Modifier
                     .heightIn(max = 180.dp)
@@ -1057,17 +1548,21 @@ private fun TodoPanel(todos: List<TodoItem>) {
                     .padding(start = 12.dp, end = 12.dp, bottom = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                todos.forEach { t ->
+                todos.forEachIndexed { idx, t ->
+                    val checkProgress by animateFloatAsState(if (t.done) 1f else 0f, label = "check")
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             Modifier
                                 .size(16.dp)
+                                .scale(0.7f + 0.3f * checkProgress)
                                 .clip(RoundedCornerShape(5.dp))
-                                .background(if (t.done) c.green else Color.Transparent)
-                                .border(1.5.dp, if (t.done) c.green else c.border, RoundedCornerShape(5.dp)),
+                                .background(c.green.copy(alpha = checkProgress))
+                                .border(1.5.dp, if (checkProgress > 0.5f) c.green else c.border, RoundedCornerShape(5.dp)),
                             contentAlignment = Alignment.Center
                         ) {
-                            if (t.done) Icon(Icons.Default.Check, null, tint = c.bg, modifier = Modifier.size(12.dp))
+                            if (checkProgress > 0.5f) {
+                                Icon(Icons.Default.Check, null, tint = c.bg, modifier = Modifier.size(12.dp).alpha(checkProgress))
+                            }
                         }
                         Spacer(Modifier.width(10.dp))
                         Text(
@@ -1078,8 +1573,25 @@ private fun TodoPanel(todos: List<TodoItem>) {
                                 lineHeight = 18.sp,
                                 textDecoration = if (t.done) TextDecoration.LineThrough else TextDecoration.None
                             ),
-                            color = if (t.done) c.text3 else c.text
+                            color = if (t.done) c.text3 else c.text,
+                            modifier = Modifier.weight(1f)
                         )
+                        if (isLoading && idx == currentIdx) {
+                            val transition = androidx.compose.animation.core.rememberInfiniteTransition(label = "encours")
+                            val pulse by transition.animateFloat(
+                                initialValue = 0.25f, targetValue = 1f,
+                                animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+                                    androidx.compose.animation.core.tween(700),
+                                    androidx.compose.animation.core.RepeatMode.Reverse
+                                ),
+                                label = "point"
+                            )
+                            Box(
+                                Modifier
+                                    .size(6.dp)
+                                    .background(c.cyan.copy(alpha = pulse), CircleShape)
+                            )
+                        }
                     }
                 }
             }
@@ -1087,11 +1599,40 @@ private fun TodoPanel(todos: List<TodoItem>) {
     }
 }
 
-/** Résumé de fin de tâche : fichiers touchés et commandes lancées. */
+/** Anneau de progression animé (MA40). */
 @Composable
-private fun TaskSummary(files: List<String>, commands: List<String>) {
+private fun TodoRing(progress: Float, ringSize: Dp = 24.dp) {
+    val c = Zcolors
+    Canvas(Modifier.size(ringSize)) {
+        val stroke = 3.dp.toPx()
+        val arcSize = Size(size.width - stroke, size.height - stroke)
+        drawArc(
+            color = c.border2, startAngle = -90f, sweepAngle = 360f, useCenter = false,
+            style = Stroke(stroke, cap = StrokeCap.Round),
+            topLeft = Offset(stroke / 2, stroke / 2), size = arcSize
+        )
+        drawArc(
+            color = c.cyan, startAngle = -90f, sweepAngle = 360f * progress.coerceIn(0f, 1f), useCenter = false,
+            style = Stroke(stroke, cap = StrokeCap.Round),
+            topLeft = Offset(stroke / 2, stroke / 2), size = arcSize
+        )
+    }
+}
+
+/** Récapitulatif de fin de tâche avec compteurs de diff (MA41). */
+@Composable
+private fun TaskSummary(
+    files: List<String>,
+    commands: List<String>,
+    stats: Map<String, Pair<Int, Int>>,
+    hasUndo: Boolean,
+    onViewDiff: () -> Unit,
+    onUndo: () -> Unit
+) {
     val c = Zcolors
     var open by rememberSaveable { mutableStateOf(false) }
+    val totalAdded = stats.values.sumOf { it.first }
+    val totalRemoved = stats.values.sumOf { it.second }
     Column(
         Modifier
             .fillMaxWidth()
@@ -1108,7 +1649,7 @@ private fun TaskSummary(files: List<String>, commands: List<String>) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "Résumé : " + files.size + " fichier(s), " + commands.size + " commande(s)",
+                "Récapitulatif · " + files.size + " fichier(s) · +" + totalAdded + " −" + totalRemoved,
                 style = TextStyle(fontFamily = Inter, fontSize = 13.sp, fontWeight = FontWeight.SemiBold),
                 color = c.text,
                 modifier = Modifier.weight(1f)
@@ -1120,20 +1661,29 @@ private fun TaskSummary(files: List<String>, commands: List<String>) {
                 modifier = Modifier.size(18.dp)
             )
         }
-        if (open) {
+        AnimatedVisibility(visible = open) {
             Column(
                 Modifier
-                    .heightIn(max = 200.dp)
+                    .heightIn(max = 220.dp)
                     .verticalScroll(rememberScrollState())
                     .padding(start = 12.dp, end = 12.dp, bottom = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                files.forEach {
-                    Text(
-                        "fichier  $it",
-                        style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp, lineHeight = 15.sp),
-                        color = c.text2
-                    )
+                files.forEach { f ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "fichier  $f",
+                            style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp, lineHeight = 15.sp),
+                            color = c.text2,
+                            maxLines = 1,
+                            overflow = TextOverflow.MiddleEllipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("+${stats[f]?.first ?: 0}", style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp), color = c.green)
+                        Spacer(Modifier.width(6.dp))
+                        Text("−${stats[f]?.second ?: 0}", style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp), color = c.red)
+                    }
                 }
                 commands.forEach {
                     Text(
@@ -1142,17 +1692,88 @@ private fun TaskSummary(files: List<String>, commands: List<String>) {
                         color = c.cyan
                     )
                 }
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Voir le diff",
+                        color = c.cyan,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier
+                            .clip(MaterialTheme.shapes.extraSmall)
+                            .background(c.cyanBg)
+                            .clickable(onClick = onViewDiff)
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                    if (hasUndo) {
+                        Text(
+                            "Annuler les modifications",
+                            color = c.amber,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier
+                                .clip(MaterialTheme.shapes.extraSmall)
+                                .background(c.amberBg)
+                                .clickable(onClick = onUndo)
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                    }
+                }
             }
         }
     }
 }
 
+/** MA32 : appliquer un bloc de code à un fichier du projet. */
 @Composable
-private fun CodeBlockFor(seg: ContentSegment) {
+private fun ApplyCodeDialog(code: String, onApply: (String) -> Unit, onDismiss: () -> Unit) {
+    val c = Zcolors
+    var path by remember { mutableStateOf("") }
+    GlassAlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Appliquer au fichier", fontFamily = SpaceGrotesk, color = c.text) },
+        text = {
+            Column(Modifier.fillMaxWidth()) {
+                Text(
+                    "Le contenu du bloc remplacera tout le fichier (le fichier est créé s'il n'existe pas). Chemin relatif au projet.",
+                    style = TextStyle(fontFamily = Inter, fontSize = 12.5.sp),
+                    color = c.text2
+                )
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = path,
+                    onValueChange = { path = it },
+                    placeholder = { Text("chemin/du/fichier.kt", fontFamily = JetBrainsMono, color = c.text3) },
+                    textStyle = TextStyle(fontFamily = JetBrainsMono, color = c.text, fontSize = 13.sp),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    code.lines().size.toString() + " lignes · " + code.length + " caractères",
+                    style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp),
+                    color = c.text3
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = path.isNotBlank(), onClick = { onApply(path.trim()) }) {
+                Text("Appliquer", color = if (path.isNotBlank()) c.cyan else c.text3)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Annuler", color = c.text2) }
+        }
+    )
+}
+
+@Composable
+private fun CodeBlockFor(seg: ContentSegment, onApply: ((String) -> Unit)? = null) {
     CodeBlock(
         path = null,
         language = seg.lang,
-        code = seg.text.trimEnd()
+        code = seg.text.trimEnd(),
+        onApply = onApply
     )
 }
 

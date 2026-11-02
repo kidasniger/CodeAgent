@@ -29,7 +29,8 @@ class AiRepository {
             val messageContent: String?,
             val toolCalls: List<ToolCallData>?,
             val promptTokens: Int? = null,
-            val completionTokens: Int? = null
+            val completionTokens: Int? = null,
+            val reasoningContent: String? = null
         ) : ApiResponse()
         data class Error(val errorMessage: String, val isCode1305: Boolean = false) : ApiResponse()
     }
@@ -48,9 +49,14 @@ class AiRepository {
     }
 
     /** Lit la réponse en flux (SSE) : le texte part à [onDelta] au fil de l'eau, les appels d'outils sont assemblés. */
-    private fun parseStream(response: Response, onDelta: (String) -> Unit): ApiResponse {
+    private fun parseStream(
+        response: Response,
+        onDelta: (String) -> Unit,
+        onReasoningDelta: (String) -> Unit
+    ): ApiResponse {
         val body = response.body ?: return ApiResponse.Success(null, null)
         val content = StringBuilder()
+        val reasoning = StringBuilder()
         val tools = sortedMapOf<Int, ToolAcc>()
         val raw = StringBuilder()
         var sawSse = false
@@ -83,6 +89,11 @@ class AiRepository {
                 content.append(piece)
                 onDelta(piece)
             }
+            val thinkPiece = (delta["reasoning_content"] as? JsonPrimitive)?.contentOrNull
+            if (!thinkPiece.isNullOrEmpty()) {
+                reasoning.append(thinkPiece)
+                onReasoningDelta(thinkPiece)
+            }
             (delta["tool_calls"] as? JsonArray)?.forEachIndexed { pos, el ->
                 val o = el as? JsonObject ?: return@forEachIndexed
                 val idx = (o["index"] as? JsonPrimitive)?.intOrNull ?: pos
@@ -93,20 +104,29 @@ class AiRepository {
                 (f?.get("arguments") as? JsonPrimitive)?.contentOrNull?.let { acc.args.append(it) }
             }
         }
-        if (!sawSse && raw.isNotBlank()) return parseFullJson(raw.toString(), onDelta)
+        if (!sawSse && raw.isNotBlank()) return parseFullJson(raw.toString(), onDelta, onReasoningDelta)
         val calls = tools.entries.mapNotNull { (idx, a) ->
             if (a.name.isEmpty()) null
             else ToolCallData(a.id.ifEmpty { "call_$idx" }, a.name, a.args.toString().ifBlank { "{}" })
         }
-        return ApiResponse.Success(content.toString().ifEmpty { null }, calls.ifEmpty { null }, usagePrompt, usageCompletion)
+        return ApiResponse.Success(
+            content.toString().ifEmpty { null }, calls.ifEmpty { null }, usagePrompt, usageCompletion,
+            reasoning.toString().ifBlank { null }
+        )
     }
 
     /** Repli : le fournisseur a ignoré le mode flux et renvoie un JSON complet. */
-    private fun parseFullJson(text: String, onDelta: (String) -> Unit): ApiResponse {
+    private fun parseFullJson(
+        text: String,
+        onDelta: (String) -> Unit,
+        onReasoningDelta: (String) -> Unit
+    ): ApiResponse {
         val root = Json.parseToJsonElement(text).jsonObject
         val message = (root["choices"] as? JsonArray)?.firstOrNull()?.jsonObject?.get("message") as? JsonObject
         val content = (message?.get("content") as? JsonPrimitive)?.contentOrNull
         if (!content.isNullOrEmpty()) onDelta(content)
+        val reasoning = (message?.get("reasoning_content") as? JsonPrimitive)?.contentOrNull
+        if (!reasoning.isNullOrEmpty()) onReasoningDelta(reasoning)
         val calls = (message?.get("tool_calls") as? JsonArray)?.mapNotNull { el ->
             val o = el.jsonObject
             val id = (o["id"] as? JsonPrimitive)?.contentOrNull ?: ""
@@ -118,7 +138,7 @@ class AiRepository {
         val usage = root["usage"] as? JsonObject
         val up = (usage?.get("prompt_tokens") as? JsonPrimitive)?.intOrNull
         val uc = (usage?.get("completion_tokens") as? JsonPrimitive)?.intOrNull
-        return ApiResponse.Success(content, calls, up, uc)
+        return ApiResponse.Success(content, calls, up, uc, reasoning)
     }
 
     suspend fun callChatCompletions(
@@ -127,7 +147,8 @@ class AiRepository {
         model: String,
         messages: JsonArray,
         onRetryUpdate: (String) -> Unit,
-        onDelta: (String) -> Unit = {}
+        onDelta: (String) -> Unit = {},
+        onReasoningDelta: (String) -> Unit = {}
     ): ApiResponse {
         val url = if (baseUrl.isBlank()) "https://api.z.ai/api/paas/v4/chat/completions" else baseUrl
 
@@ -159,12 +180,12 @@ class AiRepository {
                 try {
                     call.execute().use { response ->
                     if (response.isSuccessful) {
-                        return parseStream(response, onDelta)
+                        return parseStream(response, onDelta, onReasoningDelta)
                     } else {
                         val responseString = response.body?.string() ?: ""
                         val code = response.code
                         if (code == 401) {
-                            return ApiResponse.Error("Clé API invalide (Erreur 401). Vérifiez vos réglages.")
+                            return ApiResponse.Error("Ta clé API a été refusée (401). Vérifie-la dans les Réglages.")
                         }
 
                         val is1305 = try {
@@ -178,9 +199,9 @@ class AiRepository {
                             attempt++
                             if (attempt >= maxAttempts) {
                                 val msg = if (is1305) {
-                                    "Le modèle est surchargé (Code 1305). Voulez-vous essayer l'autre modèle ?"
+                                    "Le modèle est momentanément surchargé (1305). Essaie l'autre modèle ou réessaie dans un instant."
                                 } else {
-                                    "Serveur surchargé (HTTP $code). Échec après $maxAttempts essais."
+                                    "Le serveur est surchargé (HTTP $code). Réessaie dans un instant."
                                 }
                                 return ApiResponse.Error(msg, is1305)
                             }
@@ -188,8 +209,10 @@ class AiRepository {
                             delay(delaySeconds * 1000L)
                             delaySeconds += 5L
                             continue
+                        } else if (code == 400) {
+                            return ApiResponse.Error("La requête a été refusée (400). Le modèle ou un message est peut-être invalide : ouvre une nouvelle conversation.")
                         } else {
-                            return ApiResponse.Error("Erreur API (HTTP $code): $responseString")
+                            return ApiResponse.Error("Le serveur a répondu une erreur inattendue (HTTP $code). Réessaie dans un instant.")
                         }
                     }
                     }
@@ -199,13 +222,18 @@ class AiRepository {
             } catch (e: IOException) {
                 attempt++
                 if (attempt >= maxAttempts) {
-                    return ApiResponse.Error("Erreur réseau: ${e.localizedMessage}")
+                    val human = if (e is java.net.SocketTimeoutException) {
+                        "Délai dépassé : le serveur n'a pas répondu à temps. Vérifie ta connexion réseau puis réessaie."
+                    } else {
+                        "Impossible de joindre le serveur (erreur réseau). Vérifie ta connexion Internet puis réessaie."
+                    }
+                    return ApiResponse.Error(human)
                 }
                 onRetryUpdate("Erreur réseau, nouvel essai dans ${delaySeconds}s...")
                 delay(delaySeconds * 1000L)
                 delaySeconds += 5L
             } catch (e: Exception) {
-                return ApiResponse.Error("Erreur inattendue: ${e.localizedMessage}")
+                return ApiResponse.Error("Une erreur inattendue est survenue : " + (e.localizedMessage ?: e.javaClass.simpleName))
             }
         }
         return ApiResponse.Error("Échec de la requête après plusieurs tentatives.")

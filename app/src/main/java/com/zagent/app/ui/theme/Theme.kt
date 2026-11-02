@@ -10,12 +10,14 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import android.os.Build
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontFamily
@@ -23,9 +25,17 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.platform.LocalDensity
 
-/** Accès court aux tokens étendus : `Zcolors.text2`. */
+/**
+ * Accès court aux tokens étendus : `Zcolors.text2`.
+ * L'accent personnalisé est mémorisé séparément pour le clair et le sombre (mise à jour 7) ;
+ * le mode actif est déduit de [ZColors.isDark] de la palette en cours.
+ */
 val Zcolors: ZColors
-    @Composable get() = ZAccentOverride.value?.let { LocalZColors.current.withAccent(it) } ?: LocalZColors.current
+    @Composable get() {
+        val base = LocalZColors.current
+        val override = if (base.isDark) ZAccentOverrideDark.value else ZAccentOverrideLight.value
+        return override?.let { base.withAccent(it) } ?: base
+    }
 
 /**
  * Paramètres d'un style visuel complet.
@@ -79,14 +89,28 @@ fun ThemeMode.resolveDarkTheme(systemDark: Boolean): Boolean = when (this) {
     ThemeMode.SCHEDULED -> false
 }
 
-// Rayons du design system : 8 / 16 / 24 / full
-val ZShapes = Shapes(
-    extraSmall = RoundedCornerShape(8.dp),
-    small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(16.dp),
-    large = RoundedCornerShape(20.dp),
-    extraLarge = RoundedCornerShape(24.dp)
-)
+/** Rayon courant des surfaces, fourni par [ZAgentTheme] selon le réglage « Arrondi » (8 à 28 dp). */
+val LocalZRadius = compositionLocalOf { 16.dp }
+
+/**
+ * Formes du design system pilotées par le réglage « Arrondi » (mise à jour 13) :
+ * - `Zshapes.card` : cartes, bulles, champs et boutons ;
+ * - `Zshapes.pill` : chips, pastilles et barre d'onglets (arrondi maximal constant) ;
+ * - `Zshapes.sheet` : grandes surfaces (aperçus, feuilles, dialogues), rayon amplifié.
+ */
+object Zshapes {
+    val card: Shape
+        @Composable get() = RoundedCornerShape(LocalZRadius.current)
+
+    val pill: Shape
+        get() = RoundedCornerShape(50)
+
+    val sheet: Shape
+        @Composable get() {
+            val r = LocalZRadius.current
+            return RoundedCornerShape((r.value * 1.5f).coerceAtMost(32f).dp)
+        }
+}
 
 private val DarkScheme = darkColorScheme(
     primary = ZCyan,
@@ -250,7 +274,8 @@ fun ZAgentTheme(
         surface3 = Color(0xFF181818), border = Color(0xFF292929),
         border2 = Color(0xFF3A3A3A)
     ) else baseColors
-    val dynamicPalette = if (useDynamic && ZAccentOverride.value == null) oledColors.withAccent(baseScheme.primary) else oledColors
+    val activeAccentOverride = if (darkTheme) ZAccentOverrideDark.value else ZAccentOverrideLight.value
+    val dynamicPalette = if (useDynamic && activeAccentOverride == null) oledColors.withAccent(baseScheme.primary) else oledColors
     val zcolors = dynamicPalette.copy(
         bg = animateColorAsState(dynamicPalette.bg, tween(300), label = "theme-bg").value,
         bg2 = animateColorAsState(dynamicPalette.bg2, tween(300), label = "theme-bg2").value,
@@ -313,6 +338,7 @@ fun ZAgentTheme(
     )
     CompositionLocalProvider(
         LocalZColors provides zcolors,
+        LocalZRadius provides radius,
         LocalDensity provides scaledDensity
     ) {
         MaterialTheme(
