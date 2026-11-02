@@ -489,7 +489,7 @@ private fun FileIconBadge(entry: FileRepository.Entry) {
     val size = 36.dp
     when {
         entry.isDir -> Box(
-            Modifier.size(size).clip(RoundedCornerShape(10.dp)).background(c.amberBg),
+            Modifier.size(size).clip(MaterialTheme.shapes.small).background(c.amberBg),
             contentAlignment = Alignment.Center
         ) {
             Icon(Icons.Default.Folder, null, tint = c.amber, modifier = Modifier.size(19.dp))
@@ -507,7 +507,7 @@ private fun FileIconBadge(entry: FileRepository.Entry) {
                 else -> TypeSpec(null, Icons.Default.InsertDriveFile, c.text2, c.surface2)
             }
             Box(
-                Modifier.size(size).clip(RoundedCornerShape(10.dp)).background(spec.bg),
+                Modifier.size(size).clip(MaterialTheme.shapes.small).background(spec.bg),
                 contentAlignment = Alignment.Center
             ) {
                 if (spec.letter != null) {
