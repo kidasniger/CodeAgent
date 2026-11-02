@@ -219,8 +219,9 @@ fun ZAgentTheme(
         surface3 = Color(0xFF181818), border = Color(0xFF292929),
         border2 = Color(0xFF3A3A3A)
     ) else baseColors
-    val zcolors = oledColors.copy(
-        bg = animateColorAsState(oledColors.bg, tween(300), label = "theme-bg").value,
+    val dynamicPalette = if (useDynamic && ZAccentOverride.value == null) oledColors.withAccent(baseScheme.primary) else oledColors
+    val zcolors = dynamicPalette.copy(
+        bg = animateColorAsState(dynamicPalette.bg, tween(300), label = "theme-bg").value,
         bg2 = animateColorAsState(oledColors.bg2, tween(300), label = "theme-bg2").value,
         surface = animateColorAsState(oledColors.surface, tween(300), label = "theme-surface").value,
         surface2 = animateColorAsState(oledColors.surface2, tween(300), label = "theme-surface2").value,
