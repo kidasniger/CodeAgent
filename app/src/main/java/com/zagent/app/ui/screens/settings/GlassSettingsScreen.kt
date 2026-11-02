@@ -116,6 +116,7 @@ fun GlassSettingsScreen(onBack: () -> Unit) {
                         material = "Liquid"; colorHex = "#22D3EE"; blur = 0.55f
                         tint = 0.35f; film = 0.22f; activeTab = "Chat"
                         settings.stylePresetId = StylePresetIds.GLASS
+                        settings.styleBasePresetId = StylePresetIds.GLASS
                         isCustom = false
                         showResetDialog = false
                     }) { Text("Réinitialiser") }
