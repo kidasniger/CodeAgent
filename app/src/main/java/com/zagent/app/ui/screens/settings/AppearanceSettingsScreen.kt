@@ -29,6 +29,8 @@ import androidx.compose.material.icons.filled.Contrast
 import androidx.compose.material.icons.filled.DensityMedium
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -51,12 +53,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zagent.app.ui.components.CircleIconButton
 import com.zagent.app.ui.theme.StylePresetIds
+import com.zagent.app.ui.theme.StylePresets
 import com.zagent.app.ui.theme.Zcolors
 import com.zagent.app.ui.viewmodel.MainViewModel
 
 @Composable
 fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     var destination by rememberSaveable { mutableStateOf<String?>(null) }
+    var showResetAppearance by rememberSaveable { mutableStateOf(false) }
     var selectedStylePreset by rememberSaveable {
         mutableStateOf(viewModel.settingsManager.stylePresetId)
     }
@@ -110,6 +114,34 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         "font" -> FontSettingsScreen(onBack = { destination = null })
         "density" -> DensitySettingsScreen(onBack = { destination = null })
         else -> SettingsPageScaffold(title = "Apparence", onBack = onBack) {
+            if (showResetAppearance) {
+                AlertDialog(
+                    onDismissRequest = { showResetAppearance = false },
+                    title = { Text("Tout réinitialiser ?") },
+                    text = { Text("Tous les réglages d’apparence seront restaurés : thème, presets, accents, verre clair et sombre, OLED, couleurs système, rayons et horaires. Les clés API et les projets ne seront pas modifiés.") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            viewModel.settingsManager.resetAppearance()
+                            viewModel.updateThemeMode(com.zagent.app.ui.theme.ThemeMode.SYSTEM)
+                            viewModel.updateOledBlack(false)
+                            viewModel.updateDynamicSystemColors(false)
+                            viewModel.updateCornerRadius(16)
+                            viewModel.updateScheduledDarkTime("19:00")
+                            viewModel.updateScheduledLightTime("07:00")
+                            selectedStylePreset = StylePresetIds.GLASS
+                            accentHex = ""
+                            accentHue = 0f
+                            showResetAppearance = false
+                        }) { Text("Réinitialiser") }
+                    },
+                    dismissButton = { TextButton(onClick = { showResetAppearance = false }) { Text("Annuler") } }
+                )
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                androidx.compose.material3.TextButton(onClick = { showResetAppearance = true }) {
+                    Text("Tout réinitialiser")
+                }
+            }
             SettingsSectionLabel("STYLE")
             Row(
                 modifier = Modifier
@@ -123,7 +155,20 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                         selected = selectedStylePreset == id,
                         onClick = {
                             selectedStylePreset = id
-                            viewModel.settingsManager.stylePresetId = id
+                            val preset = StylePresets.fromId(id)
+                            val settings = viewModel.settingsManager
+                            settings.stylePresetId = id
+                            settings.accentColorHex = preset.colour
+                            viewModel.updateCornerRadius(preset.radius.toInt().coerceIn(8, 28))
+                            listOf(false, true).forEach { dark ->
+                                settings.setGlassMaterialFor(dark, if (preset.glassMaterial == "NONE") "Solid" else "Liquid")
+                                settings.setGlassColorFor(dark, preset.colour)
+                                settings.setGlassBlurFor(dark, preset.frost)
+                                settings.setGlassTintFor(dark, preset.film)
+                                settings.setGlassFilmFor(dark, preset.film)
+                                settings.setGlassActiveTabFor(dark, preset.activeTab)
+                            }
+                            accentHex = preset.colour
                         },
                         label = { Text(label) }
                     )
