@@ -60,7 +60,12 @@ fun Modifier.glassSurface(
     shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(28.dp),
     context: Context? = null
 ): Modifier {
-    val material = if (context == null) settings.material else effectiveGlassMaterial(context, settings)
+    val material = when {
+        !settings.enabled -> GlassMaterial.FASTEST
+        context != null -> effectiveGlassMaterial(context, settings)
+        Build.VERSION.SDK_INT < 31 -> GlassMaterial.FASTEST
+        else -> settings.material
+    }
     val neutral = if (dark) Color(0xFF292826) else Color(0xFFFFFEFC)
     val tintColor = if (settings.colour == Color.Unspecified) Color.Transparent else settings.colour.copy(alpha = settings.tint.coerceIn(0f, 1f))
     val style = HazeStyle(
