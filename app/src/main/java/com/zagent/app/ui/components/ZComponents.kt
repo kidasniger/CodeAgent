@@ -202,7 +202,7 @@ fun AmbientBackground(modifier: Modifier = Modifier) {
                 drawCircle(Brush.radialGradient(listOf(c.amber.copy(alpha = intensity * 0.42f), Color.Transparent), p3, w * 0.38f), p3, w * 0.38f)
             }
         }
-    })
+    }, onDraw = {})
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
