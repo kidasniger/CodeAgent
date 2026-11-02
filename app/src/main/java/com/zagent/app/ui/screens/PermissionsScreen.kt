@@ -1,6 +1,8 @@
 package com.zagent.app.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,7 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.FolderCheck
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Visibility
@@ -140,7 +142,7 @@ fun PermissionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                         .padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.FolderCheck, null, tint = c.green, modifier = Modifier.size(15.dp))
+                    Icon(Icons.Default.CheckCircle, null, tint = c.green, modifier = Modifier.size(15.dp))
                     Spacer(Modifier.width(10.dp))
                     MonoLine(p, c.text, Modifier.weight(1f))
                     Text(

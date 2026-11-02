@@ -49,6 +49,7 @@ import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.SpaceGrotesk
 import com.zagent.app.ui.theme.Zcolors
+import com.zagent.app.ui.viewmodel.MainViewModel
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MA66 — Écran À propos et Mises à jour : logo, version, vérification des mises

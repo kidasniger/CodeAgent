@@ -5,6 +5,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -96,7 +97,7 @@ fun Lot5Screen(
                     )
                 }
             }
-            RowScope.actions(this)
+            actions()
         }
         Column(
             Modifier
@@ -114,7 +115,7 @@ fun Lot5Screen(
 
 /** Onglets du LOT 5 : chips égales, style sobre, sans bordure marquée (MA58/MA61). */
 @Composable
-fun Lot5Tabs(tabs: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+fun Lot5Tabs(tabs: List<String>, selected: Int, modifier: Modifier = Modifier, onSelect: (Int) -> Unit) {
     val c = Zcolors
     Row(
         modifier
@@ -312,7 +313,7 @@ fun UsageBarChart(
     val maxV = (bars.maxOfOrNull { it.second } ?: 1f).coerceAtLeast(0.0001f)
     Canvas(
         modifier.pointerInput(bars) {
-            androidx.compose.foundation.gestures.detectTapGestures { offset ->
+            detectTapGestures { offset ->
                 if (bars.isEmpty()) return@detectTapGestures
                 val n = bars.size
                 val gap = size.width * 0.02f

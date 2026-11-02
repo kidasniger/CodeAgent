@@ -20,8 +20,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Description
 import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Search
@@ -225,7 +225,7 @@ private fun FileResults(viewModel: MainViewModel, query: String) {
                     .background(c.violetBg),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.AutoMirrored.Filled.Description, null, tint = c.violet, modifier = Modifier.size(15.dp))
+                Icon(Icons.Default.Description, null, tint = c.violet, modifier = Modifier.size(15.dp))
             }
             Spacer(Modifier.width(10.dp))
             MonoLine(path, c.text, Modifier.weight(1f))
@@ -282,7 +282,7 @@ private fun Highlighted(text: String, query: String) {
         var idx = text.indexOf(q, ignoreCase = true)
         while (idx >= 0) {
             spans.add(
-                AnnotatedString.Range(idx, idx + q.length, SpanStyle(background = c.cyanBg, color = c.cyan, fontWeight = FontWeight.SemiBold))
+                AnnotatedString.Range(SpanStyle(background = c.cyanBg, color = c.cyan, fontWeight = FontWeight.SemiBold), idx, idx + q.length)
             )
             idx = text.indexOf(q, idx + q.length, ignoreCase = true)
         }

@@ -41,6 +41,7 @@ import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.SpaceGrotesk
 import com.zagent.app.ui.theme.Zcolors
+import com.zagent.app.ui.viewmodel.MainViewModel
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MA67 — Écran Raccourcis & gestes : gestes (glisser pour l'historique,

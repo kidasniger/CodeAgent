@@ -365,13 +365,12 @@ class SettingsManager(context: Context) {
     private val prefJson = Json { ignoreUnknownKeys = true }
 
     /** Historique des dernières recherches globales (MA58), du plus récent au plus ancien. */
-    var searchHistory: List<String>
+    val searchHistory: List<String>
         get() = runCatching {
             val raw = prefs.getString(KEY_SEARCH_HISTORY, "") ?: ""
             if (raw.isBlank()) emptyList()
             else prefJson.decodeFromString(ListSerializer(String.serializer()), raw)
         }.getOrNull().orEmpty()
-        private set
 
     /** Ajoute une requête à l'historique (dédupliquée, plafonnée à 10 entrées). */
     fun addSearchQuery(query: String) {

@@ -245,7 +245,7 @@ fun TemplatesScreen(viewModel: MainViewModel, onClose: () -> Unit) {
                         .border(1.dp, c.border, RoundedCornerShape(16.dp))
                         .clickable(enabled = busy == null) {
                             busy = t.id
-                            viewModel.applyTemplate(t.id, t.label, t.files, t.firstMessage) { ok ->
+                            viewModel.applyTemplate(t.label, t.files, t.firstMessage) { ok ->
                                 if (ok) onClose() else busy = null
                             }
                         }

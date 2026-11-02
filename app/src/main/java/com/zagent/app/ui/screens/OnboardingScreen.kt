@@ -253,12 +253,16 @@ fun OnboardingScreen(
                         )
                         Spacer(Modifier.height(10.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            ModelChip("glm-4.5-flash", currentModel == "glm-4.5-flash") {
-                                onModelSelected("glm-4.5-flash")
-                            }
-                            ModelChip("glm-4.7-flash", currentModel == "glm-4.7-flash") {
-                                onModelSelected("glm-4.7-flash")
-                            }
+                            ModelChip(
+                                "glm-4.5-flash",
+                                currentModel == "glm-4.5-flash",
+                                onClick = { onModelSelected("glm-4.5-flash") }
+                            )
+                            ModelChip(
+                                "glm-4.7-flash",
+                                currentModel == "glm-4.7-flash",
+                                onClick = { onModelSelected("glm-4.7-flash") }
+                            )
                         }
                     }
 

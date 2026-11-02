@@ -59,6 +59,7 @@ import kotlinx.serialization.json.put
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.util.Locale
 import java.util.UUID
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
@@ -1151,6 +1152,9 @@ done; } 2>&1 | head -c 50000
     /** Marqueur séparant le texte visible de l'utilisateur du bloc de contexte joint au message. */
     companion object {
         const val CTX_MARKER = "\n\n--- Pièces jointes au contexte ---\n\n"
+
+        /** Outils de lecture seule : refusés si « Toujours autoriser la lecture » est désactivé (MA64). */
+        val READ_TOOLS = setOf("read_file", "list_dir", "search_in_files")
     }
 
     /**
@@ -1762,10 +1766,6 @@ done; } 2>&1 | head -c 50000
             System.currentTimeMillis() - t0Tool
         )
         return toolRes
-    }
-
-    private companion object {
-        val READ_TOOLS = setOf("read_file", "list_dir", "search_in_files")
     }
 
     private suspend fun waitForDeleteConfirmation(path: String, toolCallId: String): Boolean {
