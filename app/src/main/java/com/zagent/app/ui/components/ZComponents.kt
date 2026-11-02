@@ -188,7 +188,7 @@ fun AmbientBackground(modifier: Modifier = Modifier) {
     val transition = rememberInfiniteTransition(label = "fond-ambiant")
     val drift by transition.animateFloat(-0.12f, 0.12f, infiniteRepeatable(tween(26000), RepeatMode.Reverse), label = "deplacement")
     val intensity = if (glass.enabled) 0.12f else 0.025f
-    Box(modifier = modifier.drawWithCache {
+    Canvas(modifier = modifier.drawWithCache {
         val w = size.width
         val h = size.height
         onDrawBehind {
