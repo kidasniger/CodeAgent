@@ -259,6 +259,23 @@ class SettingsManager(context: Context) {
         get() = prefs.getBoolean(KEY_ONBOARDING_DONE, false)
         set(value) = prefs.edit().putBoolean(KEY_ONBOARDING_DONE, value).apply()
 
+    /** Dernier identifiant de conversation : sert de clé aux brouillons (MA55). */
+    var lastConversationId: String
+        get() = prefs.getString(KEY_LAST_CONVERSATION, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_LAST_CONVERSATION, value).apply()
+
+    /** Brouillon non envoyé d'une conversation, restauré à la réouverture (MA55). */
+    fun draftFor(conversationId: String): String =
+        prefs.getString(KEY_DRAFT_PREFIX + conversationId, "") ?: ""
+
+    fun saveDraft(conversationId: String, text: String) {
+        prefs.edit().putString(KEY_DRAFT_PREFIX + conversationId, text).apply()
+    }
+
+    fun clearDraft(conversationId: String) {
+        prefs.edit().remove(KEY_DRAFT_PREFIX + conversationId).apply()
+    }
+
     /** Réinitialise uniquement les préférences d'apparence, sans toucher aux clés API ni aux projets. */
     fun resetAppearance() {
         prefs.edit()
@@ -380,5 +397,7 @@ class SettingsManager(context: Context) {
         private const val KEY_SCHEDULED_DARK = "scheduled_dark_time"
         private const val KEY_SCHEDULED_LIGHT = "scheduled_light_time"
         private const val KEY_ALWAYS_ALLOW = "always_allow_paths"
+        private const val KEY_LAST_CONVERSATION = "last_conversation_id"
+        private const val KEY_DRAFT_PREFIX = "draft_"
     }
 }

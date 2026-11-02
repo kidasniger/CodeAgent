@@ -41,9 +41,8 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -72,9 +71,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -100,7 +96,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -136,6 +131,7 @@ import com.zagent.app.ui.components.DevServerBar
 import com.zagent.app.ui.components.GitChangesSheet
 import com.zagent.app.ui.components.GitDiffView
 import com.zagent.app.ui.components.ModelPickerDialog
+import com.zagent.app.ui.components.InputBarLot4
 import com.zagent.app.ui.components.CodeBlock
 import com.zagent.app.ui.components.DiffPanel
 import com.zagent.app.ui.components.ToolChip
@@ -175,6 +171,16 @@ fun ChatScreen(
     var input by rememberSaveable { mutableStateOf("") }
     var editingIndex by rememberSaveable { mutableStateOf(-1) }
     var applyCode by remember { mutableStateOf<String?>(null) }
+
+    // MA55 : restaure le brouillon enregistré pour cette conversation, et synchronise
+    // chaque frappe vers le brouillon (sauvegarde différée côté MainViewModel).
+    val setInput: (String) -> Unit = { t ->
+        input = t
+        viewModel.onInputChanged(t)
+    }
+    LaunchedEffect(viewModel.conversationId) {
+        setInput(viewModel.currentDraft())
+    }
 
     val chatRows = remember(messages) { buildChatRows(messages) }
     val lastFailedCmdId = remember(messages) {
@@ -265,7 +271,7 @@ fun ChatScreen(
                     ChatEmptyState(
                         viewModel, onOpenSettings,
                         onPickFolder = { viewModel.isProjectPickerOpen = true },
-                        onSuggestion = { input = it; editingIndex = -1 }
+                        onSuggestion = { setInput(it); editingIndex = -1 }
                     )
                 }
             } else {
@@ -286,8 +292,8 @@ fun ChatScreen(
                                         UserBubble(
                                             text = row.text,
                                             messageIndex = row.messageIndex,
-                                            onEdit = { i, t -> input = t; editingIndex = i },
-                                            onQuote = { t -> input = "> " + t.replace("\n", "\n> ") + "\n\n" },
+                                            onEdit = { i, t -> setInput(t); editingIndex = i },
+                                            onQuote = { t -> setInput("> " + t.replace("\n", "\n> ") + "\n\n") },
                                             onDelete = { viewModel.deleteFromMessage(it) }
                                         )
                                     }
@@ -304,7 +310,7 @@ fun ChatScreen(
                                             onFileTap = onFileTap,
                                             onApplyCode = { applyCode = it },
                                             onRegenerate = { viewModel.regenerateLast() },
-                                            onQuote = { t -> input = "> " + t.replace("\n", "\n> ") + "\n\n" },
+                                            onQuote = { t -> setInput("> " + t.replace("\n", "\n> ") + "\n\n") },
                                             onDeleteMessage = { viewModel.deleteFromMessage(row.messageIndex) },
                                             fixId = if (viewModel.isLoading) null else lastFailedCmdId,
                                             onFix = { cmd, res -> viewModel.fixCommandWithAi(cmd, res) },
@@ -478,16 +484,17 @@ fun ChatScreen(
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier
                         .clip(MaterialTheme.shapes.extraSmall)
-                        .clickable { editingIndex = -1; input = "" }
+                        .clickable { editingIndex = -1; setInput("") }
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 )
             }
         }
-        InputBar(
+        InputBarLot4(
             value = input,
-            onValueChange = { input = it },
+            onValueChange = setInput,
             onSend = {
                 val t = input
+                viewModel.onInputSent()
                 input = ""
                 if (editingIndex >= 0) {
                     val idx = editingIndex
@@ -497,8 +504,10 @@ fun ChatScreen(
                     viewModel.sendMessage(t)
                 }
             },
-            onOpenExplorer = { viewModel.navigateTo(com.zagent.app.ui.viewmodel.AppScreen.FILE_BROWSER) },
-            enabled = !viewModel.isLoading
+            enabled = !viewModel.isLoading,
+            isLoading = viewModel.isLoading,
+            onStop = { viewModel.stopAgent() },
+            viewModel = viewModel
         )
     }
 
@@ -1046,6 +1055,13 @@ private fun UserBubble(
     val clipboard = LocalClipboardManager.current
     val ctx = LocalContext.current
     var menuOpen by remember { mutableStateOf(false) }
+    // MA49/MA53 : le message stocké peut contenir un bloc de contexte joint (pièces
+    // jointes et mentions @fichier) ; on n'affiche que le texte visible + un résumé.
+    val visibleText = remember(text) { text.substringBefore(MainViewModel.CTX_MARKER) }
+    val attachedCount = remember(text) {
+        if (!text.contains(MainViewModel.CTX_MARKER)) 0
+        else text.substringAfter(MainViewModel.CTX_MARKER).lines().count { it.trimStart().startsWith("[") }
+    }
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
         Box(
             Modifier
@@ -1057,10 +1073,27 @@ private fun UserBubble(
         ) {
             Column {
                 Text(
-                    buildInlineMarkdown(text, baseColor = c.text, codeColor = c.cyan, codeBg = c.cyanBg),
+                    buildInlineMarkdown(visibleText, baseColor = c.text, codeColor = c.cyan, codeBg = c.cyanBg),
                     style = TextStyle(fontFamily = Inter, fontSize = 15.sp, lineHeight = 22.sp),
                     color = c.text
                 )
+                if (attachedCount > 0) {
+                    Spacer(Modifier.height(6.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.AttachFile,
+                            null,
+                            tint = c.cyan,
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(Modifier.width(5.dp))
+                        Text(
+                            if (attachedCount == 1) "1 élément joint au contexte" else "" + attachedCount + " éléments joints au contexte",
+                            style = TextStyle(fontFamily = Inter, fontSize = 11.sp),
+                            color = c.cyan
+                        )
+                    }
+                }
                 Spacer(Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Spacer(Modifier.weight(1f))
@@ -1070,14 +1103,14 @@ private fun UserBubble(
                         tint = c.text3,
                         modifier = Modifier
                             .size(13.dp)
-                            .clickable { onEdit(messageIndex, text) }
+                            .clickable { onEdit(messageIndex, visibleText) }
                     )
                 }
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                 DropdownMenuItem(
                     text = { Text("Copier le texte", color = c.text) },
-                    onClick = { menuOpen = false; clipboard.setText(AnnotatedString(text)) }
+                    onClick = { menuOpen = false; clipboard.setText(AnnotatedString(visibleText)) }
                 )
                 DropdownMenuItem(
                     text = { Text("Sélectionner", color = c.text) },
@@ -1088,7 +1121,7 @@ private fun UserBubble(
                 )
                 DropdownMenuItem(
                     text = { Text("Citer", color = c.text) },
-                    onClick = { menuOpen = false; onQuote(text) }
+                    onClick = { menuOpen = false; onQuote(visibleText) }
                 )
                 DropdownMenuItem(
                     text = { Text("Supprimer", color = c.red) },
@@ -1796,97 +1829,8 @@ private fun toolStateOf(result: String?): ToolState = when {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Barre de saisie flottante
+// Barre de saisie flottante — implémentée dans ui/components/InputBarLot4.kt (LOT 4)
 // ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun InputBar(
-    value: String,
-    onValueChange: (String) -> Unit,
-    onSend: () -> Unit,
-    onOpenExplorer: () -> Unit,
-    enabled: Boolean
-) {
-    val c = Zcolors
-    val context = LocalContext.current
-    val keyboardController = LocalSoftwareKeyboardController.current
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
-            .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 88.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(c.surface2.copy(alpha = if (LocalGlass.current.enabled) 0.10f else 1f))
-                .glassSurface(LocalHazeState.current, LocalGlass.current, c.isDark, RoundedCornerShape(50.dp), context)
-                .border(1.dp, c.border2.copy(alpha = 0.5f), RoundedCornerShape(50))
-                .padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .clickable(onClick = onOpenExplorer),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.Add, "Explorateur", tint = c.text2, modifier = Modifier.size(20.dp))
-            }
-            TextField(
-                value = value,
-                onValueChange = onValueChange,
-                placeholder = {
-                    Text(
-                        "Décris ta tâche…",
-                        style = TextStyle(fontFamily = Inter, fontSize = 15.sp),
-                        color = c.text3
-                    )
-                },
-                textStyle = TextStyle(fontFamily = Inter, fontSize = 15.sp, color = c.text),
-                maxLines = 6,
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                    imeAction = androidx.compose.ui.text.input.ImeAction.Send
-                ),
-                keyboardActions = androidx.compose.foundation.text.KeyboardActions(
-                    onSend = {
-                        if (enabled && value.isNotBlank()) {
-                            onSend()
-                            keyboardController?.hide()
-                        }
-                    }
-                ),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    cursorColor = c.cyan
-                ),
-                modifier = Modifier.weight(1f).heightIn(min = 48.dp, max = 116.dp)
-            )
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(CircleShape)
-                    .then(if (enabled && value.isNotBlank()) Modifier.background(c.gradBtn) else Modifier.background(c.surface3))
-                    .clickable(enabled = enabled && value.isNotBlank()) {
-                        onSend()
-                        keyboardController?.hide()
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.ArrowUpward,
-                    "Envoyer",
-                    tint = if (enabled && value.isNotBlank()) c.onGrad else c.text3,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
-    }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Bottom sheet de confirmation d'une commande

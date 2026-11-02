@@ -22,6 +22,7 @@ import com.zagent.app.data.TodoItem
 import com.zagent.app.data.parseTodos
 import com.zagent.app.data.DiffUtil
 import com.zagent.app.data.FileRepository
+import com.zagent.app.data.ProjectSearch
 import com.zagent.app.data.SettingsManager
 import com.zagent.app.ui.editor.ConsoleState
 import com.zagent.app.ui.editor.EditorController
@@ -30,6 +31,7 @@ import com.zagent.app.ui.theme.GlassSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -48,6 +50,7 @@ import kotlinx.serialization.json.put
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.util.UUID
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
@@ -178,6 +181,77 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // ── Conversation ────────────────────────────────────────────────────────
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
+
+    // ── Brouillons, fichiers du projet et pièces jointes (MA49/MA52/MA53/MA55) ──
+    /** Identifiant de la conversation courante : sert de clé au brouillon sauvegardé (MA55). */
+    var conversationId by mutableStateOf("")
+        private set
+
+    private var draftSaveJob: Job? = null
+
+    init {
+        conversationId = settingsManager.lastConversationId.ifBlank { UUID.randomUUID().toString() }
+        settingsManager.lastConversationId = conversationId
+    }
+
+    /** Appelé à chaque frappe : enregistre le brouillon avec un léger délai pour ne pas surcharger le stockage. */
+    fun onInputChanged(text: String) {
+        draftSaveJob?.cancel()
+        val id = conversationId
+        draftSaveJob = viewModelScope.launch(Dispatchers.IO) {
+            delay(600)
+            settingsManager.saveDraft(id, text)
+        }
+    }
+
+    /** Appelé après un envoi : le brouillon de la conversation repart de zéro. */
+    fun onInputSent() {
+        draftSaveJob?.cancel()
+        val id = conversationId
+        viewModelScope.launch(Dispatchers.IO) { settingsManager.saveDraft(id, "") }
+    }
+
+    /** Brouillon sauvegardé de la conversation courante (MA55). */
+    fun currentDraft(): String = settingsManager.draftFor(conversationId)
+
+    /** Fichiers du projet (chemins relatifs) pour l'autocomplétion des mentions « @ » (MA53). */
+    var projectFiles by mutableStateOf<List<String>>(emptyList())
+        private set
+
+    fun refreshProjectFiles() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val files = ProjectSearch.listProjectFiles(getFileRepo())
+            withContext(Dispatchers.Main) { projectFiles = files }
+        }
+    }
+
+    /** Pièce jointe ajoutée depuis la feuille « + » (MA49) : fichier du téléphone, arborescence du projet… */
+    data class ChatAttachment(
+        val id: Long,
+        val name: String,
+        val uri: Uri? = null,
+        val projectPath: String? = null,
+        val isImage: Boolean = false
+    )
+
+    val attachments = mutableStateListOf<ChatAttachment>()
+    private var nextAttachmentId = 0L
+
+    /** Joint un fichier (ou une image) choisi dans le sélecteur Android. */
+    fun addAttachmentUri(uri: Uri) {
+        val name = displayNameOf(uri) ?: "fichier"
+        val mime = getApplication<Application>().contentResolver.getType(uri).orEmpty()
+        attachments.add(ChatAttachment(nextAttachmentId++, name, uri = uri, isImage = mime.startsWith("image/")))
+    }
+
+    /** Joint l'arborescence du projet courant au contexte de l'agent. */
+    fun addProjectTreeAttachment() {
+        attachments.add(ChatAttachment(nextAttachmentId++, folderLabel + " — arborescence", projectPath = "."))
+    }
+
+    fun removeAttachment(id: Long) {
+        attachments.removeAll { it.id == id }
+    }
 
     var isLoading by mutableStateOf(false)
     var statusMessage by mutableStateOf("")
@@ -665,6 +739,8 @@ done; } 2>&1 | head -c 50000
         editor.clear()
         if (currentScreen == AppScreen.EDITOR) navigateBack() else isEditorOpen = false
         refreshFolderLabel()
+        // MA53 : recharge la liste des fichiers pour l'autocomplétion « @ ».
+        refreshProjectFiles()
     }
 
     fun clearConversation() {
@@ -700,6 +776,13 @@ done; } 2>&1 | head -c 50000
         promptTokens = 0
         completionTokens = 0
         tokensEstimated = false
+        // MA55 : nouvelle conversation → nouvel identifiant, brouillon reparti à zéro.
+        draftSaveJob?.cancel()
+        val oldId = conversationId
+        conversationId = UUID.randomUUID().toString()
+        settingsManager.lastConversationId = conversationId
+        settingsManager.clearDraft(oldId)
+        attachments.clear()
     }
 
     fun switchToOtherModel() {
@@ -1013,13 +1096,19 @@ done; } 2>&1 | head -c 50000
         summaryFiles.clear()
         summaryCommands.clear()
         fileDiffCounts.clear()
-        val newUserMessage = ChatMessage("user", userText)
-        _messages.value = _messages.value + newUserMessage
 
         isLoading = true
         AgentService.start(getApplication())
         agentJob = viewModelScope.launch(Dispatchers.IO) {
             try {
+                // MA49/MA53 : le contexte des pièces jointes et des mentions @fichier
+                // est assemblé hors du thread principal, puis stocké avec le message.
+                val ctx = buildContextBlock(userText)
+                val stored = if (ctx.isBlank()) userText else userText + CTX_MARKER + ctx
+                withContext(Dispatchers.Main) {
+                    _messages.value = _messages.value + ChatMessage("user", stored)
+                    attachments.clear()
+                }
                 runAgentLoop()
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
@@ -1040,6 +1129,128 @@ done; } 2>&1 | head -c 50000
                 }
             }
         }
+    }
+
+    // ── Contexte des pièces jointes et mentions @fichier (MA49/MA53) ─────────
+    /** Marqueur séparant le texte visible de l'utilisateur du bloc de contexte joint au message. */
+    companion object {
+        const val CTX_MARKER = "\n\n--- Pièces jointes au contexte ---\n\n"
+    }
+
+    /**
+     * Construit le bloc de contexte envoyé à l'agent : contenu des pièces jointes de la
+     * feuille « + » (MA49) puis contenu des fichiers mentionnés avec « @ » (MA53).
+     * À appeler sur un thread d'arrière-plan (lectures disque).
+     */
+    private fun buildContextBlock(userText: String): String {
+        val parts = ArrayList<String>()
+        for (a in attachments.toList()) {
+            if (a.projectPath != null) {
+                val tree = getFileRepo().listDir(a.projectPath)
+                if (!tree.startsWith("Erreur")) parts.add("[dossier : " + a.name + "]\n" + tree.take(12000))
+            } else if (a.uri != null) {
+                parts.add(readUriAttachment(a))
+            }
+        }
+        for (path in collectMentionFiles(userText)) {
+            val repo = getFileRepo()
+            if (repo.isTextFile(path)) {
+                val content = repo.readFile(path)
+                if (!content.startsWith("Erreur")) {
+                    parts.add("[fichier : " + path + "]\n" + content.take(20000))
+                }
+            }
+        }
+        if (parts.isEmpty()) return ""
+        return parts.joinToString("\n\n")
+    }
+
+    /** Lit une pièce jointe du téléphone : texte si possible, sinon simple mention du nom. */
+    private fun readUriAttachment(a: ChatAttachment): String {
+        val uri = a.uri ?: return ""
+        return try {
+            val resolver = getApplication<Application>().contentResolver
+            val mime = resolver.getType(uri).orEmpty()
+            val ext = a.name.substringAfterLast('.', "").lowercase()
+            val textual = mime.startsWith("text/") || mime.contains("json") || mime.contains("xml") ||
+                mime.contains("javascript") || ext in setOf(
+                    "txt", "md", "kt", "kts", "java", "py", "js", "ts", "json", "xml",
+                    "html", "css", "csv", "log", "yaml", "yml", "sh", "toml", "gradle"
+                )
+            if (!textual) "[pièce jointe : " + a.name + " (" + mime.ifEmpty { "type inconnu" } + ")]"
+            else resolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { r ->
+                val sb = StringBuilder()
+                val buf = CharArray(1024)
+                var n: Int
+                var total = 0
+                while (r.read(buf).also { n = it } != -1 && total < 20000) {
+                    sb.append(buf, 0, n)
+                    total += n
+                }
+                "[fichier : " + a.name + "]\n" + sb.toString()
+            } ?: "[pièce jointe : " + a.name + " (illisible)]"
+        } catch (e: Exception) {
+            "[pièce jointe : " + a.name + " (lecture impossible)]"
+        }
+    }
+
+    /** Retrouve les @chemins du texte qui correspondent à de vrais fichiers du projet (MA53). */
+    private fun collectMentionFiles(userText: String): List<String> {
+        val tokens = Regex("@([A-Za-z0-9._/-]+)").findAll(userText)
+            .map { it.groupValues[1] }
+            .distinct()
+            .toList()
+        return tokens.filter { projectFiles.contains(it) }
+    }
+
+    // ── Commandes slash « / » (MA52) ────────────────────────────────────────
+    /** Action demandée à l'écran après l'exécution d'une commande slash. */
+    enum class SlashAction { NONE, OPEN_MODEL_PICKER }
+
+    /**
+     * Exécute une commande slash tapée dans le champ de saisie.
+     * /modèle retourne OPEN_MODEL_PICKER : c'est l'UI qui ouvre le menu ancré sur le chip.
+     */
+    fun executeSlashCommand(raw: String): SlashAction {
+        val cmd = raw.trim().substringBefore(' ').lowercase()
+        return when (cmd) {
+            "/nouveau" -> { clearConversation(); SlashAction.NONE }
+            "/modèle" -> SlashAction.OPEN_MODEL_PICKER
+            "/diff" -> { openGitChanges(); SlashAction.NONE }
+            "/tester" -> {
+                sendMessage(
+                    "Lance les tests du projet (choisis l'outil adapté au projet), montre le résultat, puis corrige les échecs éventuels."
+                )
+                SlashAction.NONE
+            }
+            "/effacer" -> { clearMessagesOnly(); SlashAction.NONE }
+            "/aide" -> { showHelpMessage(); SlashAction.NONE }
+            else -> SlashAction.NONE
+        }
+    }
+
+    /** Efface le fil de messages sans réinitialiser le reste de la conversation (MA52). */
+    fun clearMessagesOnly() {
+        if (isLoading) return
+        _messages.value = emptyList()
+        statusMessage = ""
+    }
+
+    /** Ajoute localement un message d'aide listant les commandes slash (MA52). */
+    fun showHelpMessage() {
+        val help = buildString {
+            appendLine("Commandes disponibles dans le champ de saisie :")
+            appendLine()
+            appendLine("• /nouveau — démarrer une nouvelle conversation")
+            appendLine("• /modèle — choisir le modèle de la conversation")
+            appendLine("• /diff — voir les changements Git du projet")
+            appendLine("• /tester — lancer les tests du projet")
+            appendLine("• /effacer — effacer les messages du fil")
+            appendLine("• /aide — afficher cette aide")
+            appendLine()
+            append("Astuce : tape « @ » pour joindre un fichier du projet au contexte.")
+        }
+        _messages.value = _messages.value + ChatMessage("assistant", help)
     }
 
     private suspend fun runAgentLoop() {

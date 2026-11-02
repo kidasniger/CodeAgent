@@ -42,6 +42,13 @@ import androidx.compose.ui.unit.sp
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.SpaceGrotesk
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.ui.text.style.TextOverflow
 import com.zagent.app.ui.theme.Zcolors
 import com.zagent.app.ui.theme.LocalGlass
 import com.zagent.app.ui.theme.LocalHazeState
@@ -269,6 +276,111 @@ private fun ModelRow(label: String, selected: Boolean, onClick: () -> Unit) {
             color = if (selected) c.green else c.text
         )
     }
+}
+
+// ── MA51 : chip modèle de la barre de saisie + menu ancré ───────────────────
+
+/** Descriptions d'une ligne des modèles connus (menu du chip modèle). */
+private val knownModelDescriptions = mapOf(
+    "glm-4.5-flash" to "Rapide et économique — parfait au quotidien",
+    "glm-4.7-flash" to "Plus récent, un peu plus capable"
+)
+
+/** Nom court affiché dans le chip : dernier segment de l'identifiant, tronqué. */
+private fun shortModelName(model: String): String =
+    model.substringAfterLast('/').take(20)
+
+/**
+ * Petit chip en bas à gauche du champ : nom court du modèle actif ; un tap ouvre un
+ * menu ancré (popup en verre) listant les modèles avec une description d'une ligne (MA51).
+ */
+@Composable
+fun ModelChipMenu(
+    globalModel: String,
+    currentChatModel: String?,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    onSelect: (String?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val c = Zcolors
+    Box(modifier) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .background(c.surface2)
+                .border(1.dp, c.border2.copy(alpha = 0.5f), RoundedCornerShape(50))
+                .clickable { onExpandedChange(true) }
+                .padding(horizontal = 10.dp, vertical = 6.dp)
+        ) {
+            Icon(Icons.Default.Tune, null, tint = c.cyan, modifier = Modifier.size(12.dp))
+            Spacer(Modifier.width(5.dp))
+            Text(
+                shortModelName(currentChatModel ?: globalModel),
+                style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp),
+                color = c.cyan,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.widthIn(max = 130.dp)
+            )
+            Spacer(Modifier.width(3.dp))
+            Icon(Icons.Default.ExpandMore, null, tint = c.text3, modifier = Modifier.size(12.dp))
+        }
+        GlassDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) }
+        ) {
+            ModelMenuOption(
+                name = "Réglage global : " + globalModel,
+                description = "Utilise le modèle configuré dans Réglages",
+                selected = currentChatModel == null,
+                onClick = { onExpandedChange(false); onSelect(null) }
+            )
+            val known = listOf("glm-4.5-flash", "glm-4.7-flash")
+            known.forEach { m ->
+                ModelMenuOption(
+                    name = m,
+                    description = knownModelDescriptions[m] ?: "Modèle personnalisé",
+                    selected = currentChatModel == m,
+                    onClick = { onExpandedChange(false); onSelect(m) }
+                )
+            }
+            if (currentChatModel != null && currentChatModel != globalModel && currentChatModel !in known) {
+                ModelMenuOption(
+                    name = currentChatModel,
+                    description = "Modèle personnalisé de cette conversation",
+                    selected = true,
+                    onClick = { onExpandedChange(false); onSelect(currentChatModel) }
+                )
+            }
+        }
+    }
+}
+
+/** Option du menu modèle : identifiant + description d'une ligne. */
+@Composable
+private fun ModelMenuOption(name: String, description: String, selected: Boolean, onClick: () -> Unit) {
+    val c = Zcolors
+    DropdownMenuItem(
+        text = {
+            Column {
+                Text(
+                    name,
+                    style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.5.sp),
+                    color = if (selected) c.green else c.text,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    description,
+                    style = TextStyle(fontFamily = Inter, fontSize = 11.sp),
+                    color = c.text2
+                )
+            }
+        },
+        onClick = onClick
+    )
 }
 
 /** Ligne d'usage en pied de message : tokens + coût, tap = détail entrée/sortie (MA45). */
