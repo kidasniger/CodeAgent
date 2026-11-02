@@ -200,7 +200,7 @@ private fun AppRoot(viewModel: MainViewModel, darkTheme: Boolean) {
             com.zagent.app.ui.screens.ProjectPickerDialog(viewModel)
         }
         AnimatedVisibility(
-            visible = navVisible && viewModel.currentScreen != com.zagent.app.ui.viewmodel.AppScreen.SETTINGS && !viewModel.isProjectPickerOpen,
+            visible = navVisible && viewModel.currentScreen != com.zagent.app.ui.viewmodel.AppScreen.SETTINGS && viewModel.currentScreen != com.zagent.app.ui.viewmodel.AppScreen.TERMINAL && !viewModel.isProjectPickerOpen,
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
             FloatingTabBar(
