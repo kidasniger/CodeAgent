@@ -26,7 +26,7 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.drawscope.drawOutline
+import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -1155,7 +1155,15 @@ fun Modifier.pressScale(
             drawContent()
             if (voile > 0.001f) {
                 val contour = forme.createOutline(size, layoutDirection, this)
-                drawOutline(contour, color = Color.Black.copy(alpha = voile))
+                when (contour) {
+                    is Outline.Rectangle -> drawRect(Color.Black.copy(alpha = voile), contour.rect)
+                    is Outline.Rounded -> drawRoundRect(
+                        Color.Black.copy(alpha = voile),
+                        contour.rect,
+                        contour.cornerRadius
+                    )
+                    is Outline.Generic -> drawPath(contour.path, Color.Black.copy(alpha = voile))
+                }
             }
         }
 }
@@ -1304,7 +1312,7 @@ fun SkeletonCartesModeles(modifier: Modifier = Modifier, cartes: Int = 3) {
  * - [envoi] : légère vibration à l'envoi d'un message ;
  * - [tacheTerminee] : double tick léger à la fin d'une tâche.
  */
-class ZHaptics private constructor(
+class ZHaptics constructor(
     private val feedback: HapticFeedback,
     private val view: View,
     private val niveau: HapticLevel
