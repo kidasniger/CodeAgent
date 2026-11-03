@@ -93,11 +93,13 @@ class TerminalController(
         private set
 
     fun changeFontSize(delta: Int) {
-        setFontSize(fontSize + delta)
+        updateFontSize(fontSize + delta)
     }
 
-    /** MA83 : fixe la taille (10 à 22 sp), la mémorise et l'annonce. */
-    fun setFontSize(value: Int) {
+    /** MA83 : fixe la taille (10 à 22 sp), la mémorise et l'annonce.
+     *  Nom « updateFontSize » : un « setFontSize » entrerait en conflit de
+     *  signature JVM avec le setter généré de la propriété [fontSize]. */
+    fun updateFontSize(value: Int) {
         val target = value.coerceIn(MIN_FONT_SIZE, MAX_FONT_SIZE)
         if (target == fontSize) return
         fontSize = target

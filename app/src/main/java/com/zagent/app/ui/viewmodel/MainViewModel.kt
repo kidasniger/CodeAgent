@@ -236,7 +236,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val terminalFontSize: Int get() = terminal.fontSize
 
     fun updateTerminalFontSize(value: Int) {
-        terminal.setFontSize(value)
+        terminal.updateFontSize(value)
     }
 
     fun updateGlassSettings(dark: Boolean, value: GlassSettings) { glassSettings = value; settingsManager.saveGlassSettings(dark, value) }
