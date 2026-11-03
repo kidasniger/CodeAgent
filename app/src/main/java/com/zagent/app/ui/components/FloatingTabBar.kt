@@ -14,9 +14,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -150,9 +152,14 @@ fun FloatingTabBar(
                 .padding(horizontal = 12.dp, vertical = 10.dp)
         ) {
             // Conteneur en verre (même rendu qu'auparavant).
+            // Correctif : height(IntrinsicSize.Min) borne la hauteur du conteneur
+            // à celle de la rangée d'onglets. Sans cette borne, la pastille en
+            // fillMaxHeight héritait du maxHeight de l'écran entier et s'étalait
+            // en une bande verticale sur toute la hauteur de l'écran.
             Box(
                 Modifier
                     .fillMaxWidth()
+                    .height(IntrinsicSize.Min)
                     .glassSurface(haze, glass, c.isDark, RoundedCornerShape(50.dp), context)
             ) {
                 // Pastille de verre de l'onglet actif — glisse d'un onglet à
