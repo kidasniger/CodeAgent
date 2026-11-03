@@ -27,6 +27,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CreateNewFolder
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Folder
@@ -36,7 +38,6 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.runtime.remember
@@ -63,7 +64,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zagent.app.data.FileRepository
 import com.zagent.app.ui.components.GlassAlertDialog
-import com.zagent.app.ui.components.GlassDropdownMenu
+import com.zagent.app.ui.components.ZMenu
+import com.zagent.app.ui.components.ZMenuItem
+import com.zagent.app.ui.components.ZMenuSeparator
 import com.zagent.app.ui.components.CircleIconButton
 import com.zagent.app.ui.components.GlassCard
 import com.zagent.app.ui.components.StatusBadge
@@ -136,16 +139,19 @@ fun FileBrowserScreen(
                 Spacer(Modifier.width(10.dp))
                 Box {
                     CircleIconButton(Icons.Default.Add, "Nouveau", onClick = { menuNew = true })
-                    GlassDropdownMenu(
+                    // MA78 : menu unifié en verre (remplace GlassDropdownMenu + DropdownMenuItem).
+                    ZMenu(
                         expanded = menuNew,
-                        onDismissRequest = { menuNew = false },
+                        onDismiss = { menuNew = false }
                     ) {
-                        DropdownMenuItem(
-                            text = { Text("Nouveau fichier", color = c.text) },
+                        ZMenuItem(
+                            label = "Nouveau fichier",
+                            icon = Icons.Default.InsertDriveFile,
                             onClick = { menuNew = false; createPrefix = ""; createKind = "file" }
                         )
-                        DropdownMenuItem(
-                            text = { Text("Nouveau dossier", color = c.text) },
+                        ZMenuItem(
+                            label = "Nouveau dossier",
+                            icon = Icons.Default.CreateNewFolder,
                             onClick = { menuNew = false; createPrefix = ""; createKind = "folder" }
                         )
                     }
@@ -555,26 +561,33 @@ private fun RowMenu(e: FileRepository.Entry, onAction: (String) -> Unit) {
         ) {
             Icon(Icons.Default.MoreVert, "Actions", tint = c.text3, modifier = Modifier.size(18.dp))
         }
-        GlassDropdownMenu(
+        // MA78 : menu unifié en verre (remplace GlassDropdownMenu + DropdownMenuItem).
+        ZMenu(
             expanded = open,
-            onDismissRequest = { open = false },
+            onDismiss = { open = false }
         ) {
             if (e.isDir) {
-                DropdownMenuItem(
-                    text = { Text("Nouveau fichier ici", color = c.text) },
+                ZMenuItem(
+                    label = "Nouveau fichier ici",
+                    icon = Icons.Default.InsertDriveFile,
                     onClick = { open = false; onAction("newfile") }
                 )
-                DropdownMenuItem(
-                    text = { Text("Nouveau dossier ici", color = c.text) },
+                ZMenuItem(
+                    label = "Nouveau dossier ici",
+                    icon = Icons.Default.CreateNewFolder,
                     onClick = { open = false; onAction("newfolder") }
                 )
             }
-            DropdownMenuItem(
-                text = { Text("Renommer", color = c.text) },
+            ZMenuItem(
+                label = "Renommer",
+                icon = Icons.Default.Edit,
                 onClick = { open = false; onAction("rename") }
             )
-            DropdownMenuItem(
-                text = { Text("Supprimer", color = c.red) },
+            ZMenuSeparator()
+            ZMenuItem(
+                label = "Supprimer",
+                icon = Icons.Default.Delete,
+                destructive = true,
                 onClick = { open = false; onAction("delete") }
             )
         }

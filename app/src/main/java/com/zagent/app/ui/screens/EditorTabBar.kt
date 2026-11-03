@@ -2,8 +2,8 @@ package com.zagent.app.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -101,7 +101,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zagent.app.ui.components.GlassAlertDialog
-import com.zagent.app.ui.components.GlassDropdownMenu
+import com.zagent.app.ui.components.ZMenu
+import com.zagent.app.ui.components.ZMenuItem
 import com.zagent.app.ui.components.CircleIconButton
 import com.zagent.app.ui.editor.EditorTab
 import com.zagent.app.ui.editor.Kind
@@ -179,28 +180,33 @@ internal fun EditorTabBar(
                         Icon(Icons.Default.Close, "Fermer l'onglet", tint = c.text3, modifier = Modifier.size(14.dp))
                     }
                 }
-                GlassDropdownMenu(
+                // MA78 : menu unifié en verre (remplace GlassDropdownMenu + DropdownMenuItem).
+                ZMenu(
                     expanded = menuIndex == index,
-                    onDismissRequest = { menuIndex = null }
+                    onDismiss = { menuIndex = null }
                 ) {
-                    DropdownMenuItem(
-                        text = { Text("Fermer") },
+                    ZMenuItem(
+                        label = "Fermer",
+                        icon = Icons.Default.Close,
                         onClick = {
                             menuIndex = null
                             if (t.dirty) onRequestClose(index) else editor.close(index)
                         }
                     )
-                    DropdownMenuItem(
-                        text = { Text("Fermer les autres") },
-                        enabled = editor.tabs.size > 1,
-                        onClick = {
-                            menuIndex = null
-                            val kept = editor.closeOthers(t)
-                            if (kept > 0) {
-                                editor.info = if (kept == 1) "1 onglet modifié conservé" else "$kept onglets modifiés conservés"
+                    // Plusieurs onglets seulement : « Fermer les autres » n'a pas de sens sinon.
+                    if (editor.tabs.size > 1) {
+                        ZMenuItem(
+                            label = "Fermer les autres",
+                            icon = Icons.Default.DeleteOutline,
+                            onClick = {
+                                menuIndex = null
+                                val kept = editor.closeOthers(t)
+                                if (kept > 0) {
+                                    editor.info = if (kept == 1) "1 onglet modifié conservé" else "$kept onglets modifiés conservés"
+                                }
                             }
-                        }
-                    )
+                        )
+                    }
                 }
             }
         }

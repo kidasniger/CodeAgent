@@ -3,7 +3,6 @@ package com.zagent.app.ui.screens
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -101,7 +100,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zagent.app.ui.components.GlassAlertDialog
-import com.zagent.app.ui.components.GlassDropdownMenu
+import com.zagent.app.ui.components.ZMenu
+import com.zagent.app.ui.components.ZMenuItem
+import com.zagent.app.ui.components.ZMenuSeparator
 import com.zagent.app.ui.components.CircleIconButton
 import com.zagent.app.ui.editor.EditorTab
 import com.zagent.app.ui.editor.Kind
@@ -196,10 +197,12 @@ internal fun FullscreenBar(
             ConsoleIcon(errors) { onConsole() }
             Box {
                 SmallIcon(Icons.Default.MoreVert, "Menu") { onMenu(true) }
-                GlassDropdownMenu(expanded = menuOpen, onDismissRequest = { onMenu(false) }) {
-                    DropdownMenuItem(text = { Text("Recharger") }, onClick = { onMenu(false); onRefresh() })
-                    DropdownMenuItem(text = { Text("Console") }, onClick = { onMenu(false); onConsole() })
-                    DropdownMenuItem(text = { Text("Quitter le plein écran") }, onClick = { onMenu(false); onExit() })
+                // MA78 : menu unifié en verre (remplace GlassDropdownMenu + DropdownMenuItem).
+                ZMenu(expanded = menuOpen, onDismiss = { onMenu(false) }) {
+                    ZMenuItem(label = "Recharger", icon = Icons.Default.Refresh, onClick = { onMenu(false); onRefresh() })
+                    ZMenuItem(label = "Console", icon = Icons.Default.Terminal, onClick = { onMenu(false); onConsole() })
+                    ZMenuSeparator()
+                    ZMenuItem(label = "Quitter le plein écran", icon = Icons.Default.FullscreenExit, onClick = { onMenu(false); onExit() })
                 }
             }
         }
