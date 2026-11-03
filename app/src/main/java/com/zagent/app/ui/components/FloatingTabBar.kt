@@ -7,6 +7,7 @@ import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.annotation.StringRes
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -47,11 +48,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.R
 import com.zagent.app.ui.theme.LocalGlass
 import com.zagent.app.ui.theme.LocalHazeState
 import com.zagent.app.ui.theme.LocalReduceMotion
@@ -186,18 +192,22 @@ fun FloatingTabBar(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TabItemData.entries.forEach { item ->
-                        val selected = currentScreen == item.screen
+                        val actif = currentScreen == item.screen
                         Box(Modifier.weight(1f)) {
                             Column(
                                 Modifier
                                     .fillMaxWidth()
+                                    // MàJ 96 — rôle Tab + état « sélectionné » exposé
+                                    // aux lecteurs d'écran ; ordre de focus = ordre visuel.
+                                    .semantics { selected = actif }
                                     .combinedClickable(
                                         onClick = { onNavigate(item.screen) },
                                         onLongClick = {
                                             // MàJ 91 — LongPress pour les menus.
                                             haptique.menu()
                                             if (item.hasQuickMenu) menuFor = item.screen
-                                        }
+                                        },
+                                        role = Role.Tab
                                     )
                                     .padding(vertical = 8.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -206,8 +216,8 @@ fun FloatingTabBar(
                                 Box {
                                     Icon(
                                         item.icon,
-                                        contentDescription = item.label,
-                                        tint = if (selected) c.cyan else c.text2,
+                                        contentDescription = stringResource(item.labelRes),
+                                        tint = if (actif) c.cyan else c.text2,
                                         modifier = Modifier.size(19.dp)
                                     )
                                     // MA73 : badge numérique sur Chat (confirmations en attente).
@@ -229,8 +239,8 @@ fun FloatingTabBar(
                                     }
                                 }
                                 Text(
-                                    item.label,
-                                    color = if (selected) c.text else c.text2,
+                                    stringResource(item.labelRes),
+                                    color = if (actif) c.text else c.text2,
                                     fontSize = 10.sp,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
@@ -268,16 +278,16 @@ fun FloatingTabBar(
     }
 }
 
-/** Onglet de la barre : libellé, icône, écran cible, menu rapide disponible ou non. */
+/** Onglet de la barre : libellé (ressource, MàJ 100), icône, écran cible, menu rapide disponible ou non. */
 private enum class TabItemData(
-    val label: String,
+    @StringRes val labelRes: Int,
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
     val screen: AppScreen,
     val hasQuickMenu: Boolean
 ) {
-    CHAT("Chat", Icons.Default.ChatBubbleOutline, AppScreen.CHAT, true),
-    FILES("Fichiers", Icons.Default.FolderOpen, AppScreen.FILE_BROWSER, true),
-    EDITOR("Éditeur", Icons.Default.Code, AppScreen.EDITOR, false),
-    TERMINAL("Terminal", Icons.Default.Terminal, AppScreen.TERMINAL, true),
-    SETTINGS("Réglages", Icons.Default.Settings, AppScreen.SETTINGS, false)
+    CHAT(R.string.tab_chat, Icons.Default.ChatBubbleOutline, AppScreen.CHAT, true),
+    FILES(R.string.tab_files, Icons.Default.FolderOpen, AppScreen.FILE_BROWSER, true),
+    EDITOR(R.string.tab_editor, Icons.Default.Code, AppScreen.EDITOR, false),
+    TERMINAL(R.string.tab_terminal, Icons.Default.Terminal, AppScreen.TERMINAL, true),
+    SETTINGS(R.string.tab_settings, Icons.Default.Settings, AppScreen.SETTINGS, false)
 }

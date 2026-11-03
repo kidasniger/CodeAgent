@@ -69,6 +69,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -498,6 +499,7 @@ fun GradientButton(
                 interactionSource = interaction,
                 indication = null,
                 enabled = enabled,
+                role = Role.Button, // MàJ 96
                 onClick = onClick
             ),
         contentAlignment = Alignment.Center
@@ -537,6 +539,7 @@ fun SecondaryButton(
                 interactionSource = interaction,
                 indication = null,
                 enabled = enabled,
+                role = Role.Button, // MàJ 96
                 onClick = onClick
             ),
         contentAlignment = Alignment.Center
@@ -559,7 +562,7 @@ fun CircleIconButton(
     contentDescription: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    size: Dp = 40.dp,
+    size: Dp = 48.dp,
     iconTint: Color = Zcolors.text,
     tintBackground: Color = Zcolors.surface2
 ) {
@@ -575,6 +578,7 @@ fun CircleIconButton(
             .clickable(
                 interactionSource = interaction,
                 indication = null,
+                role = Role.Button, // MàJ 96
                 onClick = onClick
             ),
         contentAlignment = Alignment.Center
@@ -675,6 +679,7 @@ fun ModelChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: M
             .clickable(
                 interactionSource = interaction,
                 indication = null,
+                role = Role.Button, // MàJ 96
                 onClick = onClick
             )
             .padding(horizontal = 14.dp, vertical = 9.dp),

@@ -23,9 +23,10 @@ val ZGreenD = Color(0xFF34D399)
 val ZAmberD = Color(0xFFFBBF24)
 val ZRedD = Color(0xFFF87171)
 
-// Sémantiques (mode clair, plus profondes)
-val ZGreenL = Color(0xFF0E9F6E)
-val ZAmberL = Color(0xFFD97706)
+// Sémantiques (mode clair, plus profondes) — MàJ 96 : vert et ambre assombris
+// pour passer le seuil d'icône 3:1 sur toutes les surfaces claires (2,8:1 et 2,6:1 avant).
+val ZGreenL = Color(0xFF0D9769)
+val ZAmberL = Color(0xFFC86E06)
 val ZRedL = Color(0xFFDC2626)
 val ZCyanL = Color(0xFF0891B2)
 val ZVioletL = Color(0xFF7C3AED)
@@ -40,13 +41,15 @@ val ZBgLight = Color(0xFFF3F5FB)
 val ZBg2Light = Color(0xFFFFFFFF)
 val ZCodeBg = Color(0xFF0F1526) // les blocs de code restent sombres dans les deux thèmes
 
-// Texte
+// Texte — MàJ 96 : contrastes vérifiés WCAG AA (≥ 4,5:1) sur la pire surface de
+// chaque preset (bg, bg2, surfaces translucides composées, verre au film par
+// défaut) — voir scripts/contraste_wcag.py pour le détail des mesures.
 val ZTextDark = Color(0xFFE9EEF8)
-val ZText2Dark = Color(0xFF97A3BA)
-val ZText3Dark = Color(0xFF5C6A85)
+val ZText2Dark = Color(0xFF97A3BA)                  // 5,9:1 (Aurora sombre)
+val ZText3Dark = Color(0xFF838DA2)                  // 4,5:1 ( était 5C6A85, 2,8:1)
 val ZTextLight = Color(0xFF0D1A30)
-val ZText2Light = Color(0xFF51607A)
-val ZText3Light = Color(0xFF8B98AD)
+val ZText2Light = Color(0xFF51607A)                 // 5,2:1 (Aurora clair)
+val ZText3Light = Color(0xFF606978)                 // 4,5:1 ( était 8B98AD, 2,4:1)
 
 // Sur dégradé
 val ZOnGradDark = Color(0xFF06121D)
@@ -183,8 +186,8 @@ val MinimalLightZColors = ZColors(
     border = Color(0x14141413),
     border2 = Color(0x24141413),
     text = Color(0xFF141413),
-    text2 = Color(0xFF5E5D59),
-    text3 = Color(0xFF85837D),
+    text2 = Color(0xFF5E5D59),                  // 5,9:1
+    text3 = Color(0xFF716F6A),                  // MàJ 96 : 4,5:1 ( était 85837D, 3,4:1)
     cyan = Color(0xFFC96442),
     violet = Color(0xFFC96442),
     green = ZGreenL,
@@ -218,8 +221,8 @@ val MinimalDarkZColors = ZColors(
     border = Color(0x24141413),
     border2 = Color(0x3DFFFFFF),
     text = Color(0xFFF0EEE6),
-    text2 = Color(0xFFA8A69E),
-    text3 = Color(0xFF817F78),
+    text2 = Color(0xFFBEBDB7),                 // MàJ 96 : 5,4:1 ( était A8A69E, 4,2:1)
+    text3 = Color(0xFFADACA7),                 // MàJ 96 : 4,5:1 ( était 817F78, 2,6:1)
     cyan = Color(0xFFE08A68),
     violet = Color(0xFFE08A68),
     green = ZGreenD,

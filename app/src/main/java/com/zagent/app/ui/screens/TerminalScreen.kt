@@ -323,7 +323,7 @@ private fun ShellPane(controller: TerminalController, termBg: Int, modifier: Mod
                         setTerminalViewClient(controller.terminalViewClient())
                         setTextSize(with(density) { controller.fontSize.dp.roundToPx() })
                         tag = controller.fontSize
-                        ResourcesCompat.getFont(ctx, R.font.jetbrainsmono_regular)
+                        ResourcesCompat.getFont(ctx, R.font.jetbrainsmono_variable)
                             ?.let { setTypeface(it) }
                         isFocusable = true
                         isFocusableInTouchMode = true

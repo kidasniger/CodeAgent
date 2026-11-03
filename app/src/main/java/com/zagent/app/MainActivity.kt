@@ -4,6 +4,8 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.os.LocaleListCompat
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -65,7 +67,7 @@ import com.zagent.app.ui.viewmodel.AppScreen
 import com.zagent.app.ui.viewmodel.MainViewModel
 import com.zagent.app.update.UpdateHost
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
     private val viewModel: MainViewModel by viewModels()
 
     override fun onStart() {
@@ -86,6 +88,19 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // MàJ 100 — langue par application : resynchronise appcompat avec le
+        // réglage persistant (« Système » = liste vide). Avec le service
+        // AppLocalesMetadataHolderService (autoStoreLocales), appcompat restaure
+        // aussi la langue tout seul au démarrage ; cette synchronisation couvre
+        // les migrations et les cas de désynchronisation.
+        run {
+            val langue = viewModel.settingsManager.langueUi
+            val cible = if (langue.isBlank()) LocaleListCompat.getEmptyLocaleList()
+            else LocaleListCompat.forLanguageTags(langue)
+            if (AppCompatDelegate.getApplicationLocales() != cible) {
+                AppCompatDelegate.setApplicationLocales(cible)
+            }
+        }
         AgentNotifier.ensureChannels(this)
         // MA77 : raccourcis d'application (appui long sur l'icône) — démarrage à froid.
         handleShortcutIntent(intent)

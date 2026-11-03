@@ -1,0 +1,74 @@
+<resources>
+    <string name="app_name">ZAgent</string>
+    <!-- MA77 : application shortcuts -->
+    <string name="shortcut_new_chat">New conversation</string>
+    <string name="shortcut_new_chat_long">Start a new conversation</string>
+    <string name="shortcut_open_terminal">Terminal</string>
+    <string name="shortcut_open_terminal_long">Open the terminal</string>
+    <string name="shortcut_last_project">Last project</string>
+    <string name="shortcut_last_project_long">Open the last project</string>
+
+    <!-- ═══ LOT 9 · MàJ 100 — string extraction (wave 1) ═════════════════════ -->
+
+    <!-- Floating tab bar (MàJ 96: semantic roles) -->
+    <string name="tab_chat">Chat</string>
+    <string name="tab_files">Files</string>
+    <string name="tab_editor">Editor</string>
+    <string name="tab_terminal">Terminal</string>
+    <string name="tab_settings">Settings</string>
+
+    <!-- Chat top bar -->
+    <string name="status_agent_active">Agent active</string>
+    <string name="status_error">Error</string>
+    <string name="status_online">Online</string>
+    <string name="cd_open_history">Conversation history</string>
+    <string name="cd_open_search">Global search</string>
+    <string name="cd_share_conversation">Share conversation</string>
+    <string name="cd_more_actions">More actions</string>
+    <string name="menu_file_browser">File browser</string>
+    <string name="menu_git">Git</string>
+    <string name="menu_models">Models</string>
+    <string name="menu_prompt_templates">Prompt templates</string>
+    <string name="menu_settings">Settings</string>
+
+    <!-- Chat home -->
+    <string name="welcome_morning">Good morning</string>
+    <string name="welcome_afternoon">Good afternoon</string>
+    <string name="welcome_evening">Good evening</string>
+    <string name="welcome_subtitle">What are we working on?</string>
+    <string name="suggestion_fix_bug">Fix a bug</string>
+    <string name="suggestion_create_screen">Create a screen</string>
+    <string name="suggestion_explain_file">Explain this file</string>
+    <string name="suggestion_write_tests">Write tests</string>
+
+    <!-- Input bar -->
+    <string name="input_placeholder">Ask ZAgent something…</string>
+    <string name="cd_add_attachment">Add an attachment</string>
+    <string name="cd_dictate">Dictate</string>
+    <string name="cd_send">Send</string>
+    <string name="cd_stop_agent">Stop the agent</string>
+    <string name="cd_edit_message">Edit message</string>
+
+    <!-- Message thread -->
+    <string name="scroll_new_message">New message</string>
+    <string name="typing_default">The agent is working</string>
+    <string name="editing_banner">Editing a message — sending will replace the rest</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_open_preview">Open preview</string>
+    <string name="action_undo_changes">Undo %1$d change(s)</string>
+    <string name="action_retry">Retry</string>
+    <string name="action_open_settings">Open Settings</string>
+
+    <!-- Toasts and inline errors (MA43/MA47) -->
+    <string name="toast_key_missing">API key missing</string>
+    <string name="toast_offline">Offline</string>
+    <string name="toast_model_overloaded">Model overloaded</string>
+    <string name="toast_other_model">Other model</string>
+    <string name="toast_step_limit">Step limit reached</string>
+    <string name="toast_continue">Continue</string>
+    <string name="error_title_key_refused">The API key was refused</string>
+    <string name="error_title_network">Connection unavailable</string>
+    <string name="error_title_model_overloaded">The model is overloaded</string>
+    <string name="error_title_step_limit">Step limit reached</string>
+    <string name="error_title_generic">Something went wrong</string>
+</resources>

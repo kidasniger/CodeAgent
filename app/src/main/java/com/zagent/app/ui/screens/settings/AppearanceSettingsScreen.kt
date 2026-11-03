@@ -1,6 +1,8 @@
 package com.zagent.app.ui.screens.settings
 
 import androidx.activity.compose.BackHandler
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.Canvas
@@ -47,6 +49,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -66,6 +70,7 @@ import com.zagent.app.ui.theme.StylePresets
 import com.zagent.app.ui.theme.LocalZColors
 import com.zagent.app.ui.theme.Zcolors
 import com.zagent.app.ui.viewmodel.MainViewModel
+import kotlin.math.roundToInt
 
 @Composable
 fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
@@ -360,6 +365,90 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             }
 
             // MA72 : coupe les transitions de navigation (fondu + glissement).
+            // MàJ 97 — échelle de texte de 85 % à 130 %, avec aperçu en direct.
+            SettingsSectionLabel("TAILLE DU TEXTE")
+            SettingsCard {
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+                    var tailleLocale by remember(viewModel.fontScale) { mutableFloatStateOf(viewModel.fontScale) }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Échelle de l'interface", color = Zcolors.text, style = MaterialTheme.typography.titleMedium)
+                        Text("${(tailleLocale * 100).roundToInt()} %", color = Zcolors.cyan, style = MaterialTheme.typography.titleMedium)
+                    }
+                    Slider(
+                        value = tailleLocale,
+                        onValueChange = {
+                            tailleLocale = it
+                            viewModel.updateFontScale(it)
+                        },
+                        valueRange = 0.85f..1.30f
+                    )
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("85 %", style = MaterialTheme.typography.labelSmall, color = Zcolors.text3)
+                        Text("100 %", style = MaterialTheme.typography.labelSmall, color = Zcolors.text3)
+                        Text("130 %", style = MaterialTheme.typography.labelSmall, color = Zcolors.text3)
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "APERÇU",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Zcolors.text3,
+                        letterSpacing = 1.4.sp
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    // L'aperçu applique le même multiplicateur que scaledTypography :
+                    // les sp restent ensuite multipliés par le fontScale du système.
+                    Text(
+                        "L'agent lit le projet, propose un correctif et l'applique après ta confirmation.",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontSize = (16 * tailleLocale).sp,
+                            lineHeight = (24 * tailleLocale).sp
+                        ),
+                        color = Zcolors.text
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "La taille choisie s'ajoute à celle d'Android (Paramètres › Écran › Taille de police).",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Zcolors.text2
+                    )
+                }
+            }
+
+            // MàJ 100 — langue de l'interface (langue par application, repli
+            // AppCompat pour API 26-32 ; réglage système natif à partir d'API 33).
+            SettingsSectionLabel("LANGUE")
+            SettingsCard {
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+                    Text("Langue de l'interface", color = Zcolors.text, style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        "« Système » suit la langue d'Android. Le changement s'applique immédiatement.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Zcolors.text2
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(
+                            "" to "Système",
+                            "fr" to "Français",
+                            "en" to "English"
+                        ).forEach { (tag, libelle) ->
+                            FilterChip(
+                                selected = viewModel.langueUi == tag,
+                                onClick = {
+                                    viewModel.updateLangue(tag)
+                                    AppCompatDelegate.setApplicationLocales(
+                                        if (tag.isBlank()) LocaleListCompat.getEmptyLocaleList()
+                                        else LocaleListCompat.forLanguageTags(tag)
+                                    )
+                                },
+                                label = { Text(libelle) }
+                            )
+                        }
+                    }
+                }
+            }
+
             SettingsSectionLabel("ANIMATIONS")
             SettingsCard {
                 Row(

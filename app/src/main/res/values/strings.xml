@@ -7,4 +7,72 @@
     <string name="shortcut_open_terminal_long">Ouvrir le terminal</string>
     <string name="shortcut_last_project">Dernier projet</string>
     <string name="shortcut_last_project_long">Ouvrir le dernier projet</string>
+
+    <!-- ═══ LOT 9 · MàJ 100 — extraction des chaînes (vague 1) ═══════════════
+         Première vague : barre d'onglets, barre du haut, accueil du chat,
+         barre de saisie, toasts et erreurs en ligne. Les écrans restants
+         (éditeur, terminal, fichiers, sous-écrans de réglages) conservent
+         leurs libellés français en dur et suivront en vague 2. -->
+
+    <!-- Barre d'onglets flottante (MàJ 96 : rôles sémantiques) -->
+    <string name="tab_chat">Chat</string>
+    <string name="tab_files">Fichiers</string>
+    <string name="tab_editor">Éditeur</string>
+    <string name="tab_terminal">Terminal</string>
+    <string name="tab_settings">Réglages</string>
+
+    <!-- Barre du haut du chat -->
+    <string name="status_agent_active">Agent actif</string>
+    <string name="status_error">Erreur</string>
+    <string name="status_online">En ligne</string>
+    <string name="cd_open_history">Historique des conversations</string>
+    <string name="cd_open_search">Recherche globale</string>
+    <string name="cd_share_conversation">Partager la conversation</string>
+    <string name="cd_more_actions">Plus d\'actions</string>
+    <string name="menu_file_browser">Explorateur de fichiers</string>
+    <string name="menu_git">Git</string>
+    <string name="menu_models">Modèles</string>
+    <string name="menu_prompt_templates">Modèles de prompts</string>
+    <string name="menu_settings">Réglages</string>
+
+    <!-- Accueil du chat -->
+    <string name="welcome_morning">Bonjour</string>
+    <string name="welcome_afternoon">Bon après-midi</string>
+    <string name="welcome_evening">Bonsoir</string>
+    <string name="welcome_subtitle">Sur quoi travaillons-nous ?</string>
+    <string name="suggestion_fix_bug">Corriger un bug</string>
+    <string name="suggestion_create_screen">Créer un écran</string>
+    <string name="suggestion_explain_file">Expliquer ce fichier</string>
+    <string name="suggestion_write_tests">Écrire des tests</string>
+
+    <!-- Barre de saisie -->
+    <string name="input_placeholder">Demandez quelque chose à ZAgent…</string>
+    <string name="cd_add_attachment">Ajouter une pièce jointe</string>
+    <string name="cd_dictate">Dicter</string>
+    <string name="cd_send">Envoyer</string>
+    <string name="cd_stop_agent">Arrêter l\'agent</string>
+    <string name="cd_edit_message">Modifier le message</string>
+
+    <!-- Fil de messages -->
+    <string name="scroll_new_message">Nouveau message</string>
+    <string name="typing_default">L\'agent travaille</string>
+    <string name="editing_banner">Modification d\'un message — l\'envoi remplacera la suite</string>
+    <string name="action_cancel">Annuler</string>
+    <string name="action_open_preview">Ouvrir l\'aperçu</string>
+    <string name="action_undo_changes">Annuler %1$d changement(s)</string>
+    <string name="action_retry">Réessayer</string>
+    <string name="action_open_settings">Ouvrir les Réglages</string>
+
+    <!-- Toasts et erreurs en ligne (MA43/MA47) -->
+    <string name="toast_key_missing">Clé API manquante</string>
+    <string name="toast_offline">Hors ligne</string>
+    <string name="toast_model_overloaded">Modèle surchargé</string>
+    <string name="toast_other_model">Autre modèle</string>
+    <string name="toast_step_limit">Limite d\'étapes atteinte</string>
+    <string name="toast_continue">Continuer</string>
+    <string name="error_title_key_refused">La clé API a été refusée</string>
+    <string name="error_title_network">Connexion indisponible</string>
+    <string name="error_title_model_overloaded">Le modèle est surchargé</string>
+    <string name="error_title_step_limit">Limite d\'étapes atteinte</string>
+    <string name="error_title_generic">Une erreur est survenue</string>
 </resources>

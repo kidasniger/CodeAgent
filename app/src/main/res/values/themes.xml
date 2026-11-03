@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.ZAgent" parent="android:Theme.Material.NoActionBar">
+    <!-- MàJ 100 : parent AppCompat requis par AppCompatActivity (sélecteur de
+     langue par application). Le rendu Compose est inchangé. -->
+    <style name="Theme.ZAgent" parent="Theme.AppCompat.NoActionBar">
         <item name="android:windowBackground">@color/zagent_bg_dark</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>

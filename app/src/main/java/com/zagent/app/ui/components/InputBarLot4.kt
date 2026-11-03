@@ -70,6 +70,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -82,6 +84,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.R
 import com.zagent.app.data.ProjectSearch
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
@@ -306,14 +309,14 @@ fun InputBarLot4(
                 // ── MA49 : bouton « + » qui ouvre la feuille d'ajouts ───────
                 Box(
                     Modifier
-                        .size(38.dp)
+                        .size(48.dp) // MàJ 96 : zone tactile
                         .clip(CircleShape)
-                        .clickable { attachSheetOpen = true },
+                        .clickable(role = Role.Button) { attachSheetOpen = true },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         Icons.Default.Add,
-                        contentDescription = "Ajouter une pièce jointe",
+                        contentDescription = stringResource(R.string.cd_add_attachment),
                         tint = c.text2,
                         modifier = Modifier.size(20.dp)
                     )
@@ -326,7 +329,7 @@ fun InputBarLot4(
                     onValueChange = onValueChange,
                     placeholder = {
                         Text(
-                            "Demandez quelque chose à ZAgent…",
+                            stringResource(R.string.input_placeholder),
                             style = TextStyle(fontFamily = Inter, fontSize = 15.sp),
                             color = c.text3
                         )
@@ -440,14 +443,14 @@ private fun MicButton(isListening: Boolean, onClick: () -> Unit) {
     val c = Zcolors
     Box(
         Modifier
-            .size(38.dp)
+            .size(48.dp) // MàJ 96 : zone tactile
             .clip(CircleShape)
             .background(if (isListening) c.cyanBg else c.surface2)
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick, role = Role.Button),
         contentAlignment = Alignment.Center
     ) {
         if (isListening) VoiceWave()
-        else Icon(Icons.Default.Mic, "Dicter", tint = c.text2, modifier = Modifier.size(18.dp))
+        else Icon(Icons.Default.Mic, stringResource(R.string.cd_dictate), tint = c.text2, modifier = Modifier.size(18.dp))
     }
 }
 
@@ -499,25 +502,25 @@ private fun SendStopButton(
     val active = if (isLoading) true else (canSend && enabled)
     Box(
         Modifier
-            .size(42.dp)
+            .size(48.dp) // MàJ 96 : zone tactile
             .scale(if (isLoading) pulse else 1f)
             .clip(RoundedCornerShape(corner))
             .then(if (active) Modifier.background(c.gradBtn) else Modifier.background(c.surface3))
-            .clickable(enabled = active) { if (isLoading) onStop() else onSend() },
+            .clickable(enabled = active, role = Role.Button) { if (isLoading) onStop() else onSend() },
         contentAlignment = Alignment.Center
     ) {
         Crossfade(targetState = isLoading, label = "envoiIcone") { generating ->
             if (generating) {
                 Icon(
                     Icons.Default.Stop,
-                    contentDescription = "Arrêter l'agent",
+                    contentDescription = stringResource(R.string.cd_stop_agent),
                     tint = c.onGrad,
                     modifier = Modifier.size(24.dp)
                 )
             } else {
                 Icon(
                     Icons.Default.ArrowUpward,
-                    contentDescription = "Envoyer",
+                    contentDescription = stringResource(R.string.cd_send),
                     tint = if (canSend && enabled) c.onGrad else c.text3,
                     modifier = Modifier.size(20.dp)
                 )

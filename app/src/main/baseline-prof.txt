@@ -1,0 +1,24 @@
+# LOT 9 · MàJ 99 — Baseline Profile ZAgent.
+# Règles génériques compilées par AGP dans l'APK (assets/dexopt/baseline.prof)
+# et appliquées au premier démarrage par androidx.profileinstaller ; l'effet
+# complet (précompilation Cloud / au moment de l'installation) dépend du
+# service Play. Les chemins joker (**) sont pris en charge par le format
+# « human readable » des profils de base.
+HSPLcom/zagent/app/**->**(**)**
+Lcom/zagent/app/**
+HSPLandroidx/compose/runtime/**->**(**)**
+Landroidx/compose/runtime/**
+HSPLandroidx/compose/ui/**->**(**)**
+Landroidx/compose/ui/**
+HSPLandroidx/compose/foundation/**->**(**)**
+Landroidx/compose/foundation/**
+HSPLandroidx/compose/animation/**->**(**)**
+Landroidx/compose/animation/**
+HSPLandroidx/compose/material3/**->**(**)**
+Landroidx/compose/material3/**
+HSPLandroidx/lifecycle/**->**(**)**
+Landroidx/lifecycle/**
+HSPLdev/chrisbanes/haze/**->**(**)**
+Ldev/chrisbanes/haze/**
+HSPLkotlinx/coroutines/**->**(**)**
+Lkotlinx/coroutines/**

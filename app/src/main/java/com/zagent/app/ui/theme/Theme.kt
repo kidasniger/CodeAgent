@@ -367,7 +367,12 @@ fun ZAgentTheme(
         "SPACE_GROTESK" -> SpaceGrotesk
         else -> Inter
     }
-    val typography = scaledTypography(selectedFont, fontScale.coerceIn(0.85f, 1.25f))
+    // MàJ 98 — preset Minimal : titres en serif (FontFamily.Serif, voir Type.kt),
+    // corps inchangé. Si l'utilisateur a choisi la police « Système », on la
+    // respecte pour l'ensemble (titres compris).
+    val fontTitres = if (minimal && fontFamilyId != "SYSTEM") SerifTitres else selectedFont
+    // MàJ 97 — l'échelle va désormais de 85 % à 130 %.
+    val typography = scaledTypography(selectedFont, fontTitres, fontScale.coerceIn(0.85f, 1.30f))
     val currentDensity = LocalDensity.current
     val scaledDensity = Density(
         density = currentDensity.density * densityScale.coerceIn(0.88f, 1.12f),
@@ -396,20 +401,28 @@ private fun TextStyle.withInterfaceFont(font: FontFamily, scale: Float): TextSty
     lineHeight = lineHeight * scale
 )
 
-private fun scaledTypography(font: FontFamily, scale: Float) = ZTypography.copy(
-    displayLarge = ZTypography.displayLarge.withInterfaceFont(font, scale),
-    displayMedium = ZTypography.displayMedium.withInterfaceFont(font, scale),
-    displaySmall = ZTypography.displaySmall.withInterfaceFont(font, scale),
-    headlineLarge = ZTypography.headlineLarge.withInterfaceFont(font, scale),
-    headlineMedium = ZTypography.headlineMedium.withInterfaceFont(font, scale),
-    headlineSmall = ZTypography.headlineSmall.withInterfaceFont(font, scale),
-    titleLarge = ZTypography.titleLarge.withInterfaceFont(font, scale),
-    titleMedium = ZTypography.titleMedium.withInterfaceFont(font, scale),
-    titleSmall = ZTypography.titleSmall.withInterfaceFont(font, scale),
-    bodyLarge = ZTypography.bodyLarge.withInterfaceFont(font, scale),
-    bodyMedium = ZTypography.bodyMedium.withInterfaceFont(font, scale),
-    bodySmall = ZTypography.bodySmall.withInterfaceFont(font, scale),
-    labelLarge = ZTypography.labelLarge.withInterfaceFont(font, scale),
-    labelMedium = ZTypography.labelMedium.withInterfaceFont(font, scale),
-    labelSmall = ZTypography.labelSmall.withInterfaceFont(font, scale)
+/**
+ * MàJ 97/98 — construit la typographie finale :
+ * - [policeCorps] remplace la famille de tous les styles (choix « Police ») ;
+ * - [policeTitres] ne remplace la famille que des styles de titres
+ *   (display, headline, title) — c'est là que le preset Minimal applique le serif ;
+ * - [scale] multiplie tailles et interlignes (85-130 %). Les valeurs en sp
+ *     restent ensuite multipliées par le fontScale du système via [Density].
+ */
+private fun scaledTypography(policeCorps: FontFamily, policeTitres: FontFamily, scale: Float) = ZTypography.copy(
+    displayLarge = ZTypography.displayLarge.withInterfaceFont(policeTitres, scale),
+    displayMedium = ZTypography.displayMedium.withInterfaceFont(policeTitres, scale),
+    displaySmall = ZTypography.displaySmall.withInterfaceFont(policeTitres, scale),
+    headlineLarge = ZTypography.headlineLarge.withInterfaceFont(policeTitres, scale),
+    headlineMedium = ZTypography.headlineMedium.withInterfaceFont(policeTitres, scale),
+    headlineSmall = ZTypography.headlineSmall.withInterfaceFont(policeTitres, scale),
+    titleLarge = ZTypography.titleLarge.withInterfaceFont(policeTitres, scale),
+    titleMedium = ZTypography.titleMedium.withInterfaceFont(policeTitres, scale),
+    titleSmall = ZTypography.titleSmall.withInterfaceFont(policeCorps, scale),
+    bodyLarge = ZTypography.bodyLarge.withInterfaceFont(policeCorps, scale),
+    bodyMedium = ZTypography.bodyMedium.withInterfaceFont(policeCorps, scale),
+    bodySmall = ZTypography.bodySmall.withInterfaceFont(policeCorps, scale),
+    labelLarge = ZTypography.labelLarge.withInterfaceFont(policeCorps, scale),
+    labelMedium = ZTypography.labelMedium.withInterfaceFont(policeCorps, scale),
+    labelSmall = ZTypography.labelSmall.withInterfaceFont(policeCorps, scale)
 )

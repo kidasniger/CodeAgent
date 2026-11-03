@@ -8,6 +8,7 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -68,6 +69,12 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 
+/**
+ * Message du fil. [Immutable] (MàJ 99) : les données d'un message publié ne
+ * changent jamais — Compose peut donc ignorer les recompositions d'une bulle
+ * dont les paramètres n'ont pas changé.
+ */
+@Immutable
 data class ChatMessage(
     val role: String,
     val content: String?,
@@ -192,7 +199,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         private set
 
     fun updateFontFamily(value: String) { fontFamilyId = value; settingsManager.fontFamilyId = value }
-    fun updateFontScale(value: Float) { fontScale = value.coerceIn(0.85f, 1.25f); settingsManager.fontScale = fontScale }
+    // MàJ 97 — plage d'échelle de texte 85 % – 130 %.
+    fun updateFontScale(value: Float) { fontScale = value.coerceIn(0.85f, 1.30f); settingsManager.fontScale = fontScale }
     fun updateDensityScale(value: Float) { densityScale = value.coerceIn(0.88f, 1.12f); settingsManager.densityScale = densityScale }
 
     fun updateOledBlack(value: Boolean) { oledBlack = value; settingsManager.oledBlack = value }
@@ -218,6 +226,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun updateHapticLevel(value: HapticLevel) {
         hapticLevel = value
         settingsManager.hapticLevel = value
+    }
+
+    /**
+     * MàJ 100 — langue de l'interface ("" = système, "fr", "en"). Le miroir
+     * d'état sert à l'aperçu du sélecteur ; l'application effective est faite
+     * par MainActivity via AppCompatDelegate.setApplicationLocales.
+     */
+    var langueUi by mutableStateOf(settingsManager.langueUi)
+        private set
+
+    fun updateLangue(value: String) {
+        langueUi = value
+        settingsManager.langueUi = value
     }
 
     // ── LOT 7 : éditeur & terminal ─────────────────────────────────────────

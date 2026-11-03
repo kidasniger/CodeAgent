@@ -257,13 +257,23 @@ class SettingsManager(context: Context) {
         set(value) = prefs.edit().putString(KEY_FONT_FAMILY, value).apply()
 
     var fontScale: Float
-        get() = prefs.getFloat(KEY_FONT_SCALE, 1f).coerceIn(0.85f, 1.25f)
-        set(value) = prefs.edit().putFloat(KEY_FONT_SCALE, value.coerceIn(0.85f, 1.25f)).apply()
+        // MàJ 97 — plage étendue à 130 % (au lieu de 125 %).
+        get() = prefs.getFloat(KEY_FONT_SCALE, 1f).coerceIn(0.85f, 1.30f)
+        set(value) = prefs.edit().putFloat(KEY_FONT_SCALE, value.coerceIn(0.85f, 1.30f)).apply()
 
     /** Échelle de densité appliquée aux dimensions dp de l'interface. */
     var densityScale: Float
         get() = prefs.getFloat(KEY_DENSITY_SCALE, 1f).coerceIn(0.88f, 1.12f)
         set(value) = prefs.edit().putFloat(KEY_DENSITY_SCALE, value.coerceIn(0.88f, 1.12f)).apply()
+
+    /**
+     * MàJ 100 — langue de l'interface choisie dans Réglages › Apparence :
+     * "" = langue du système, "fr" ou "en". Appliquée via AppCompatDelegate
+     * (langue par application), persistée ici pour survivre aux redémarrages.
+     */
+    var langueUi: String
+        get() = prefs.getString(KEY_LANGUE, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_LANGUE, value).apply()
 
     /** Affiche la ligne tokens/coût sous chaque message d'agent (MA45). */
     var usageUnderMessages: Boolean
@@ -539,6 +549,7 @@ class SettingsManager(context: Context) {
         private const val KEY_FONT_FAMILY = "font_family"
         private const val KEY_FONT_SCALE = "font_scale"
         private const val KEY_DENSITY_SCALE = "density_scale"
+        private const val KEY_LANGUE = "langue_ui"
         private const val KEY_USAGE_UNDER = "usage_under_messages"
         private const val KEY_DYNAMIC_COLORS = "dynamic_system_colors"
         private const val KEY_SCHEDULED_DARK = "scheduled_dark_time"

@@ -68,6 +68,12 @@ fun Modifier.glassSurface(
         else -> settings.material
     }
     val neutral = if (dark) Color(0xFF292826) else Color(0xFFFFFEFC)
+    // MàJ 96 — note contraste : le film du verre (neutre #292826 en sombre,
+    // #FFFEFC en clair) éclaircit toujours la surface par rapport au fond de la
+    // palette : en mode sombre cela rapproche le fond du texte clair (contraste
+    // légèrement réduit mais mesuré ≥ AA au film par défaut, cf.
+    // scripts/contraste_wcag.py), en mode clair il l'éclaircit encore (contraste
+    // amélioré). Aucun plancher de film n'est donc imposé au curseur.
     val film = settings.film.coerceIn(0f, 1f)
     val tintAmount = settings.tint.coerceIn(0f, 1f)
     val tintColor = if (settings.colour == Color.Unspecified) {
