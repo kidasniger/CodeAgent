@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -1154,15 +1155,16 @@ fun Modifier.pressScale(
         .drawWithContent {
             drawContent()
             if (voile > 0.001f) {
+                // Voile arrondi : on découpe selon la forme du bouton (Rectangle,
+                // Rounded via roundRect, ou Generic) puis on assombrit.
                 val contour = forme.createOutline(size, layoutDirection, this)
-                when (contour) {
-                    is Outline.Rectangle -> drawRect(Color.Black.copy(alpha = voile), contour.rect)
-                    is Outline.Rounded -> drawRoundRect(
-                        Color.Black.copy(alpha = voile),
-                        contour.rect,
-                        contour.cornerRadius
-                    )
-                    is Outline.Generic -> drawPath(contour.path, Color.Black.copy(alpha = voile))
+                val chemin = when (contour) {
+                    is Outline.Rectangle -> Path().apply { addRect(contour.rect) }
+                    is Outline.Rounded -> Path().apply { addRoundRect(contour.roundRect) }
+                    is Outline.Generic -> contour.path
+                }
+                clipPath(chemin) {
+                    drawRect(Color.Black.copy(alpha = voile))
                 }
             }
         }
