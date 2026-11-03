@@ -32,6 +32,7 @@ import com.zagent.app.data.StoredToolCall
 import com.zagent.app.data.UsageEntry
 import com.zagent.app.data.UsageRepository
 import com.zagent.app.data.FileRepository
+import com.zagent.app.data.HapticLevel
 import com.zagent.app.data.ProjectSearch
 import com.zagent.app.data.SettingsManager
 import com.zagent.app.ui.editor.ConsoleState
@@ -208,6 +209,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun updateReduceAnimations(value: Boolean) {
         reduceAnimations = value
         settingsManager.reduceAnimations = value
+    }
+
+    /** MàJ 91 — niveau de retour haptique (Désactivé / Léger / Normal). */
+    var hapticLevel by mutableStateOf(settingsManager.hapticLevel)
+        private set
+
+    fun updateHapticLevel(value: HapticLevel) {
+        hapticLevel = value
+        settingsManager.hapticLevel = value
     }
 
     // ── LOT 7 : éditeur & terminal ─────────────────────────────────────────

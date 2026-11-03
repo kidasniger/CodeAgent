@@ -8,6 +8,7 @@ import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -53,11 +54,12 @@ import com.zagent.app.ui.screens.OnboardingScreen
 import com.zagent.app.ui.screens.ProjectsScreen
 import com.zagent.app.ui.screens.SearchScreen
 import com.zagent.app.ui.screens.ShareSheet
-import com.zagent.app.ui.screens.SplashScreen
+import com.zagent.app.ui.screens.EntreeApplication
 import com.zagent.app.ui.screens.TemplatesScreen
 import com.zagent.app.ui.screens.GitScreen
 import com.zagent.app.ui.screens.TerminalScreen
 import com.zagent.app.ui.theme.ZAgentTheme
+import com.zagent.app.ui.theme.echelleAnimationsSysteme
 import com.zagent.app.ui.theme.Zcolors
 import com.zagent.app.ui.viewmodel.AppScreen
 import com.zagent.app.ui.viewmodel.MainViewModel
@@ -78,6 +80,10 @@ class MainActivity : ComponentActivity() {
 
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
+        // MàJ 93 — splash système : DOIT être appelé avant super.onCreate().
+        // Le thème de démarrage (Theme.ZAgent.Starting) affiche le logo sur le
+        // fond du thème, sans flash blanc en mode sombre.
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         AgentNotifier.ensureChannels(this)
@@ -106,6 +112,9 @@ class MainActivity : ComponentActivity() {
             }
             // MA75 : classes de taille de fenêtre pour tablettes et pliables.
             val windowSizeClass = calculateWindowSizeClass(this@MainActivity)
+            // MàJ 95 — réduction des animations : réglage interne OU échelle système à 0.
+            val reduceMotion = viewModel.reduceAnimations ||
+                echelleAnimationsSysteme(this@MainActivity) == 0f
             ZAgentTheme(
                 darkTheme = dark,
                 stylePreset = if (settings.stylePresetId == com.zagent.app.ui.theme.StylePresetIds.CUSTOM) settings.styleBasePresetId else settings.stylePresetId,
@@ -114,10 +123,15 @@ class MainActivity : ComponentActivity() {
                 cornerRadius = viewModel.cornerRadius,
                 fontFamilyId = viewModel.fontFamilyId,
                 fontScale = viewModel.fontScale,
-                densityScale = viewModel.densityScale
+                densityScale = viewModel.densityScale,
+                reduceMotion = reduceMotion,
+                hapticLevel = viewModel.hapticLevel
             ) {
-                SurfaceBackground()
-                AppRoot(viewModel, dark, windowSizeClass.widthSizeClass)
+                // MàJ 93 — fondu de 400 ms du splash système vers l'application.
+                EntreeApplication(reduceMotion = reduceMotion) {
+                    SurfaceBackground()
+                    AppRoot(viewModel, dark, windowSizeClass.widthSizeClass)
+                }
             }
         }
     }
@@ -169,12 +183,6 @@ private fun AppRoot(
         }
     }
     LaunchedEffect(darkTheme) { viewModel.reloadGlassSettings(darkTheme) }
-    var showSplash by remember { mutableStateOf(true) }
-
-    if (showSplash) {
-        SplashScreen(onDone = { showSplash = false })
-        return
-    }
 
     if (!viewModel.onboardingDone) {
         OnboardingScreen(

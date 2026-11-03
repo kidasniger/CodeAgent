@@ -1,24 +1,46 @@
 package com.zagent.app.ui.components
 
+import android.content.Context
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
+import android.view.View
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.composed
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.drawscope.drawOutline
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
 import com.zagent.app.ui.theme.LocalGlass
 import com.zagent.app.ui.theme.LocalHazeState
 import com.zagent.app.ui.theme.glassSurface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -68,6 +90,10 @@ import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.Zcolors
 import com.zagent.app.ui.theme.Zshapes
+import com.zagent.app.data.HapticLevel
+import com.zagent.app.ui.theme.LocalHapticNiveau
+import com.zagent.app.ui.theme.LocalReduceMotion
+import com.zagent.app.ui.theme.ZMouvement
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -394,7 +420,14 @@ fun AmbientBackground(modifier: Modifier = Modifier) {
     val c = Zcolors
     val glass = LocalGlass.current
     val transition = rememberInfiniteTransition(label = "fond-ambiant")
-    val drift by transition.animateFloat(-0.12f, 0.12f, infiniteRepeatable(tween(26000), RepeatMode.Reverse), label = "deplacement")
+    // MàJ 95 : blobs figés (état statique) quand « Réduire les animations » est actif.
+    val driftAnim = if (LocalReduceMotion.current) null
+    else transition.animateFloat(
+        -0.12f, 0.12f,
+        infiniteRepeatable(tween(26000), RepeatMode.Reverse),
+        label = "deplacement"
+    )
+    val drift = driftAnim?.value ?: 0f
     val intensity = if (glass.enabled) 0.12f else 0.025f
     Canvas(modifier = modifier.drawWithCache {
         val w = size.width
@@ -448,15 +481,24 @@ fun GradientButton(
 ) {
     val c = Zcolors
     val shape = Zshapes.pill
+    // MàJ 92 — micro-interaction d'appui : ressort + assombrissement arrondi,
+    // ripple par défaut remplacé par un highlight cohérent avec la forme.
+    val interaction = remember { MutableInteractionSource() }
     Box(
         modifier = modifier
             .height(height)
+            .pressScale(interaction, shape)
             .clip(shape)
             .then(
                 if (enabled) Modifier.background(c.gradBtn)
                 else Modifier.background(c.surface2).border(1.dp, c.border2, shape)
             )
-            .clickable(enabled = enabled, onClick = onClick),
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                enabled = enabled,
+                onClick = onClick
+            ),
         contentAlignment = Alignment.Center
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -481,13 +523,21 @@ fun SecondaryButton(
 ) {
     val c = Zcolors
     val shape = Zshapes.pill
+    // MàJ 92 — micro-interaction d'appui (voir pressScale).
+    val interaction = remember { MutableInteractionSource() }
     Box(
         modifier = modifier
             .height(height)
+            .pressScale(interaction, shape)
             .clip(shape)
             .background(c.surface2)
             .border(1.dp, c.border2, shape)
-            .clickable(enabled = enabled, onClick = onClick),
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                enabled = enabled,
+                onClick = onClick
+            ),
         contentAlignment = Alignment.Center
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -513,12 +563,19 @@ fun CircleIconButton(
     tintBackground: Color = Zcolors.surface2
 ) {
     val context = LocalContext.current
+    // MàJ 92 — micro-interaction d'appui (voir pressScale).
+    val interaction = remember { MutableInteractionSource() }
     Box(
         modifier = modifier
             .size(size)
+            .pressScale(interaction, CircleShape, echelle = 0.94f)
             .glassSurface(LocalHazeState.current, LocalGlass.current, Zcolors.isDark, CircleShape, context)
             .background(tintBackground.copy(alpha = if (LocalGlass.current.enabled) 0.12f else 1f))
-            .clickable(onClick = onClick),
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                onClick = onClick
+            ),
         contentAlignment = Alignment.Center
     ) {
         Icon(icon, contentDescription = contentDescription, tint = iconTint, modifier = Modifier.size(20.dp))
@@ -602,8 +659,11 @@ fun IconBadge(
 @Composable
 fun ModelChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val c = Zcolors
+    // MàJ 92 — micro-interaction d'appui (voir pressScale).
+    val interaction = remember { MutableInteractionSource() }
     Box(
         modifier = modifier
+            .pressScale(interaction, MaterialTheme.shapes.small, echelle = 0.97f)
             .clip(MaterialTheme.shapes.small)
             .background(
                 if (selected) {
@@ -611,7 +671,11 @@ fun ModelChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: M
                 } else c.bg2
             )
             .border(1.dp, if (selected) c.violet else c.border2, MaterialTheme.shapes.small)
-            .clickable(onClick = onClick)
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                onClick = onClick
+            )
             .padding(horizontal = 14.dp, vertical = 9.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -659,12 +723,15 @@ fun MonoChip(text: String, modifier: Modifier = Modifier, tint: Color = Zcolors.
 @Composable
 fun TypingPill(label: String, modifier: Modifier = Modifier, onStop: (() -> Unit)? = null) {
     val c = Zcolors
+    val reduceAnim = LocalReduceMotion.current
     val transition = rememberInfiniteTransition(label = "dots")
-    val phase by transition.animateFloat(
+    // MàJ 95 : points figés quand « Réduire les animations » est actif.
+    val phase = if (reduceAnim) 0f
+    else transition.animateFloat(
         initialValue = 0f, targetValue = 3f,
         animationSpec = infiniteRepeatable(tween(1200, easing = LinearEasing), RepeatMode.Restart),
         label = "phase"
-    )
+    ).value
     Row(
         modifier = modifier
             .clip(Zshapes.pill)
@@ -1043,4 +1110,258 @@ fun ZMenuSeparator() {
         thickness = 1.dp,
         color = c.text3.copy(alpha = 0.14f)
     )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MàJ 92 — Micro-interaction d'appui sur tous les boutons
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Réduit l'élément à [echelle] avec une animation ressort à l'appui et dessine
+ * un léger assombrissement arrondi cohérent avec [forme]. À combiner avec un
+ * `clickable(interactionSource = …, indication = null, …)` pour remplacer le
+ * ripple par défaut par ce highlight.
+ * MàJ 95 : l'échelle est neutralisée quand « Réduire les animations » est actif ;
+ * seul un voile bref reste appliqué.
+ */
+fun Modifier.pressScale(
+    interactionSource: MutableInteractionSource,
+    forme: Shape,
+    echelle: Float = 0.96f
+): Modifier = composed {
+    val reduceMotion = LocalReduceMotion.current
+    val appuye by interactionSource.collectIsPressedAsState()
+
+    val echelleAnim by animateFloatAsState(
+        targetValue = if (appuye && !reduceMotion) echelle else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "appuiEchelle"
+    )
+    val voile by animateFloatAsState(
+        targetValue = if (appuye) 0.10f else 0f,
+        animationSpec = tween(durationMillis = if (reduceMotion) ZMouvement.FONDU_REDUIT_MS else 110),
+        label = "appuiVoile"
+    )
+
+    Modifier
+        .graphicsLayer {
+            scaleX = echelleAnim
+            scaleY = echelleAnim
+        }
+        .drawWithContent {
+            drawContent()
+            if (voile > 0.001f) {
+                val contour = forme.createOutline(size, layoutDirection, this)
+                drawOutline(contour, color = Color.Black.copy(alpha = voile))
+            }
+        }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MàJ 90 — Squelettes de chargement (shimmer)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Bande claire diagonale qui traverse l'élément (MàJ 90). À poser après
+ * `clip(forme)` et `background(...)` — voir [RectangleSquelette] pour l'usage type.
+ * MàJ 95 : état statique (pas de bande) quand « Réduire les animations » est actif.
+ */
+fun Modifier.shimmer(forme: Shape = RoundedCornerShape(12.dp)): Modifier = composed {
+    if (LocalReduceMotion.current) {
+        Modifier
+    } else {
+        val transition = rememberInfiniteTransition(label = "squelette")
+        val progression = transition.animateFloat(
+            initialValue = -0.6f,
+            targetValue = 1.6f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = ZMouvement.SHIMMER_MS, easing = LinearEasing)
+            ),
+            label = "bandeShimmer"
+        ).value
+        Modifier.drawWithContent {
+            drawContent()
+            val x = progression * size.width
+            drawRect(
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        Color.Transparent,
+                        Color.White.copy(alpha = 0.34f),
+                        Color.Transparent
+                    ),
+                    start = Offset(x - size.width * 0.35f, 0f),
+                    end = Offset(x + size.width * 0.35f, size.height)
+                )
+            )
+        }
+    }
+}
+
+/** Rectangle arrondi de base pour tous les squelettes (MàJ 90). */
+@Composable
+fun RectangleSquelette(
+    modifier: Modifier = Modifier,
+    forme: Shape = RoundedCornerShape(12.dp),
+    couleur: Color? = null
+) {
+    val c = Zcolors
+    Box(
+        modifier
+            .clip(forme)
+            .background(couleur ?: c.surface2)
+            .shimmer(forme)
+    )
+}
+
+/**
+ * Squelette générique de liste (MàJ 90) : [lignes] rangées « icône + deux lignes
+ * de texte ». Remplace les spinners pour l'historique, les projets et les fichiers.
+ */
+@Composable
+fun SkeletonListe(
+    modifier: Modifier = Modifier,
+    lignes: Int = 6,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 12.dp)
+) {
+    Column(
+        modifier.fillMaxWidth().padding(contentPadding),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        repeat(lignes) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                RectangleSquelette(modifier = Modifier.size(38.dp), forme = CircleShape)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    RectangleSquelette(modifier = Modifier.fillMaxWidth(0.55f).height(13.dp))
+                    RectangleSquelette(
+                        modifier = Modifier.fillMaxWidth(0.85f).height(11.dp),
+                        forme = RoundedCornerShape(8.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Squelette de l'historique de conversations (MàJ 90). */
+@Composable
+fun SkeletonListeHistorique(modifier: Modifier = Modifier, lignes: Int = 6) {
+    SkeletonListe(modifier = modifier, lignes = lignes)
+}
+
+/** Squelette de la liste de fichiers (MàJ 90). */
+@Composable
+fun SkeletonListeFichiers(modifier: Modifier = Modifier, lignes: Int = 7) {
+    SkeletonListe(modifier = modifier, lignes = lignes)
+}
+
+/** Squelette de la liste de projets (MàJ 90) : grandes cartes empilées. */
+@Composable
+fun SkeletonListeProjets(modifier: Modifier = Modifier, lignes: Int = 4) {
+    Column(
+        modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        repeat(lignes) {
+            RectangleSquelette(
+                modifier = Modifier.fillMaxWidth().height(76.dp),
+                forme = RoundedCornerShape(20.dp)
+            )
+        }
+    }
+}
+
+/** Squelette des cartes de modèles (MàJ 90) : pilules en défilement horizontal. */
+@Composable
+fun SkeletonCartesModeles(modifier: Modifier = Modifier, cartes: Int = 3) {
+    Row(
+        modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        repeat(cartes) {
+            RectangleSquelette(
+                modifier = Modifier.size(width = 132.dp, height = 46.dp),
+                forme = RoundedCornerShape(999.dp)
+            )
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MàJ 91 — Retour haptique ciblé
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Retour haptique centralisé (MàJ 91) : le niveau vient du réglage
+ * « Retour haptique » (Désactivé / Léger / Normal) via [LocalHapticNiveau].
+ * - [menu] : LongPress à l'ouverture des menus contextuels ;
+ * - [curseur] : TextHandleMove pendant le glissement sur les curseurs ;
+ * - [envoi] : légère vibration à l'envoi d'un message ;
+ * - [tacheTerminee] : double tick léger à la fin d'une tâche.
+ */
+class ZHaptics private constructor(
+    private val feedback: HapticFeedback,
+    private val view: View,
+    private val niveau: HapticLevel
+) {
+    fun menu() {
+        if (niveau == HapticLevel.DESACTIVE) return
+        feedback.performHapticFeedback(HapticFeedbackType.LongPress)
+    }
+
+    fun curseur() {
+        if (niveau == HapticLevel.DESACTIVE) return
+        feedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+    }
+
+    fun envoi() {
+        if (niveau == HapticLevel.DESACTIVE) return
+        vibrer(
+            dureeMs = if (niveau == HapticLevel.LEGER) 18L else 35L,
+            amplitude = if (niveau == HapticLevel.LEGER) 60 else 140
+        )
+    }
+
+    fun tacheTerminee() {
+        if (niveau == HapticLevel.DESACTIVE) return
+        vibrer(20L, if (niveau == HapticLevel.LEGER) 70 else 120)
+        view.postDelayed(
+            { vibrer(35L, if (niveau == HapticLevel.LEGER) 80 else 170) },
+            90L
+        )
+    }
+
+    private fun vibrer(dureeMs: Long, amplitude: Int) {
+        try {
+            val vibreur: Vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val gestionnaire = view.context.getSystemService(
+                    Context.VIBRATOR_MANAGER_SERVICE
+                ) as VibratorManager
+                gestionnaire.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                view.context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+            }
+            if (!vibreur.hasVibrator()) return
+            vibreur.vibrate(
+                VibrationEffect.createOneShot(dureeMs, amplitude.coerceIn(1, 255))
+            )
+        } catch (_: Exception) {
+            // Appareil sans vibreur : on ignore silencieusement.
+        }
+    }
+}
+
+/** Mémorise le retour haptique pour la composition courante (MàJ 91). */
+@Composable
+fun rememberZHaptics(): ZHaptics {
+    val feedback = LocalHapticFeedback.current
+    val view = LocalView.current
+    val niveau = LocalHapticNiveau.current
+    return remember(feedback, view, niveau) { ZHaptics(feedback, view, niveau) }
 }

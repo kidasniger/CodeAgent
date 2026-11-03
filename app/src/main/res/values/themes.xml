@@ -6,4 +6,15 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">false</item>
     </style>
+
+    <!-- MàJ 93 : splash système (androidx.core:core-splashscreen). Le logo est
+         affiché sur le fond du thème — aucun flash blanc en mode sombre — puis
+         postSplashScreenTheme bascule vers Theme.ZAgent et l'application entre
+         par un fondu de 400 ms (EntreeApplication). -->
+    <style name="Theme.ZAgent.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/zagent_bg_dark</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="windowSplashScreenAnimationDuration">400</item>
+        <item name="postSplashScreenTheme">@style/Theme.ZAgent</item>
+    </style>
 </resources>

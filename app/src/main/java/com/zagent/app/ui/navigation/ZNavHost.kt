@@ -31,6 +31,7 @@ import com.zagent.app.ui.layout.AdaptiveEditorPane
 import com.zagent.app.ui.screens.FileBrowserScreen
 import com.zagent.app.ui.screens.SettingsScreen
 import com.zagent.app.ui.screens.TerminalScreen
+import com.zagent.app.ui.theme.LocalReduceMotion
 import com.zagent.app.ui.viewmodel.MainViewModel
 
 /**
@@ -62,7 +63,9 @@ fun ZNavHost(
     val navController = rememberNavController()
     val density = LocalDensity.current
     val px24 = with(density) { 24.dp.roundToPx() }
-    val reduceAnimations = viewModel.reduceAnimations
+    // MàJ 95 — « Réduire les animations » : réglage interne OU échelle système
+    // à 0 (Settings.Global.ANIMATOR_DURATION_SCALE), exposé via LocalReduceMotion.
+    val reduceAnimations = LocalReduceMotion.current || viewModel.reduceAnimations
     val duration = 250
     // Easing « emphasizedDecelerate » du Material Motion (Android).
     val emphasizedDecelerate = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)

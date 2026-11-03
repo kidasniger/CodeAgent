@@ -102,6 +102,8 @@ dependencies {
   // MA62 : génération du QR code de l'adresse locale dans l'aperçu plein écran
   implementation(libs.zxing.core)
   implementation(libs.androidx.core.ktx)
+  // MàJ 93 : splash système (androidx.core:core-splashscreen)
+  implementation(libs.androidx.core.splashscreen)
   implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.lifecycle.viewmodel.compose)

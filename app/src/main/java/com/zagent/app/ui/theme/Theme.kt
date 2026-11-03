@@ -1,5 +1,7 @@
 package com.zagent.app.ui.theme
 
+import android.content.Context
+import android.provider.Settings
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -24,6 +26,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.platform.LocalDensity
+import com.zagent.app.data.HapticLevel
 
 /**
  * Accès court aux tokens étendus : `Zcolors.text2`.
@@ -91,6 +94,38 @@ fun ThemeMode.resolveDarkTheme(systemDark: Boolean): Boolean = when (this) {
 
 /** Rayon courant des surfaces, fourni par [ZAgentTheme] selon le réglage « Arrondi » (8 à 28 dp). */
 val LocalZRadius = compositionLocalOf { 16.dp }
+
+/**
+ * MàJ 95 — vrai quand les animations doivent être réduites : réglage interne
+ * « Réduire les animations » OU échelle d'animation du système à 0
+ * (Settings.Global.ANIMATOR_DURATION_SCALE). Les glissements, le shimmer et
+ * les blobs se remplacent alors par des fondus courts ou des états statiques.
+ */
+val LocalReduceMotion = compositionLocalOf { false }
+
+/** MàJ 91 — niveau de retour haptique global, fourni par [ZAgentTheme] depuis MainActivity. */
+val LocalHapticNiveau = compositionLocalOf { HapticLevel.NORMAL }
+
+/** Constantes d'animation partagées du Lot 8. */
+object ZMouvement {
+    const val ENTREE_MESSAGE_MS = 200      // MàJ 89
+    const val GLISSEMENT_MESSAGE_DP = 8f   // MàJ 89
+    const val FONDU_APP_MS = 400           // MàJ 93
+    const val FONDU_REDUIT_MS = 90         // MàJ 95 — fondu court de repli
+    const val SHIMMER_MS = 1250            // MàJ 90
+}
+
+/** MàJ 95 — échelle d'animation du système ; 0 signifie « animations désactivées ». */
+fun echelleAnimationsSysteme(context: Context): Float =
+    Settings.Global.getFloat(
+        context.contentResolver,
+        Settings.Global.ANIMATOR_DURATION_SCALE,
+        1f
+    )
+
+/** MàJ 95 — faut-il réduire les animations ? (réglage interne OU échelle système à 0) */
+fun mouvementReduit(context: Context, reglageInterne: Boolean): Boolean =
+    reglageInterne || echelleAnimationsSysteme(context) == 0f
 
 /**
  * Formes du design system pilotées par le réglage « Arrondi » (mise à jour 13) :
@@ -226,6 +261,8 @@ fun ZAgentTheme(
     fontFamilyId: String = "INTER",
     fontScale: Float = 1f,
     densityScale: Float = 1f,
+    reduceMotion: Boolean = false,
+    hapticLevel: HapticLevel = HapticLevel.NORMAL,
     content: @Composable () -> Unit
 ) {
     val minimal = stylePreset == StylePresetIds.MINIMAL
@@ -339,7 +376,9 @@ fun ZAgentTheme(
     CompositionLocalProvider(
         LocalZColors provides zcolors,
         LocalZRadius provides radius,
-        LocalDensity provides scaledDensity
+        LocalDensity provides scaledDensity,
+        LocalReduceMotion provides reduceMotion,
+        LocalHapticNiveau provides hapticLevel
     ) {
         MaterialTheme(
             colorScheme = scheme,

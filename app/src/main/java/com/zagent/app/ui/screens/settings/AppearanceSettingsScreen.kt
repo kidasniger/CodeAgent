@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.DensityMedium
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -58,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zagent.app.ui.components.GlassAlertDialog
 import com.zagent.app.ui.components.CircleIconButton
+import com.zagent.app.data.HapticLevel
 import com.zagent.app.ui.theme.StylePresetIds
 import com.zagent.app.ui.theme.GlassMaterial
 import com.zagent.app.ui.theme.StylePresets
@@ -386,6 +388,49 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                         checked = viewModel.reduceAnimations,
                         onCheckedChange = { viewModel.updateReduceAnimations(it) }
                     )
+                }
+            }
+
+            // MàJ 91 — retour haptique ciblé (menus, curseurs, envoi, fin de tâche).
+            SettingsSectionLabel("RETOUR HAPTIQUE")
+            SettingsCard {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 15.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(MaterialTheme.shapes.small)
+                            .background(Zcolors.violetBg),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Vibration, contentDescription = null, tint = Zcolors.violet)
+                    }
+                    Spacer(Modifier.size(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Retour haptique", style = MaterialTheme.typography.titleMedium, color = Zcolors.text)
+                        Spacer(Modifier.height(2.dp))
+                        Text("Menus, curseurs, envoi et fin de tâche", style = MaterialTheme.typography.bodySmall, color = Zcolors.text2)
+                    }
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp)
+                        .padding(bottom = 14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    HapticLevel.entries.forEach { niveau ->
+                        FilterChip(
+                            selected = viewModel.hapticLevel == niveau,
+                            onClick = { viewModel.updateHapticLevel(niveau) },
+                            label = { Text(niveau.libelle) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
             }
 

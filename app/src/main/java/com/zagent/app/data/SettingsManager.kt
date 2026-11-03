@@ -16,6 +16,17 @@ import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 
+/**
+ * MàJ 91 — niveau de retour haptique choisi dans Réglages › Apparence.
+ * DÉSACTIVÉ coupe tout retour, LÉGER envoie des vibrations courtes et faibles,
+ * NORMAL le niveau standard.
+ */
+enum class HapticLevel(val libelle: String) {
+    DESACTIVE("Désactivé"),
+    LEGER("Léger"),
+    NORMAL("Normal")
+}
+
 class SettingsManager(context: Context) {
     private val masterKey = MasterKey.Builder(context)
         .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
@@ -328,6 +339,8 @@ class SettingsManager(context: Context) {
             .putFloat(glassKey(KEY_GLASS_COLOUR_INTENSITY, true), 0.70f)
             .putFloat(glassKey(KEY_GLASS_FILM_V2, true), 0.35f)
             .putFloat(glassKey(KEY_GLASS_ACTIVE_INTENSITY, true), 0.26f)
+            // MàJ 91 : retour haptique normal par défaut.
+            .putString(KEY_HAPTIC_LEVEL, HapticLevel.NORMAL.name)
             // LOT 7 : rendus et tailles par défaut de l'éditeur (MA81/MA83).
             .putBoolean(KEY_CODE_ALWAYS_DARK, true)
             .putInt(KEY_EDITOR_FONT_SIZE, 14)
@@ -346,6 +359,13 @@ class SettingsManager(context: Context) {
     var reduceAnimations: Boolean
         get() = prefs.getBoolean(KEY_REDUCE_ANIMATIONS, false)
         set(value) = prefs.edit().putBoolean(KEY_REDUCE_ANIMATIONS, value).apply()
+
+    /** MàJ 91 — niveau de retour haptique (Désactivé / Léger / Normal). */
+    var hapticLevel: HapticLevel
+        get() = HapticLevel.entries.firstOrNull {
+            it.name == prefs.getString(KEY_HAPTIC_LEVEL, null)
+        } ?: HapticLevel.NORMAL
+        set(value) = prefs.edit().putString(KEY_HAPTIC_LEVEL, value.name).apply()
 
     /**
      * MA79 : onglets de l'éditeur ouverts dans un projet (index actif puis chemins relatifs,
@@ -534,6 +554,7 @@ class SettingsManager(context: Context) {
         private const val KEY_SEARCH_HISTORY = "search_history"
         private const val KEY_PROJECT_INSTR = "project_instructions"
         private const val KEY_REDUCE_ANIMATIONS = "reduce_animations"
+        private const val KEY_HAPTIC_LEVEL = "haptic_level"
         private const val KEY_EDITOR_SESSION = "editor_session_"
         private const val KEY_CODE_ALWAYS_DARK = "code_always_dark"
         private const val KEY_EDITOR_FONT_SIZE = "editor_font_size"

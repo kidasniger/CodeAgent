@@ -6,8 +6,13 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -80,6 +85,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -101,6 +107,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -132,6 +139,7 @@ import com.zagent.app.ui.components.ToolGroupSummary
 import com.zagent.app.ui.components.TypingPill
 import com.zagent.app.ui.components.UsageLine
 import com.zagent.app.ui.components.ZLogo
+import com.zagent.app.ui.components.rememberZHaptics
 import com.zagent.app.ui.components.DevServerBar
 import com.zagent.app.ui.components.GitChangesSheet
 import com.zagent.app.ui.components.GitDiffView
@@ -151,6 +159,8 @@ import com.zagent.app.ui.theme.SpaceGrotesk
 import com.zagent.app.ui.theme.Zcolors
 import com.zagent.app.ui.theme.LocalGlass
 import com.zagent.app.ui.theme.LocalHazeState
+import com.zagent.app.ui.theme.LocalReduceMotion
+import com.zagent.app.ui.theme.ZMouvement
 import com.zagent.app.ui.theme.glassSurface
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -172,6 +182,7 @@ fun ChatScreen(
     onOpenSettings: () -> Unit
 ) {
     val c = Zcolors
+    val haptique = rememberZHaptics() // MàJ 91
     val messages by viewModel.messages.collectAsState()
     val listState = rememberLazyListState()
     val clipboard = LocalClipboardManager.current
@@ -196,6 +207,14 @@ fun ChatScreen(
         val r = m?.content.orEmpty()
         if (m != null && (r.startsWith("Erreur: code") || r.startsWith("Erreur: délai"))) m.toolCallId else null
     }
+
+    // MàJ 89 — apparition animée des nouveaux messages (fondu + glissement de
+    // 8 dp en 200 ms). Les clés déjà vues sont mémorisées : l'historique chargé
+    // (premier lot après un changement de conversation) n'est jamais animé.
+    val clesVues = remember { mutableSetOf<String>() }
+    LaunchedEffect(viewModel.conversationId) { clesVues.clear() }
+    val estNouvelElement: (String) -> Boolean = { cle -> clesVues.isNotEmpty() && cle !in clesVues }
+    SideEffect { clesVues.addAll(chatRows.map { it.key }) }
 
     // MA33 : streaming par frame (regroupe les mises à jour de texte pour éviter les saccades)
     var displayLive by remember { mutableStateOf("") }
@@ -242,6 +261,13 @@ fun ChatScreen(
             nowTick = System.currentTimeMillis()
             delay(1000)
         }
+    }
+
+    // MàJ 91 — légère vibration à la fin d'une tâche (isLoading vrai → faux).
+    var tachePrecedente by remember { mutableStateOf(false) }
+    LaunchedEffect(viewModel.isLoading) {
+        if (tachePrecedente && !viewModel.isLoading) haptique.tacheTerminee()
+        tachePrecedente = viewModel.isLoading
     }
 
     val onFileTap: (String, Int?) -> Unit = { path, line -> viewModel.openFilePath(path, line) }
@@ -297,48 +323,68 @@ fun ChatScreen(
                                         DatePill(row.label, Modifier.alpha(dateAlpha))
                                     }
                                     is ChatRow.User -> item(key = row.key, contentType = "user") {
-                                        UserBubble(
-                                            text = row.text,
-                                            messageIndex = row.messageIndex,
-                                            onEdit = { i, t -> setInput(t); editingIndex = i },
-                                            onQuote = { t -> setInput("> " + t.replace("\n", "\n> ") + "\n\n") },
-                                            onDelete = { viewModel.deleteFromMessage(it) }
-                                        )
+                                        EntreeMessage(
+                                            activee = estNouvelElement(row.key),
+                                            modifier = Modifier.animateItemPlacement()
+                                        ) {
+                                            UserBubble(
+                                                text = row.text,
+                                                messageIndex = row.messageIndex,
+                                                onEdit = { i, t -> setInput(t); editingIndex = i },
+                                                onQuote = { t -> setInput("> " + t.replace("\n", "\n> ") + "\n\n") },
+                                                onDelete = { viewModel.deleteFromMessage(it) }
+                                            )
+                                        }
                                     }
                                     is ChatRow.Agent -> item(key = row.key, contentType = "agent") {
                                         val isLastAgent = index == chatRows.lastIndex && displayLive.isBlank()
-                                        AgentCard(
-                                            content = row.content,
-                                            tools = row.tools,
-                                            showLogo = chatRows.getOrNull(index - 1) !is ChatRow.Agent,
-                                            reasoning = row.reasoning,
-                                            thinkingSeconds = -1,
-                                            isLast = isLastAgent && !viewModel.isLoading,
-                                            messageIndex = row.messageIndex,
-                                            onFileTap = onFileTap,
-                                            onApplyCode = { applyCode = it },
-                                            onRegenerate = { viewModel.regenerateLast() },
-                                            onQuote = { t -> setInput("> " + t.replace("\n", "\n> ") + "\n\n") },
-                                            onDeleteMessage = { viewModel.deleteFromMessage(row.messageIndex) },
-                                            fixId = if (viewModel.isLoading) null else lastFailedCmdId,
-                                            onFix = { cmd, res -> viewModel.fixCommandWithAi(cmd, res) },
-                                            liveId = viewModel.liveCommandId,
-                                            liveOutput = { viewModel.liveOutput },
-                                            liveStartedAt = viewModel.liveStartedAt,
-                                            onStop = { viewModel.stopLiveCommand() }
-                                        )
+                                        EntreeMessage(
+                                            activee = estNouvelElement(row.key),
+                                            modifier = Modifier.animateItemPlacement()
+                                        ) {
+                                            AgentCard(
+                                                content = row.content,
+                                                tools = row.tools,
+                                                showLogo = chatRows.getOrNull(index - 1) !is ChatRow.Agent,
+                                                reasoning = row.reasoning,
+                                                thinkingSeconds = -1,
+                                                isLast = isLastAgent && !viewModel.isLoading,
+                                                messageIndex = row.messageIndex,
+                                                onFileTap = onFileTap,
+                                                onApplyCode = { applyCode = it },
+                                                onRegenerate = { viewModel.regenerateLast() },
+                                                onQuote = { t -> setInput("> " + t.replace("\n", "\n> ") + "\n\n") },
+                                                onDeleteMessage = { viewModel.deleteFromMessage(row.messageIndex) },
+                                                fixId = if (viewModel.isLoading) null else lastFailedCmdId,
+                                                onFix = { cmd, res -> viewModel.fixCommandWithAi(cmd, res) },
+                                                liveId = viewModel.liveCommandId,
+                                                liveOutput = { viewModel.liveOutput },
+                                                liveStartedAt = viewModel.liveStartedAt,
+                                                onStop = { viewModel.stopLiveCommand() }
+                                            )
+                                        }
                                     }
                                     is ChatRow.OrphanTool -> item(key = row.key, contentType = "orphan") {
-                                        OrphanToolLine(row.text)
+                                        EntreeMessage(
+                                            activee = estNouvelElement(row.key),
+                                            modifier = Modifier.animateItemPlacement()
+                                        ) {
+                                            OrphanToolLine(row.text)
+                                        }
                                     }
                                     is ChatRow.Ask -> item(key = row.key, contentType = "ask") {
-                                        AskCard(
-                                            questions = row.questions,
-                                            result = row.result,
-                                            active = row.result == null &&
-                                                viewModel.pendingAsk?.toolCallId == row.toolCallId,
-                                            onSubmit = { answers -> viewModel.resolvePendingAsk(answers) }
-                                        )
+                                        EntreeMessage(
+                                            activee = estNouvelElement(row.key),
+                                            modifier = Modifier.animateItemPlacement()
+                                        ) {
+                                            AskCard(
+                                                questions = row.questions,
+                                                result = row.result,
+                                                active = row.result == null &&
+                                                    viewModel.pendingAsk?.toolCallId == row.toolCallId,
+                                                onSubmit = { answers -> viewModel.resolvePendingAsk(answers) }
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -502,6 +548,7 @@ fun ChatScreen(
             onValueChange = setInput,
             onSend = {
                 val t = input
+                if (t.isNotBlank()) haptique.envoi() // MàJ 91 — légère vibration à l'envoi
                 viewModel.onInputSent()
                 input = ""
                 if (editingIndex >= 0) {
@@ -598,6 +645,7 @@ private fun AmbientTopBar(
     onOpenSettings: () -> Unit
 ) {
     val c = Zcolors
+    val haptique = rememberZHaptics() // MàJ 91
     // MA78 : menu « ⋯ » unifié regroupant les actions secondaires.
     var moreMenuOpen by remember { mutableStateOf(false) }
     Column(
@@ -665,7 +713,7 @@ private fun AmbientTopBar(
                 TopBarPillIcon(Icons.Default.Share, "Partager la conversation", onClick = { viewModel.isShareSheetOpen = true })
                 // MA78 : un seul menu déroulant en verre pour les actions secondaires.
                 Box {
-                    TopBarPillIcon(Icons.Default.MoreHoriz, "Plus d'actions", onClick = { moreMenuOpen = true })
+                    TopBarPillIcon(Icons.Default.MoreHoriz, "Plus d'actions", onClick = { haptique.menu(); moreMenuOpen = true })
                     ZMenu(expanded = moreMenuOpen, onDismiss = { moreMenuOpen = false }) {
                         ZMenuItem(
                             label = "Explorateur de fichiers",
@@ -1115,6 +1163,7 @@ private fun UserBubble(
     val c = Zcolors
     val clipboard = LocalClipboardManager.current
     val ctx = LocalContext.current
+    val haptique = rememberZHaptics() // MàJ 91
     var menuOpen by remember { mutableStateOf(false) }
     // MA49/MA53 : le message stocké peut contenir un bloc de contexte joint (pièces
     // jointes et mentions @fichier) ; on n'affiche que le texte visible + un résumé.
@@ -1129,7 +1178,7 @@ private fun UserBubble(
                 .fillMaxWidth(0.85f)
                 .clip(RoundedCornerShape(20.dp))
                 .background(c.surface2)
-                .combinedClickable(onClick = {}, onLongClick = { menuOpen = true })
+                .combinedClickable(onClick = {}, onLongClick = { haptique.menu(); menuOpen = true })
                 .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
             Column {
@@ -1381,6 +1430,7 @@ private fun MessageActionsBar(
     val c = Zcolors
     val clipboard = LocalClipboardManager.current
     val ctx = LocalContext.current
+    val haptique = rememberZHaptics() // MàJ 91
     var feedback by rememberSaveable(messageKey) { mutableStateOf(0) }
     var menuOpen by remember { mutableStateOf(false) }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -1404,7 +1454,7 @@ private fun MessageActionsBar(
                 }
                 runCatching { ctx.startActivity(Intent.createChooser(send, "Partager le message")) }
             }
-            ActionIcon(Icons.Default.MoreHoriz, "Plus") { menuOpen = !menuOpen }
+            ActionIcon(Icons.Default.MoreHoriz, "Plus") { haptique.menu(); menuOpen = !menuOpen }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                 DropdownMenuItem(text = { Text("Citer", color = c.text) }, onClick = { menuOpen = false; onQuote(messageText) })
                 DropdownMenuItem(
@@ -2227,5 +2277,36 @@ private fun WriteConfirmSheet(
                 )
             }
         }
+    }
+}
+
+/**
+ * MàJ 89 — entrée animée d'un nouvel élément du fil : fondu + glissement de
+ * 8 dp en 200 ms. Les éléments de l'historique (activee = false) s'affichent
+ * sans animation. Respecte « Réduire les animations » (MàJ 95 : fondu court).
+ */
+@Composable
+private fun EntreeMessage(
+    activee: Boolean,
+    modifier: Modifier = Modifier,
+    contenu: @Composable () -> Unit
+) {
+    val glissementPx = with(LocalDensity.current) {
+        ZMouvement.GLISSEMENT_MESSAGE_DP.dp.roundToPx()
+    }
+    val etat = remember { MutableTransitionState(!activee).apply { targetState = true } }
+    AnimatedVisibility(
+        visibleState = etat,
+        enter = if (LocalReduceMotion.current) {
+            fadeIn(tween(ZMouvement.FONDU_REDUIT_MS))
+        } else {
+            fadeIn(tween(ZMouvement.ENTREE_MESSAGE_MS, easing = LinearOutSlowInEasing)) +
+                slideInVertically(
+                    tween(ZMouvement.ENTREE_MESSAGE_MS, easing = LinearOutSlowInEasing)
+                ) { glissementPx }
+        },
+        modifier = modifier
+    ) {
+        contenu()
     }
 }
