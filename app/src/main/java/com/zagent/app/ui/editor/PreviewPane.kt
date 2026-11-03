@@ -276,7 +276,9 @@ fun PreviewPane(
                             .width(96.dp)
                             .height(18.dp)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(Color(0xCC101418))
+                            // androidx.compose.ui.graphics.Color, explicité : le fichier
+                            // importe aussi android.graphics.Color (fond du WebView).
+                            .background(androidx.compose.ui.graphics.Color(0xCC101418))
                     )
                 }
             }

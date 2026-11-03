@@ -54,6 +54,7 @@ import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ViewList
@@ -247,7 +248,7 @@ fun FileBrowserScreen(
                         SortMode.entries.forEach { mode ->
                             ZMenuItem(
                                 label = mode.label,
-                                icon = if (mode == sortMode) Icons.Default.Check else Icons.Default.Sort,
+                                icon = if (mode == sortMode) Icons.Default.Check else Icons.AutoMirrored.Filled.Sort,
                                 onClick = { sortMode = mode; sortMenuOpen = false }
                             )
                         }
@@ -425,9 +426,9 @@ fun FileBrowserScreen(
         // ── Contenu : arbre (liste) ou grille du dossier courant ──
         if (gridMode) {
             LaunchedEffect(gridDir) { viewModel.ensureLoaded(gridDir) }
-            val gridEntries = remember(browserChildren[gridDir], sortMode, query) {
+            val gridEntries = remember(viewModel.browserChildren[gridDir], sortMode, query) {
                 sortEntries(
-                    (browserChildren[gridDir] ?: emptyList()).filter {
+                    (viewModel.browserChildren[gridDir] ?: emptyList()).filter {
                         query.isBlank() || it.name.contains(query, ignoreCase = true)
                     },
                     sortMode

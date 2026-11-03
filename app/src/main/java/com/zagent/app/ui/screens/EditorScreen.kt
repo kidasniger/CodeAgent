@@ -402,7 +402,7 @@ fun EditorScreen(
                         onClick = {
                             val r = matches[safeIdx]
                             val newText = text.replaceRange(r.first, r.last + 1, replacement)
-                            tab.applyEdit(TextFieldValue(newText, TextRange(r.first + replacement.length)))
+                            tab?.applyEdit(TextFieldValue(newText, TextRange(r.first + replacement.length)))
                         }
                     ) { Text("Remplacer", color = if (matches.isNotEmpty()) c.cyan else c.text3, fontSize = 12.sp) }
                     TextButton(
@@ -416,7 +416,7 @@ fun EditorScreen(
                                 last = r.last + 1
                             }
                             sb.append(text, last, text.length)
-                            tab.applyEdit(TextFieldValue(sb.toString(), TextRange(0)))
+                            tab?.applyEdit(TextFieldValue(sb.toString(), TextRange(0)))
                         }
                     ) { Text("Tout", color = if (matches.isNotEmpty()) c.cyan else c.text3, fontSize = 12.sp) }
                 }
