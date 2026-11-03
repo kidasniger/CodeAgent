@@ -209,6 +209,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         reduceAnimations = value
         settingsManager.reduceAnimations = value
     }
+
+    // ── LOT 7 : éditeur & terminal ─────────────────────────────────────────
+
+    /** MA81 : « Code toujours sombre » — l'éditeur garde un fond sombre même en interface claire. */
+    var codeAlwaysDark by mutableStateOf(settingsManager.codeAlwaysDark)
+        private set
+
+    fun updateCodeAlwaysDark(value: Boolean) {
+        codeAlwaysDark = value
+        settingsManager.codeAlwaysDark = value
+    }
+
+    /** MA83 : taille de police de l'éditeur (10 à 22 sp), mémorisée dans les réglages. */
+    var editorFontSize by mutableStateOf(settingsManager.editorFontSize)
+        private set
+
+    fun updateEditorFontSize(value: Int) {
+        val target = value.coerceIn(10, 22)
+        if (target == editorFontSize) return
+        editorFontSize = target
+        settingsManager.editorFontSize = target
+    }
+
+    /** MA83 : taille de police du terminal (10 à 22 sp), portée par TerminalController. */
+    val terminalFontSize: Int get() = terminal.fontSize
+
+    fun updateTerminalFontSize(value: Int) {
+        terminal.setFontSize(value)
+    }
+
     fun updateGlassSettings(dark: Boolean, value: GlassSettings) { glassSettings = value; settingsManager.saveGlassSettings(dark, value) }
     fun reloadGlassSettings(dark: Boolean) { glassSettings = settingsManager.loadGlassSettings(dark) }
 

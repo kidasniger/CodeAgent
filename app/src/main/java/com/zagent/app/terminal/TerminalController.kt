@@ -5,6 +5,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.os.Build
+import android.os.SystemClock
 import android.system.Os
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -34,6 +35,7 @@ import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.util.concurrent.TimeUnit
 import java.util.zip.ZipInputStream
+import kotlin.math.roundToInt
 
 /**
  * Gère le bootstrap (téléchargement + extraction) et la session shell du terminal embarqué.
@@ -57,6 +59,10 @@ class TerminalController(
         // Même longueur (10 caractères) : permet de remplacer l'un par l'autre dans les binaires.
         private const val OLD_PKG = "com.termux"
         private const val NEW_PKG = "com.zagent"
+
+        /** MA83 : bornes de la taille de police du terminal (sp). */
+        const val MIN_FONT_SIZE = 10
+        const val MAX_FONT_SIZE = 22
     }
 
     // Le préfixe est /data/data/com.zagent/files/usr (bootstrap officiel adapté à l'extraction).
@@ -82,14 +88,33 @@ class TerminalController(
 
     private val prefs = app.getSharedPreferences("terminal_prefs", Context.MODE_PRIVATE)
 
-    /** Taille du texte du terminal (réglable par A- / A+). */
+    /** Taille du texte du terminal (réglable au pincement — MA83 — ou par A− / A+). */
     var fontSize by mutableIntStateOf(prefs.getInt("font_size", 14))
         private set
 
     fun changeFontSize(delta: Int) {
-        fontSize = (fontSize + delta).coerceIn(8, 28)
-        prefs.edit().putInt("font_size", fontSize).apply()
+        setFontSize(fontSize + delta)
     }
+
+    /** MA83 : fixe la taille (10 à 22 sp), la mémorise et l'annonce. */
+    fun setFontSize(value: Int) {
+        val target = value.coerceIn(MIN_FONT_SIZE, MAX_FONT_SIZE)
+        if (target == fontSize) return
+        fontSize = target
+        prefs.edit().putInt("font_size", target).apply()
+        toastSize(target)
+    }
+
+    private var lastToastAt = 0L
+
+    /** Toast « 14 sp » (MA83), au plus un toutes les 300 ms pendant le pincement. */
+    private fun toastSize(size: Int) {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastToastAt < 300) return
+        lastToastAt = now
+        android.widget.Toast.makeText(app, "$size sp", android.widget.Toast.LENGTH_SHORT).show()
+    }
+
     var ctrlActive by mutableStateOf(false)
 
     /** Journal en lecture seule des commandes lancées par l'agent (onglet « Agent » du terminal). */
@@ -787,22 +812,49 @@ class TerminalController(
 
     private var colorBg = 0xFF0B0F17.toInt()
     private var colorFg = 0xFFE6EAF2.toInt()
+    private var colorDark = true
 
-    /** Aligne les couleurs du terminal sur le thème clair/sombre de l'appli. */
-    fun applyColors(bg: Int, fg: Int) {
+    /** Palette ANSI 16 couleurs du shell, harmonisée avec le thème (MA84) — fond sombre. */
+    private val SHELL_ANSI_DARK = intArrayOf(
+        0xFF2A2F3A.toInt(), 0xFFDC2626.toInt(), 0xFF16A34A.toInt(), 0xFFCA8A04.toInt(),
+        0xFF2563EB.toInt(), 0xFF9333EA.toInt(), 0xFF0891B2.toInt(), 0xFF9CA3AF.toInt(),
+        0xFF6B7280.toInt(), 0xFFEF4444.toInt(), 0xFF22C55E.toInt(), 0xFFEAB308.toInt(),
+        0xFF3B82F6.toInt(), 0xFFA855F7.toInt(), 0xFF06B6D4.toInt(), 0xFFE5E7EB.toInt()
+    )
+
+    /** Palette ANSI 16 couleurs du shell — fond clair (MA84). */
+    private val SHELL_ANSI_LIGHT = intArrayOf(
+        0xFF24292F.toInt(), 0xFFB91C1C.toInt(), 0xFF0F7B3E.toInt(), 0xFF8A6100.toInt(),
+        0xFF0757C8.toInt(), 0xFF7C3AED.toInt(), 0xFF0E7490.toInt(), 0xFF51607A.toInt(),
+        0xFF6E7B91.toInt(), 0xFFCB2B2B.toInt(), 0xFF188A4B.toInt(), 0xFF9A6E00.toInt(),
+        0xFF2563EB.toInt(), 0xFF8B5CF6.toInt(), 0xFF0891B2.toInt(), 0xFF1F2937.toInt()
+    )
+
+    /** Aligne les couleurs du terminal (fond, texte, curseur et palette ANSI) sur le thème (MA84). */
+    fun applyColors(bg: Int, fg: Int, dark: Boolean) {
         colorBg = bg
         colorFg = fg
+        colorDark = dark
         applyToEmulator()
     }
 
     private fun applyToEmulator() {
+        val palette = if (colorDark) SHELL_ANSI_DARK else SHELL_ANSI_LIGHT
         tabs.forEach { t ->
             val e = t.session.emulator ?: return@forEach
             val cols = e.mColors.mCurrentColors
+            for (i in 0..15) cols[i] = palette[i]
             cols[TextStyle.COLOR_INDEX_FOREGROUND] = colorFg
             cols[TextStyle.COLOR_INDEX_BACKGROUND] = colorBg
             cols[TextStyle.COLOR_INDEX_CURSOR] = colorFg
         }
+        view?.onScreenUpdated()
+    }
+
+    /** MA84 : efface l'écran (et l'historique) de l'onglet actif. */
+    fun clearActiveScreen() {
+        val t = tabs.getOrNull(activeTab) ?: return
+        t.session.emulator?.reset()
         view?.onScreenUpdated()
     }
 
@@ -839,7 +891,26 @@ class TerminalController(
         override fun onTerminalCursorStateChange(state: Boolean) {}
         override fun getTerminalCursorStyle(): Int? = 0
 
-        override fun onScale(scale: Float): Float = 1.0f
+        /**
+         * MA83 : pincement sur la vue du terminal. La vue accumule un facteur
+         * d'échelle et nous le transmet ; on applique la taille (10 à 22 sp)
+         * et on renvoie le facteur restant, non appliqué.
+         */
+        override fun onScale(scale: Float): Float {
+            val current = fontSize.toFloat()
+            val target = (current * scale).roundToInt().coerceIn(MIN_FONT_SIZE, MAX_FONT_SIZE)
+            if (target == fontSize) {
+                // En butée : consomme le facteur pour rester réactif au pincement inverse.
+                return if ((scale > 1f && fontSize >= MAX_FONT_SIZE) ||
+                    (scale < 1f && fontSize <= MIN_FONT_SIZE)
+                ) 1f else scale
+            }
+            val applied = target / current
+            fontSize = target
+            prefs.edit().putInt("font_size", target).apply()
+            toastSize(target)
+            return scale / applied
+        }
         override fun onSingleTapUp(e: MotionEvent?) { showKeyboard() }
         override fun shouldBackButtonBeMappedToEscape(): Boolean = false
         override fun shouldEnforceCharBasedInput(): Boolean = true

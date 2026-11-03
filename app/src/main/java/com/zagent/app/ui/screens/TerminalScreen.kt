@@ -72,8 +72,9 @@ fun TerminalScreen(
     val termFg = c.text.toArgb()
     var showAgent by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(termBg, termFg, controller.session) {
-        controller.applyColors(termBg, termFg)
+    // MA84 : fond, texte et palette ANSI alignés sur le thème clair/sombre.
+    LaunchedEffect(termBg, termFg, c.isDark, controller.session) {
+        controller.applyColors(termBg, termFg, c.isDark)
     }
 
     LaunchedEffect(state) {
@@ -301,7 +302,8 @@ private fun AgentLogPane(controller: TerminalController, modifier: Modifier) {
                 text = log.ifEmpty { "Aucune commande lancée par l'agent pour le moment." },
                 style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp, lineHeight = 16.sp),
                 baseColor = if (log.isEmpty()) c.text3 else c.text,
-                linkColor = c.cyan
+                linkColor = c.cyan,
+                dark = c.isDark
             )
         }
     }
@@ -415,7 +417,7 @@ private fun ExtraKeys(controller: TerminalController) {
         Key("Tab", onClick = { controller.send("\t") })
         Key("Ctrl", active = controller.ctrlActive, onClick = { controller.ctrlActive = !controller.ctrlActive })
         Key("/", onClick = { controller.send("/") })
-        Key("-", onClick = { controller.send("-") })
+        Key("~", onClick = { controller.send("~") })
         Key("|", onClick = { controller.send("|") })
         IconKey(Icons.AutoMirrored.Filled.ArrowBack, "Gauche", onClick = { controller.send("\u001b[D") })
         IconKey(Icons.Default.ArrowUpward, "Haut", onClick = { controller.send("\u001b[A") })
@@ -432,6 +434,8 @@ private fun ExtraKeys(controller: TerminalController) {
         Key("Coller", onClick = { controller.paste() })
         Key("Copier tout", onClick = { controller.copyAll() })
         Key("Projet", onClick = { controller.cdToProject() })
+        // MA84 : efface l'écran de l'onglet actif.
+        Key("Effacer", onClick = { controller.clearActiveScreen() })
         Key("^C", onClick = { controller.send("\u0003") })
     }
 }

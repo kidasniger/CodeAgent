@@ -1,10 +1,11 @@
 package com.zagent.app.ui.editor
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Color
-import android.view.View
 import android.net.Uri
+import android.view.View
 import android.webkit.ConsoleMessage
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -12,13 +13,31 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.ScreenRotation
+import androidx.compose.material.icons.filled.Smartphone
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -29,8 +48,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -88,6 +112,11 @@ class ConsoleState {
  * Aperçu web : un vrai serveur HTTP local (PreviewServer) sert le projet,
  * le WebView charge http://127.0.0.1:<port>/<fichier>, comme dans Acode.
  * Les messages console et les erreurs JS sont envoyés dans [console].
+ *
+ * MA88 — Pilule d'actions rapides au-dessus de l'aperçu : voyant vert/rouge du
+ * serveur local, ouvrir dans le navigateur, copier l'URL, bascule
+ * portrait/paysage et cadre d'appareil léger (coins arrondis + encoche).
+ * [quickBar] est désactivé par l'aperçu plein écran, qui possède sa propre barre.
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -98,14 +127,22 @@ fun PreviewPane(
     console: ConsoleState,
     onTitle: (String) -> Unit = {},
     onUrl: (String) -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    quickBar: Boolean = true
 ) {
+    val c = Zcolors
     val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
     val latestRead by rememberUpdatedState(readResource)
     val latestTitle by rememberUpdatedState(onTitle)
     val latestUrl by rememberUpdatedState(onUrl)
     val server = remember { PreviewServer { res -> latestRead(res) } }
     var port by remember { mutableStateOf<Int?>(null) }
+    // MA88 : orientation, cadre d'appareil et adresse courante.
+    var landscape by remember { mutableStateOf(false) }
+    var frameOn by remember { mutableStateOf(false) }
+    var currentUrl by remember { mutableStateOf("") }
+
     val webView = remember {
         WebView(context).apply {
             settings.javaScriptEnabled = true
@@ -176,37 +213,157 @@ fun PreviewPane(
     val p = port
     val isUrl = path.startsWith("http://") || path.startsWith("https://")
     server.fallbackDirs = if (isUrl) emptyList() else ancestorDirs(path)
-    AndroidView(
-        factory = { webView },
-        modifier = modifier,
-        update = { wv ->
-            if (p != null) {
-                val key = path + "#" + reloadKey + "@" + p
-                if (wv.tag != key) {
-                    wv.tag = key
-                    if (isUrl) {
-                        // serveur de développement : adresse locale directe
-                        wv.loadUrl(path)
-                        latestUrl(path)
-                    } else if (p > 0) {
-                        wv.loadUrl("http://127.0.0.1:" + p + "/" + Uri.encode(path, "/"))
-                        latestUrl("http://127.0.0.1:" + p + "/" + path)
-                    } else {
-                        wv.loadDataWithBaseURL(
-                            null,
-                            "<html><body style=\"font-family:sans-serif;padding:16px\">Serveur d'aperçu indisponible.</body></html>",
-                            "text/html", "utf-8", null
-                        )
+
+    fun rememberUrl(url: String) {
+        currentUrl = url
+        latestUrl(url)
+    }
+
+    Box(modifier) {
+        // ── WebView, cadré selon l'orientation et le cadre d'appareil (MA88) ──
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val framed = frameOn || landscape
+            val ratio = if (landscape) 19.5f / 9f else 9f / 19.5f
+            val content: Modifier = if (framed) {
+                Modifier
+                    .aspectRatio(ratio)
+                    .align(Alignment.Center)
+                    .then(
+                        if (frameOn) {
+                            Modifier
+                                .clip(RoundedCornerShape(26.dp))
+                                .border(1.5.dp, c.border2, RoundedCornerShape(26.dp))
+                        } else {
+                            Modifier
+                        }
+                    )
+            } else {
+                Modifier.fillMaxSize()
+            }
+            Box(content) {
+                AndroidView(
+                    factory = { webView },
+                    modifier = Modifier.fillMaxSize(),
+                    update = { wv ->
+                        if (p != null) {
+                            val key = path + "#" + reloadKey + "@" + p
+                            if (wv.tag != key) {
+                                wv.tag = key
+                                if (isUrl) {
+                                    // serveur de développement : adresse locale directe
+                                    wv.loadUrl(path)
+                                    rememberUrl(path)
+                                } else if (p > 0) {
+                                    wv.loadUrl("http://127.0.0.1:" + p + "/" + Uri.encode(path, "/"))
+                                    rememberUrl("http://127.0.0.1:" + p + "/" + path)
+                                } else {
+                                    wv.loadDataWithBaseURL(
+                                        null,
+                                        "<html><body style=\"font-family:sans-serif;padding:16px\">Serveur d'aperçu indisponible.</body></html>",
+                                        "text/html", "utf-8", null
+                                    )
+                                }
+                            }
+                        }
                     }
+                )
+                // MA88 : encoche discrète quand le cadre d'appareil est actif.
+                if (frameOn) {
+                    Box(
+                        Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = 8.dp)
+                            .width(96.dp)
+                            .height(18.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xCC101418))
+                    )
                 }
             }
         }
-    )
+
+        // ── MA88 : pilule d'actions rapides ──
+        if (quickBar) {
+            val running = (p ?: 0) > 0 && server.isRunning
+            Row(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(10.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(c.bg2.copy(alpha = 0.92f))
+                    .border(1.dp, c.border2, RoundedCornerShape(50)),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Voyant vert/rouge du serveur local
+                Box(
+                    Modifier
+                        .padding(start = 12.dp)
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(if (running) c.green else c.red)
+                )
+                QuickIcon(
+                    icon = Icons.Default.ScreenRotation,
+                    description = if (landscape) "Passer en portrait" else "Passer en paysage",
+                    onClick = { landscape = !landscape }
+                )
+                QuickIcon(
+                    icon = Icons.Default.Smartphone,
+                    description = if (frameOn) "Retirer le cadre d'appareil" else "Cadre d'appareil",
+                    active = frameOn,
+                    onClick = { frameOn = !frameOn }
+                )
+                QuickIcon(
+                    icon = Icons.Default.ContentCopy,
+                    description = "Copier l'URL",
+                    onClick = {
+                        if (currentUrl.startsWith("http")) {
+                            clipboard.setText(AnnotatedString(currentUrl))
+                            Toast.makeText(context, "URL copiée", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Adresse indisponible", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                )
+                QuickIcon(
+                    icon = Icons.Default.OpenInNew,
+                    description = "Ouvrir dans le navigateur",
+                    onClick = {
+                        if (currentUrl.startsWith("http")) {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(currentUrl))
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            runCatching { context.startActivity(intent) }
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
+/** Bouton rond compact de la pilule d'actions rapides (MA88). */
+@Composable
+private fun QuickIcon(
+    icon: ImageVector,
+    description: String,
+    active: Boolean = false,
+    onClick: () -> Unit
+) {
+    val c = Zcolors
+    Box(
+        Modifier
+            .size(34.dp)
+            .clip(CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, description, tint = if (active) c.cyan else c.text2, modifier = Modifier.size(18.dp))
+    }
 }
 
 /** Panneau console affiché sous l'aperçu. */
 @Composable
-fun ConsolePanel(state: ConsoleState, modifier: Modifier = Modifier) {
+fun ConsolePanel(state: ConsoleState, modifier: Modifier) {
     val c = Zcolors
     val scroll = rememberScrollState()
     LaunchedEffect(state.entries.size) { scroll.scrollTo(scroll.maxValue) }

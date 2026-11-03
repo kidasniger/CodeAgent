@@ -1,6 +1,11 @@
 package com.zagent.app.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenuItem
@@ -114,6 +119,7 @@ import com.zagent.app.ui.theme.LocalGlass
 import com.zagent.app.ui.theme.LocalHazeState
 import com.zagent.app.ui.theme.glassSurface
 import com.zagent.app.ui.viewmodel.MainViewModel
+import android.widget.Toast
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -139,6 +145,8 @@ fun EditorScreen(
     var query by remember { mutableStateOf("") }
     var replacement by remember { mutableStateOf("") }
     var caseSensitive by remember { mutableStateOf(false) }
+    // MA82 : option « mot entier » de la recherche.
+    var wholeWord by remember { mutableStateOf(false) }
     var currentIdx by remember { mutableIntStateOf(0) }
     var confirmClose by remember { mutableStateOf<Int?>(null) }
     var showPreview by remember { mutableStateOf(false) }
@@ -315,11 +323,14 @@ fun EditorScreen(
 
         // ── Recherche / remplacement ────────────────────────────────────────
         val text = tab?.value?.text ?: ""
-        val matches = remember(text, query, caseSensitive) { findAll(text, query, caseSensitive) }
+        val matches = remember(text, query, caseSensitive, wholeWord) {
+            findAll(text, query, caseSensitive, wholeWord)
+        }
         val safeIdx = if (matches.isEmpty()) 0 else currentIdx.coerceIn(0, matches.lastIndex)
 
         val vScroll = tab?.let { scrollStates.getOrPut(it.path) { ScrollState(0) } }
-        val lineHeightPx = with(density) { 20.sp.toPx() }
+        // MA83 : hauteur de ligne réelle, liée à la taille de police de l'éditeur.
+        val lineHeightPx = with(density) { (viewModel.editorFontSize + 7).sp.toPx() }
 
         // MA46 : défilement jusqu'à la ligne demandée depuis le chat (chemin tapé dans un message).
         LaunchedEffect(tab?.path, editor.pendingFocusLine) {
@@ -344,7 +355,12 @@ fun EditorScreen(
             scope.launch { vScroll?.animateScrollTo(target) }
         }
 
-        if (!fs && showSearch && tab != null) {
+        // MA82 : la barre de recherche glisse depuis le haut de la zone d'édition.
+        AnimatedVisibility(
+            visible = !fs && showSearch && tab != null,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
+        ) {
             Column(
                 Modifier
                     .fillMaxWidth()
@@ -368,19 +384,10 @@ fun EditorScreen(
                     Spacer(Modifier.width(4.dp))
                     SmallIcon(Icons.Default.KeyboardArrowUp, "Précédent") { goTo(safeIdx - 1) }
                     SmallIcon(Icons.Default.KeyboardArrowDown, "Suivant") { goTo(safeIdx + 1) }
-                    Box(
-                        Modifier
-                            .clip(MaterialTheme.shapes.small)
-                            .background(if (caseSensitive) c.cyanBg else c.surface2)
-                            .clickable { caseSensitive = !caseSensitive }
-                            .padding(horizontal = 8.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            "Aa",
-                            style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
-                            color = if (caseSensitive) c.cyan else c.text2
-                        )
-                    }
+                    // MA82 : options « respecter la casse » et « mot entier ».
+                    OptionChip("Aa", "Respecter la casse", caseSensitive) { caseSensitive = !caseSensitive }
+                    Spacer(Modifier.width(4.dp))
+                    OptionChip("ab|", "Mot entier", wholeWord) { wholeWord = !wholeWord }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     SearchField(
@@ -466,11 +473,19 @@ fun EditorScreen(
                     }
                 }
             } else {
+                val context = LocalContext.current
                 CodeEditor(
                     tab = tab,
                     vScroll = vScroll,
                     matches = matches,
                     current = safeIdx,
+                    fontSize = viewModel.editorFontSize,
+                    codeAlwaysDark = viewModel.codeAlwaysDark,
+                    onFontSize = { size ->
+                        // MA83 : mémorise la taille et l'annonce (« 14 sp »).
+                        viewModel.updateEditorFontSize(size)
+                        Toast.makeText(context, "$size sp", Toast.LENGTH_SHORT).show()
+                    },
                     onSave = { editor.save(tab) }
                 )
             }
@@ -665,7 +680,14 @@ fun EditorScreen(
 
         // ── Barre de symboles (visible avec le clavier) ─────────────────────
         if (tab != null && WindowInsets.ime.getBottom(density) > 0) {
-            SymbolBar(onInsert = { tab.insert(it) })
+            // MA80 : touches complètes + annuler/refaire, fond verre ou surface.
+            SymbolBar(
+                onInsert = { tab.insert(it) },
+                onUndo = { tab.undo() },
+                onRedo = { tab.redo() },
+                canUndo = tab.undoCount > 0,
+                canRedo = tab.redoCount > 0
+            )
         }
     }
 

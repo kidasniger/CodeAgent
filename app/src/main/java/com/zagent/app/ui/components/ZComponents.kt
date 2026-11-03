@@ -7,13 +7,18 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.draw.drawWithCache
 import com.zagent.app.ui.theme.LocalGlass
 import com.zagent.app.ui.theme.LocalHazeState
 import com.zagent.app.ui.theme.glassSurface
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +32,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -36,8 +42,6 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -66,6 +70,207 @@ import com.zagent.app.ui.theme.Zcolors
 import com.zagent.app.ui.theme.Zshapes
 import kotlin.math.cos
 import kotlin.math.sin
+
+// ─────────────────────────────────────────────────────────────────────────
+// MA86 — Fil d'Ariane cliquable
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fil d'Ariane en police mono 12 sp (MA86) : chaque segment est cliquable,
+ * séparé par « › ». Le dernier segment (position actuelle) est en texte fort,
+ * les précédents en accent. Défilement horizontal automatique vers la fin
+ * quand le chemin s'allonge.
+ */
+@Composable
+fun ZBreadcrumb(
+    segments: List<String>,
+    modifier: Modifier = Modifier,
+    onSegmentClick: (Int) -> Unit = { }
+) {
+    val c = Zcolors
+    val scroll = rememberScrollState()
+    LaunchedEffect(segments) {
+        // Toujours afficher la fin du chemin (segment courant).
+        scroll.animateScrollTo(scroll.maxValue)
+    }
+    Row(
+        modifier
+            .fillMaxWidth()
+            .horizontalScroll(scroll),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        segments.forEachIndexed { i, segment ->
+            if (i > 0) {
+                Text(
+                    "›",
+                    style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp),
+                    color = c.text3,
+                    modifier = Modifier.padding(horizontal = 3.dp)
+                )
+            }
+            Text(
+                segment,
+                style = TextStyle(
+                    fontFamily = JetBrainsMono,
+                    fontSize = 12.sp,
+                    fontWeight = if (i == segments.lastIndex) FontWeight.SemiBold else FontWeight.Normal
+                ),
+                color = if (i == segments.lastIndex) c.text else c.cyan,
+                maxLines = 1,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .clickable(enabled = i < segments.lastIndex) { onSegmentClick(i) }
+                    .padding(horizontal = 4.dp, vertical = 3.dp)
+            )
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// MA87 — États vides illustrés
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Variantes d'illustration d'état vide (MA87). */
+enum class ZEmptyKind { FOLDER, RESULTS, OFFLINE, CONVERSATION }
+
+/**
+ * État vide illustré (MA87) : dessin au trait (trait continu, accent unique)
+ * pour un dossier vide, un résultat de recherche infructueux, un problème de
+ * connexion ou un historique vide, avec titre et description.
+ */
+@Composable
+fun ZEmptyState(
+    kind: ZEmptyKind,
+    title: String,
+    body: String,
+    modifier: Modifier = Modifier,
+    actionText: String? = null,
+    onAction: (() -> Unit)? = null
+) {
+    val c = Zcolors
+    Column(
+        modifier
+            .fillMaxWidth()
+            .padding(horizontal = 32.dp, vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Canvas(Modifier.fillMaxWidth().height(96.dp)) {
+            val w = size.width
+            val h = size.height
+            val stroke = 2.dp.toPx()
+            val gray = c.text3
+            val graySoft = c.text3.copy(alpha = 0.45f)
+            when (kind) {
+                ZEmptyKind.FOLDER -> {
+                    // Languette du dossier
+                    drawRoundRect(
+                        color = graySoft,
+                        topLeft = Offset(w * 0.22f, h * 0.26f),
+                        size = Size(w * 0.18f, h * 0.12f),
+                        cornerRadius = CornerRadius(stroke * 2),
+                        style = Stroke(stroke)
+                    )
+                    // Corps du dossier
+                    drawRoundRect(
+                        color = gray,
+                        topLeft = Offset(w * 0.22f, h * 0.38f),
+                        size = Size(w * 0.56f, h * 0.36f),
+                        cornerRadius = CornerRadius(stroke * 2),
+                        style = Stroke(stroke)
+                    )
+                    // Accent : point au centre du dossier vide
+                    drawCircle(color = c.cyan, radius = stroke * 2.2f, center = Offset(w * 0.5f, h * 0.56f))
+                }
+                ZEmptyKind.RESULTS -> {
+                    // Loupe (contour gris)
+                    val r = h * 0.26f
+                    val cx = w * 0.44f
+                    val cy = h * 0.42f
+                    drawCircle(color = gray, radius = r, center = Offset(cx, cy), style = Stroke(stroke))
+                    // Accent : manche de la loupe
+                    drawLine(
+                        color = c.cyan,
+                        start = Offset(cx + r * 0.72f, cy + r * 0.72f),
+                        end = Offset(cx + r * 1.65f, cy + r * 1.65f),
+                        strokeWidth = stroke * 1.25f,
+                        cap = StrokeCap.Round
+                    )
+                    // Point d'interrogation suggéré par deux traits
+                    drawLine(color = graySoft, start = Offset(cx - r * 0.28f, cy - r * 0.30f), end = Offset(cx + r * 0.22f, cy - r * 0.30f), strokeWidth = stroke)
+                    drawLine(color = graySoft, start = Offset(cx - r * 0.05f, cy + r * 0.16f), end = Offset(cx - r * 0.05f, cy + r * 0.30f), strokeWidth = stroke)
+                }
+                ZEmptyKind.OFFLINE -> {
+                    // Nuage : pilule + deux bosses
+                    drawRoundRect(
+                        color = gray,
+                        topLeft = Offset(w * 0.24f, h * 0.42f),
+                        size = Size(w * 0.52f, h * 0.22f),
+                        cornerRadius = CornerRadius(h * 0.11f),
+                        style = Stroke(stroke)
+                    )
+                    drawCircle(color = gray, radius = h * 0.13f, center = Offset(w * 0.38f, h * 0.42f), style = Stroke(stroke))
+                    drawCircle(color = gray, radius = h * 0.10f, center = Offset(w * 0.56f, h * 0.42f), style = Stroke(stroke))
+                    // Accent : barre diagonale (connexion coupée)
+                    drawLine(
+                        color = c.red,
+                        start = Offset(w * 0.28f, h * 0.78f),
+                        end = Offset(w * 0.72f, h * 0.22f),
+                        strokeWidth = stroke * 1.25f,
+                        cap = StrokeCap.Round
+                    )
+                }
+                ZEmptyKind.CONVERSATION -> {
+                    // Bulle de dialogue
+                    drawRoundRect(
+                        color = gray,
+                        topLeft = Offset(w * 0.26f, h * 0.24f),
+                        size = Size(w * 0.48f, h * 0.36f),
+                        cornerRadius = CornerRadius(stroke * 3),
+                        style = Stroke(stroke)
+                    )
+                    // Queue de la bulle
+                    val tail = Path().apply {
+                        moveTo(w * 0.38f, h * 0.60f)
+                        lineTo(w * 0.34f, h * 0.76f)
+                        lineTo(w * 0.48f, h * 0.60f)
+                        close()
+                    }
+                    drawPath(tail, color = gray, style = Stroke(stroke, join = StrokeJoin.Round))
+                    // Trois points, celui du centre en accent
+                    drawCircle(color = graySoft, radius = stroke * 1.3f, center = Offset(w * 0.40f, h * 0.42f))
+                    drawCircle(color = c.cyan, radius = stroke * 1.6f, center = Offset(w * 0.50f, h * 0.42f))
+                    drawCircle(color = graySoft, radius = stroke * 1.3f, center = Offset(w * 0.60f, h * 0.42f))
+                }
+            }
+        }
+        Spacer(Modifier.height(16.dp))
+        Text(
+            title,
+            style = MaterialTheme.typography.titleMedium,
+            color = c.text,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            body,
+            style = MaterialTheme.typography.bodySmall,
+            color = c.text2,
+            textAlign = TextAlign.Center
+        )
+        if (actionText != null && onAction != null) {
+            Spacer(Modifier.height(14.dp))
+            Box(
+                modifier = Modifier
+                    .clip(Zshapes.pill)
+                    .clickable(onClick = onAction)
+                    .padding(horizontal = 18.dp, vertical = 9.dp)
+            ) {
+                Text(actionText, color = c.cyan, style = MaterialTheme.typography.labelLarge)
+            }
+        }
+    }
+}
+
 
 /**
  * Curseur commun des réglages visuels avec valeur formatée et réinitialisation contextuelle.

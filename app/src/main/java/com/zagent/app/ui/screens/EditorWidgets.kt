@@ -242,3 +242,25 @@ internal fun ConsoleIcon(errors: Int, onClick: () -> Unit) {
         }
     }
 }
+
+/**
+ * MA82 — Pastille d'option de la recherche : « Aa » (respecter la casse) et
+ * « ab| » (mot entier). Active = fond et texte accent.
+ */
+@Composable
+internal fun OptionChip(label: String, description: String, active: Boolean, onClick: () -> Unit) {
+    val c = Zcolors
+    Box(
+        Modifier
+            .clip(MaterialTheme.shapes.small)
+            .background(if (active) c.cyanBg else c.surface2)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 9.dp, vertical = 6.dp)
+    ) {
+        Text(
+            label,
+            style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
+            color = if (active) c.cyan else c.text2
+        )
+    }
+}

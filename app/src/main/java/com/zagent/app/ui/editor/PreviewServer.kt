@@ -60,6 +60,10 @@ class PreviewServer(private val readResource: (String) -> ByteArray?) {
     @Volatile
     var fallbackDirs: List<String> = emptyList()
 
+    /** MA88 : true tant que le serveur local écoute (voyant vert/rouge de l'aperçu). */
+    val isRunning: Boolean
+        get() = server?.isClosed == false
+
     private fun lookup(path: String): ByteArray? {
         readResource(path)?.let { return it }
         for (dir in fallbackDirs) {

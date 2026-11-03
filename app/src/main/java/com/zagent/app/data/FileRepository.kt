@@ -78,7 +78,9 @@ class FileRepository(private val context: Context, private val rootPath: String?
         val name: String,
         val isDir: Boolean,
         val size: Long,
-        val path: String
+        val path: String,
+        /** Dernière modification (ms) — tri par date de l'explorateur (MA85). */
+        val lastModified: Long = 0L
     )
 
     /**
@@ -104,7 +106,8 @@ class FileRepository(private val context: Context, private val rootPath: String?
                 name = f.name,
                 isDir = f.isDirectory,
                 size = f.length(),
-                path = if (base.isEmpty()) f.name else "$base/${f.name}"
+                path = if (base.isEmpty()) f.name else "$base/${f.name}",
+                lastModified = f.lastModified()
             )
         }.sortedWith(compareByDescending<Entry> { it.isDir }.thenBy { it.name.lowercase() })
     }

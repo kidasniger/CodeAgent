@@ -28,16 +28,19 @@ import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,13 +52,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zagent.app.data.ConversationMeta
 import com.zagent.app.ui.components.GradientButton
-import com.zagent.app.ui.components.Lot5EmptyState
 import com.zagent.app.ui.components.Lot5SearchField
+import com.zagent.app.ui.components.ZEmptyKind
+import com.zagent.app.ui.components.ZEmptyState
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.SpaceGrotesk
 import com.zagent.app.ui.theme.Zcolors
 import com.zagent.app.ui.viewmodel.MainViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -66,11 +72,15 @@ import java.util.Locale
 // recherche en haut, glisser → épingler (vers la droite) ou supprimer (vers la gauche).
 // ─────────────────────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryDrawer(viewModel: MainViewModel, onClose: () -> Unit) {
     val c = Zcolors
     var query by remember { mutableStateOf("") }
     val all = viewModel.conversationList
+    val scope = rememberCoroutineScope()
+    // MA87 : indicateur du tirer-pour-actualiser de l'historique.
+    var refreshing by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { viewModel.refreshConversations() }
 
@@ -135,15 +145,29 @@ fun HistoryDrawer(viewModel: MainViewModel, onClose: () -> Unit) {
                 Spacer(Modifier.height(10.dp))
 
                 if (filtered.isEmpty()) {
-                    Lot5EmptyState(
-                        icon = Icons.Default.History,
-                        title = if (query.isBlank()) "Aucune conversation sauvegardée" else "Aucun résultat",
-                        text = if (query.isBlank())
+                    // MA87 : état vide illustré (aucune conversation).
+                    ZEmptyState(
+                        kind = ZEmptyKind.CONVERSATION,
+                        title = if (query.isBlank()) "Aucune conversation" else "Aucun résultat",
+                        body = if (query.isBlank())
                             "Tes conversations apparaîtront ici, groupées par jour. Glisse une ligne pour l'épingler ou la supprimer."
                         else "Essaie un autre mot-clé."
                     )
                 } else {
-                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                    // MA87 : tirer pour actualiser l'historique.
+                    PullToRefreshBox(
+                        isRefreshing = refreshing,
+                        onRefresh = {
+                            refreshing = true
+                            viewModel.refreshConversations()
+                            scope.launch {
+                                delay(600)
+                                refreshing = false
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                         listOf(
                             "Aujourd'hui" to 0,
                             "Hier" to 1,
@@ -162,6 +186,7 @@ fun HistoryDrawer(viewModel: MainViewModel, onClose: () -> Unit) {
                             pinned.forEach { meta -> HistoryRow(viewModel, meta, onClose) }
                         }
                         Spacer(Modifier.height(24.dp))
+                        }
                     }
                 }
             }

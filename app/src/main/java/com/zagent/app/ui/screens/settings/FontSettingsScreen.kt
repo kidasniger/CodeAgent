@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.SpaceGrotesk
 import com.zagent.app.ui.viewmodel.MainViewModel
+import kotlin.math.roundToInt
 
 @Composable
 fun FontSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
@@ -89,6 +90,42 @@ fun FontSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     Text("Normale", style = MaterialTheme.typography.labelSmall)
                     Text("Grande", style = MaterialTheme.typography.labelSmall)
                 }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        // MA83 : tailles de police du code, réglables aussi au pincement.
+        SettingsSectionLabel("TAILLE DU CODE")
+        SettingsCard {
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Éditeur", color = MaterialTheme.colorScheme.onSurface)
+                    Text("${viewModel.editorFontSize} sp", color = MaterialTheme.colorScheme.primary)
+                }
+                Slider(
+                    value = viewModel.editorFontSize.toFloat(),
+                    onValueChange = { viewModel.updateEditorFontSize(it.roundToInt()) },
+                    valueRange = 10f..22f,
+                    steps = 11
+                )
+                Text(
+                    "Pince la zone de code ou glisse ce curseur (10 à 22 sp).",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Terminal", color = MaterialTheme.colorScheme.onSurface)
+                    Text("${viewModel.terminalFontSize} sp", color = MaterialTheme.colorScheme.primary)
+                }
+                Slider(
+                    value = viewModel.terminalFontSize.toFloat(),
+                    onValueChange = { viewModel.updateTerminalFontSize(it.roundToInt()) },
+                    valueRange = 10f..22f,
+                    steps = 11
+                )
+                Text(
+                    "Pince l'écran du terminal ou glisse ce curseur (10 à 22 sp).",
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
         }
         Spacer(Modifier.height(8.dp))

@@ -29,6 +29,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Contrast
 import androidx.compose.material.icons.filled.Animation
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.DensityMedium
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Layers
@@ -384,6 +385,42 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     Switch(
                         checked = viewModel.reduceAnimations,
                         onCheckedChange = { viewModel.updateReduceAnimations(it) }
+                    )
+                }
+            }
+
+            // MA81 : l'éditeur garde un fond de code sombre, même en interface claire.
+            SettingsSectionLabel("ÉDITEUR")
+            SettingsCard {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { viewModel.updateCodeAlwaysDark(!viewModel.codeAlwaysDark) }
+                        .padding(horizontal = 16.dp, vertical = 15.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(MaterialTheme.shapes.small)
+                            .background(Zcolors.violetBg),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Code, contentDescription = null, tint = Zcolors.violet)
+                    }
+                    Spacer(Modifier.size(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Code toujours sombre", style = MaterialTheme.typography.titleMedium, color = Zcolors.text)
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            "L'éditeur garde son fond nuit et sa palette adaptée ; désactivé, le code suit le thème clair.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Zcolors.text2
+                        )
+                    }
+                    Switch(
+                        checked = viewModel.codeAlwaysDark,
+                        onCheckedChange = { viewModel.updateCodeAlwaysDark(it) }
                     )
                 }
             }

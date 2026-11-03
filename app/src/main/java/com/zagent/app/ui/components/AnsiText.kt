@@ -24,15 +24,29 @@ fun stripAnsi(s: String): String = s.replace(ANSI_SEQ, "")
 /** Texte propre à renvoyer à l'IA : sans codes couleur ni barres de progression. */
 fun cleanForModel(s: String): String = normalizeCr(stripAnsi(s))
 
-private val ANSI16: List<Color?> = listOf(
+/** Palette ANSI 16 couleurs pour un fond sombre (rendu habituel). */
+private val ANSI16_DARK: List<Color?> = listOf(
     Color(0xFF6B7280), Color(0xFFDC2626), Color(0xFF16A34A), Color(0xFFCA8A04),
     Color(0xFF2563EB), Color(0xFF9333EA), Color(0xFF0891B2), null,
     Color(0xFF9CA3AF), Color(0xFFEF4444), Color(0xFF22C55E), Color(0xFFEAB308),
     Color(0xFF3B82F6), Color(0xFFA855F7), Color(0xFF06B6D4), null
 )
 
-private fun color256(n: Int): Color? = when {
-    n in 0..15 -> ANSI16[n]
+/**
+ * MA84 — Palette ANSI 16 couleurs pour un fond clair : les mêmes teintes en
+ * version plus profonde pour rester lisibles sur fond clair.
+ */
+private val ANSI16_LIGHT: List<Color?> = listOf(
+    Color(0xFF24292F), Color(0xFFB91C1C), Color(0xFF116B3E), Color(0xFF8A6100),
+    Color(0xFF0757C8), Color(0xFF7C3AED), Color(0xFF0E7490), Color(0xFF51607A),
+    Color(0xFF6E7B91), Color(0xFFCB2B2B), Color(0xFF188A4B), Color(0xFF9A6E00),
+    Color(0xFF2563EB), Color(0xFF8B5CF6), Color(0xFF0891B2), null
+)
+
+private fun ansiPalette(dark: Boolean): List<Color?> = if (dark) ANSI16_DARK else ANSI16_LIGHT
+
+private fun color256(n: Int, dark: Boolean): Color? = when {
+    n in 0..15 -> ansiPalette(dark)[n]
     n in 16..231 -> {
         val v = n - 16
         fun lvl(x: Int) = if (x == 0) 0 else 55 + 40 * x
@@ -46,7 +60,8 @@ private fun color256(n: Int): Color? = when {
 }
 
 /** Convertit un texte avec codes ANSI (couleurs, gras) en texte stylé, avec les liens http(s) cliquables. */
-fun ansiToAnnotated(raw: String, linkColor: Color): AnnotatedString {
+fun ansiToAnnotated(raw: String, linkColor: Color, dark: Boolean = true): AnnotatedString {
+    val palette = ansiPalette(dark)
     val text = normalizeCr(raw)
     val plain = StringBuilder()
     val spans = ArrayList<Triple<Int, Int, SpanStyle>>()
@@ -80,11 +95,11 @@ fun ansiToAnnotated(raw: String, linkColor: Color): AnnotatedString {
                     p == 0 -> { fg = null; bold = false }
                     p == 1 -> bold = true
                     p == 22 -> bold = false
-                    p in 30..37 -> fg = ANSI16[p - 30]
-                    p in 90..97 -> fg = ANSI16[p - 90 + 8]
+                    p in 30..37 -> fg = palette[p - 30]
+                    p in 90..97 -> fg = palette[p - 90 + 8]
                     p == 39 -> fg = null
                     p == 38 && params.getOrNull(i + 1) == 5 -> {
-                        fg = params.getOrNull(i + 2)?.let { color256(it) }
+                        fg = params.getOrNull(i + 2)?.let { color256(it, dark) }
                         i += 2
                     }
                     p == 38 && params.getOrNull(i + 1) == 2 -> {
@@ -114,17 +129,22 @@ fun ansiToAnnotated(raw: String, linkColor: Color): AnnotatedString {
     return builder.toAnnotatedString()
 }
 
-/** Sortie de commande : couleurs ANSI rendues, liens cliquables. */
+/**
+ * Sortie de commande : couleurs ANSI rendues (palette adaptée au thème), liens
+ * cliquables. [dark] sélectionne la palette sombre (défaut, sur fond de code)
+ * ou claire (MA84).
+ */
 @Composable
 fun AnsiText(
     text: String,
     style: TextStyle,
     baseColor: Color,
     linkColor: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    dark: Boolean = true
 ) {
     val uri = LocalUriHandler.current
-    val annotated = remember(text, linkColor) { ansiToAnnotated(text, linkColor) }
+    val annotated = remember(text, linkColor, dark) { ansiToAnnotated(text, linkColor, dark) }
     ClickableText(
         text = annotated,
         style = style.copy(color = baseColor),

@@ -328,6 +328,9 @@ class SettingsManager(context: Context) {
             .putFloat(glassKey(KEY_GLASS_COLOUR_INTENSITY, true), 0.70f)
             .putFloat(glassKey(KEY_GLASS_FILM_V2, true), 0.35f)
             .putFloat(glassKey(KEY_GLASS_ACTIVE_INTENSITY, true), 0.26f)
+            // LOT 7 : rendus et tailles par défaut de l'éditeur (MA81/MA83).
+            .putBoolean(KEY_CODE_ALWAYS_DARK, true)
+            .putInt(KEY_EDITOR_FONT_SIZE, 14)
             .apply()
         ZAccentOverrideLight.value = null
         ZAccentOverrideDark.value = null
@@ -369,6 +372,26 @@ class SettingsManager(context: Context) {
     var alwaysAllowedPaths: Set<String>
         get() = prefs.getStringSet(KEY_ALWAYS_ALLOW, emptySet()) ?: emptySet()
         set(value) = prefs.edit().putStringSet(KEY_ALWAYS_ALLOW, value).apply()
+
+    // ── LOT 7 ──────────────────────────────────────────────────────────────
+
+    /**
+     * MA81 : garde le fond de code sombre et la palette « nuit » de l'éditeur
+     * même quand l'interface est en mode clair. Activé par défaut : l'éditeur
+     * garde son rendu habituel ; désactivé, le code suit le thème (fond clair,
+     * coloration adaptée).
+     */
+    var codeAlwaysDark: Boolean
+        get() = prefs.getBoolean(KEY_CODE_ALWAYS_DARK, true)
+        set(value) = prefs.edit().putBoolean(KEY_CODE_ALWAYS_DARK, value).apply()
+
+    /**
+     * MA83 : taille de police de l'éditeur en sp (10 à 22), réglable au
+     * pincement sur l'éditeur ou depuis Réglages › Apparence › Police.
+     */
+    var editorFontSize: Int
+        get() = prefs.getInt(KEY_EDITOR_FONT_SIZE, 14).coerceIn(10, 22)
+        set(value) = prefs.edit().putInt(KEY_EDITOR_FONT_SIZE, value.coerceIn(10, 22)).apply()
 
     // ── LOT 5 ────────────────────────────────────────────────────────────────
 
@@ -512,5 +535,7 @@ class SettingsManager(context: Context) {
         private const val KEY_PROJECT_INSTR = "project_instructions"
         private const val KEY_REDUCE_ANIMATIONS = "reduce_animations"
         private const val KEY_EDITOR_SESSION = "editor_session_"
+        private const val KEY_CODE_ALWAYS_DARK = "code_always_dark"
+        private const val KEY_EDITOR_FONT_SIZE = "editor_font_size"
     }
 }

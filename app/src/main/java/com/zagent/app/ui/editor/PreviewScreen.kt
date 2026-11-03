@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Refresh
@@ -56,6 +57,9 @@ import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.Zcolors
 import com.zagent.app.ui.viewmodel.MainViewModel
+import androidx.compose.ui.platform.LocalClipboardManager
+import android.widget.Toast
+import androidx.compose.ui.text.AnnotatedString
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MA62 — Aperçu plein écran : WebView plein cadre avec barre fine (recharger,
@@ -67,6 +71,7 @@ import com.zagent.app.ui.viewmodel.MainViewModel
 fun PreviewScreen(viewModel: MainViewModel, onClose: () -> Unit) {
     val c = Zcolors
     val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
     var reloadTick by remember { mutableStateOf(0) }
     var currentUrl by remember { mutableStateOf("") }
     var showQr by remember { mutableStateOf(false) }
@@ -100,12 +105,22 @@ fun PreviewScreen(viewModel: MainViewModel, onClose: () -> Unit) {
             BarIcon(Icons.Default.Close, "Fermer l'aperçu") { onClose() }
             BarIcon(Icons.Default.Refresh, "Recharger") { reloadTick++ }
             Column(Modifier.weight(1f)) {
-                Text(
-                    viewModel.previewScreenPath.ifBlank { "aperçu" },
-                    style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp),
-                    color = c.text,
-                    maxLines = 1
-                )
+                // MA88 : voyant du serveur local devant l'adresse.
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier
+                            .size(7.dp)
+                            .clip(CircleShape)
+                            .background(if (currentUrl.startsWith("http")) c.green else c.red)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        viewModel.previewScreenPath.ifBlank { "aperçu" },
+                        style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp),
+                        color = c.text,
+                        maxLines = 1
+                    )
+                }
                 Text(
                     currentUrl.ifBlank { "…" },
                     style = TextStyle(fontFamily = JetBrainsMono, fontSize = 9.5.sp),
@@ -124,6 +139,13 @@ fun PreviewScreen(viewModel: MainViewModel, onClose: () -> Unit) {
                     val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(currentUrl))
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     runCatching { context.startActivity(intent) }
+                }
+            }
+            // MA88 : copier l'adresse locale.
+            BarIcon(Icons.Default.ContentCopy, "Copier l'URL") {
+                if (currentUrl.startsWith("http")) {
+                    clipboard.setText(AnnotatedString(currentUrl))
+                    Toast.makeText(context, "URL copiée", Toast.LENGTH_SHORT).show()
                 }
             }
             BarIcon(Icons.Default.QrCode2, "QR code de l'adresse") {
@@ -186,7 +208,8 @@ fun PreviewScreen(viewModel: MainViewModel, onClose: () -> Unit) {
                     readResource = viewModel.editor::readResource,
                     console = viewModel.console,
                     onUrl = { currentUrl = it },
-                    modifier = frame
+                    modifier = frame,
+                    quickBar = false // MA88 : la barre dédiée de cet écran remplace la pilule.
                 )
             }
         }
