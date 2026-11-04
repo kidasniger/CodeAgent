@@ -79,6 +79,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -903,10 +904,18 @@ private fun SwipeActionsRow(
     }
 
     Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))) {
-        // Actions derrière la ligne, alignées à droite
+        // Actions derrière la ligne, alignées à droite.
+        // MA85 · correctif mode verre : avec un preset translucide (surface à
+        // 5,5 % d'opacité), la ligne ne masquait plus les pavés colorés, visibles
+        // en permanence sous chaque élément. Les actions ne sont donc peintes
+        // qu'à mesure que le glissement les révèle (alpha = progression du
+        // swipe) : invisibles au repos quel que soit le matériau de surface.
         Row(
             Modifier
                 .matchParentSize()
+                .graphicsLayer {
+                    alpha = (-offset.value / actionsWidthPx).coerceIn(0f, 1f)
+                }
                 .clip(RoundedCornerShape(12.dp)),
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
