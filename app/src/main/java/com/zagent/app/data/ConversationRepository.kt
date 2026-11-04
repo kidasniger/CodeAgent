@@ -36,7 +36,9 @@ data class StoredMessage(
     val toolCallId: String? = null,
     val name: String? = null,
     val toolLog: String? = null,
-    val toolCalls: List<StoredToolCall>? = null
+    val toolCalls: List<StoredToolCall>? = null,
+    /** MàJ 104 — nom du modèle émetteur (mode Duo). */
+    val modele: String? = null
 )
 
 /** Résultat d'une recherche plein texte dans les conversations (MA58). */

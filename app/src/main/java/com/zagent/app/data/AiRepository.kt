@@ -48,6 +48,32 @@ class AiRepository {
         val args = StringBuilder()
     }
 
+    /**
+     * MàJ 101 — interroge l'endpoint /models du fournisseur : sert au bouton
+     * « Tester la connexion » des Réglages et à l'import des modèles d'un
+     * fournisseur personnalisé. Retourne les identifiants renvoyés par le serveur.
+     */
+    suspend fun listerModeles(baseUrl: String, apiKey: String): List<String> {
+        val url = (if (baseUrl.isBlank()) ModelCatalog.URL_ZAI else baseUrl)
+            .replace("chat/completions", "models")
+        val request = Request.Builder()
+            .url(url)
+            .addHeader("Authorization", "Bearer $apiKey")
+            .get()
+            .build()
+        return client.newCall(request).execute().use { response ->
+            val bodyStr = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                throw IOException("HTTP " + response.code + " sur /models")
+            }
+            val root = Json.parseToJsonElement(bodyStr).jsonObject
+            val data = (root["data"] as? JsonArray) ?: JsonArray(emptyList())
+            data.mapNotNull { el ->
+                (el as? JsonObject)?.get("id")?.let { (it as? JsonPrimitive)?.contentOrNull }
+            }.filter { it.isNotBlank() }
+        }
+    }
+
     /** Lit la réponse en flux (SSE) : le texte part à [onDelta] au fil de l'eau, les appels d'outils sont assemblés. */
     private fun parseStream(
         response: Response,
@@ -148,7 +174,9 @@ class AiRepository {
         messages: JsonArray,
         onRetryUpdate: (String) -> Unit,
         onDelta: (String) -> Unit = {},
-        onReasoningDelta: (String) -> Unit = {}
+        onReasoningDelta: (String) -> Unit = {},
+        /** MàJ 104 — false pour un échange pur (mode Duo) : aucun outil transmis. */
+        avecOutils: Boolean = true
     ): ApiResponse {
         // Source unique de l'URL par défaut : ModelCatalog.URL_ZAI (com.zagent.app.data).
         val url = if (baseUrl.isBlank()) ModelCatalog.URL_ZAI else baseUrl
@@ -156,8 +184,10 @@ class AiRepository {
         val requestBodyJson = buildJsonObject {
             put("model", model)
             put("messages", messages)
-            put("tools", AgentTools.toolsJson)
-            put("tool_choice", "auto")
+            if (avecOutils) {
+                put("tools", AgentTools.toolsJson)
+                put("tool_choice", "auto")
+            }
             put("stream", true)
         }
 

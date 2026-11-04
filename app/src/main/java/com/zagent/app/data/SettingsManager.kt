@@ -91,6 +91,33 @@ class SettingsManager(context: Context) {
         get() = prefs.getString(KEY_API_KEY, "") ?: ""
         set(value) = prefs.edit().putString(KEY_API_KEY, value).apply()
 
+    // ── MàJ 101 : fournisseurs multiples (une clé API par fournisseur) ───────
+
+    /**
+     * Fournisseurs enregistrés (intégrés + personnalisés), avec leur clé dédiée.
+     * Au premier accès après MàJ 101, l'ancienne clé unique [KEY_API_KEY] migre
+     * automatiquement vers le fournisseur z.ai : l'utilisateur n'a rien à refaire.
+     */
+    var fournisseurs: List<Fournisseur>
+        get() {
+            val brut = prefs.getString(KEY_FOURNISSEURS, null)
+            if (brut == null) {
+                val ancienne = prefs.getString(KEY_API_KEY, "") ?: ""
+                val liste = Fournisseurs.integres().map {
+                    if (it.id == Fournisseurs.ID_ZAI) it.copy(cle = ancienne) else it
+                }
+                prefs.edit().putString(KEY_FOURNISSEURS, Fournisseurs.encode(liste)).apply()
+                return liste
+            }
+            return Fournisseurs.decode(brut)
+        }
+        set(value) = prefs.edit().putString(KEY_FOURNISSEURS, Fournisseurs.encode(value)).apply()
+
+    /** MàJ 103 — modèles épinglés en favoris (identifiants du catalogue), affichés en tête du sélecteur. */
+    var modelesFavoris: Set<String>
+        get() = prefs.getStringSet(KEY_MODELES_FAVORIS, emptySet()) ?: emptySet()
+        set(value) = prefs.edit().putStringSet(KEY_MODELES_FAVORIS, value).apply()
+
     var model: String
         get() = prefs.getString(KEY_MODEL, "glm-4.5-flash") ?: "glm-4.5-flash"
         set(value) = prefs.edit().putString(KEY_MODEL, value).apply()
@@ -517,6 +544,8 @@ class SettingsManager(context: Context) {
         private const val KEY_PRICE_OUT = "price_out_per_m"
         private const val KEY_CUSTOM_INSTR = "custom_instructions"
         private const val KEY_API_KEY = "api_key"
+        private const val KEY_FOURNISSEURS = "fournisseurs_json"
+        private const val KEY_MODELES_FAVORIS = "modeles_favoris"
         private const val KEY_MODEL = "model"
         private const val KEY_BASE_URL = "base_url"
         private const val KEY_AUTO_MODE = "auto_mode"
