@@ -20,6 +20,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -36,6 +38,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.data.Capacite
+import com.zagent.app.data.Fournisseur
 import com.zagent.app.data.ModelCatalog
 import com.zagent.app.data.ModelInfo
 import com.zagent.app.ui.components.Lot5Screen
@@ -52,8 +56,10 @@ import java.util.Locale
 // MA59 — Écran Modèles : carte par modèle (nom, description, fenêtre de contexte,
 // prix configurés KEY_PRICE_IN/OUT, vitesse ●●○, badge « Recommandé »), sélection
 // au tap et « Modèle personnalisé » avec champ base URL.
-// Le catalogue vit dans com.zagent.app.data.ModelCatalog (GLM z.ai + NVIDIA NIM,
-// chaque modèle portant l'URL de son fournisseur).
+// MàJ 101 — les modèles sont regroupés par fournisseur (z.ai, NVIDIA NIM,
+// passerelles personnalisées), avec l'état de la clé de chaque API.
+// MàJ 102 — chaque carte porte ses badges de capacité (Texte, Code, Vision,
+// Raisonnement…) et une étoile pour épingler le modèle en favori.
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
@@ -68,37 +74,49 @@ fun ModelsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         else
             "Entrée " + formatPrice(viewModel.priceInInput) + " · Sortie " + formatPrice(viewModel.priceOutInput) + " / M tokens"
 
-        Lot5Section("Catalogue — discussion & code")
-        ModelCatalog.all.filter { !it.specialized }.forEach { m ->
-            ModelCard(
-                model = m,
-                selected = viewModel.effectiveModel == m.id,
-                priceText = priceText,
-                onSelect = {
-                    viewModel.selectGlobalModel(m.id)
-                }
-            )
-            Spacer(Modifier.height(10.dp))
-        }
+        val fournisseurs = viewModel.fournisseurs
+        fournisseurs.forEach { f ->
+            val modelesFournisseur = ModelCatalog.all.filter { it.baseUrl == f.baseUrl }
+            if (modelesFournisseur.isEmpty()) return@forEach
+            val conversationnels = modelesFournisseur.filter { !it.specialized }
+            val specialises = modelesFournisseur.filter { it.specialized }
 
-        Spacer(Modifier.height(8.dp))
-        Lot5Section("Spécialisés (pas pour discuter)")
-        Text(
-            "Modération, extraction de documents, traduction, calibration — fournis par NVIDIA NIM, hors usage agent.",
-            style = TextStyle(fontFamily = Inter, fontSize = 12.sp, lineHeight = 17.sp),
-            color = c.text2
-        )
-        Spacer(Modifier.height(8.dp))
-        ModelCatalog.all.filter { it.specialized }.forEach { m ->
-            ModelCard(
-                model = m,
-                selected = viewModel.effectiveModel == m.id,
-                priceText = priceText,
-                onSelect = {
-                    viewModel.selectGlobalModel(m.id)
+            Lot5Section(f.nom)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                StatusCleFournisseur(f)
+            }
+            Spacer(Modifier.height(8.dp))
+            conversationnels.forEach { m ->
+                ModelCard(
+                    model = m,
+                    selected = viewModel.effectiveModel == m.id,
+                    favori = m.id in viewModel.modelesFavoris,
+                    priceText = priceText,
+                    onSelect = { viewModel.selectGlobalModel(m.id) },
+                    onFavori = { viewModel.basculeFavori(m.id) }
+                )
+                Spacer(Modifier.height(10.dp))
+            }
+            if (specialises.isNotEmpty()) {
+                Text(
+                    "Spécialisés " + f.nom + " — modération, extraction, traduction, calibration : hors usage agent.",
+                    style = TextStyle(fontFamily = Inter, fontSize = 12.sp, lineHeight = 17.sp),
+                    color = c.text2
+                )
+                Spacer(Modifier.height(8.dp))
+                specialises.forEach { m ->
+                    ModelCard(
+                        model = m,
+                        selected = viewModel.effectiveModel == m.id,
+                        favori = m.id in viewModel.modelesFavoris,
+                        priceText = priceText,
+                        onSelect = { viewModel.selectGlobalModel(m.id) },
+                        onFavori = { viewModel.basculeFavori(m.id) }
+                    )
+                    Spacer(Modifier.height(10.dp))
                 }
-            )
-            Spacer(Modifier.height(10.dp))
+            }
+            Spacer(Modifier.height(8.dp))
         }
 
         Spacer(Modifier.height(8.dp))
@@ -122,7 +140,7 @@ fun ModelsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         )
         Spacer(Modifier.height(10.dp))
         Text(
-            "Le modèle personnalisé est enregistré comme réglage global. Les prix par million de tokens restent ceux de Réglages.",
+            "Astuce : enregistre plutôt la passerelle dans Réglages › Fournisseurs d'IA avec sa propre clé — ses modèles arriveront ici automatiquement.",
             style = TextStyle(fontFamily = Inter, fontSize = 12.sp, lineHeight = 17.sp),
             color = c.text2
         )
@@ -158,7 +176,7 @@ fun ModelsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             Icon(Icons.Default.Bolt, null, tint = c.amber, modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(6.dp))
             Text(
-                "Astuce : le chip modèle du champ de saisie change le modèle de la conversation en cours seulement.",
+                "Astuce : le chip modèle du champ de saisie change le modèle de la conversation en cours seulement. Les étoiles épinglent tes modèles en tête du sélecteur.",
                 style = TextStyle(fontFamily = Inter, fontSize = 12.sp, lineHeight = 16.sp),
                 color = c.text2,
                 modifier = Modifier.weight(1f)
@@ -167,8 +185,33 @@ fun ModelsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     }
 }
 
+/** Badge d'état de la clé d'un fournisseur (MàJ 101). */
 @Composable
-private fun ModelCard(model: ModelInfo, selected: Boolean, priceText: String, onSelect: () -> Unit) {
+private fun StatusCleFournisseur(f: Fournisseur) {
+    val c = Zcolors
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(50))
+            .background(if (f.cle.isBlank()) c.amberBg else c.greenBg)
+            .padding(horizontal = 8.dp, vertical = 3.dp)
+    ) {
+        Text(
+            if (f.cle.isBlank()) "Clé absente — Réglages › Fournisseurs d'IA" else "Clé enregistrée",
+            style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 10.5.sp),
+            color = if (f.cle.isBlank()) c.amber else c.green
+        )
+    }
+}
+
+@Composable
+private fun ModelCard(
+    model: ModelInfo,
+    selected: Boolean,
+    favori: Boolean,
+    priceText: String,
+    onSelect: () -> Unit,
+    onFavori: () -> Unit
+) {
     val c = Zcolors
     Row(
         Modifier
@@ -226,6 +269,17 @@ private fun ModelCard(model: ModelInfo, selected: Boolean, priceText: String, on
                 if (selected) {
                     Icon(Icons.Default.Check, "Sélectionné", tint = c.cyan, modifier = Modifier.size(16.dp))
                 }
+                // MàJ 102 — étoile favori : épingle le modèle en tête des sélecteurs.
+                Icon(
+                    if (favori) Icons.Default.Star else Icons.Default.StarBorder,
+                    if (favori) "Retirer des favoris" else "Ajouter aux favoris",
+                    tint = if (favori) c.amber else c.text3,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .clickable(onClick = onFavori)
+                        .padding(4.dp)
+                        .size(16.dp)
+                )
             }
             Spacer(Modifier.height(2.dp))
             Text(
@@ -240,6 +294,24 @@ private fun ModelCard(model: ModelInfo, selected: Boolean, priceText: String, on
                 MonoLabel(model.contextWindow)
                 Spacer(Modifier.width(10.dp))
                 SpeedDots(model.speed)
+            }
+            Spacer(Modifier.height(6.dp))
+            // MàJ 102 — badges de capacité (Texte, Code, Vision, Raisonnement…).
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                model.capacites.sortedBy { it.ordinal }.forEach { cap ->
+                    Box(
+                        Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(c.violetBg)
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            cap.libelle,
+                            style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.Medium, fontSize = 10.sp),
+                            color = c.violet
+                        )
+                    }
+                }
             }
             Spacer(Modifier.height(4.dp))
             Text(

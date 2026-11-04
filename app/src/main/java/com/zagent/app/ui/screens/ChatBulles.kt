@@ -274,6 +274,8 @@ internal fun AgentCard(
     thinkingSeconds: Int = 0,
     isLast: Boolean = false,
     messageIndex: Int = -1,
+    /** MàJ 104 — nom du modèle émetteur (mode Duo) ; null = modèle principal. */
+    modeleLabel: String? = null,
     onFileTap: (String, Int?) -> Unit = { _, _ -> },
     onApplyCode: ((String) -> Unit)? = null,
     onRegenerate: () -> Unit = {},
@@ -302,6 +304,24 @@ internal fun AgentCard(
                     style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.Medium, fontSize = 11.sp),
                     color = c.text3
                 )
+            }
+        }
+
+        // MàJ 104 — pastille du modèle émetteur (mode Duo)
+        if (!modeleLabel.isNullOrBlank()) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 4.dp)) {
+                Box(
+                    Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(c.violetBg)
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        modeleLabel,
+                        style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 10.sp),
+                        color = c.violet
+                    )
+                }
             }
         }
 

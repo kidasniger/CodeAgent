@@ -78,7 +78,7 @@ fun OnboardingScreen(
     currentModel: String,
     onModelSelected: (String) -> Unit,
     onFolderPicked: (android.net.Uri) -> Unit,
-    onApiKeySaved: (String) -> Unit,
+    onApiKeySaved: (cle: String, urlFournisseur: String) -> Unit,
     initialApiKey: String,
     onFinished: () -> Unit,
     initialThemeMode: ThemeMode = ThemeMode.SYSTEM,
@@ -89,6 +89,9 @@ fun OnboardingScreen(
     var page by remember { mutableStateOf(0) }
     var apiKeyDraft by remember { mutableStateOf(initialApiKey) }
     var showKey by remember { mutableStateOf(false) }
+    // MàJ 101 — choix du fournisseur : z.ai, NVIDIA NIM ou passerelle personnalisée.
+    var fournisseurChoisi by remember { mutableStateOf("zai") }
+    var urlPerso by remember { mutableStateOf("") }
     var themeChoice by remember { mutableStateOf(initialThemeMode) }
     var glassTrial by remember { mutableStateOf(false) }
 
@@ -191,7 +194,7 @@ fun OnboardingScreen(
 
                     1 -> {
                         Text(
-                            "Branche ta clé\nAPI Z.ai",
+                            "Branche ta\nclé API",
                             style = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, fontSize = 27.sp, lineHeight = 34.sp),
                             color = c.text,
                             textAlign = TextAlign.Center,
@@ -199,13 +202,19 @@ fun OnboardingScreen(
                         )
                         Spacer(Modifier.height(10.dp))
                         Text(
-                            "Colle ta clé Z.ai et choisis ton modèle : tu pourras tout changer plus tard dans Réglages.",
+                            "Choisis ton fournisseur et colle sa clé — détectée automatiquement (nvapi- = NVIDIA). Tout se change dans Réglages › Fournisseurs.",
                             style = TextStyle(fontFamily = Inter, fontSize = 14.5.sp, lineHeight = 22.sp),
                             color = c.text2,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth()
                         )
-                        Spacer(Modifier.height(22.dp))
+                        Spacer(Modifier.height(18.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            ModelChip("z.ai", fournisseurChoisi == "zai", onClick = { fournisseurChoisi = "zai" })
+                            ModelChip("NVIDIA", fournisseurChoisi == "nvidia", onClick = { fournisseurChoisi = "nvidia" })
+                            ModelChip("Autre", fournisseurChoisi == "autre", onClick = { fournisseurChoisi = "autre" })
+                        }
+                        Spacer(Modifier.height(12.dp))
                         GlassCard {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Key, null, tint = c.cyan, modifier = Modifier.size(18.dp))
@@ -230,8 +239,21 @@ fun OnboardingScreen(
                             Spacer(Modifier.height(10.dp))
                             TextField(
                                 value = apiKeyDraft,
-                                onValueChange = { apiKeyDraft = it },
-                                placeholder = { Text("sk-za…", style = TextStyle(fontFamily = JetBrainsMono, fontSize = 13.sp), color = c.text3) },
+                                onValueChange = {
+                                    apiKeyDraft = it
+                                    // MàJ 101 — détection automatique du fournisseur
+                                    if (it.trim().startsWith("nvapi-", ignoreCase = true)) fournisseurChoisi = "nvidia"
+                                },
+                                placeholder = {
+                                    Text(
+                                        when (fournisseurChoisi) {
+                                            "nvidia" -> "nvapi-…"
+                                            "autre" -> "clé de ta passerelle"
+                                            else -> "sk-za…"
+                                        },
+                                        style = TextStyle(fontFamily = JetBrainsMono, fontSize = 13.sp), color = c.text3
+                                    )
+                                },
                                 textStyle = TextStyle(fontFamily = JetBrainsMono, fontSize = 13.5.sp, color = c.text),
                                 singleLine = true,
                                 visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
@@ -244,6 +266,24 @@ fun OnboardingScreen(
                                 ),
                                 modifier = Modifier.fillMaxWidth()
                             )
+                            if (fournisseurChoisi == "autre") {
+                                Spacer(Modifier.height(10.dp))
+                                TextField(
+                                    value = urlPerso,
+                                    onValueChange = { urlPerso = it },
+                                    placeholder = { Text("https://…/v1/chat/completions", style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp), color = c.text3) },
+                                    textStyle = TextStyle(fontFamily = JetBrainsMono, fontSize = 13.sp, color = c.text),
+                                    singleLine = true,
+                                    colors = TextFieldDefaults.colors(
+                                        focusedContainerColor = Color.Transparent,
+                                        unfocusedContainerColor = Color.Transparent,
+                                        focusedIndicatorColor = c.cyan,
+                                        unfocusedIndicatorColor = Color.Transparent,
+                                        cursorColor = c.cyan
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
                         }
                         Spacer(Modifier.height(16.dp))
                         Text(
@@ -371,7 +411,17 @@ fun OnboardingScreen(
                         if (page < 2) {
                             page++
                         } else {
-                            if (apiKeyDraft.isNotBlank()) onApiKeySaved(apiKeyDraft)
+                            if (apiKeyDraft.isNotBlank()) {
+                                // MàJ 101 — la clé rejoint le bon fournisseur avec son URL.
+                                val url = when (fournisseurChoisi) {
+                                    "nvidia" -> "https://integrate.api.nvidia.com/v1/chat/completions"
+                                    "autre" -> urlPerso.trim()
+                                    else -> "https://api.z.ai/api/paas/v4/chat/completions"
+                                }
+                                if (fournisseurChoisi != "autre" || url.isNotBlank()) {
+                                    onApiKeySaved(apiKeyDraft.trim(), url)
+                                }
+                            }
                             finish()
                         }
                     },

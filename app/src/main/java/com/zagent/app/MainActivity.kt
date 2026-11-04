@@ -205,7 +205,14 @@ private fun AppRoot(
             currentModel = viewModel.modelInput,
             onModelSelected = { m -> viewModel.saveSettings(viewModel.apiKeyInput, m, viewModel.baseUrlInput, viewModel.autoModeInput) },
             onFolderPicked = { uri -> viewModel.importFolder(uri) },
-            onApiKeySaved = { key -> viewModel.saveSettings(key, viewModel.modelInput, viewModel.baseUrlInput, viewModel.autoModeInput) },
+            // MàJ 101 — la clé de l'onboarding alimente le bon fournisseur
+            // (détection z.ai / NVIDIA), et le modèle de départ suit.
+            onApiKeySaved = { key, url ->
+                val id = viewModel.ajouterFournisseur("", url, key)
+                val premier = com.zagent.app.data.ModelCatalog.all
+                    .firstOrNull { it.fournisseurId == id && !it.specialized }
+                if (premier != null) viewModel.selectGlobalModel(premier.id)
+            },
             initialApiKey = viewModel.apiKeyInput,
             onFinished = { viewModel.completeOnboarding() },
             initialThemeMode = viewModel.themeMode,

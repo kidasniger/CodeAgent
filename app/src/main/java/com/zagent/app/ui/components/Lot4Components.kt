@@ -39,13 +39,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.horizontalScroll
 import com.zagent.app.data.ModelCatalog
+import com.zagent.app.data.Capacite
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.SpaceGrotesk
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -204,21 +208,32 @@ fun GitChangesSheet(
     }
 }
 
-/** Choix du modèle pour la conversation en cours (le réglage global ne change pas). */
+/**
+ * Choix du modèle pour la conversation en cours (le réglage global ne change pas).
+ * MàJ 102 — puces de filtre par capacité (Code, Vision, Raisonnement), badges de
+ * capacité sur chaque ligne, favoris épinglés en tête.
+ * MàJ 104 — section « Mode Duo » : deux modèles ensemble (collaboration ou débat).
+ */
 @Composable
 fun ModelPickerDialog(
     globalModel: String,
     currentChatModel: String?,
     onSelect: (String?) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    favoris: Set<String> = emptySet(),
+    onToggleFavori: (String) -> Unit = {},
+    duoMode: String? = null,
+    duoModeleB: String? = null,
+    onDuoChange: (String?, String?) -> Unit = { _, _ -> }
 ) {
     val c = Zcolors
     var custom by remember { mutableStateOf("") }
-    // Catalogue complet hors spécialisés : GLM (z.ai) + NVIDIA NIM (compte gratuit).
-    val known = ModelCatalog.all
-        .filter { !it.specialized }
-        .map { it.id }
-        .filter { it != globalModel }
+    var filtre by remember { mutableStateOf<Capacite?>(null) }
+    var duoB by remember { mutableStateOf(duoModeleB) }
+
+    // Catalogue conversationnel filtré : favoris d'abord, modèle global masqué.
+    val connus = ModelCatalog.conversationnels(filtre, favoris).map { it.id }.filter { it != globalModel }
+
     GlassAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Modèle de la conversation", fontFamily = SpaceGrotesk, color = c.text) },
@@ -226,21 +241,40 @@ fun ModelPickerDialog(
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 420.dp)
+                    .heightIn(max = 500.dp)
                     .verticalScroll(rememberScrollState())
             ) {
+                // MàJ 102 — puces de filtre par capacité
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.horizontalScroll(rememberScrollState())
+                ) {
+                    PuceFiltre("Tous", filtre == null) { filtre = null }
+                    PuceFiltre(Capacite.CODE.libelle, filtre == Capacite.CODE) { filtre = Capacite.CODE }
+                    PuceFiltre(Capacite.VISION.libelle, filtre == Capacite.VISION) { filtre = Capacite.VISION }
+                    PuceFiltre(Capacite.RAISONNEMENT.libelle, filtre == Capacite.RAISONNEMENT) { filtre = Capacite.RAISONNEMENT }
+                }
+                Spacer(Modifier.height(8.dp))
                 ModelRow(
                     label = "Réglage global : $globalModel",
                     selected = currentChatModel == null,
                     onClick = { onSelect(null) }
                 )
-                known.forEach { m ->
-                    ModelRow(label = m, selected = currentChatModel == m, onClick = { onSelect(m) })
+                connus.forEach { id ->
+                    val info = ModelCatalog.find(id)
+                    LigneModeleCatalogue(
+                        info = info,
+                        idReserve = id,
+                        selected = currentChatModel == id,
+                        favori = id in favoris,
+                        onClick = { onSelect(id) },
+                        onFavori = { onToggleFavori(id) }
+                    )
                 }
-                if (currentChatModel != null && currentChatModel != globalModel && currentChatModel !in known) {
+                if (currentChatModel != null && currentChatModel != globalModel && currentChatModel !in connus) {
                     ModelRow(label = currentChatModel, selected = true, onClick = { onSelect(currentChatModel) })
                 }
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(6.dp))
                 OutlinedTextField(
                     value = custom,
                     onValueChange = { custom = it },
@@ -249,12 +283,87 @@ fun ModelPickerDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(6.dp))
+                if (custom.isBlank()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Ce choix ne vaut que pour cette conversation et revient au réglage global avec « Nouvelle conversation ».",
+                        style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp),
+                        color = c.text2
+                    )
+                }
+
+                // ── MàJ 104 : Mode Duo ────────────────────────────────────────
+                Spacer(Modifier.height(14.dp))
                 Text(
-                    "Ce choix ne vaut que pour cette conversation et revient au réglage global avec « Nouvelle conversation ».",
-                    style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp),
-                    color = c.text2
+                    "Mode Duo — deux modèles ensemble",
+                    style = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
+                    color = c.text
                 )
+                Spacer(Modifier.height(6.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.horizontalScroll(rememberScrollState())
+                ) {
+                    PuceFiltre("Désactivé", duoMode == null) { duoB = null; onDuoChange(null, null) }
+                    PuceFiltre("Collaboration", duoMode == "collaboration") { onDuoChange("collaboration", duoB) }
+                    PuceFiltre("Débat", duoMode == "debat") { onDuoChange("debat", duoB) }
+                }
+                when (duoMode) {
+                    "collaboration" -> Text(
+                        "Le modèle choisi plus haut (A) fait la tâche, puis le modèle B relit sa réponse et propose des corrections.",
+                        style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp, lineHeight = 16.sp),
+                        color = c.text2
+                    )
+                    "debat" -> Text(
+                        "A et B alternent à voix haute, deux tours chacun, puis concluent. Écris ton sujet pour lancer le débat.",
+                        style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp, lineHeight = 16.sp),
+                        color = c.text2
+                    )
+                }
+                if (duoMode != null) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Modèle B du duo :",
+                        style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
+                        color = c.text2
+                    )
+                    Column(
+                        Modifier
+                            .heightIn(max = 170.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        ModelCatalog.conversationnels(null, favoris)
+                            .filter { it.id != (currentChatModel ?: globalModel) }
+                            .forEach { info ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { duoB = info.id; onDuoChange(duoMode, info.id) }
+                                        .padding(vertical = 7.dp)
+                                ) {
+                                    Box(
+                                        Modifier
+                                            .size(9.dp)
+                                            .background(if (duoB == info.id) c.cyan else c.surface3, CircleShape)
+                                    )
+                                    Spacer(Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            info.label,
+                                            style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp),
+                                            color = if (duoB == info.id) c.cyan else c.text
+                                        )
+                                        Text(
+                                            info.capacites.joinToString(" · ") { it.libelle },
+                                            style = TextStyle(fontFamily = Inter, fontSize = 10.5.sp),
+                                            color = c.text2
+                                        )
+                                    }
+                                }
+                            }
+                    }
+                }
             }
         },
         confirmButton = {
@@ -268,6 +377,92 @@ fun ModelPickerDialog(
             }
         }
     )
+}
+
+/** Puce de filtre (capacités, mode Duo). */
+@Composable
+private fun PuceFiltre(label: String, active: Boolean, onClick: () -> Unit) {
+    val c = Zcolors
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(50))
+            .background(if (active) c.cyanBg else c.surface2)
+            .border(1.dp, if (active) c.cyan else c.border2, RoundedCornerShape(50))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+    ) {
+        Text(
+            label,
+            style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
+            color = if (active) c.cyan else c.text2
+        )
+    }
+}
+
+/** Ligne du catalogue : libellé, badges de capacité, étoile favori. */
+@Composable
+private fun LigneModeleCatalogue(
+    info: com.zagent.app.data.ModelInfo?,
+    idReserve: String,
+    selected: Boolean,
+    favori: Boolean,
+    onClick: () -> Unit,
+    onFavori: () -> Unit
+) {
+    val c = Zcolors
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 8.dp)
+    ) {
+        Box(
+            Modifier
+                .size(10.dp)
+                .background(if (selected) c.green else c.surface3, CircleShape)
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    info?.label ?: idReserve,
+                    style = TextStyle(fontFamily = JetBrainsMono, fontSize = 13.sp),
+                    color = if (selected) c.green else c.text
+                )
+                if (info?.recommended == true) {
+                    Spacer(Modifier.width(6.dp))
+                    Box(
+                        Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(c.amberBg)
+                            .padding(horizontal = 6.dp, vertical = 1.dp)
+                    ) {
+                        Text(
+                            "Recommandé",
+                            style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 9.sp),
+                            color = c.amber
+                        )
+                    }
+                }
+            }
+            Text(
+                info?.capacites?.joinToString(" · ") { it.libelle } ?: "Modèle personnalisé",
+                style = TextStyle(fontFamily = Inter, fontSize = 10.5.sp),
+                color = c.text2
+            )
+        }
+        Icon(
+            if (favori) Icons.Default.Star else Icons.Default.StarBorder,
+            if (favori) "Retirer des favoris" else "Ajouter aux favoris",
+            tint = if (favori) c.amber else c.text3,
+            modifier = Modifier
+                .clip(CircleShape)
+                .clickable(onClick = onFavori)
+                .padding(5.dp)
+                .size(15.dp)
+        )
+    }
 }
 
 @Composable
@@ -317,7 +512,8 @@ fun ModelChipMenu(
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
     onSelect: (String?) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    favoris: Set<String> = emptySet()
 ) {
     val c = Zcolors
     Box(modifier) {
@@ -353,11 +549,13 @@ fun ModelChipMenu(
                 selected = currentChatModel == null,
                 onClick = { onExpandedChange(false); onSelect(null) }
             )
-            val known = listOf("glm-4.5-flash", "glm-4.7-flash")
+            // MàJ 102 — catalogue complet (favoris en tête), badges de capacité en description.
+            val known = ModelCatalog.conversationnels(null, favoris).map { it.id }
             known.forEach { m ->
+                val info = ModelCatalog.find(m)
                 ModelMenuOption(
-                    name = m,
-                    description = knownModelDescriptions[m] ?: "Modèle personnalisé",
+                    name = info?.label ?: m,
+                    description = info?.capacites?.joinToString(" · ") { it.libelle } ?: "Modèle personnalisé",
                     selected = currentChatModel == m,
                     onClick = { onExpandedChange(false); onSelect(m) }
                 )

@@ -399,7 +399,8 @@ fun InputBarLot4(
                     currentChatModel = viewModel.chatModel,
                     expanded = modelMenuOpen,
                     onExpandedChange = { modelMenuOpen = it },
-                    onSelect = { viewModel.selectChatModel(it) }
+                    onSelect = { viewModel.selectChatModel(it) },
+                    favoris = viewModel.modelesFavoris
                 )
             }
         }

@@ -29,6 +29,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Key
@@ -61,9 +62,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zagent.app.ui.components.CircleIconButton
@@ -144,17 +145,16 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
     if (showAbout) { AboutScreen(viewModel) { closeLot5() }; return }
     if (showHelp) { HelpScreen(viewModel) { closeLot5() }; return }
 
-    var apiKey by rememberSaveable { mutableStateOf(viewModel.apiKeyInput) }
-    var baseUrl by rememberSaveable { mutableStateOf(viewModel.baseUrlInput) }
     var autoMode by rememberSaveable { mutableStateOf(viewModel.autoModeInput) }
     var model by rememberSaveable { mutableStateOf(viewModel.modelInput) }
 
-    // Sauvegarde automatique à chaque modification, avec un court délai :
-    // EncryptedSharedPreferences chiffre à chaque écriture, un enregistrement
-    // par frappe provoquait des à-coups de saisie sur les appareils modestes.
-    LaunchedEffect(apiKey, model, baseUrl, autoMode) {
+    // MàJ 101 — les clés vivent dans les cartes Fournisseurs (une par API,
+    // enregistrées dès la frappe avec un court délai). Ne restent ici que le
+    // modèle global et le mode Auto : EncryptedSharedPreferences chiffre à
+    // chaque écriture, un enregistrement par frappe provoquait des à-coups.
+    LaunchedEffect(model, autoMode) {
         kotlinx.coroutines.delay(400)
-        viewModel.saveSettings(apiKey, model, baseUrl, autoMode)
+        viewModel.saveSettings(viewModel.apiKeyInput, model, viewModel.baseUrlInput, autoMode)
     }
 
     Column(
@@ -233,66 +233,38 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                 }
             }
             Spacer(Modifier.height(20.dp))
-            // ── CLÉ & MODÈLE ────────────────────────────────────────────────
-            SectionLabel("Clé & modèle")
+            // ── FOURNISSEURS D'IA (MàJ 101) : une carte par API, une clé par API ──
+            SectionLabel("Fournisseurs d'IA")
             Spacer(Modifier.height(8.dp))
             GlassCard(contentPadding = PaddingValues(0.dp)) {
-                var showKey by rememberSaveable { mutableStateOf(false) }
-                Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconBadge(Icons.Default.Key, c.cyan)
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("Clé API Z.ai", style = MaterialTheme.typography.titleMedium, color = c.text)
-                                Spacer(Modifier.width(8.dp))
-                                StatusBadge(if (apiKey.isBlank()) "Absente" else "Valide", if (apiKey.isBlank()) c.amber else c.green)
-                            }
-                            Spacer(Modifier.height(2.dp))
-                            Text(
-                                maskedKey(apiKey),
-                                style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.5.sp),
-                                color = c.text2
-                            )
-                        }
-                        Icon(
-                            if (showKey) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = "Afficher / masquer",
-                            tint = c.text2,
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .clickable { showKey = !showKey }
-                                .padding(8.dp)
-                                .size(20.dp)
-                        )
-                    }
-                    if (showKey) {
-                        Spacer(Modifier.height(10.dp))
-                        OutlinedTextField(
-                            value = apiKey,
-                            onValueChange = { apiKey = it },
-                            placeholder = { Text("sk-za…", fontFamily = JetBrainsMono, color = c.text3) },
-                            textStyle = TextStyle(fontFamily = JetBrainsMono, fontSize = 13.sp, color = c.text),
-                            singleLine = true,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = c.surface2,
-                                unfocusedContainerColor = c.surface2,
-                                focusedBorderColor = c.cyan,
-                                unfocusedBorderColor = Color.Transparent,
-                                cursorColor = c.cyan
-                            ),
-                            shape = MaterialTheme.shapes.small,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
+                viewModel.fournisseurs.forEachIndexed { index, f ->
+                    if (index > 0) CardDivider(Modifier.padding(horizontal = 16.dp))
+                    CarteFournisseur(
+                        f = f,
+                        resultatTest = viewModel.resultatsTestConnexion[f.id],
+                        testEnCours = f.id in viewModel.testsConnexionEnCours,
+                        onCle = { viewModel.majFournisseur(f.id, cle = it) },
+                        onUrl = { viewModel.majFournisseur(f.id, url = it) },
+                        onTest = { viewModel.testerFournisseur(f.id) },
+                        onSupprimer = { viewModel.supprimerFournisseur(f.id) }
+                    )
                 }
                 CardDivider(Modifier.padding(horizontal = 16.dp))
+                AjoutFournisseurSection(
+                    onAjouter = { nom, url, cle -> viewModel.ajouterFournisseur(nom, url, cle) }
+                )
+            }
 
-                // Modèle
+            Spacer(Modifier.height(20.dp))
+
+            // ── MODÈLE PAR DÉFAUT ───────────────────────────────────────────
+            SectionLabel("Modèle par défaut")
+            Spacer(Modifier.height(8.dp))
+            GlassCard(contentPadding = PaddingValues(0.dp)) {
                 ExpandableRow(
                     icon = { IconBadge(Icons.Default.AutoAwesome, c.violet) },
                     title = "Modèle",
-                    subtitle = "$model · flash",
+                    subtitle = model,
                     subtitleMono = true
                 ) {
                     Row(
@@ -312,55 +284,12 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                             modifier = Modifier.weight(1f)
                         )
                     }
-                }
-                CardDivider(Modifier.padding(horizontal = 16.dp))
-
-                // URL de base
-                var editUrl by rememberSaveable { mutableStateOf(false) }
-                Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { editUrl = !editUrl }
-                    ) {
-                        IconBadge(Icons.Default.Language, c.green)
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text("URL de base", style = MaterialTheme.typography.titleMedium, color = c.text)
-                            Text(
-                                baseUrl,
-                                style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.5.sp),
-                                color = c.text2,
-                                maxLines = 1
-                            )
-                        }
-                        Icon(
-                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                            null, tint = c.text3,
-                            modifier = Modifier
-                                .size(20.dp)
-                                .graphicsRotate(if (editUrl) 90f else 0f)
-                        )
-                    }
-                    if (editUrl) {
-                        Spacer(Modifier.height(10.dp))
-                        OutlinedTextField(
-                            value = baseUrl,
-                            onValueChange = { baseUrl = it },
-                            textStyle = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp, color = c.text),
-                            singleLine = true,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = c.surface2,
-                                unfocusedContainerColor = c.surface2,
-                                focusedBorderColor = c.cyan,
-                                unfocusedBorderColor = Color.Transparent,
-                                cursorColor = c.cyan
-                            ),
-                            shape = MaterialTheme.shapes.small,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "NVIDIA NIM et autres fournisseurs : Réglages › Modèles. La clé de chaque API part avec ses modèles (MàJ 101).",
+                        style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp, lineHeight = 16.sp),
+                        color = c.text2
+                    )
                 }
             }
 
@@ -779,6 +708,284 @@ private fun SegOption(label: String, selected: Boolean, onClick: () -> Unit, c: 
             color = if (selected) c.text else c.text2
         )
     }
+}
+
+/** MàJ 101 — carte d'un fournisseur : nom, badge de clé, champs (clé, URL), test de connexion. */
+@Composable
+private fun CarteFournisseur(
+    f: com.zagent.app.data.Fournisseur,
+    resultatTest: String?,
+    testEnCours: Boolean,
+    onCle: (String) -> Unit,
+    onUrl: (String) -> Unit,
+    onTest: () -> Unit,
+    onSupprimer: () -> Unit
+) {
+    val c = Zcolors
+    var ouvert by rememberSaveable { mutableStateOf(false) }
+    var cleVisible by rememberSaveable { mutableStateOf(false) }
+    var cleLocale by rememberSaveable(f.id) { mutableStateOf(f.cle) }
+    var urlLocale by rememberSaveable(f.id) { mutableStateOf(f.baseUrl) }
+
+    // Enregistrement différé (400 ms) : EncryptedSharedPreferences chiffre à
+    // chaque écriture, un enregistrement par frappe provoquait des à-coups.
+    LaunchedEffect(cleLocale) {
+        kotlinx.coroutines.delay(400)
+        if (cleLocale != f.cle) onCle(cleLocale)
+    }
+    LaunchedEffect(urlLocale) {
+        kotlinx.coroutines.delay(400)
+        if (urlLocale != f.baseUrl) onUrl(urlLocale)
+    }
+
+    Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { ouvert = !ouvert }
+        ) {
+            IconBadge(
+                Icons.Default.Key,
+                if (f.id == com.zagent.app.data.Fournisseurs.ID_ZAI) c.cyan else c.green
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(f.nom, style = MaterialTheme.typography.titleMedium, color = c.text)
+                    Spacer(Modifier.width(8.dp))
+                    StatusBadge(
+                        if (f.cle.isBlank()) "Clé absente" else "Clé enregistrée",
+                        if (f.cle.isBlank()) c.amber else c.green
+                    )
+                    if (!f.actif) {
+                        Spacer(Modifier.width(6.dp))
+                        StatusBadge("Inactif", c.text2)
+                    }
+                }
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    maskedKey(f.cle),
+                    style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.5.sp),
+                    color = c.text2
+                )
+            }
+            Icon(
+                if (ouvert) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                contentDescription = "Ouvrir / fermer",
+                tint = c.text2,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .clickable { ouvert = !ouvert }
+                    .padding(8.dp)
+                    .size(20.dp)
+            )
+        }
+        if (ouvert) {
+            Spacer(Modifier.height(10.dp))
+            OutlinedTextField(
+                value = cleLocale,
+                onValueChange = { cleLocale = it },
+                placeholder = {
+                    Text(
+                        if (f.id == com.zagent.app.data.Fournisseurs.ID_NVIDIA) "nvapi-…" else "sk-…",
+                        fontFamily = JetBrainsMono, color = c.text3
+                    )
+                },
+                textStyle = TextStyle(fontFamily = JetBrainsMono, fontSize = 13.sp, color = c.text),
+                singleLine = true,
+                visualTransformation = if (cleVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    Icon(
+                        if (cleVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                        "Afficher / masquer la clé",
+                        tint = c.text2,
+                        modifier = Modifier.clickable { cleVisible = !cleVisible }
+                    )
+                },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = c.surface2,
+                    unfocusedContainerColor = c.surface2,
+                    focusedBorderColor = c.cyan,
+                    unfocusedBorderColor = Color.Transparent,
+                    cursorColor = c.cyan
+                ),
+                shape = MaterialTheme.shapes.small,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(8.dp))
+            if (f.personnalise) {
+                OutlinedTextField(
+                    value = urlLocale,
+                    onValueChange = { urlLocale = it },
+                    placeholder = {
+                        Text("https://…/v1/chat/completions", fontFamily = JetBrainsMono, color = c.text3)
+                    },
+                    textStyle = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp, color = c.text),
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = c.surface2,
+                        unfocusedContainerColor = c.surface2,
+                        focusedBorderColor = c.cyan,
+                        unfocusedBorderColor = Color.Transparent,
+                        cursorColor = c.cyan
+                    ),
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(8.dp))
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(c.surface2)
+                        .border(1.dp, c.border2, RoundedCornerShape(50))
+                        .clickable(enabled = !testEnCours) { onTest() }
+                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        if (testEnCours) "Test…" else "Tester la connexion",
+                        style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
+                        color = c.cyan
+                    )
+                }
+                if (f.personnalise) {
+                    Box(
+                        Modifier
+                            .clip(RoundedCornerShape(50))
+                            .clickable(onClick = onSupprimer)
+                            .padding(horizontal = 10.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            "Supprimer",
+                            style = TextStyle(fontFamily = Inter, fontSize = 12.5.sp),
+                            color = c.red
+                        )
+                    }
+                }
+                resultatTest?.let { res ->
+                    Text(
+                        res,
+                        style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp, lineHeight = 15.sp),
+                        color = if (res.startsWith("Connecté")) c.green else c.amber,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** MàJ 101 — ajout d'un fournisseur : URL + clé, avec détection automatique (z.ai / NVIDIA). */
+@Composable
+private fun AjoutFournisseurSection(onAjouter: (String, String, String) -> Unit) {
+    val c = Zcolors
+    var ouvert by rememberSaveable { mutableStateOf(false) }
+    var nom by rememberSaveable { mutableStateOf("") }
+    var url by rememberSaveable { mutableStateOf("") }
+    var cle by rememberSaveable { mutableStateOf("") }
+
+    Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { ouvert = !ouvert }
+        ) {
+            IconBadge(Icons.Default.Add, c.violet)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Ajouter un fournisseur", style = MaterialTheme.typography.titleMedium, color = c.text)
+                Text(
+                    "OpenRouter, Groq, Ollama local, LM Studio… tout endpoint au format OpenAI",
+                    style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp, lineHeight = 15.sp),
+                    color = c.text2
+                )
+            }
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                null, tint = c.text3,
+                modifier = Modifier
+                    .size(20.dp)
+                    .graphicsRotate(if (ouvert) 90f else 0f)
+            )
+        }
+        if (ouvert) {
+            Spacer(Modifier.height(10.dp))
+            ChampSimple(nom, { nom = it }, "Nom (optionnel — sinon détecté)", mono = false)
+            Spacer(Modifier.height(8.dp))
+            ChampSimple(url, { url = it }, "URL de l'API (…/v1/chat/completions)", mono = true)
+            Spacer(Modifier.height(8.dp))
+            ChampSimple(cle, { cle = it }, "Clé API", mono = true)
+            if (cle.isNotBlank() || url.isNotBlank()) {
+                Spacer(Modifier.height(6.dp))
+                val libelle = when (com.zagent.app.data.Fournisseurs.detecter(cle.ifBlank { url })) {
+                    com.zagent.app.data.Fournisseurs.ID_NVIDIA -> "Détecté : NVIDIA NIM (clé nvapi-…)"
+                    com.zagent.app.data.Fournisseurs.ID_ZAI -> "Détecté : z.ai (GLM)"
+                    else -> "Passerelle personnalisée (format OpenAI)"
+                }
+                Text(
+                    libelle,
+                    style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp),
+                    color = c.cyan
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            val valide = url.isNotBlank() && cle.isNotBlank()
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(46.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(if (valide) c.cyanBg else c.surface2)
+                    .border(1.dp, if (valide) c.cyan else c.border2, RoundedCornerShape(50))
+                    .clickable(enabled = valide) {
+                        onAjouter(nom, url, cle)
+                        nom = ""; url = ""; cle = ""
+                        ouvert = false
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "Enregistrer ce fournisseur",
+                    style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.5.sp),
+                    color = if (valide) c.cyan else c.text3
+                )
+            }
+        }
+    }
+}
+
+/** Champ de saisie une ligne, style Réglages. */
+@Composable
+private fun ChampSimple(valeur: String, onChange: (String) -> Unit, placeholder: String, mono: Boolean) {
+    val c = Zcolors
+    OutlinedTextField(
+        value = valeur,
+        onValueChange = onChange,
+        placeholder = {
+            Text(
+                placeholder,
+                style = TextStyle(fontFamily = if (mono) JetBrainsMono else Inter, fontSize = 12.sp),
+                color = c.text3
+            )
+        },
+        textStyle = TextStyle(fontFamily = if (mono) JetBrainsMono else Inter, fontSize = 13.sp, color = c.text),
+        singleLine = true,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = c.surface2,
+            unfocusedContainerColor = c.surface2,
+            focusedBorderColor = c.cyan,
+            unfocusedBorderColor = Color.Transparent,
+            cursorColor = c.cyan
+        ),
+        shape = MaterialTheme.shapes.small,
+        modifier = Modifier.fillMaxWidth()
+    )
 }
 
 /** Masque la clé : sk-za••••4f2a */

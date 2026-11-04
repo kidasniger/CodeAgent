@@ -364,6 +364,7 @@ fun ChatScreen(
                                                 thinkingSeconds = -1,
                                                 isLast = isLastAgent && !viewModel.isLoading,
                                                 messageIndex = row.messageIndex,
+                                                modeleLabel = row.modele,
                                                 onFileTap = onFileTap,
                                                 onApplyCode = { applyCode = it },
                                                 onRegenerate = { viewModel.regenerateLast() },
@@ -633,7 +634,7 @@ fun ChatScreen(
         )
     }
 
-    // Modèle de la conversation
+    // Modèle de la conversation + Mode Duo (MàJ 102/104)
     if (viewModel.isModelDialogOpen) {
         ModelPickerDialog(
             globalModel = viewModel.modelInput,
@@ -642,7 +643,12 @@ fun ChatScreen(
                 viewModel.selectChatModel(m)
                 viewModel.isModelDialogOpen = false
             },
-            onDismiss = { viewModel.isModelDialogOpen = false }
+            onDismiss = { viewModel.isModelDialogOpen = false },
+            favoris = viewModel.modelesFavoris,
+            onToggleFavori = { viewModel.basculeFavori(it) },
+            duoMode = viewModel.duoMode,
+            duoModeleB = viewModel.duoModeleB,
+            onDuoChange = { mode, modeleB -> viewModel.reglerDuo(mode, modeleB) }
         )
     }
 }
@@ -674,8 +680,8 @@ private fun ChatEmptyState(
         noKey -> EmptyState(
             icon = Icons.Default.Key,
             tint = c.violet,
-            title = "Branche ta clé API Z.ai",
-            body = "Colle ta clé Z.ai dans les réglages pour activer l'agent. Elle est stockée localement, chiffrée sur l'appareil.",
+            title = "Branche ta première clé API",
+            body = "Z.ai, NVIDIA NIM ou ta propre passerelle : colle la clé dans Réglages › Fournisseurs d'IA — une clé par API, détectée automatiquement. Stockage local chiffré.",
             primaryText = "Ouvrir les réglages",
             onPrimary = onOpenSettings
         )
@@ -760,7 +766,8 @@ private sealed interface ChatRow {
         val content: String?,
         val tools: List<Pair<AiRepository.ToolCallData, String?>>,
         val messageIndex: Int,
-        val reasoning: String?
+        val reasoning: String?,
+        val modele: String? = null
     ) : ChatRow {
         override val key: String get() = "a_$id"
     }
@@ -819,7 +826,7 @@ private fun buildChatRows(messages: List<com.zagent.app.ui.viewmodel.ChatMessage
                 val visibleTools = calls.filter { it.name != "ask_user" && it.name != "update_todos" }
                 if (!m.content.isNullOrBlank() || visibleTools.isNotEmpty() || calls.isEmpty()) {
                     lastDay = ensureDate(m.time, lastDay)
-                    rows.add(ChatRow.Agent(nextId++, m.content, list, msgIndex, m.reasoning))
+                    rows.add(ChatRow.Agent(nextId++, m.content, list, msgIndex, m.reasoning, m.modele))
                 }
                 visibleTools.forEach { tc -> list.add(tc to null) }
                 calls.filter { it.name == "ask_user" }.forEach { tc ->
