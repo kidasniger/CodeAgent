@@ -4,15 +4,30 @@ package com.zagent.app.data
 // Catalogue des modèles connus de ZAgent (MA59), étendu au fournisseur NVIDIA
 // NIM (compte gratuit, format OpenAI : /chat/completions + Bearer + SSE).
 //
-// Chaque entrée porte l'URL d'origine de son fournisseur [ModelInfo.baseUrl] :
-// la requête repart toujours vers le bon serveur même si le réglage global
-// pointe ailleurs (voir [ModelCatalog.urlPourModele]). Les modèles
-// « spécialisés » (modération, extraction, traduction, calibration) sont
-// listés pour référence : ils ne sont pas adaptés à la conversation.
+// MàJ 102 — chaque modèle porte ses CAPACITÉS [Capacite] : l'interface peut
+// filtrer (Généralistes / Code / Vision / Raisonnement), afficher un badge et
+// proposer le bon modèle pour la bonne tâche. Les modèles « spécialisés »
+// (modération, extraction, traduction, calibration) restent écartés du chat.
+//
+// MàJ 101 — chaque modèle est rattaché à son fournisseur [Fournisseur] via son
+// URL d'origine [ModelInfo.baseUrl] : la requête repart toujours vers le bon
+// serveur avec la bonne clé (voir [ModelCatalog.fournisseurPourModele]).
 //
 // Testés sur https://integrate.api.nvidia.com/v1 — les modèles en timeout
 // (> 180 s) et ceux retirés du catalogue (404) ne sont pas intégrés.
 // ─────────────────────────────────────────────────────────────────────────────
+
+/** Capacité d'un modèle (MàJ 102). Affichée en badge et utilisée par les filtres du sélecteur. */
+enum class Capacite(val libelle: String) {
+    TEXTE("Texte"),
+    CODE("Code"),
+    VISION("Vision"),
+    RAISONNEMENT("Raisonnement"),
+    TRADUCTION("Traduction"),
+    MODERATION("Modération"),
+    EXTRACTION("Extraction"),
+    CALIBRATION("Calibration")
+}
 
 /** Description d'un modèle du catalogue (MA59). Les prix affichés sont ceux configurés dans Réglages. */
 data class ModelInfo(
@@ -25,8 +40,21 @@ data class ModelInfo(
     /** URL complète du endpoint chat/completions du fournisseur d'origine (null = URL par défaut). */
     val baseUrl: String? = null,
     /** Modèle spécialisé (modération, extraction…) : pas destiné à la conversation. */
-    val specialized: Boolean = false
-)
+    val specialized: Boolean = false,
+    /** Ce que le modèle sait faire (MàJ 102) ; par défaut : texte seul. */
+    val capacites: Set<Capacite> = setOf(Capacite.TEXTE)
+) {
+    /** Identifiant du fournisseur d'origine, dérivé de l'URL (MàJ 101). */
+    val fournisseurId: String
+        get() = when (baseUrl) {
+            ModelCatalog.URL_NVIDIA -> Fournisseurs.ID_NVIDIA
+            else -> Fournisseurs.ID_ZAI
+        }
+
+    /** Vrai si le modèle peut répondre en texte et code (candidat conversation/agent). */
+    val conversationnel: Boolean
+        get() = !specialized && (Capacite.TEXTE in capacites || Capacite.CODE in capacites)
+}
 
 object ModelCatalog {
 
@@ -47,12 +75,14 @@ object ModelCatalog {
         ModelInfo(
             "glm-4.5-flash", "GLM 4.5 Flash",
             "Rapide et économique — parfait au quotidien",
-            "128 k tokens", 3, true, baseUrl = URL_ZAI
+            "128 k tokens", 3, true, baseUrl = URL_ZAI,
+            capacites = setOf(Capacite.TEXTE, Capacite.CODE)
         ),
         ModelInfo(
             "glm-4.7-flash", "GLM 4.7 Flash",
             "Plus récent, un peu plus capable",
-            "128 k tokens", 2, false, baseUrl = URL_ZAI
+            "128 k tokens", 2, false, baseUrl = URL_ZAI,
+            capacites = setOf(Capacite.TEXTE, Capacite.CODE)
         )
     )
 
@@ -61,62 +91,74 @@ object ModelCatalog {
         ModelInfo(
             "nvidia/nemotron-3-ultra-550b-a55b", "Nemotron 3 Ultra 550B",
             "Le plus puissant",
-            "NVIDIA NIM", 1, false, baseUrl = URL_NVIDIA
+            "NVIDIA NIM", 1, false, baseUrl = URL_NVIDIA,
+            capacites = setOf(Capacite.TEXTE, Capacite.CODE, Capacite.RAISONNEMENT)
         ),
         ModelInfo(
             "mistralai/mistral-large-4-1t-a52b", "Mistral Large 4 1T",
             "Généraliste, très gros",
-            "NVIDIA NIM", 1, false, baseUrl = URL_NVIDIA
+            "NVIDIA NIM", 1, false, baseUrl = URL_NVIDIA,
+            capacites = setOf(Capacite.TEXTE, Capacite.CODE)
         ),
         ModelInfo(
             "nvidia/nemotron-3.5-super-vl-120b-a12b", "Nemotron 3.5 Super VL 120B",
             "Texte + image",
-            "NVIDIA NIM", 2, false, baseUrl = URL_NVIDIA
+            "NVIDIA NIM", 2, false, baseUrl = URL_NVIDIA,
+            capacites = setOf(Capacite.TEXTE, Capacite.VISION)
         ),
         ModelInfo(
             "nvidia/nemotron-3.5-lightning-30b-a3b", "Nemotron 3.5 Lightning 30B",
             "Rapide",
-            "NVIDIA NIM", 3, false, baseUrl = URL_NVIDIA
+            "NVIDIA NIM", 3, false, baseUrl = URL_NVIDIA,
+            capacites = setOf(Capacite.TEXTE, Capacite.CODE)
         ),
         ModelInfo(
             "nvidia/nemotron-3.5-bolt-e4b", "Nemotron 3.5 Bolt E4B",
             "Très léger",
-            "NVIDIA NIM", 3, false, baseUrl = URL_NVIDIA
+            "NVIDIA NIM", 3, false, baseUrl = URL_NVIDIA,
+            capacites = setOf(Capacite.TEXTE)
         ),
         ModelInfo(
             "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning", "Nemotron 3 Nano Omni 30B",
             "Raisonnement",
-            "NVIDIA NIM", 2, false, baseUrl = URL_NVIDIA
+            "NVIDIA NIM", 2, false, baseUrl = URL_NVIDIA,
+            capacites = setOf(Capacite.TEXTE, Capacite.RAISONNEMENT)
         ),
         ModelInfo(
             "minimaxai/minimax-m3.1-flash", "MiniMax M3.1 Flash",
             "Rapide",
-            "NVIDIA NIM", 3, false, baseUrl = URL_NVIDIA
+            "NVIDIA NIM", 3, false, baseUrl = URL_NVIDIA,
+            capacites = setOf(Capacite.TEXTE, Capacite.CODE)
         ),
         ModelInfo(
             "stepfun-ai/step-5-preview", "Step 5 Preview",
             "Généraliste",
-            "NVIDIA NIM", 2, false, baseUrl = URL_NVIDIA
+            "NVIDIA NIM", 2, false, baseUrl = URL_NVIDIA,
+            capacites = setOf(Capacite.TEXTE, Capacite.CODE)
         ),
         ModelInfo(
             "poolside/laguna-xs-2.1", "Laguna XS 2.1",
-            "Code",
-            "NVIDIA NIM", 2, false, baseUrl = URL_NVIDIA
+            "Spécialiste du code",
+            "NVIDIA NIM", 2, false, baseUrl = URL_NVIDIA,
+            capacites = setOf(Capacite.CODE)
         ),
         ModelInfo(
             "meta/llama-3.2-90b-vision-instruct", "Llama 3.2 90B Vision",
             "Texte + image",
-            "NVIDIA NIM", 2, false, baseUrl = URL_NVIDIA
+            "NVIDIA NIM", 2, false, baseUrl = URL_NVIDIA,
+            capacites = setOf(Capacite.TEXTE, Capacite.VISION)
         ),
         ModelInfo(
             "meta/muse-glimmer-30b", "Muse Glimmer 30B",
             "Généraliste",
-            "NVIDIA NIM", 2, false, baseUrl = URL_NVIDIA
+            "NVIDIA NIM", 2, false, baseUrl = URL_NVIDIA,
+            capacites = setOf(Capacite.TEXTE)
         ),
         ModelInfo(
             "google/diffusiongemma-26b-a4b-it", "DiffusionGemma 26B",
             "Gemma diffusion",
-            "NVIDIA NIM", 2, false, baseUrl = URL_NVIDIA
+            "NVIDIA NIM", 2, false, baseUrl = URL_NVIDIA,
+            capacites = setOf(Capacite.TEXTE)
         )
     )
 
@@ -125,27 +167,32 @@ object ModelCatalog {
         ModelInfo(
             "meta/llama-guard-4-12b", "Llama Guard 4 12B",
             "Modération",
-            "NVIDIA NIM", 2, false, baseUrl = URL_NVIDIA, specialized = true
+            "NVIDIA NIM", 2, false, baseUrl = URL_NVIDIA, specialized = true,
+            capacites = setOf(Capacite.MODERATION)
         ),
         ModelInfo(
             "nvidia/llama-3.1-nemotron-safety-guard-8b-v3", "Nemotron Safety Guard 8B",
             "Modération",
-            "NVIDIA NIM", 2, false, baseUrl = URL_NVIDIA, specialized = true
+            "NVIDIA NIM", 2, false, baseUrl = URL_NVIDIA, specialized = true,
+            capacites = setOf(Capacite.MODERATION)
         ),
         ModelInfo(
             "nvidia/nemotron-parse-2.0", "Nemotron Parse 2.0",
             "Extraction de documents",
-            "NVIDIA NIM", 2, false, baseUrl = URL_NVIDIA, specialized = true
+            "NVIDIA NIM", 2, false, baseUrl = URL_NVIDIA, specialized = true,
+            capacites = setOf(Capacite.EXTRACTION)
         ),
         ModelInfo(
             "nvidia/riva-translate-4b-instruct-v2", "Riva Translate 4B",
             "Traduction",
-            "NVIDIA NIM", 3, false, baseUrl = URL_NVIDIA, specialized = true
+            "NVIDIA NIM", 3, false, baseUrl = URL_NVIDIA, specialized = true,
+            capacites = setOf(Capacite.TRADUCTION)
         ),
         ModelInfo(
             "nvidia/ising-calibration-1.5-31b", "Ising Calibration 31B",
             "Calibration",
-            "NVIDIA NIM", 2, false, baseUrl = URL_NVIDIA, specialized = true
+            "NVIDIA NIM", 2, false, baseUrl = URL_NVIDIA, specialized = true,
+            capacites = setOf(Capacite.CALIBRATION)
         )
     )
 
@@ -156,6 +203,40 @@ object ModelCatalog {
     fun find(modelId: String): ModelInfo? {
         val id = modelId.trim()
         return all.firstOrNull { it.id == id }
+    }
+
+    /**
+     * MàJ 101 — fournisseur enregistré qui héberge [modelId] : la clé de CE
+     * fournisseur part avec la requête. On préfère un fournisseur actif ; à
+     * défaut, on renvoie l'entrée même inactive (l'appelant affichera l'erreur).
+     */
+    fun fournisseurPourModele(modelId: String, fournisseurs: List<Fournisseur>): Fournisseur? {
+        val info = find(modelId) ?: return null
+        val cible = fournisseurs.filter { it.baseUrl == info.baseUrl }
+        return cible.firstOrNull { it.actif } ?: cible.firstOrNull()
+    }
+
+    /**
+     * MàJ 103 — chaîne de repli pour [modelId] : d'abord les autres modèles
+     * conversationnels du même fournisseur (du plus rapide au plus lourd),
+     * puis ceux des autres fournisseurs. Utilisée par le repli automatique.
+     */
+    fun chaineRepli(modelId: String): List<String> {
+        val origine = find(modelId) ?: return emptyList()
+        val memeFournisseur = all.filter {
+            it.conversationnel && it.baseUrl == origine.baseUrl && it.id != origine.id
+        }.sortedByDescending { it.speed }.map { it.id }
+        val autres = all.filter {
+            it.conversationnel && it.baseUrl != origine.baseUrl
+        }.sortedByDescending { it.speed }.map { it.id }
+        return memeFournisseur + autres
+    }
+
+    /** Liste des modèles conversationnels filtrée par capacité (null = tous), favoris en tête. */
+    fun conversationnels(capacite: Capacite?, favoris: Set<String> = emptySet()): List<ModelInfo> {
+        val base = all.filter { it.conversationnel }
+            .filter { capacite == null || capacite in it.capacites }
+        return base.sortedByDescending { it.id in favoris }
     }
 
     /**
