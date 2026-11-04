@@ -23,6 +23,9 @@ import com.zagent.app.data.parseAskQuestions
 import com.zagent.app.data.TodoItem
 import com.zagent.app.data.parseTodos
 import com.zagent.app.data.DiffUtil
+import com.zagent.app.data.Capacite
+import com.zagent.app.data.Fournisseur
+import com.zagent.app.data.Fournisseurs
 import com.zagent.app.data.ModelCatalog
 import com.zagent.app.data.ActivityEvent
 import com.zagent.app.data.ActivityRepository
@@ -46,6 +49,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -84,7 +89,9 @@ data class ChatMessage(
     val name: String? = null,
     val toolLog: String? = null,
     val time: Long = System.currentTimeMillis(),
-    val reasoning: String? = null
+    val reasoning: String? = null,
+    /** MàJ 104 — nom du modèle qui a écrit ce message (mode Duo) ; null = modèle principal. */
+    val modele: String? = null
 )
 
 enum class AppScreen { CHAT, SETTINGS, TERMINAL, EDITOR, FILE_BROWSER }
@@ -159,7 +166,151 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val activityRepo = ActivityRepository(application)
 
     // ── Réglages (miroirs d'état pour l'UI) ─────────────────────────────────
-    var apiKeyInput by mutableStateOf(settingsManager.apiKey)
+
+    // ── MàJ 101 : fournisseurs multiples (une clé API par fournisseur) ───────
+
+    /** Fournisseurs enregistrés, miroir de [SettingsManager.fournisseurs]. */
+    private val fournisseursState = mutableStateOf(settingsManager.fournisseurs)
+    var fournisseurs: List<Fournisseur>
+        get() = fournisseursState.value
+        private set(value) {
+            fournisseursState.value = value
+            settingsManager.fournisseurs = value
+        }
+
+    /**
+     * Clé historique des réglages = clé du fournisseur z.ai. Les anciens points
+     * d'entrée (saveSettings, écrans) continuent de fonctionner sans modification.
+     */
+    var apiKeyInput: String
+        get() = fournisseurs.firstOrNull { it.id == Fournisseurs.ID_ZAI }?.cle.orEmpty()
+        set(value) = majFournisseurInterne(Fournisseurs.ID_ZAI, cle = value)
+
+    /**
+     * MàJ 101 — clé à utiliser pour [modelId] : celle du fournisseur qui
+     * l'héberge, avec repli sur la clé z.ai (modèle inconnu ou passerelle
+     * personnalisée). C'est ce qui empêche la clé z.ai de partir chez NVIDIA.
+     */
+    fun clePourModele(modelId: String): String {
+        val f = ModelCatalog.fournisseurPourModele(modelId, fournisseurs)
+        return f?.cle?.takeIf { it.isNotBlank() } ?: apiKeyInput
+    }
+
+    private fun majFournisseurInterne(
+        id: String,
+        cle: String? = null,
+        url: String? = null,
+        nom: String? = null,
+        actif: Boolean? = null
+    ) {
+        val next = fournisseurs.map { f ->
+            if (f.id != id) f
+            else f.copy(
+                cle = cle?.trim() ?: f.cle,
+                baseUrl = url?.trim()?.takeIf { it.isNotEmpty() } ?: f.baseUrl,
+                nom = nom?.trim()?.takeIf { it.isNotEmpty() } ?: f.nom,
+                actif = actif ?: f.actif
+            )
+        }
+        fournisseurs = Fournisseurs.complete(next)
+    }
+
+    /** Met à jour un champ d'un fournisseur (appelé par les Réglages). */
+    fun majFournisseur(id: String, cle: String? = null, url: String? = null, nom: String? = null, actif: Boolean? = null) =
+        majFournisseurInterne(id, cle, url, nom, actif)
+
+    /**
+     * MàJ 101 — ajoute (ou complète) un fournisseur. La détection automatique
+     * [Fournisseurs.detecter] reconnaît z.ai et NVIDIA d'après la clé ou l'URL ;
+     * sinon c'est une passerelle OpenAI générique. Retourne l'identifiant.
+     */
+    fun ajouterFournisseur(nom: String, url: String, cle: String): String {
+        val u = url.trim()
+        val c = cle.trim()
+        val detecte = Fournisseurs.detecter(if (c.isNotBlank()) c else u)
+        val existantParUrl = fournisseurs.firstOrNull { it.baseUrl.equals(u, ignoreCase = true) }
+        if (existantParUrl != null) {
+            majFournisseurInterne(existantParUrl.id, cle = c.ifBlank { null })
+            return existantParUrl.id
+        }
+        val id = detecte ?: "perso-" + UUID.randomUUID().toString().take(8)
+        val existantParId = fournisseurs.firstOrNull { it.id == id }
+        if (existantParId != null) {
+            majFournisseurInterne(existantParId.id, cle = c.ifBlank { null }, url = u.ifBlank { null })
+            return id
+        }
+        val nomFinal = nom.trim().ifEmpty {
+            when (id) {
+                Fournisseurs.ID_NVIDIA -> "NVIDIA NIM"
+                Fournisseurs.ID_ZAI -> "z.ai (GLM)"
+                else -> "Passerelle personnalisée"
+            }
+        }
+        fournisseurs = Fournisseurs.complete(
+            fournisseurs + Fournisseur(id, nomFinal, u.ifEmpty { ModelCatalog.URL_ZAI }, c, personnalise = detecte == null)
+        )
+        return id
+    }
+
+    /** Supprime un fournisseur personnalisé (les intégrés restent). */
+    fun supprimerFournisseur(id: String) {
+        val f = fournisseurs.firstOrNull { it.id == id } ?: return
+        if (!f.personnalise) return
+        fournisseurs = Fournisseurs.complete(fournisseurs.filterNot { it.id == id })
+    }
+
+    /** Résultat du bouton « Tester la connexion » : identifiant → message. */
+    var resultatsTestConnexion by mutableStateOf<Map<String, String>>(emptyMap())
+    var testsConnexionEnCours by mutableStateOf<Set<String>>(emptySet())
+
+    /** MàJ 101 — teste un fournisseur en direct via son endpoint /models. */
+    fun testerFournisseur(id: String) {
+        val f = fournisseurs.firstOrNull { it.id == id } ?: return
+        if (id in testsConnexionEnCours) return
+        testsConnexionEnCours = testsConnexionEnCours + id
+        viewModelScope.launch(Dispatchers.IO) {
+            val message = when {
+                f.cle.isBlank() -> "Clé absente — saisis d'abord la clé du fournisseur."
+                else -> try {
+                    val modeles = aiRepository.listerModeles(f.baseUrl, f.cle)
+                    if (modeles.isEmpty()) "Connecté — le serveur ne liste aucun modèle."
+                    else "Connecté — " + modeles.size + " modèles disponibles."
+                } catch (e: Exception) {
+                    "Échec : " + (e.message ?: e.javaClass.simpleName).take(90)
+                }
+            }
+            withContext(Dispatchers.Main) {
+                testsConnexionEnCours = testsConnexionEnCours - id
+                resultatsTestConnexion = resultatsTestConnexion + (id to message)
+            }
+        }
+    }
+
+    // ── MàJ 103 : favoris (modèles épinglés en tête du sélecteur) ────────────
+    private val favorisState = mutableStateOf(settingsManager.modelesFavoris)
+    val modelesFavoris: Set<String> get() = favorisState.value
+
+    fun basculeFavori(modelId: String) {
+        val next = if (modelId in favorisState.value) favorisState.value - modelId
+        else favorisState.value + modelId
+        favorisState.value = next
+        settingsManager.modelesFavoris = next
+    }
+
+    // ── MàJ 104 : Mode Duo — deux modèles qui travaillent ou débattent ───────
+    /** null = duo coupé ; "collaboration" = A fait la tâche puis B relit ; "debat" = A et B alternent. */
+    var duoMode by mutableStateOf<String?>(null)
+    /** Modèle B choisi pour le duo (null = maillon suivant de la chaîne de repli). */
+    var duoModeleB by mutableStateOf<String?>(null)
+
+    /** Vrai si le dernier tour d'agent s'est terminé sur une erreur (pas de relecture alors). */
+    private var dernierTourEnEchec = false
+
+    fun reglerDuo(mode: String?, modeleB: String?) {
+        duoMode = mode
+        duoModeleB = modeleB
+    }
+
     var modelInput by mutableStateOf(settingsManager.model)
     var baseUrlInput by mutableStateOf(settingsManager.baseUrl)
     var autoModeInput by mutableStateOf(settingsManager.autoMode)
@@ -517,6 +668,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun selectChatModel(model: String?) {
         chatModel = model?.trim()?.ifEmpty { null }
     }
+
+    /** Liste conversationnelle filtrée pour les sélecteurs (favoris en tête). */
+    fun modelesConversationnels(capacite: Capacite?): List<com.zagent.app.data.ModelInfo> =
+        ModelCatalog.conversationnels(capacite, modelesFavoris)
 
     var promptTokens by mutableStateOf(0)
     var completionTokens by mutableStateOf(0)
@@ -891,6 +1046,8 @@ done; } 2>&1 | head -c 50000
         autoRetryCount = 0
         stepLimitReached = false
         chatModel = null
+        duoMode = null
+        duoModeleB = null
         promptTokens = 0
         completionTokens = 0
         tokensEstimated = false
@@ -904,7 +1061,11 @@ done; } 2>&1 | head -c 50000
     }
 
     fun switchToOtherModel() {
-        val next = if (effectiveModel == "glm-4.5-flash") "glm-4.7-flash" else "glm-4.5-flash"
+        // MàJ 103 — maillon suivant de la chaîne de repli (même fournisseur, puis autre),
+        // limité aux modèles dont la clé est disponible.
+        val next = ModelCatalog.chaineRepli(effectiveModel)
+            .firstOrNull { clePourModele(it).isNotBlank() }
+            ?: return
         if (chatModel != null) {
             chatModel = next
         } else {
@@ -1205,12 +1366,157 @@ done; } 2>&1 | head -c 50000
         return cachedFileRepo!!
     }
 
+    /**
+     * MàJ 104 — Mode Duo « débat » : les deux modèles alternent à voix haute,
+     * deux tours chacun, sans outil. Chaque intervention est estampillée du nom
+     * du modèle qui l'a écrite ([ChatMessage.modele]).
+     */
+    private suspend fun runDebat() {
+        val modeleA = effectiveModel
+        val modeleB = duoModeleB?.takeIf { it.isNotBlank() && it != modeleA }
+            ?: ModelCatalog.chaineRepli(modeleA).firstOrNull { clePourModele(it).isNotBlank() }
+        if (modeleB == null || clePourModele(modeleA).isBlank() || clePourModele(modeleB).isBlank()) {
+            withContext(Dispatchers.Main) {
+                statusMessage = "Mode Duo : choisis un second modèle dont la clé est renseignée."
+                isLoading = false
+            }
+            return
+        }
+        val labelA = ModelCatalog.find(modeleA)?.label ?: modeleA
+        val labelB = ModelCatalog.find(modeleB)?.label ?: modeleB
+        val tours = listOf(modeleA, modeleB, modeleA, modeleB)
+        tours.forEachIndexed { tour, modele ->
+            // MàJ 104 — l'utilisateur peut couper le débat entre deux tours.
+            currentCoroutineContext().ensureActive()
+            val estDernier = tour == tours.lastIndex
+            val autre = if (modele == modeleA) labelB else labelA
+            val moi = if (modele == modeleA) labelA else labelB
+            val consigne = when {
+                tour == 0 -> "Tu ouvres le débat : réponds directement à la demande."
+                estDernier -> "Dernier tour : résume les points d'accord, tranche clairement et propose la marche à suivre."
+                else -> "Réagis aux arguments de $autre : complète, corrige ou contredis avec des raisons concrètes."
+            }
+            val systeme = "Tu es « $moi », l'un des deux modèles d'un débat à deux voix avec « $autre ». " +
+                "Réponds en français, 250 mots maximum, sans salutations ni répétitions. " + consigne
+            val historique = buildJsonArray {
+                add(buildJsonObject {
+                    put("role", "system")
+                    put("content", systeme)
+                })
+                for (m in _messages.value) {
+                    if (m.role != "user" && m.role != "assistant") continue
+                    add(buildJsonObject {
+                        put("role", m.role)
+                        put("content", m.content?.substringBefore(CTX_MARKER)?.take(12_000) ?: "")
+                    })
+                }
+            }
+            withContext(Dispatchers.Main) {
+                liveText = ""
+                liveReasoning = ""
+                statusMessage = "Duo · $moi s'exprime…"
+            }
+            val buf = StringBuilder()
+            var dernierePublication = 0L
+            val reponse = aiRepository.callChatCompletions(
+                baseUrl = ModelCatalog.urlPourModele(modele, baseUrlInput),
+                apiKey = clePourModele(modele),
+                model = modele,
+                messages = historique,
+                onRetryUpdate = { msg -> statusMessage = msg },
+                onDelta = { bout ->
+                    buf.append(bout)
+                    val maintenant = System.currentTimeMillis()
+                    if (maintenant - dernierePublication >= 120) {
+                        dernierePublication = maintenant
+                        liveText = buf.toString()
+                    }
+                },
+                avecOutils = false
+            )
+            val texte = (reponse as? AiRepository.ApiResponse.Success)?.messageContent
+            if (texte.isNullOrBlank()) {
+                val erreur = (reponse as? AiRepository.ApiResponse.Error)?.errorMessage
+                withContext(Dispatchers.Main) {
+                    liveText = ""
+                    statusMessage = "Duo interrompu : " + (erreur ?: "réponse vide").take(120)
+                    isLoading = false
+                }
+                return
+            }
+            withContext(Dispatchers.Main) {
+                _messages.value = _messages.value + ChatMessage("assistant", texte, modele = moi)
+                liveText = ""
+                statusMessage = ""
+            }
+            persistCurrentConversation()
+        }
+    }
+
+    /**
+     * MàJ 104 — Mode Duo « collaboration » : après que l'agent A a terminé la
+     * tâche, le modèle B relit sa réponse finale et publie un avis (vérification
+     * ou version corrigée). Silencieux en cas d'échec : la réponse de A reste
+     * intacte.
+     */
+    private suspend fun runRelectureDuo() {
+        val modeleB = duoModeleB?.takeIf { it.isNotBlank() && it != effectiveModel }
+            ?: ModelCatalog.chaineRepli(effectiveModel).firstOrNull { clePourModele(it).isNotBlank() }
+        if (modeleB == null || clePourModele(modeleB).isBlank()) return
+        val reponseA = _messages.value.lastOrNull { it.role == "assistant" }?.content ?: return
+        val demande = _messages.value.lastOrNull { it.role == "user" }
+            ?.content.orEmpty().substringBefore(CTX_MARKER)
+        val labelB = ModelCatalog.find(modeleB)?.label ?: modeleB
+        withContext(Dispatchers.Main) {
+            liveText = ""
+            liveReasoning = ""
+            statusMessage = "Duo · relecture par $labelB…"
+        }
+        val messages = buildJsonArray {
+            add(buildJsonObject {
+                put("role", "system")
+                put("content", "Tu relis la réponse d'un modèle d'agent de code. Vérifie qu'elle répond bien à la demande, " +
+                    "signale les erreurs factuelles ou de code, puis réponds en français de façon concise : " +
+                    "soit « RAS » suivi d'un résumé en une phrase, soit ta version corrigée et améliorée.")
+            })
+            add(buildJsonObject {
+                put("role", "user")
+                put("content", "Demande de l'utilisateur :\n" + demande.take(4_000) +
+                    "\n\nRéponse à relire :\n" + reponseA.take(12_000))
+            })
+        }
+        val buf = StringBuilder()
+        val reponse = aiRepository.callChatCompletions(
+            baseUrl = ModelCatalog.urlPourModele(modeleB, baseUrlInput),
+            apiKey = clePourModele(modeleB),
+            model = modeleB,
+            messages = messages,
+            onRetryUpdate = { },
+            onDelta = { bout ->
+                buf.append(bout)
+                liveText = buf.toString()
+            },
+            avecOutils = false
+        )
+        val texte = (reponse as? AiRepository.ApiResponse.Success)?.messageContent
+        withContext(Dispatchers.Main) {
+            liveText = ""
+            if (!texte.isNullOrBlank()) {
+                _messages.value = _messages.value + ChatMessage("assistant", texte, modele = labelB)
+            }
+            statusMessage = ""
+        }
+        if (!texte.isNullOrBlank()) persistCurrentConversation()
+    }
+
     fun sendMessage(userText: String) {
         if (userText.isBlank()) return
         if (isLoading) return
-        if (apiKeyInput.isBlank()) {
+        // MàJ 101 — la clé nécessaire dépend du modèle : un modèle NVIDIA exige
+        // la clé NVIDIA, pas la clé z.ai.
+        if (clePourModele(effectiveModel).isBlank()) {
             navigateTo(AppScreen.SETTINGS)
-            statusMessage = "Veuillez entrer une clé API dans les réglages."
+            statusMessage = "Aucune clé API pour « " + effectiveModel + " » — ajoute-la dans Réglages › Fournisseurs."
             return
         }
 
@@ -1234,7 +1540,15 @@ done; } 2>&1 | head -c 50000
                     attachments.clear()
                 }
                 persistCurrentConversation()
-                runAgentLoop()
+                // MàJ 104 — mode Duo : débat sans outils, ou collaboration
+                // (l'agent A fait la tâche puis le modèle B relit sa réponse).
+                when (duoMode) {
+                    "debat" -> runDebat()
+                    else -> {
+                        runAgentLoop()
+                        if (duoMode == "collaboration" && !dernierTourEnEchec) runRelectureDuo()
+                    }
+                }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Throwable) {
@@ -1443,6 +1757,10 @@ done; } 2>&1 | head -c 50000
         var stepCount = 0
         val maxSteps = maxStepsInput
         var finished = false
+        // MàJ 103 — modèle actif de ce tour d'agent + repli automatique (une seule fois).
+        var modeleUtilise = effectiveModel
+        var repliEffectue = false
+        dernierTourEnEchec = false
 
         while (stepCount < maxSteps) {
             stepCount++
@@ -1491,9 +1809,10 @@ done; } 2>&1 | head -c 50000
                 // URL résolue selon le modèle : un modèle NVIDIA NIM repart vers
                 // integrate.api.nvidia.com même si le réglage global pointe z.ai
                 // (une passerelle personnalisée reste prioritaire).
-                baseUrl = ModelCatalog.urlPourModele(effectiveModel, baseUrlInput),
-                apiKey = apiKeyInput,
-                model = effectiveModel,
+                // MàJ 101 — la clé part avec le fournisseur du modèle choisi.
+                baseUrl = ModelCatalog.urlPourModele(modeleUtilise, baseUrlInput),
+                apiKey = clePourModele(modeleUtilise),
+                model = modeleUtilise,
                 messages = jsonMessages,
                 onRetryUpdate = { retryMsg ->
                     liveBuf.setLength(0)
@@ -1523,6 +1842,24 @@ done; } 2>&1 | head -c 50000
 
             when (result) {
                 is AiRepository.ApiResponse.Error -> {
+                    // MàJ 103 — repli automatique : surcharge (429/1305), clé refusée
+                    // (401) ou réseau → une seule bascule vers le maillon suivant de
+                    // la chaîne (même fournisseur d'abord, puis autre fournisseur).
+                    val alt = if (repliEffectue) null
+                    else ModelCatalog.chaineRepli(modeleUtilise)
+                        .firstOrNull { clePourModele(it).isNotBlank() }
+                    if (alt != null) {
+                        repliEffectue = true
+                        modeleUtilise = alt
+                        withContext(Dispatchers.Main) {
+                            statusMessage = "Modèle indisponible — bascule vers " +
+                                (ModelCatalog.find(alt)?.label ?: alt)
+                            liveText = ""
+                            liveReasoning = ""
+                        }
+                        continue
+                    }
+                    dernierTourEnEchec = true
                     alertUser("L'agent s'est arrêté", result.errorMessage.take(120))
                     liveText = ""
                     liveReasoning = ""
@@ -1553,7 +1890,7 @@ done; } 2>&1 | head -c 50000
                     completionTokens += usedOut ?: estOut
                     if (usedIn == null || usedOut == null) tokensEstimated = true
                     // MA60 : journal d'usage pour l'écran Usage & coûts.
-                    recordUsage(usedIn ?: estIn, usedOut ?: estOut, effectiveModel)
+                    recordUsage(usedIn ?: estIn, usedOut ?: estOut, modeleUtilise)
 
                     if (toolCalls.isNullOrEmpty()) {
                         val reasoning = liveReasoning.ifBlank { result.reasoningContent ?: "" }
@@ -2187,7 +2524,8 @@ done; } 2>&1 | head -c 50000
                     toolCallId = m.toolCallId,
                     name = m.name,
                     toolLog = m.toolLog,
-                    toolCalls = m.toolCalls?.map { StoredToolCall(it.id, it.name, it.arguments) }
+                    toolCalls = m.toolCalls?.map { StoredToolCall(it.id, it.name, it.arguments) },
+                    modele = m.modele
                 )
             })
             val fresh = conversationRepo.loadIndex()
@@ -2210,7 +2548,8 @@ done; } 2>&1 | head -c 50000
                     name = m.name,
                     toolLog = m.toolLog,
                     time = m.time,
-                    reasoning = m.reasoning
+                    reasoning = m.reasoning,
+                    modele = m.modele
                 )
             }
             withContext(Dispatchers.Main) {
@@ -2219,6 +2558,8 @@ done; } 2>&1 | head -c 50000
                 conversationId = id
                 settingsManager.lastConversationId = id
                 chatModel = null
+                duoMode = null
+                duoModeleB = null
                 todos = emptyList()
                 summaryFiles.clear()
                 summaryCommands.clear()
@@ -2447,7 +2788,7 @@ done; } 2>&1 | head -c 50000
             runCatching {
                 aiRepository.callChatCompletions(
                     baseUrl = ModelCatalog.urlPourModele(effectiveModel, baseUrlInput),
-                    apiKey = apiKeyInput,
+                    apiKey = clePourModele(effectiveModel),
                     model = effectiveModel,
                     messages = prompt,
                     onRetryUpdate = { },
