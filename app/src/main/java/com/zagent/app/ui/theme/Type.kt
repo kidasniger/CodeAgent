@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.ui.text.ExperimentalTextApi::class)
+
 package com.zagent.app.ui.theme
 
 import androidx.compose.material3.Typography

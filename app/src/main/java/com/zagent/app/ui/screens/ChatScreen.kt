@@ -188,6 +188,9 @@ fun ChatScreen(
     val c = Zcolors
     val haptique = rememberZHaptics() // MàJ 91
     val messages by viewModel.messages.collectAsStateWithLifecycle() // MàJ 99 : ne collecte que si l'écran est visible
+    // MàJ 99 — clés stables : les lignes du fil (dates, bulles, outils, demandes)
+    // sont dérivées des messages et mémorisées tant que la liste ne change pas.
+    val chatRows = remember(messages) { buildChatRows(messages) }
     val listState = rememberLazyListState()
     val clipboard = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
