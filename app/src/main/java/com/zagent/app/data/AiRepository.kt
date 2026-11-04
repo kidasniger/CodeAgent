@@ -150,7 +150,8 @@ class AiRepository {
         onDelta: (String) -> Unit = {},
         onReasoningDelta: (String) -> Unit = {}
     ): ApiResponse {
-        val url = if (baseUrl.isBlank()) "https://api.z.ai/api/paas/v4/chat/completions" else baseUrl
+        // Source unique de l'URL par défaut : ModelCatalog.URL_ZAI (com.zagent.app.data).
+        val url = if (baseUrl.isBlank()) ModelCatalog.URL_ZAI else baseUrl
 
         val requestBodyJson = buildJsonObject {
             put("model", model)

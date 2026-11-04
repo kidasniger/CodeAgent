@@ -23,6 +23,7 @@ import com.zagent.app.data.parseAskQuestions
 import com.zagent.app.data.TodoItem
 import com.zagent.app.data.parseTodos
 import com.zagent.app.data.DiffUtil
+import com.zagent.app.data.ModelCatalog
 import com.zagent.app.data.ActivityEvent
 import com.zagent.app.data.ActivityRepository
 import com.zagent.app.data.ActivityStatus
@@ -1487,7 +1488,10 @@ done; } 2>&1 | head -c 50000
             val liveBuf = StringBuilder()
             var lastPublish = 0L
             val result = aiRepository.callChatCompletions(
-                baseUrl = baseUrlInput,
+                // URL résolue selon le modèle : un modèle NVIDIA NIM repart vers
+                // integrate.api.nvidia.com même si le réglage global pointe z.ai
+                // (une passerelle personnalisée reste prioritaire).
+                baseUrl = ModelCatalog.urlPourModele(effectiveModel, baseUrlInput),
                 apiKey = apiKeyInput,
                 model = effectiveModel,
                 messages = jsonMessages,
@@ -2442,7 +2446,7 @@ done; } 2>&1 | head -c 50000
             val buf = StringBuilder()
             runCatching {
                 aiRepository.callChatCompletions(
-                    baseUrl = baseUrlInput,
+                    baseUrl = ModelCatalog.urlPourModele(effectiveModel, baseUrlInput),
                     apiKey = apiKeyInput,
                     model = effectiveModel,
                     messages = prompt,

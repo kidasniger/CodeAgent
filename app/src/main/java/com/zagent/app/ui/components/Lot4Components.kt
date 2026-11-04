@@ -39,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.data.ModelCatalog
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.SpaceGrotesk
@@ -213,12 +214,21 @@ fun ModelPickerDialog(
 ) {
     val c = Zcolors
     var custom by remember { mutableStateOf("") }
-    val known = listOf("glm-4.5-flash", "glm-4.7-flash").filter { it != globalModel }
+    // Catalogue complet hors spécialisés : GLM (z.ai) + NVIDIA NIM (compte gratuit).
+    val known = ModelCatalog.all
+        .filter { !it.specialized }
+        .map { it.id }
+        .filter { it != globalModel }
     GlassAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Modèle de la conversation", fontFamily = SpaceGrotesk, color = c.text) },
         text = {
-            Column(Modifier.fillMaxWidth()) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 420.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
                 ModelRow(
                     label = "Réglage global : $globalModel",
                     selected = currentChatModel == null,

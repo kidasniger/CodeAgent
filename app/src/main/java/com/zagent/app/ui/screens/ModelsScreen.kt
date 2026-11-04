@@ -36,6 +36,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.data.ModelCatalog
+import com.zagent.app.data.ModelInfo
 import com.zagent.app.ui.components.Lot5Screen
 import com.zagent.app.ui.components.Lot5Section
 import com.zagent.app.ui.components.SpeedDots
@@ -50,33 +52,9 @@ import java.util.Locale
 // MA59 — Écran Modèles : carte par modèle (nom, description, fenêtre de contexte,
 // prix configurés KEY_PRICE_IN/OUT, vitesse ●●○, badge « Recommandé »), sélection
 // au tap et « Modèle personnalisé » avec champ base URL.
+// Le catalogue vit dans com.zagent.app.data.ModelCatalog (GLM z.ai + NVIDIA NIM,
+// chaque modèle portant l'URL de son fournisseur).
 // ─────────────────────────────────────────────────────────────────────────────
-
-/** Description d'un modèle du catalogue (MA59). Les prix affichés sont ceux configurés dans Réglages. */
-data class ModelInfo(
-    val id: String,
-    val label: String,
-    val description: String,
-    val contextWindow: String,
-    val speed: Int,
-    val recommended: Boolean
-)
-
-/** Catalogue des modèles connus de ZAgent (MA59). */
-object ModelCatalog {
-    val all = listOf(
-        ModelInfo(
-            "glm-4.5-flash", "GLM 4.5 Flash",
-            "Rapide et économique — parfait au quotidien",
-            "128 k tokens", 3, true
-        ),
-        ModelInfo(
-            "glm-4.7-flash", "GLM 4.7 Flash",
-            "Plus récent, un peu plus capable",
-            "128 k tokens", 2, false
-        )
-    )
-}
 
 @Composable
 fun ModelsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
@@ -90,8 +68,28 @@ fun ModelsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         else
             "Entrée " + formatPrice(viewModel.priceInInput) + " · Sortie " + formatPrice(viewModel.priceOutInput) + " / M tokens"
 
-        Lot5Section("Catalogue")
-        ModelCatalog.all.forEach { m ->
+        Lot5Section("Catalogue — discussion & code")
+        ModelCatalog.all.filter { !it.specialized }.forEach { m ->
+            ModelCard(
+                model = m,
+                selected = viewModel.effectiveModel == m.id,
+                priceText = priceText,
+                onSelect = {
+                    viewModel.selectGlobalModel(m.id)
+                }
+            )
+            Spacer(Modifier.height(10.dp))
+        }
+
+        Spacer(Modifier.height(8.dp))
+        Lot5Section("Spécialisés (pas pour discuter)")
+        Text(
+            "Modération, extraction de documents, traduction, calibration — fournis par NVIDIA NIM, hors usage agent.",
+            style = TextStyle(fontFamily = Inter, fontSize = 12.sp, lineHeight = 17.sp),
+            color = c.text2
+        )
+        Spacer(Modifier.height(8.dp))
+        ModelCatalog.all.filter { it.specialized }.forEach { m ->
             ModelCard(
                 model = m,
                 selected = viewModel.effectiveModel == m.id,
