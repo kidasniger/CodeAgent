@@ -35,7 +35,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -49,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zagent.app.ui.components.CardDivider
 import com.zagent.app.ui.components.GlassCard
 import com.zagent.app.ui.components.GradientButton
@@ -83,8 +83,9 @@ private fun findActivity(context: Context): ComponentActivity? {
 fun UpdateHost() {
     val context = LocalContext.current
     remember { UpdateManager.init(context) }
-    val state by UpdateManager.state.collectAsState()
-    val dismissed by UpdateManager.dismissedTag.collectAsState()
+    // MàJ 101 : collecte liée au cycle de vie (ne collecte que si l'hôte est au moins STARTED)
+    val state by UpdateManager.state.collectAsStateWithLifecycle()
+    val dismissed by UpdateManager.dismissedTag.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         delay(1500)
@@ -328,7 +329,7 @@ fun UpdateSettingsCard(modifier: Modifier = Modifier) {
     val c = Zcolors
     val context = LocalContext.current
     remember { UpdateManager.init(context) }
-    val state by UpdateManager.state.collectAsState()
+    val state by UpdateManager.state.collectAsStateWithLifecycle() // MàJ 101
 
     GlassCard(contentPadding = PaddingValues(0.dp), modifier = modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
