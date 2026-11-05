@@ -17,10 +17,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.HazeInput
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.hazeChild
+import dev.chrisbanes.haze.blur.HazeBlurStyle
+import dev.chrisbanes.haze.blur.HazeColorEffect
+import dev.chrisbanes.haze.blur.hazeBlur
 
 enum class GlassMaterial { FASTEST, BALANCED, QUALITY }
 
@@ -87,18 +88,20 @@ fun Modifier.glassSurface(
         androidx.compose.ui.graphics.lerp(neutral, settings.colour, tintAmount)
     }
     val fallback = fallbackBase.copy(alpha = (0.12f + film * 0.78f).coerceIn(0.12f, 0.90f))
-    val style = HazeStyle(
-        backgroundColor = neutral.copy(alpha = (0.10f + film * 0.72f).coerceIn(0.10f, 0.88f)),
-        tints = if (tintColor.alpha > 0f) listOf(HazeTint(tintColor)) else emptyList(),
-        blurRadius = when (material) {
-            GlassMaterial.FASTEST -> 0.dp
-            GlassMaterial.BALANCED -> (settings.frost * 0.65f).coerceIn(0.dp, 16.dp)
-            GlassMaterial.QUALITY -> settings.frost.coerceIn(0.dp, 24.dp)
-        },
-        noiseFactor = if (material == GlassMaterial.QUALITY) 0.04f else 0f
-    )
+    val style = HazeBlurStyle {
+        backgroundColor(neutral.copy(alpha = (0.10f + film * 0.72f).coerceIn(0.10f, 0.88f)))
+        colorEffects(if (tintColor.alpha > 0f) listOf(HazeColorEffect.tint(tintColor)) else emptyList())
+        blurRadius(
+            when (material) {
+                GlassMaterial.FASTEST -> 0.dp
+                GlassMaterial.BALANCED -> (settings.frost * 0.65f).coerceIn(0.dp, 16.dp)
+                GlassMaterial.QUALITY -> settings.frost.coerceIn(0.dp, 24.dp)
+            }
+        )
+        noiseFactor(if (material == GlassMaterial.QUALITY) 0.04f else 0f)
+    }
 
-    // Le fond de secours est dessiné AVANT hazeChild : il ne recouvre donc plus
+    // Le fond de secours est dessiné AVANT hazeBlur : il ne recouvre donc plus
     // le flou Haze comme c'était le cas avec l'ancien ordre des modificateurs.
     var result = this
         .shadow(
@@ -113,7 +116,7 @@ fun Modifier.glassSurface(
         .clip(shape)
         .background(fallback)
     if (material != GlassMaterial.FASTEST && Build.VERSION.SDK_INT >= 31 && state != null) {
-        result = result.hazeChild(state = state, style = style)
+        result = result.hazeBlur(input = HazeInput.Sources(state), style = style)
     }
     if (material == GlassMaterial.QUALITY) {
         result = result.border(

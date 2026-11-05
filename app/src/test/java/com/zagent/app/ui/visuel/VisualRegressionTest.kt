@@ -51,7 +51,9 @@ import javax.imageio.ImageIO
 
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [34])
+// MàJ 107 : rendu verre vérifié sur les deux bornes supportées — API 26 (fallback
+// sans flou, le code coupe l'effet sous API 31) et API 34 (RenderEffect).
+@Config(sdk = [26, 34])
 class VisualRegressionTest {
 
     @get:Rule

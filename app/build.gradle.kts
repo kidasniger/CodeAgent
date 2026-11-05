@@ -90,7 +90,8 @@ dependencies {
   // MA75 : WindowSizeClass pour les mises en page tablettes / pliables
   implementation(libs.androidx.compose.material3.window.size)
   implementation(libs.haze)
-  implementation(libs.haze.materials)
+  implementation(libs.haze.blur)
+  implementation(libs.haze.blur.materials)
   implementation(libs.androidx.compose.material.icons.core)
   implementation(libs.androidx.compose.material.icons.extended)
   implementation(libs.androidx.compose.material3)

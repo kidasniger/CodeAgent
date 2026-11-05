@@ -26,7 +26,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.Alignment
 import androidx.compose.runtime.CompositionLocalProvider
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.haze
+import dev.chrisbanes.haze.hazeSource
 import com.zagent.app.ui.components.AmbientBackground
 import com.zagent.app.ui.components.FloatingTabBar
 import com.zagent.app.ui.navigation.ZNavHost
@@ -269,7 +269,7 @@ private fun AppRoot(
                         } while (event.changes.any { it.pressed })
                     }
                 }
-                .haze(state = hazeState)
+                .hazeSource(state = hazeState) // MàJ 107 : API Haze 2 (ancien Modifier.haze supprimé)
         ) {
         // Fond animé réel de l'application, placé derrière les écrans et les surfaces Haze.
         AmbientBackground(Modifier.fillMaxSize())
