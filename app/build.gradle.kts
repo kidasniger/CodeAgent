@@ -80,7 +80,8 @@ secrets {
 }
 
 dependencies {
-    implementation("androidx.work:work-runtime-ktx:2.9.1")
+  // MàJ 108 : WorkManager via le catalog (2.12.0), téléchargement des mises à jour
+  implementation(libs.androidx.work.runtime.ktx)
   implementation("com.github.termux.termux-app:terminal-view:v0.118.0")
   implementation("com.github.termux.termux-app:terminal-emulator:v0.118.0")
   implementation(platform(libs.androidx.compose.bom))
