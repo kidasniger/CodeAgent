@@ -50,7 +50,10 @@ secretsGradlePlugin = "2.0.1"
 googleServices = "4.5.0"
 credentials = "1.5.0"
 googleid = "1.1.1"
-securityCrypto = "1.1.0-alpha06"
+# MàJ 111 : security-crypto 1.1.0 (première stable de la branche 1.1.0 ; surcharge
+# create(Context, fileName, MasterKey, ...) inchangée ; alias maître et keysets Tink
+# identiques à alpha06 : clés déjà enregistrées conservées sans migration)
+securityCrypto = "1.1.0"
 documentfile = "1.0.1"
 # MàJ 104 : serialization 1.10.0 (dernière stable, stdlib requise 2.3.0 ; plugin aligné sur Kotlin via version.ref)
 kotlinxSerializationJson = "1.10.0"
