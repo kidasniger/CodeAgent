@@ -62,7 +62,8 @@ class AiRepository {
             .get()
             .build()
         return client.newCall(request).execute().use { response ->
-            val bodyStr = response.body?.string().orEmpty()
+            // MàJ 105 : OkHttp 5.x — Response.body est non-null (plus de safe-call)
+            val bodyStr = response.body.string()
             if (!response.isSuccessful) {
                 throw IOException("HTTP " + response.code + " sur /models")
             }
@@ -80,7 +81,8 @@ class AiRepository {
         onDelta: (String) -> Unit,
         onReasoningDelta: (String) -> Unit
     ): ApiResponse {
-        val body = response.body ?: return ApiResponse.Success(null, null)
+        // MàJ 105 : OkHttp 5.x — body non-null ; un corps vide retombe sur Success(null, null) via ifEmpty
+        val body = response.body
         val content = StringBuilder()
         val reasoning = StringBuilder()
         val tools = sortedMapOf<Int, ToolAcc>()
@@ -213,7 +215,7 @@ class AiRepository {
                     if (response.isSuccessful) {
                         return parseStream(response, onDelta, onReasoningDelta)
                     } else {
-                        val responseString = response.body?.string() ?: ""
+                        val responseString = response.body.string()
                         val code = response.code
                         if (code == 401) {
                             return ApiResponse.Error("Ta clé API a été refusée (401). Vérifie-la dans les Réglages.")
