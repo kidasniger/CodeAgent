@@ -339,7 +339,7 @@ fun ChatScreen(
                                     is ChatRow.User -> item(key = row.key, contentType = "user") {
                                         EntreeMessage(
                                             activee = estNouvelElement(row.key),
-                                            modifier = Modifier.animateItemPlacement()
+                                            modifier = Modifier.animateItem()
                                         ) {
                                             UserBubble(
                                                 text = row.text,
@@ -354,7 +354,7 @@ fun ChatScreen(
                                         val isLastAgent = index == chatRows.lastIndex && displayLive.isBlank()
                                         EntreeMessage(
                                             activee = estNouvelElement(row.key),
-                                            modifier = Modifier.animateItemPlacement()
+                                            modifier = Modifier.animateItem()
                                         ) {
                                             AgentCard(
                                                 content = row.content,
@@ -382,7 +382,7 @@ fun ChatScreen(
                                     is ChatRow.OrphanTool -> item(key = row.key, contentType = "orphan") {
                                         EntreeMessage(
                                             activee = estNouvelElement(row.key),
-                                            modifier = Modifier.animateItemPlacement()
+                                            modifier = Modifier.animateItem()
                                         ) {
                                             OrphanToolLine(row.text)
                                         }
@@ -390,7 +390,7 @@ fun ChatScreen(
                                     is ChatRow.Ask -> item(key = row.key, contentType = "ask") {
                                         EntreeMessage(
                                             activee = estNouvelElement(row.key),
-                                            modifier = Modifier.animateItemPlacement()
+                                            modifier = Modifier.animateItem()
                                         ) {
                                             AskCard(
                                                 questions = row.questions,
