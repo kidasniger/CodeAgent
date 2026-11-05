@@ -82,8 +82,9 @@ secrets {
 dependencies {
   // MàJ 108 : WorkManager via le catalog (2.12.0), téléchargement des mises à jour
   implementation(libs.androidx.work.runtime.ktx)
-  implementation("com.github.termux.termux-app:terminal-view:v0.118.0")
-  implementation("com.github.termux.termux-app:terminal-emulator:v0.118.0")
+  // MàJ 109 : libs Termux via le catalog (v0.118.3)
+  implementation(libs.termux.terminal.view)
+  implementation(libs.termux.terminal.emulator)
   implementation(platform(libs.androidx.compose.bom))
   implementation(libs.androidx.activity.compose)
   // MA71 : navigation par NavHost avec routes typées
