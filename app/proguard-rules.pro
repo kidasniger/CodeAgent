@@ -34,3 +34,10 @@
 # ── Diagnostic facilité en cas de crash R8 ──────────────────────────────
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
+
+# ── Tink (EncryptedSharedPreferences) : annotations errorprone absentes du
+# classpath mais référencées dans les métadonnées — sans risque à l'exécution ──
+-dontwarn com.google.errorprone.annotations.CanIgnoreReturnValue
+-dontwarn com.google.errorprone.annotations.CheckReturnValue
+-dontwarn com.google.errorprone.annotations.Immutable
+-dontwarn com.google.errorprone.annotations.RestrictedApi
