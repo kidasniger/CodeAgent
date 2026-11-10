@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.CheckCircle
@@ -97,6 +98,14 @@ fun PermissionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 onToggle = { viewModel.settingsManager.allowRead = it },
                 icon = Icons.Default.Visibility,
                 tint = c.cyan
+            )
+            ModeRow(
+                title = "Mode lecture seule",
+                subtitle = "Bloque tout : écritures, suppressions et commandes. L'agent ne peut que lire et analyser.",
+                checked = viewModel.settingsManager.lectureSeule,
+                onToggle = { viewModel.settingsManager.lectureSeule = it },
+                icon = Icons.Default.Lock,
+                tint = c.text2
             )
             ModeRow(
                 title = "Écrire les fichiers",

@@ -16,6 +16,9 @@ object Constants {
     /** Délai (s) de connexion/lecture/écriture des appels chat/completions. */
     const val RESEAU_TIMEOUT_S = 180
 
+    /** corr-032 — Plafond absolu (s) du timeout d'une commande, quelle que soit la valeur demandée par le modèle. */
+    const val TEMPS_MAX_COMMANDE_S = 600
+
     // ── Limites de contenu envoyé au modèle ────────────────────────────────
 
     /** Longueur maximale d'une sortie de commande tronquée avant envoi (MA33…). */

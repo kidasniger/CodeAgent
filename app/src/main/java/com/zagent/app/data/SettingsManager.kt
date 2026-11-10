@@ -482,6 +482,11 @@ class SettingsManager(context: Context) {
         get() = prefs.getBoolean(KEY_ALLOW_EXECUTE, false)
         set(value) = prefs.edit().putBoolean(KEY_ALLOW_EXECUTE, value).apply()
 
+    /** corr-029 — Mode lecture seule : tous les outils d'écriture de l'agent sont refusés. */
+    var lectureSeule: Boolean
+        get() = prefs.getBoolean("lecture_seule", false)
+        set(value) = prefs.edit().putBoolean("lecture_seule", value).apply()
+
     private val prefJson = Json { ignoreUnknownKeys = true }
 
     /** Historique des dernières recherches globales (MA58), du plus récent au plus ancien. */
