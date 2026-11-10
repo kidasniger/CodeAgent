@@ -243,9 +243,6 @@ fun ZEmptyState(
     }
 }
 
-/**
- * État vide illustré (MA87) : dessin au trait (trait continu, accent unique)
- * pour un dossier vide, un résultat de recherche infructueux, un problème de
 
 /** Grand état central (vide, hors ligne…). */
 @Composable
