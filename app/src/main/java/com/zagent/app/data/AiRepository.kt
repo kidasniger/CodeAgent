@@ -185,10 +185,10 @@ class AiRepository : AiRepositoryApi {
         model: String,
         messages: JsonArray,
         onRetryUpdate: (String) -> Unit,
-        onDelta: (String) -> Unit = {},
-        onReasoningDelta: (String) -> Unit = {},
+        onDelta: (String) -> Unit,
+        onReasoningDelta: (String) -> Unit,
         /** MàJ 104 — false pour un échange pur (mode Duo) : aucun outil transmis. */
-        avecOutils: Boolean = true
+        avecOutils: Boolean
     ): ApiResponse {
         // Source unique de l'URL par défaut : ModelCatalog.URL_ZAI (com.zagent.app.data).
         val url = if (baseUrl.isBlank()) ModelCatalog.URL_ZAI else baseUrl

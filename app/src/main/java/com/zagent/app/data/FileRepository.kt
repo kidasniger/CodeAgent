@@ -75,7 +75,7 @@ class FileRepository(private val context: Context?, private val rootPath: String
     private fun resolveExisting(root: File, path: String): File? =
         resolveInside(root, path)?.takeIf { it.exists() }
 
-    override fun listDir(path: String = "."): String {
+    override fun listDir(path: String): String {
         if (!validatePath(path)) return "Erreur: Chemin invalide (.. interdit)"
         val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
         val target = resolveExisting(root, path) ?: return "Erreur: Dossier introuvable: $path"
@@ -120,11 +120,11 @@ class FileRepository(private val context: Context?, private val rootPath: String
      * Liste plate et structurée d'un dossier (pour l'explorateur).
      * [path] = "." ou chemin relatif. Tri : dossiers d'abord puis alphabétique.
      */
-    override fun listEntries(path: String = "."): List<Entry> =
+    override fun listEntries(path: String): List<Entry> =
         listEntriesResult(path).getOrDefault(emptyList())
 
     /** Variante diagnostique : distingue un dossier réellement vide d'un dossier illisible/invalide. */
-    override fun listEntriesResult(path: String = "."): Result<List<Entry>> = runCatching {
+    override fun listEntriesResult(path: String): Result<List<Entry>> = runCatching {
         require(!path.contains("..")) { "Chemin invalide : .. n'est pas autorisé." }
         val root = getRootFolder()
             ?: throw IllegalStateException("Aucun dossier de projet valide n'est sélectionné.")

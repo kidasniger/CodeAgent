@@ -153,7 +153,7 @@ class ConversationRepository(context: Context) : ConversationRepositoryApi {
      * Recherche plein texte dans les conversations sauvegardées (MA58) :
      * renvoie au plus [maxPer] extraits par conversation, conversations plafonnées à 40.
      */
-    override fun searchContent(query: String, maxPer: Int = 3): List<ConversationHit> {
+    override fun searchContent(query: String, maxPer: Int): List<ConversationHit> {
         val q = query.trim()
         if (q.isEmpty()) return emptyList()
         val hits = ArrayList<ConversationHit>()
