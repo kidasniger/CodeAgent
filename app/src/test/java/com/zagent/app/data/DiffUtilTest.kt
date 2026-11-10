@@ -34,7 +34,7 @@ class DiffUtilTest {
     }
 
     @Test
-    fun `CRLF : les lignes ne contiennent pas de caractère de retour`() {
+    fun `CRLF - les lignes ne contiennent pas de caractère de retour`() {
         val old = "ligne1\r\nligne2\r\n"
         val new = "ligne1\r\nligne2 modifiée\r\n"
         val r = DiffUtil.diff(old, new)
@@ -46,7 +46,7 @@ class DiffUtilTest {
     }
 
     @Test
-    fun `compteurs ajout/suppression cohérents`() {
+    fun `compteurs ajout-suppression cohérents`() {
         val old = "a\nb\nc\nd"
         val new = "a\nX\nY\nc\nd"
         val r = DiffUtil.diff(old, new)

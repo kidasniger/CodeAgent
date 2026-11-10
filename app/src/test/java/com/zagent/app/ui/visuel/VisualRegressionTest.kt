@@ -16,9 +16,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.zagent.app.ui.components.GradientButton
-import com.zagent.app.ui.components.GlassCard
-import com.zagent.app.ui.components.SecondaryButton
+import com.zagent.app.ui.components.common.GradientButton
+import com.zagent.app.ui.components.common.GlassCard
+import com.zagent.app.ui.components.common.SecondaryButton
 import com.zagent.app.ui.theme.ZAgentTheme
 import com.zagent.app.ui.theme.Zcolors
 import org.junit.Assert.assertTrue

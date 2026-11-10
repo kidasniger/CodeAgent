@@ -33,14 +33,14 @@ class FileRepositoryTest {
     }
 
     @Test
-    fun `traversee ../ rejetee`() {
+    fun `traversee 2 points rejetee`() {
         val res = repo.readFile("../hors-projet/secret.txt")
         assertTrue(res.startsWith("Erreur"))
         assertFalse(res.contains("SECRET"))
     }
 
     @Test
-    fun `traversee ..\\ rejetee`() {
+    fun `traversee antislash rejetee`() {
         val res = repo.readFile("..\\hors-projet\\secret.txt")
         assertTrue(res.startsWith("Erreur"))
         assertFalse(res.contains("SECRET"))
