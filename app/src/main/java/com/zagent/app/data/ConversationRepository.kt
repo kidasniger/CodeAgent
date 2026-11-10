@@ -49,7 +49,7 @@ data class ConversationHit(
     val snippet: String
 )
 
-class ConversationRepository(context: Context) {
+class ConversationRepository(context: Context) : ConversationRepositoryApi {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     private val dir = File(context.filesDir, "conversations").apply { mkdirs() }
     private val indexFile = File(dir, "index.json")

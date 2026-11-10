@@ -9,7 +9,7 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
-class AiRepository {
+class AiRepository : AiRepositoryApi {
     private val client = OkHttpClient.Builder()
         .connectTimeout(180, TimeUnit.SECONDS)
         .readTimeout(180, TimeUnit.SECONDS)

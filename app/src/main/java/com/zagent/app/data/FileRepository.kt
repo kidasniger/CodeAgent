@@ -11,7 +11,7 @@ import java.io.File
  * [rootPath] = chemin absolu du dossier du projet, par exemple
  * /data/data/com.zagent/files/home/projects/monprojet
  */
-class FileRepository(private val context: Context, private val rootPath: String?) {
+class FileRepository(private val context: Context, private val rootPath: String?) : FileRepositoryApi {
 
     private fun getRootFolder(): File? {
         val p = rootPath ?: return null

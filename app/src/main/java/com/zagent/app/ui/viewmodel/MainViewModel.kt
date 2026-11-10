@@ -9,7 +9,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
@@ -40,6 +39,7 @@ import com.zagent.app.data.FileRepository
 import com.zagent.app.data.HapticLevel
 import com.zagent.app.data.ProjectSearch
 import com.zagent.app.data.SettingsManager
+import com.zagent.app.di.AppContainer
 import com.zagent.app.ui.editor.ConsoleState
 import com.zagent.app.ui.editor.EditorController
 import com.zagent.app.ui.theme.ThemeMode
@@ -97,73 +97,47 @@ data class ChatMessage(
 enum class AppScreen { CHAT, SETTINGS, TERMINAL, EDITOR, FILE_BROWSER }
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
-    // ── Navigation (MA71) ──────────────────────────────────────────────────
-    // Le NavHost de ZNavHost.kt est la source de vérité du back stack. Les écrans
-    // continuent d'appeler navigateTo / navigateBack (API inchangée) ; ces demandes
-    // sont traduites en requêtes de route typées que ZNavHost exécute sur le
-    // NavHost Compose. currentScreen est ensuite resynchronisé depuis la route
-    // réellement affichée, ce qui remplace les anciens booléens
-    // isSettingsOpen / isTerminalOpen / isEditorOpen / isFileBrowserOpen.
+    // corr-006 : les dépôts de données sont instanciés dans le conteneur
+    // d'injection (testable, remplaçable) plutôt que directement ici.
+    private val container = AppContainer(application)
+    val settingsManager: SettingsManager get() = container.settingsManager
+    private val aiRepository: AiRepository = container.aiRepository
+    private val conversationRepo: ConversationRepository get() = container.conversationRepo
+    private val usageRepo: UsageRepository get() = container.usageRepo
+    private val activityRepo: ActivityRepository get() = container.activityRepo
 
-    /** Route demandée (ex. "terminal", "editor?path=...") ; consommée par ZNavHost. */
-    var navRouteRequest by mutableStateOf<String?>(null)
-        private set
+    // corr-002 : les données du chat (messages, conversation courante, brouillons,
+    // index des conversations) vivent dans ChatViewModel ; MainViewModel délègue
+    // et conserve son API publique pour tous les écrans.
+    val chat = ChatViewModel(container.settingsManager, container.conversationRepo)
 
-    /** Compteur de demandes de retour ; ZNavHost effectue le pop du back stack. */
-    var navBackRequest by mutableIntStateOf(0)
-        private set
+    // corr-004 : les états de réglages (miroirs de SettingsManager) vivent dans
+    // SettingsViewModel ; les propriétés ci-dessous délèguent, API inchangée.
+    val settings = SettingsViewModel(container.settingsManager)
 
-    private val navigationHistory = mutableStateListOf<AppScreen>()
-    var currentScreen by mutableStateOf(AppScreen.CHAT)
-        private set
+    // ── Navigation (corr-003 : extraite dans NavigationViewModel) ──────────
+    // Le NavHost de ZNavHost.kt reste la source de vérité du back stack. Les
+    // écrans continuent d'appeler navigateTo / navigateBack (API inchangée) ;
+    // les demandes sont émises comme événements SharedFlow (corr-009) que
+    // ZNavHost collecte puis exécute. currentScreen est resynchronisé depuis
+    // la route réellement affichée, ce qui couvre aussi les deep links.
+    val navigation = NavigationViewModel { editor.active?.path }
 
-    fun navigateTo(screen: AppScreen, editorPath: String? = null) {
-        if (currentScreen == screen) return
-        navigationHistory.add(currentScreen)
-        navRouteRequest = when (screen) {
-            AppScreen.EDITOR -> ZRoutes.editor(editorPath ?: editor.active?.path)
-            else -> ZRoutes.of(screen)
-        }
-    }
+    var currentScreen: AppScreen
+        get() = navigation.currentScreen
+        private set(value) { navigation.syncScreenFromRouteForce(value) }
 
-    fun navigationPreviousScreen(): AppScreen =
-        navigationHistory.lastOrNull() ?: AppScreen.CHAT
+    fun navigateTo(screen: AppScreen, editorPath: String? = null) =
+        navigation.navigateTo(screen, editorPath)
 
-    fun navigateBack(): Boolean {
-        navBackRequest++
-        return true
-    }
+    fun navigationPreviousScreen(): AppScreen = navigation.navigationPreviousScreen()
 
-    /** Consomme la requête de route après son exécution par le NavHost. */
-    fun consumeNavRouteRequest() {
-        navRouteRequest = null
-    }
+    fun navigateBack(): Boolean = navigation.navigateBack()
 
-    /**
-     * Resynchronise l'état depuis la route réellement affichée par le NavHost
-     * (y compris après un retour système, un deep link ou un raccourci).
-     */
-    fun syncScreenFromRoute(route: String?) {
-        val screen = when {
-            route == null -> AppScreen.CHAT
-            route.startsWith("editor") -> AppScreen.EDITOR
-            route.startsWith("files") -> AppScreen.FILE_BROWSER
-            route.startsWith("terminal") -> AppScreen.TERMINAL
-            route.startsWith("settings") -> AppScreen.SETTINGS
-            else -> AppScreen.CHAT
-        }
-        if (currentScreen != screen) {
-            currentScreen = screen
-            navigationHistory.clear()
-        }
-    }
-    val settingsManager = SettingsManager(application)
-    private val aiRepository = AiRepository()
+    /** Resynchronise l'écran courant depuis la route affichée par le NavHost. */
+    fun syncScreenFromRoute(route: String?) = navigation.syncScreenFromRoute(route)
 
-    // ── Dépôts de données du LOT 5 (MA56/MA60/MA65) ─────────────────────
-    private val conversationRepo = ConversationRepository(application)
-    private val usageRepo = UsageRepository(application)
-    private val activityRepo = ActivityRepository(application)
+    // ── Dépôts de données du LOT 5 (MA56/MA60/MA65) — via AppContainer ────
 
     // ── Réglages (miroirs d'état pour l'UI) ─────────────────────────────────
 
@@ -329,91 +303,70 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         settingsManager.smartMode = value
     }
 
-    var showKeyVisible by mutableStateOf(false)
+    var showKeyVisible: Boolean
+        get() = settings.showKeyVisible
+        set(value) { settings.showKeyVisible = value }
 
-    // ── Apparence & flux de démarrage ─────────────────────────────────────────
-    var themeMode by mutableStateOf(settingsManager.themeMode)
-    var oledBlack by mutableStateOf(settingsManager.oledBlack)
-        private set
-    var dynamicSystemColors by mutableStateOf(settingsManager.dynamicSystemColors)
-        private set
-    var cornerRadius by mutableStateOf(settingsManager.cornerRadius)
-        private set
-    var scheduledDarkTime by mutableStateOf(settingsManager.scheduledDarkTime)
-        private set
-    var scheduledLightTime by mutableStateOf(settingsManager.scheduledLightTime)
-        private set
-    var fontFamilyId by mutableStateOf(settingsManager.fontFamilyId)
-        private set
-    var fontScale by mutableStateOf(settingsManager.fontScale)
-        private set
-    var densityScale by mutableStateOf(settingsManager.densityScale)
-        private set
+    // ── Apparence & flux de démarrage (corr-004 : délégation SettingsViewModel) ──
+    var themeMode: com.zagent.app.ui.theme.ThemeMode
+        get() = settings.themeMode
+        private set(value) { settings.updateThemeMode(value) }
+    var oledBlack: Boolean
+        get() = settings.oledBlack
+        private set(value) { settings.updateOledBlack(value) }
+    var dynamicSystemColors: Boolean
+        get() = settings.dynamicSystemColors
+        private set(value) { settings.updateDynamicSystemColors(value) }
+    var cornerRadius: Int
+        get() = settings.cornerRadius
+        private set(value) { settings.updateCornerRadius(value) }
+    var scheduledDarkTime: String
+        get() = settings.scheduledDarkTime
+        private set(value) { settings.updateScheduledDarkTime(value) }
+    var scheduledLightTime: String
+        get() = settings.scheduledLightTime
+        private set(value) { settings.updateScheduledLightTime(value) }
+    var fontFamilyId: String
+        get() = settings.fontFamilyId
+        private set(value) { settings.updateFontFamily(value) }
+    var fontScale: Float
+        get() = settings.fontScale
+        private set(value) { settings.updateFontScale(value) }
+    var densityScale: Float
+        get() = settings.densityScale
+        private set(value) { settings.updateDensityScale(value) }
 
-    fun updateFontFamily(value: String) { fontFamilyId = value; settingsManager.fontFamilyId = value }
-    // MàJ 97 — plage d'échelle de texte 85 % – 130 %.
-    fun updateFontScale(value: Float) { fontScale = value.coerceIn(0.85f, 1.30f); settingsManager.fontScale = fontScale }
-    fun updateDensityScale(value: Float) { densityScale = value.coerceIn(0.88f, 1.12f); settingsManager.densityScale = densityScale }
-
-    fun updateOledBlack(value: Boolean) { oledBlack = value; settingsManager.oledBlack = value }
-    fun updateDynamicSystemColors(value: Boolean) { dynamicSystemColors = value; settingsManager.dynamicSystemColors = value }
-    fun updateCornerRadius(value: Int) { cornerRadius = value; settingsManager.cornerRadius = value }
-    fun updateScheduledDarkTime(value: String) { scheduledDarkTime = value; settingsManager.scheduledDarkTime = value }
-    fun updateScheduledLightTime(value: String) { scheduledLightTime = value; settingsManager.scheduledLightTime = value }
-    var glassSettings by mutableStateOf(settingsManager.loadGlassSettings(false))
-
-    /** MA72 : coupe les transitions de navigation (fondu/glissement) quand il est actif. */
-    var reduceAnimations by mutableStateOf(settingsManager.reduceAnimations)
-        private set
-
-    fun updateReduceAnimations(value: Boolean) {
-        reduceAnimations = value
-        settingsManager.reduceAnimations = value
-    }
-
-    /** MàJ 91 — niveau de retour haptique (Désactivé / Léger / Normal). */
-    var hapticLevel by mutableStateOf(settingsManager.hapticLevel)
-        private set
-
-    fun updateHapticLevel(value: HapticLevel) {
-        hapticLevel = value
-        settingsManager.hapticLevel = value
-    }
-
-    /**
-     * MàJ 100 — langue de l'interface ("" = système, "fr", "en"). Le miroir
-     * d'état sert à l'aperçu du sélecteur ; l'application effective est faite
-     * par MainActivity via AppCompatDelegate.setApplicationLocales.
-     */
-    var langueUi by mutableStateOf(settingsManager.langueUi)
-        private set
-
-    fun updateLangue(value: String) {
-        langueUi = value
-        settingsManager.langueUi = value
-    }
-
-    // ── LOT 7 : éditeur & terminal ─────────────────────────────────────────
-
-    /** MA81 : « Code toujours sombre » — l'éditeur garde un fond sombre même en interface claire. */
-    var codeAlwaysDark by mutableStateOf(settingsManager.codeAlwaysDark)
-        private set
-
-    fun updateCodeAlwaysDark(value: Boolean) {
-        codeAlwaysDark = value
-        settingsManager.codeAlwaysDark = value
-    }
-
-    /** MA83 : taille de police de l'éditeur (10 à 22 sp), mémorisée dans les réglages. */
-    var editorFontSize by mutableStateOf(settingsManager.editorFontSize)
-        private set
-
-    fun updateEditorFontSize(value: Int) {
-        val target = value.coerceIn(10, 22)
-        if (target == editorFontSize) return
-        editorFontSize = target
-        settingsManager.editorFontSize = target
-    }
+    fun updateFontFamily(value: String) = settings.updateFontFamily(value)
+    fun updateFontScale(value: Float) = settings.updateFontScale(value)
+    fun updateDensityScale(value: Float) = settings.updateDensityScale(value)
+    fun updateOledBlack(value: Boolean) = settings.updateOledBlack(value)
+    fun updateDynamicSystemColors(value: Boolean) = settings.updateDynamicSystemColors(value)
+    fun updateCornerRadius(value: Int) = settings.updateCornerRadius(value)
+    fun updateScheduledDarkTime(value: String) = settings.updateScheduledDarkTime(value)
+    fun updateScheduledLightTime(value: String) = settings.updateScheduledLightTime(value)
+    var glassSettings: com.zagent.app.ui.theme.GlassSettings
+        get() = settings.glassSettings
+        set(value) { settings.glassSettings = value }
+    var reduceAnimations: Boolean
+        get() = settings.reduceAnimations
+        private set(value) { settings.updateReduceAnimations(value) }
+    fun updateReduceAnimations(value: Boolean) = settings.updateReduceAnimations(value)
+    var hapticLevel: com.zagent.app.data.HapticLevel
+        get() = settings.hapticLevel
+        private set(value) { settings.updateHapticLevel(value) }
+    fun updateHapticLevel(value: com.zagent.app.data.HapticLevel) = settings.updateHapticLevel(value)
+    var langueUi: String
+        get() = settings.langueUi
+        private set(value) { settings.updateLangue(value) }
+    fun updateLangue(value: String) = settings.updateLangue(value)
+    var codeAlwaysDark: Boolean
+        get() = settings.codeAlwaysDark
+        private set(value) { settings.updateCodeAlwaysDark(value) }
+    fun updateCodeAlwaysDark(value: Boolean) = settings.updateCodeAlwaysDark(value)
+    var editorFontSize: Int
+        get() = settings.editorFontSize
+        private set(value) { settings.updateEditorFontSize(value) }
+    fun updateEditorFontSize(value: Int) = settings.updateEditorFontSize(value)
 
     /** MA83 : taille de police du terminal (10 à 22 sp), portée par TerminalController. */
     val terminalFontSize: Int get() = terminal.fontSize
@@ -422,63 +375,41 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         terminal.updateFontSize(value)
     }
 
-    fun updateGlassSettings(dark: Boolean, value: GlassSettings) { glassSettings = value; settingsManager.saveGlassSettings(dark, value) }
-    fun reloadGlassSettings(dark: Boolean) { glassSettings = settingsManager.loadGlassSettings(dark) }
+    fun updateGlassSettings(dark: Boolean, value: com.zagent.app.ui.theme.GlassSettings) =
+        settings.updateGlassSettings(dark, value)
+
+    fun reloadGlassSettings(dark: Boolean) = settings.reloadGlassSettings(dark)
 
     /** Usage tokens/coût sous les messages (MA45). */
-    var usageUnderMessages by mutableStateOf(settingsManager.usageUnderMessages)
-    fun toggleUsageUnderMessages() {
-        usageUnderMessages = !usageUnderMessages
-        settingsManager.usageUnderMessages = usageUnderMessages
-    }
+    var usageUnderMessages: Boolean
+        get() = settings.usageUnderMessages
+        set(value) { settings.usageUnderMessages = value }
+    fun toggleUsageUnderMessages() = settings.toggleUsageUnderMessages()
 
-    var onboardingDone by mutableStateOf(settingsManager.onboardingDone)
+    var onboardingDone: Boolean
+        get() = settings.onboardingDone
+        set(value) { settings.onboardingDone = value }
 
-    fun updateThemeMode(mode: ThemeMode) {
-        themeMode = mode
-        settingsManager.themeMode = mode
-    }
+    fun updateThemeMode(mode: com.zagent.app.ui.theme.ThemeMode) = settings.updateThemeMode(mode)
 
-    fun completeOnboarding() {
-        onboardingDone = true
-        settingsManager.onboardingDone = true
-    }
+    fun completeOnboarding() = settings.completeOnboarding()
 
-    // ── Conversation ────────────────────────────────────────────────────────
-    private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
-    val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
+    // ── Conversation (corr-002 : extraite dans ChatViewModel) ───────────────
+    val messages: StateFlow<List<ChatMessage>> get() = chat.messages
 
-    // ── Brouillons, fichiers du projet et pièces jointes (MA49/MA52/MA53/MA55) ──
-    /** Identifiant de la conversation courante : sert de clé au brouillon sauvegardé (MA55). */
-    var conversationId by mutableStateOf("")
-        private set
+    /** Identifiant de la conversation courante : sert de clé au brouillon (MA55). */
+    var conversationId: String
+        get() = chat.conversationId
+        private set(value) { chat.setConversationId(value) }
 
-    private var draftSaveJob: Job? = null
-
-    init {
-        conversationId = settingsManager.lastConversationId.ifBlank { UUID.randomUUID().toString() }
-        settingsManager.lastConversationId = conversationId
-    }
-
-    /** Appelé à chaque frappe : enregistre le brouillon avec un léger délai pour ne pas surcharger le stockage. */
-    fun onInputChanged(text: String) {
-        draftSaveJob?.cancel()
-        val id = conversationId
-        draftSaveJob = viewModelScope.launch(Dispatchers.IO) {
-            delay(600)
-            settingsManager.saveDraft(id, text)
-        }
-    }
+    /** Appelé à chaque frappe : enregistre le brouillon avec un léger délai (MA55). */
+    fun onInputChanged(text: String) = chat.onInputChanged(text)
 
     /** Appelé après un envoi : le brouillon de la conversation repart de zéro. */
-    fun onInputSent() {
-        draftSaveJob?.cancel()
-        val id = conversationId
-        viewModelScope.launch(Dispatchers.IO) { settingsManager.saveDraft(id, "") }
-    }
+    fun onInputSent() = chat.onInputSent()
 
     /** Brouillon sauvegardé de la conversation courante (MA55). */
-    fun currentDraft(): String = settingsManager.draftFor(conversationId)
+    fun currentDraft(): String = chat.currentDraft()
 
     /** Fichiers du projet (chemins relatifs) pour l'autocomplétion des mentions « @ » (MA53). */
     var projectFiles by mutableStateOf<List<String>>(emptyList())
@@ -639,13 +570,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
 
     // ── Limite d'étapes ─────────────────────────────────────────────────────
-    var maxStepsInput by mutableStateOf(settingsManager.maxSteps)
+    var maxStepsInput: Int
+        get() = settings.maxStepsInput
+        set(value) { settings.maxStepsInput = value }
 
-    fun setMaxSteps(value: Int) {
-        val n = value.coerceIn(5, 100)
-        maxStepsInput = n
-        settingsManager.maxSteps = n
-    }
+    fun setMaxSteps(value: Int) = settings.setMaxSteps(value)
 
     /** Vrai quand l'agent s'est arrêté sur la limite d'étapes : le chat propose « Continuer ». */
     var stepLimitReached by mutableStateOf(false)
@@ -679,8 +608,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     /** Vrai si une partie du compteur est une estimation (le fournisseur n'a pas renvoyé l'usage). */
     var tokensEstimated by mutableStateOf(false)
 
-    var priceInInput by mutableStateOf(settingsManager.priceInPerM)
-    var priceOutInput by mutableStateOf(settingsManager.priceOutPerM)
+    var priceInInput: Float
+        get() = settings.priceInInput
+        set(value) { settings.priceInInput = value }
+    var priceOutInput: Float
+        get() = settings.priceOutInput
+        set(value) { settings.priceOutInput = value }
 
     val totalTokens: Int get() = promptTokens + completionTokens
 
@@ -690,12 +623,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         else promptTokens.toDouble() * priceInInput / 1_000_000.0 +
             completionTokens.toDouble() * priceOutInput / 1_000_000.0
 
-    fun setPrices(priceIn: Float, priceOut: Float) {
-        priceInInput = priceIn.coerceAtLeast(0f)
-        priceOutInput = priceOut.coerceAtLeast(0f)
-        settingsManager.priceInPerM = priceInInput
-        settingsManager.priceOutPerM = priceOutInput
-    }
+    fun setPrices(priceIn: Float, priceOut: Float) = settings.setPrices(priceIn, priceOut)
 
     // ── Git visuel ──────────────────────────────────────────────────────────
     data class GitChanges(val status: String, val diff: String, val error: String? = null)
@@ -1037,7 +965,7 @@ done; } 2>&1 | head -c 50000
         fileDiffCounts.clear()
         agentUndo.clear()
         isLoading = false
-        _messages.value = emptyList()
+        chat.edit.value = emptyList()
         statusMessage = ""
         isCode1305Error = false
         showFallbackModelButton = false
@@ -1052,7 +980,7 @@ done; } 2>&1 | head -c 50000
         completionTokens = 0
         tokensEstimated = false
         // MA55 : nouvelle conversation → nouvel identifiant, brouillon reparti à zéro.
-        draftSaveJob?.cancel()
+        chat.cancelDraftSave()
         val oldId = conversationId
         conversationId = UUID.randomUUID().toString()
         settingsManager.lastConversationId = conversationId
@@ -1080,7 +1008,7 @@ done; } 2>&1 | head -c 50000
     /** Relance la boucle de l'agent sur l'historique courant (après une erreur). */
     fun retryLast(auto: Boolean = false) {
         if (isLoading) return
-        if (_messages.value.isEmpty()) return
+        if (chat.edit.value.isEmpty()) return
         if (auto) autoRetryCount++
         statusMessage = ""
         isNetworkError = false
@@ -1403,7 +1331,7 @@ done; } 2>&1 | head -c 50000
                     put("role", "system")
                     put("content", systeme)
                 })
-                for (m in _messages.value) {
+                for (m in chat.edit.value) {
                     if (m.role != "user" && m.role != "assistant") continue
                     add(buildJsonObject {
                         put("role", m.role)
@@ -1445,7 +1373,7 @@ done; } 2>&1 | head -c 50000
                 return
             }
             withContext(Dispatchers.Main) {
-                _messages.value = _messages.value + ChatMessage("assistant", texte, modele = moi)
+                chat.edit.value = chat.edit.value + ChatMessage("assistant", texte, modele = moi)
                 liveText = ""
                 statusMessage = ""
             }
@@ -1463,8 +1391,8 @@ done; } 2>&1 | head -c 50000
         val modeleB = duoModeleB?.takeIf { it.isNotBlank() && it != effectiveModel }
             ?: ModelCatalog.chaineRepli(effectiveModel).firstOrNull { clePourModele(it).isNotBlank() }
         if (modeleB == null || clePourModele(modeleB).isBlank()) return
-        val reponseA = _messages.value.lastOrNull { it.role == "assistant" }?.content ?: return
-        val demande = _messages.value.lastOrNull { it.role == "user" }
+        val reponseA = chat.edit.value.lastOrNull { it.role == "assistant" }?.content ?: return
+        val demande = chat.edit.value.lastOrNull { it.role == "user" }
             ?.content.orEmpty().substringBefore(CTX_MARKER)
         val labelB = ModelCatalog.find(modeleB)?.label ?: modeleB
         withContext(Dispatchers.Main) {
@@ -1502,7 +1430,7 @@ done; } 2>&1 | head -c 50000
         withContext(Dispatchers.Main) {
             liveText = ""
             if (!texte.isNullOrBlank()) {
-                _messages.value = _messages.value + ChatMessage("assistant", texte, modele = labelB)
+                chat.edit.value = chat.edit.value + ChatMessage("assistant", texte, modele = labelB)
             }
             statusMessage = ""
         }
@@ -1536,7 +1464,7 @@ done; } 2>&1 | head -c 50000
                 val ctx = buildContextBlock(userText)
                 val stored = if (ctx.isBlank()) userText else userText + CTX_MARKER + ctx
                 withContext(Dispatchers.Main) {
-                    _messages.value = _messages.value + ChatMessage("user", stored)
+                    chat.edit.value = chat.edit.value + ChatMessage("user", stored)
                     attachments.clear()
                 }
                 persistCurrentConversation()
@@ -1602,18 +1530,18 @@ done; } 2>&1 | head -c 50000
         return when (action) {
             ACTION_SHORTCUT_NEW_CHAT -> {
                 clearConversation()
-                navRouteRequest = ZRoutes.CHAT
+                navigation.requestRoute(ZRoutes.CHAT)
                 true
             }
             ACTION_SHORTCUT_OPEN_TERMINAL -> {
-                navRouteRequest = ZRoutes.TERMINAL
+                navigation.requestRoute(ZRoutes.TERMINAL)
                 true
             }
             ACTION_SHORTCUT_LAST_PROJECT -> {
                 // Dernier projet connu : on affiche directement l'explorateur ;
                 // sinon l'écran de sélection de projet s'ouvre par-dessus.
                 if (workingFolderUriString.isNullOrBlank()) isProjectPickerOpen = true
-                navRouteRequest = ZRoutes.FILES
+                navigation.requestRoute(ZRoutes.FILES)
                 true
             }
             ACTION_SHORTCUT_OPEN_GIT -> {
@@ -1625,7 +1553,7 @@ done; } 2>&1 | head -c 50000
                 // MA39 : l'écran Modèles est une feuille du LOT 5 accrochée aux
                 // Réglages — on ouvre les Réglages avec une demande en attente.
                 pendingOpenModels = true
-                navRouteRequest = ZRoutes.SETTINGS
+                navigation.requestRoute(ZRoutes.SETTINGS)
                 true
             }
             else -> false
@@ -1727,7 +1655,7 @@ done; } 2>&1 | head -c 50000
     /** Efface le fil de messages sans réinitialiser le reste de la conversation (MA52). */
     fun clearMessagesOnly() {
         if (isLoading) return
-        _messages.value = emptyList()
+        chat.edit.value = emptyList()
         statusMessage = ""
     }
 
@@ -1745,7 +1673,7 @@ done; } 2>&1 | head -c 50000
             appendLine()
             append("Astuce : tape « @ » pour joindre un fichier du projet au contexte.")
         }
-        _messages.value = _messages.value + ChatMessage("assistant", help)
+        chat.edit.value = chat.edit.value + ChatMessage("assistant", help)
     }
 
     private suspend fun runAgentLoop() {
@@ -1755,7 +1683,7 @@ done; } 2>&1 | head -c 50000
         showFallbackModelButton = false
 
         val fileRepo = getFileRepo()
-        _messages.value.lastOrNull { it.role == "user" }?.content?.let { ask ->
+        chat.edit.value.lastOrNull { it.role == "user" }?.content?.let { ask ->
             terminal.logAgent("\n== Demande : " + ask.trim().lineSequence().first().take(120))
         }
         val basePrompt = "Tu es un agent de code qui travaille dans un dossier de projet. Utilise les outils pour explorer, lire, créer des dossiers, écrire et supprimer des fichiers (delete_file ; pour vider un fichier, write_file avec contenu vide). Si tu ne connais pas la structure, commence par list_dir ; utilise search_in_files pour retrouver du code. Lis un fichier avant de le modifier. Pour modifier un fichier existant, utilise edit_file (un passage exact, unique) ; si edit_file échoue, relis le fichier avec read_file. N'utilise write_file (contenu COMPLET) que pour créer un fichier ou le réécrire entièrement. Les chemins sont relatifs au dossier de travail. Tu peux exécuter n'importe quelle commande shell dans le dossier du projet avec run_command (git, npm, node, python, pip, clang, pkg install -y, etc.) : utilise-le pour installer, compiler, lancer des tests, vérifier ton travail et faire du git ; lis la sortie et corrige les erreurs. Les commandes ne peuvent pas être interactives (pas d'éditeur, pas de saisie) : ajoute les options non interactives (-y, --yes). Si la demande est floue ou qu'un choix important manque (sujet, public, style, durée, technologie…), appelle d'abord ask_user avec 1 à 4 questions courtes à choix (2 à 4 options chacune) au lieu de deviner, puis continue avec les réponses sans reposer les mêmes questions. Avant chaque appel d'outil, écris une seule phrase courte qui annonce ce que tu vas faire (ex : « Je lance git push »). Pour toute demande de 3 étapes ou plus, appelle d'abord update_todos avec la liste des tâches, puis remets-la à jour (liste complète) quand une tâche est terminée. Réponds en français, de façon courte."
@@ -1785,7 +1713,7 @@ done; } 2>&1 | head -c 50000
                     put("role", "system")
                     put("content", systemPrompt)
                 })
-                val history = _messages.value
+                val history = chat.edit.value
                 val compactBefore = history.size - 10
                 for ((idx, msg) in history.withIndex()) {
                     val sentContent = if (idx < compactBefore && msg.role == "tool") compactToolOutput(msg.content) else msg.content
@@ -1912,7 +1840,7 @@ done; } 2>&1 | head -c 50000
                         val assistantMsg = ChatMessage("assistant", content ?: "", reasoning = reasoning.ifBlank { null })
                         alertUser("L'agent a terminé", (content ?: "Tâche terminée.").trim().take(140))
                         withContext(Dispatchers.Main) {
-                            _messages.value = _messages.value + assistantMsg
+                            chat.edit.value = chat.edit.value + assistantMsg
                             liveText = ""
                             liveReasoning = ""
                             isLoading = false
@@ -1925,7 +1853,7 @@ done; } 2>&1 | head -c 50000
                         val reasoning = liveReasoning.ifBlank { result.reasoningContent ?: "" }
                         val assistantMsg = ChatMessage("assistant", content, toolCalls = toolCalls, reasoning = reasoning.ifBlank { null })
                         withContext(Dispatchers.Main) {
-                            _messages.value = _messages.value + assistantMsg
+                            chat.edit.value = chat.edit.value + assistantMsg
                             liveText = ""
                             liveReasoning = ""
                         }
@@ -1951,7 +1879,7 @@ done; } 2>&1 | head -c 50000
                                 toolLog = tc.name
                             )
                             withContext(Dispatchers.Main) {
-                                _messages.value = _messages.value + toolMsg
+                                chat.edit.value = chat.edit.value + toolMsg
                             }
                         }
                     }
@@ -2019,10 +1947,10 @@ done; } 2>&1 | head -c 50000
     /** Remplace un message utilisateur et supprime toute la suite, puis relance l'agent (MA37). */
     fun editAndResend(messageIndex: Int, newText: String) {
         if (isLoading || newText.isBlank()) return
-        val list = _messages.value
+        val list = chat.edit.value
         if (messageIndex !in list.indices || list[messageIndex].role != "user") return
         val kept = list.subList(0, messageIndex)
-        _messages.value = kept + ChatMessage("user", newText.trim())
+        chat.edit.value = kept + ChatMessage("user", newText.trim())
         agentUndo.clear()
         fileDiffCounts.clear()
         summaryFiles.clear()
@@ -2034,9 +1962,9 @@ done; } 2>&1 | head -c 50000
     /** Supprime un message (et tout ce qui suit s'il vient de l'utilisateur) — menu contextuel MA36. */
     fun deleteFromMessage(messageIndex: Int) {
         if (isLoading) return
-        val list = _messages.value
+        val list = chat.edit.value
         if (messageIndex !in list.indices) return
-        _messages.value = if (list[messageIndex].role == "user") {
+        chat.edit.value = if (list[messageIndex].role == "user") {
             list.subList(0, messageIndex)
         } else {
             list.filterIndexed { i, _ -> i != messageIndex }
@@ -2046,11 +1974,11 @@ done; } 2>&1 | head -c 50000
     /** Régénère la réponse : supprime la fin (assistant + outils) jusqu'au dernier message utilisateur, puis relance (MA36). */
     fun regenerateLast() {
         if (isLoading) return
-        val list = _messages.value
+        val list = chat.edit.value
         var last = list.lastIndex
         while (last >= 0 && list[last].role != "user") last--
         if (last < 0) return
-        _messages.value = list.subList(0, last + 1)
+        chat.edit.value = list.subList(0, last + 1)
         agentUndo.clear()
         fileDiffCounts.clear()
         retryLast()
@@ -2501,16 +2429,15 @@ done; } 2>&1 | head -c 50000
     // ═════════════════════════════════════════════════════════════════════════
 
     // ── MA56 : historique des conversations ──────────────────────────────────
-    var conversationList by mutableStateOf<List<ConversationMeta>>(emptyList())
-        private set
+    var conversationList: List<ConversationMeta>
+        get() = chat.conversationList
+        private set(value) { chat.setConversationList(value) }
 
-    fun refreshConversations() {
-        conversationList = conversationRepo.loadIndex()
-    }
+    fun refreshConversations() = chat.refreshConversations()
 
     /** Archive la conversation courante (index + messages) sur le thread IO. */
     fun persistCurrentConversation() {
-        val msgs = _messages.value
+        val msgs = chat.edit.value
         val id = conversationId
         if (msgs.isEmpty()) return
         viewModelScope.launch(Dispatchers.IO) {
@@ -2568,8 +2495,8 @@ done; } 2>&1 | head -c 50000
                 )
             }
             withContext(Dispatchers.Main) {
-                if (_messages.value.isNotEmpty()) persistCurrentConversation()
-                _messages.value = restored
+                if (chat.edit.value.isNotEmpty()) persistCurrentConversation()
+                chat.edit.value = restored
                 conversationId = id
                 settingsManager.lastConversationId = id
                 chatModel = null
@@ -2586,38 +2513,18 @@ done; } 2>&1 | head -c 50000
                 liveReasoning = ""
                 liveCommand = null
                 liveCommandId = null
-                draftSaveJob?.cancel()
+                chat.cancelDraftSave()
             }
         }
     }
 
     /** Supprime une conversation de l'historique (MA56). */
     fun deleteConversation(id: String) {
-        if (id == conversationId) {
-            clearConversation()
-        }
-        viewModelScope.launch(Dispatchers.IO) {
-            conversationRepo.deleteMessages(id)
-            val index = conversationRepo.loadIndex().filter { it.id != id }
-            conversationRepo.saveIndex(index)
-            val fresh = conversationRepo.loadIndex()
-            withContext(Dispatchers.Main) { conversationList = fresh }
-        }
+        chat.deleteConversation(id, conversationId) { clearConversation() }
     }
 
     /** Épingle / désépingle une conversation (glisser vers la droite, MA56). */
-    fun toggleConversationPin(id: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val index = conversationRepo.loadIndex().toMutableList()
-            val i = index.indexOfFirst { it.id == id }
-            if (i >= 0) {
-                index[i] = index[i].copy(pinned = !index[i].pinned)
-                conversationRepo.saveIndex(index)
-            }
-            val fresh = conversationRepo.loadIndex()
-            withContext(Dispatchers.Main) { conversationList = fresh }
-        }
-    }
+    fun toggleConversationPin(id: String) = chat.toggleConversationPin(id)
 
     // ── MA57 : projets favoris + racine publique ─────────────────────────────
     fun projectsRootPublic(): java.io.File = projectsRoot()
@@ -2960,7 +2867,7 @@ done; } 2>&1 | head -c 50000
         val sb = StringBuilder()
         sb.append("# Conversation ZAgent\n\n")
         sb.append("_Projet : ").append(folderLabel).append(" · ").append(df.format(java.util.Date())).append("_\n\n")
-        for (m in _messages.value) {
+        for (m in chat.edit.value) {
             val raw = m.content.orEmpty()
             val content = if (m.role == "user") raw.substringBefore(CTX_MARKER) else raw
             if (m.role == "tool" && !includeTools) continue

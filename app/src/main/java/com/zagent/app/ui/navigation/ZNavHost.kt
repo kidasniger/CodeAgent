@@ -33,6 +33,7 @@ import com.zagent.app.ui.screens.SettingsScreen
 import com.zagent.app.ui.screens.TerminalScreen
 import com.zagent.app.ui.theme.LocalReduceMotion
 import com.zagent.app.ui.viewmodel.MainViewModel
+import com.zagent.app.ui.viewmodel.NavEvent
 
 /**
  * Hôte de navigation unique de l'application (MA71 + MA72).
@@ -70,26 +71,33 @@ fun ZNavHost(
     // Easing « emphasizedDecelerate » du Material Motion (Android).
     val emphasizedDecelerate = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
 
-    // ── Pont ViewModel → NavHost : exécute la dernière demande de navigation ──
-    LaunchedEffect(viewModel.navRouteRequest) {
-        val route = viewModel.navRouteRequest ?: return@LaunchedEffect
-        viewModel.consumeNavRouteRequest()
-        // Déjà sur cette destination (les routes à argument sont comparées sans
-        // leur partie « ?… ») : ne relance pas la transition.
-        val pattern = route.substringBefore('?')
-        val current = navController.currentDestination?.route?.substringBefore('?')
-        if (pattern == current) return@LaunchedEffect
-        navController.navigate(route) {
-            launchSingleTop = true
-            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-            restoreState = true
+    // ── Pont ViewModel → NavHost : corr-009, collecte des événements de navigation
+    // émis par NavigationViewModel (SharedFlow) — remplace l'ancien LaunchedEffect
+    // sur navRouteRequest/navBackRequest qui rejouait l'événement à la
+    // recomposition. Chaque événement est exécuté une seule fois.
+    LaunchedEffect(viewModel.navigation) {
+        viewModel.navigation.events.collect { event ->
+            when (event) {
+                is NavEvent.Route -> {
+                    viewModel.navigation.consumeReplayedEvent()
+                    // Déjà sur cette destination (les routes à argument sont
+                    // comparées sans leur partie « ?… ») : ne relance pas la
+                    // transition.
+                    val pattern = event.route.substringBefore('?')
+                    val current = navController.currentDestination?.route?.substringBefore('?')
+                    if (pattern == current) return@collect
+                    navController.navigate(event.route) {
+                        launchSingleTop = true
+                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                        restoreState = true
+                    }
+                }
+                is NavEvent.Back -> {
+                    viewModel.navigation.consumeReplayedEvent()
+                    navController.popBackStack()
+                }
+            }
         }
-    }
-
-    // ── Pont ViewModel → NavHost : demande de retour (pop du back stack) ─────
-    LaunchedEffect(viewModel.navBackRequest) {
-        if (viewModel.navBackRequest == 0) return@LaunchedEffect
-        navController.popBackStack()
     }
 
     // ── Pont NavHost → ViewModel : resynchronise l'écran courant ────────────

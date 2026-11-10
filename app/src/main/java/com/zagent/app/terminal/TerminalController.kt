@@ -12,7 +12,6 @@ import android.view.MotionEvent
 import android.view.inputmethod.InputMethodManager
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.termux.terminal.TerminalSession
@@ -74,17 +73,23 @@ class TerminalController(
     var state by mutableStateOf<State>(if (isInstalled()) State.Ready else State.Idle)
         private set
 
-    /** Un onglet shell : sa session et son état (terminée ou non). */
-    class ShellTab(val session: TerminalSession, val number: Int) {
-        var ended by mutableStateOf(false)
+    // corr-005 : l'état et la logique d'onglets vivent dans TerminalViewModel ;
+    // le contrôleur reste responsable du bootstrap et de la création de session,
+    // injectée ici comme fabrique (null = bootstrap incomplet, pas d'onglet).
+    private val tabState = TerminalViewModel {
+        if (!isInstalled()) null else createSession()
     }
 
-    val tabs = mutableStateListOf<ShellTab>()
-    var activeTab by mutableIntStateOf(0)
-    private var tabCounter = 0
+    /** Onglets shell (corr-005 : délégation vers [TerminalViewModel.tabs]). */
+    val tabs: List<TerminalViewModel.ShellTab> get() = tabState.tabs
 
-    val session: TerminalSession? get() = tabs.getOrNull(activeTab)?.session
-    val sessionEnded: Boolean get() = tabs.getOrNull(activeTab)?.ended ?: false
+    /** Onglet affiché ; TerminalScreen le modifie directement (API conservée). */
+    var activeTab: Int
+        get() = tabState.activeTab
+        set(value) { tabState.activeTab = value }
+
+    val session: TerminalSession? get() = tabState.session
+    val sessionEnded: Boolean get() = tabState.sessionEnded
 
     private val prefs = app.getSharedPreferences("terminal_prefs", Context.MODE_PRIVATE)
 
@@ -736,39 +741,18 @@ class TerminalController(
         return env.toTypedArray()
     }
 
-    /** Ouvre le premier onglet, ou relance l'onglet actif. */
+    /** Ouvre le premier onglet, ou relance l'onglet actif (corr-005 : délégué). */
     fun openSession() {
-        if (!isInstalled()) return
-        if (tabs.isEmpty()) {
-            addTab()
-            return
-        }
-        val i = activeTab.coerceIn(0, tabs.lastIndex)
-        val old = tabs[i]
-        val s = createSession() ?: return
-        old.session.finishIfRunning()
-        tabs[i] = ShellTab(s, old.number)
+        tabState.openSession()
     }
 
-    /** Nouvel onglet shell dans le dossier du projet actif. */
+    /** Nouvel onglet shell dans le dossier du projet actif (corr-005 : délégué). */
     fun addTab() {
-        if (!isInstalled()) return
-        val s = createSession() ?: return
-        tabs.add(ShellTab(s, ++tabCounter))
-        activeTab = tabs.lastIndex
+        tabState.addTab()
     }
 
     fun closeTab(index: Int) {
-        val t = tabs.getOrNull(index) ?: return
-        t.session.finishIfRunning()
-        val old = activeTab
-        tabs.removeAt(index)
-        activeTab = when {
-            tabs.isEmpty() -> 0
-            index < old -> old - 1
-            else -> old.coerceAtMost(tabs.lastIndex)
-        }
-        if (tabs.isEmpty()) tabCounter = 0
+        tabState.closeTab(index)
     }
 
     private fun createSession(): TerminalSession? {
