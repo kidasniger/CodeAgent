@@ -37,9 +37,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.zagent.app.ui.components.GlassCard
-import com.zagent.app.ui.components.Lot5Screen
-import com.zagent.app.ui.components.Lot5Section
+import com.zagent.app.ui.components.common.GlassCard
+import com.zagent.app.ui.components.common.OverlayScreen
+import com.zagent.app.ui.components.common.OverlaySection
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.Zcolors
@@ -82,9 +82,9 @@ fun InstructionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     var global by remember { mutableStateOf(viewModel.customInstructionsInput) }
     var project by remember { mutableStateOf(viewModel.projectInstructionsText()) }
 
-    Lot5Screen(title = "Instructions personnalisées", subtitle = "Ajoutées au prompt de l'agent", onBack = onBack) {
+    OverlayScreen(title = "Instructions personnalisées", subtitle = "Ajoutées au prompt de l'agent", onBack = onBack) {
         // ── Instructions globales ────────────────────────────────────────────
-        Lot5Section("Globales — toutes les conversations")
+        OverlaySection("Globales — toutes les conversations")
         GlassCard {
             EditorBox(
                 value = global,
@@ -105,7 +105,7 @@ fun InstructionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         Spacer(Modifier.height(16.dp))
 
         // ── Instructions du projet actif ─────────────────────────────────────
-        Lot5Section("Projet actif — " + viewModel.folderLabel)
+        OverlaySection("Projet actif — " + viewModel.folderLabel)
         GlassCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Folder, null, tint = c.violet, modifier = Modifier.size(14.dp))
@@ -136,7 +136,7 @@ fun InstructionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         Spacer(Modifier.height(16.dp))
 
         // ── Modèles prêts à l'emploi ─────────────────────────────────────────
-        Lot5Section("Modèles prêts à l'emploi")
+        OverlaySection("Modèles prêts à l'emploi")
         Text(
             "Un tap remplace le texte global par le modèle choisi.",
             style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp),

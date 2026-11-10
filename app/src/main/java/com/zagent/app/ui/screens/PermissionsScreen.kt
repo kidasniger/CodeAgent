@@ -41,11 +41,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zagent.app.data.ActivityEvent
 import com.zagent.app.data.ActivityStatus
-import com.zagent.app.ui.components.GlassCard
-import com.zagent.app.ui.components.Lot5EmptyState
-import com.zagent.app.ui.components.Lot5Screen
-import com.zagent.app.ui.components.Lot5Section
-import com.zagent.app.ui.components.MonoLine
+import com.zagent.app.ui.components.common.GlassCard
+import com.zagent.app.ui.components.common.OverlayEmptyState
+import com.zagent.app.ui.components.common.OverlayScreen
+import com.zagent.app.ui.components.common.OverlaySection
+import com.zagent.app.ui.components.common.MonoLine
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.Zcolors
@@ -68,9 +68,9 @@ fun PermissionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
 
     LaunchedEffect(Unit) { events = viewModel.activityRepoSnapshot() }
 
-    Lot5Screen(title = "Permissions & sécurité", subtitle = "Ce que l'agent peut faire sans te demander", onBack = onBack) {
+    OverlayScreen(title = "Permissions & sécurité", subtitle = "Ce que l'agent peut faire sans te demander", onBack = onBack) {
         // ── Mode général ─────────────────────────────────────────────────────
-        Lot5Section("Mode de l'agent")
+        OverlaySection("Mode de l'agent")
         GlassCard {
             ModeRow(
                 title = "Mode Auto",
@@ -88,7 +88,7 @@ fun PermissionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         Spacer(Modifier.height(16.dp))
 
         // ── Interrupteurs par type d'action ──────────────────────────────────
-        Lot5Section("Toujours autoriser")
+        OverlaySection("Toujours autoriser")
         GlassCard {
             ModeRow(
                 title = "Lire les fichiers",
@@ -126,7 +126,7 @@ fun PermissionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         Spacer(Modifier.height(16.dp))
 
         // ── Chemins toujours autorisés ───────────────────────────────────────
-        Lot5Section("Fichiers toujours autorisés")
+        OverlaySection("Fichiers toujours autorisés")
         GlassCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(10.dp)) {
             if (allowedPaths.isEmpty()) {
                 Text(
@@ -163,12 +163,12 @@ fun PermissionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         Spacer(Modifier.height(16.dp))
 
         // ── Historique des commandes approuvées ──────────────────────────────
-        Lot5Section("Commandes approuvées récemment")
+        OverlaySection("Commandes approuvées récemment")
         val approved = remember(events) {
             events.filter { it.kind == "commande" && (it.status == ActivityStatus.OK || it.status == ActivityStatus.ERREUR) }.take(15)
         }
         if (approved.isEmpty()) {
-            Lot5EmptyState(
+            OverlayEmptyState(
                 Icons.Default.Security,
                 "Aucune commande approuvée",
                 "Les commandes que tu valides (ou que le mode Auto exécute) apparaîtront ici avec leur date."

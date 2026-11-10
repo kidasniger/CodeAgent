@@ -21,8 +21,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.zagent.app.ui.components.GlassAlertDialog
-import com.zagent.app.ui.components.GlassPreviewCard
+import com.zagent.app.ui.components.common.GlassAlertDialog
+import com.zagent.app.ui.components.common.GlassPreviewCard
 import com.zagent.app.ui.theme.*
 import com.zagent.app.ui.viewmodel.MainViewModel
 

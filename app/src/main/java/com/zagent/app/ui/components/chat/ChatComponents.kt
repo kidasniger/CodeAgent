@@ -1,4 +1,4 @@
-package com.zagent.app.ui.components
+package com.zagent.app.ui.components.chat
 
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.background
@@ -68,6 +68,8 @@ import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.Zcolors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.zagent.app.ui.components.common.Modifier
+import com.zagent.app.ui.components.common.shimmer
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Puces d'outils (list_dir · read_file · make_dir · write_file) — MA34

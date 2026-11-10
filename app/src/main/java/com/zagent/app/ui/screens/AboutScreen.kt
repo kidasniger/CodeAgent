@@ -39,12 +39,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zagent.app.update.UpdateManager
 import com.zagent.app.update.UpdateState
-import com.zagent.app.ui.components.GlassCard
-import com.zagent.app.ui.components.Lot5Screen
-import com.zagent.app.ui.components.Lot5Section
-import com.zagent.app.ui.components.MonoLine
-import com.zagent.app.ui.components.ZLogo
-import com.zagent.app.ui.components.MarkdownText
+import com.zagent.app.ui.components.common.GlassCard
+import com.zagent.app.ui.components.common.OverlayScreen
+import com.zagent.app.ui.components.common.OverlaySection
+import com.zagent.app.ui.components.common.MonoLine
+import com.zagent.app.ui.components.common.ZLogo
+import com.zagent.app.ui.components.chat.MarkdownText
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.SpaceGrotesk
@@ -63,7 +63,7 @@ fun AboutScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
     val updateState by UpdateManager.state.collectAsStateWithLifecycle() // MàJ 101 : ne collecte que si l'écran est visible
 
-    Lot5Screen(title = "À propos", subtitle = "ZAgent — agent de code sur téléphone", onBack = onBack) {
+    OverlayScreen(title = "À propos", subtitle = "ZAgent — agent de code sur téléphone", onBack = onBack) {
         // ── Carte identité ───────────────────────────────────────────────────
         Column(
             Modifier
@@ -88,7 +88,7 @@ fun AboutScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         }
 
         // ── Licences open source (MA96) ─────────────────────────────────────
-        Lot5Section("Licences open source")
+        OverlaySection("Licences open source")
         GlassCard {
             val licences = listOf(
                 "Jetpack Compose & AndroidX" to "Apache 2.0",
@@ -118,7 +118,7 @@ fun AboutScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             }
         }
 
-        Lot5Section("Mises à jour")
+        OverlaySection("Mises à jour")
         GlassCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 when (val s = updateState) {
@@ -175,7 +175,7 @@ fun AboutScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         Spacer(Modifier.height(16.dp))
 
         // ── Journal des nouveautés ───────────────────────────────────────────
-        Lot5Section("Nouveautés de cette version")
+        OverlaySection("Nouveautés de cette version")
         GlassCard {
             MarkdownText(
                 changelogMarkdown,
@@ -186,7 +186,7 @@ fun AboutScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         Spacer(Modifier.height(16.dp))
 
         // ── Licences ─────────────────────────────────────────────────────────
-        Lot5Section("Licences open source")
+        OverlaySection("Licences open source")
         GlassCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp)) {
             listOf(
                 "Jetpack Compose & AndroidX" to "Apache License 2.0",
@@ -223,7 +223,7 @@ fun AboutScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         Spacer(Modifier.height(16.dp))
 
         // ── Feedback ─────────────────────────────────────────────────────────
-        Lot5Section("Feedback")
+        OverlaySection("Feedback")
         Row(
             Modifier
                 .fillMaxWidth()

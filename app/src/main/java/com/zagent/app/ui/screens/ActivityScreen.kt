@@ -37,11 +37,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zagent.app.data.ActivityEvent
 import com.zagent.app.data.ActivityStatus
-import com.zagent.app.ui.components.GlassCard
-import com.zagent.app.ui.components.Lot5EmptyState
-import com.zagent.app.ui.components.Lot5Screen
-import com.zagent.app.ui.components.Lot5Tabs
-import com.zagent.app.ui.components.MonoLine
+import com.zagent.app.ui.components.common.GlassCard
+import com.zagent.app.ui.components.common.OverlayEmptyState
+import com.zagent.app.ui.components.common.OverlayScreen
+import com.zagent.app.ui.components.common.OverlayTabs
+import com.zagent.app.ui.components.common.MonoLine
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.Zcolors
@@ -74,17 +74,17 @@ fun ActivityScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         }
     }
 
-    Lot5Screen(title = "Activité de l'agent", subtitle = events.size.toString() + " événements", onBack = onBack) {
-        Lot5Tabs(listOf("Tout", "Réussi", "Problème", "Annulé"), filter) { filter = it }
+    OverlayScreen(title = "Activité de l'agent", subtitle = events.size.toString() + " événements", onBack = onBack) {
+        OverlayTabs(listOf("Tout", "Réussi", "Problème", "Annulé"), filter) { filter = it }
         Spacer(Modifier.height(14.dp))
 
         if (filtered.isEmpty()) {
-            Lot5EmptyState(
+            OverlayEmptyState(
                 Icons.Default.History,
                 "Aucun événement",
                 "Chaque outil utilisé par l'agent (lecture, écriture, commande…) sera consigné ici avec sa durée et son résultat."
             )
-            return@Lot5Screen
+            return@OverlayScreen
         }
 
         val df = remember { SimpleDateFormat("d MMM · HH:mm:ss", Locale.getDefault()) }

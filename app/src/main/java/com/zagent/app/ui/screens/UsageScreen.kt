@@ -40,13 +40,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zagent.app.data.UsageEntry
 import com.zagent.app.data.UsageRepository
-import com.zagent.app.ui.components.GlassCard
-import com.zagent.app.ui.components.Lot5EmptyState
-import com.zagent.app.ui.components.Lot5Screen
-import com.zagent.app.ui.components.Lot5Section
-import com.zagent.app.ui.components.Lot5Tabs
-import com.zagent.app.ui.components.MonoLine
-import com.zagent.app.ui.components.UsageBarChart
+import com.zagent.app.ui.components.common.GlassCard
+import com.zagent.app.ui.components.common.OverlayEmptyState
+import com.zagent.app.ui.components.common.OverlayScreen
+import com.zagent.app.ui.components.common.OverlaySection
+import com.zagent.app.ui.components.common.OverlayTabs
+import com.zagent.app.ui.components.common.MonoLine
+import com.zagent.app.ui.components.common.UsageBarChart
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.SpaceGrotesk
@@ -107,12 +107,12 @@ fun UsageScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     }
     val maxShare = ((byModel.maxOfOrNull { it.second } ?: 1)).coerceAtLeast(1)
 
-    Lot5Screen(title = "Usage & coûts", subtitle = totalTokens.toString() + " tokens · " + days + " jours", onBack = onBack) {
-        Lot5Tabs(listOf("7 jours", "30 jours"), range) { range = it; selectedBar = -1 }
+    OverlayScreen(title = "Usage & coûts", subtitle = totalTokens.toString() + " tokens · " + days + " jours", onBack = onBack) {
+        OverlayTabs(listOf("7 jours", "30 jours"), range) { range = it; selectedBar = -1 }
         Spacer(Modifier.height(14.dp))
 
         if (inRange.isEmpty()) {
-            Lot5EmptyState(
+            OverlayEmptyState(
                 Icons.Default.SsidChart,
                 "Aucun usage enregistré",
                 "Les tokens consommés par l'agent apparaîtront ici après ta première demande."
@@ -157,7 +157,7 @@ fun UsageScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             }
             Spacer(Modifier.height(14.dp))
 
-            Lot5Section("Par modèle")
+            OverlaySection("Par modèle")
             GlassCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp)) {
                 byModel.forEach { (name, tokens) ->
                     ShareBar(name, tokens, maxShare, c.cyan)
@@ -165,7 +165,7 @@ fun UsageScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             }
             Spacer(Modifier.height(12.dp))
 
-            Lot5Section("Par projet")
+            OverlaySection("Par projet")
             GlassCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp)) {
                 byProject.forEach { (name, tokens) ->
                     ShareBar(name, tokens, maxShare, c.violet)

@@ -1,4 +1,4 @@
-package com.zagent.app.ui.components
+package com.zagent.app.ui.components.chat
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -52,6 +52,8 @@ import com.zagent.app.ui.theme.SpaceGrotesk
 import com.zagent.app.ui.theme.Zcolors
 import com.zagent.app.ui.theme.glassSurface
 import com.zagent.app.ui.viewmodel.MainViewModel
+import com.zagent.app.ui.components.common.GlassModalBottomSheet
+import com.zagent.app.ui.components.common.Modifier
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MA49 — Feuille « + » : grandes tuiles d'ajouts + vignettes des pièces jointes

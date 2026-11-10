@@ -1,4 +1,4 @@
-package com.zagent.app.ui.components
+package com.zagent.app.ui.components.common
 
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.runtime.Composable

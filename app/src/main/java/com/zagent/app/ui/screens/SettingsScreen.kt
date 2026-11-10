@@ -67,14 +67,14 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.zagent.app.ui.components.CircleIconButton
-import com.zagent.app.ui.components.GlassCard
-import com.zagent.app.ui.components.IconBadge
-import com.zagent.app.ui.components.ModelChip
-import com.zagent.app.ui.components.SectionLabel
-import com.zagent.app.ui.components.StatusBadge
-import com.zagent.app.ui.components.CardDivider
-import com.zagent.app.ui.components.ZLogo
+import com.zagent.app.ui.components.common.CircleIconButton
+import com.zagent.app.ui.components.common.GlassCard
+import com.zagent.app.ui.components.common.IconBadge
+import com.zagent.app.ui.components.common.ModelChip
+import com.zagent.app.ui.components.common.SectionLabel
+import com.zagent.app.ui.components.common.StatusBadge
+import com.zagent.app.ui.components.common.CardDivider
+import com.zagent.app.ui.components.common.ZLogo
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.SpaceGrotesk
@@ -88,7 +88,7 @@ import com.zagent.app.ui.screens.PermissionsScreen
 import com.zagent.app.ui.screens.ActivityScreen
 import com.zagent.app.ui.screens.AboutScreen
 import com.zagent.app.ui.screens.HelpScreen
-import com.zagent.app.ui.components.Lot5Row
+import com.zagent.app.ui.components.common.OverlayRow
 import com.zagent.app.ui.viewmodel.MainViewModel
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -190,43 +190,43 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
             Spacer(Modifier.height(8.dp))
             GlassCard(contentPadding = PaddingValues(0.dp)) {
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                    Lot5Row(
+                    OverlayRow(
                         Icons.Default.Tune, "Modèles",
                         "Catalogue, vitesse, modèle personnalisé",
                         tint = c.violet,
                         onClick = { showModels = true }
                     )
-                    Lot5Row(
+                    OverlayRow(
                         Icons.Default.SsidChart, "Usage & coûts",
                         "Tokens sur 7 / 30 jours, coût, export CSV",
                         tint = c.cyan,
                         onClick = { showUsage = true }
                     )
-                    Lot5Row(
+                    OverlayRow(
                         Icons.Default.Edit, "Instructions personnalisées",
                         "Style de l'agent, global et par projet",
                         tint = c.amber,
                         onClick = { showInstructions = true }
                     )
-                    Lot5Row(
+                    OverlayRow(
                         Icons.Default.Security, "Permissions & sécurité",
                         "Autorisations par action et historique",
                         tint = c.red,
                         onClick = { showPermissions = true }
                     )
-                    Lot5Row(
+                    OverlayRow(
                         Icons.Default.History, "Journal d'activité",
                         "Tout ce que l'agent a fait, annulable",
                         tint = c.green,
                         onClick = { showActivity = true }
                     )
-                    Lot5Row(
+                    OverlayRow(
                         Icons.Default.HelpOutline, "Raccourcis & gestes",
                         "Gestes, commandes slash, clavier",
                         tint = c.cyan,
                         onClick = { showHelp = true }
                     )
-                    Lot5Row(
+                    OverlayRow(
                         Icons.Default.Info, "À propos & mises à jour",
                         "Version, nouveautés, licences",
                         tint = c.violet,

@@ -51,8 +51,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.zagent.app.ui.components.GlassAlertDialog
-import com.zagent.app.ui.components.makeQrBitmap
+import com.zagent.app.ui.components.common.GlassAlertDialog
+import com.zagent.app.ui.components.common.makeQrBitmap
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.Zcolors

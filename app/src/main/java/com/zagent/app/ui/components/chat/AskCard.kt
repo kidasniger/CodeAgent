@@ -1,4 +1,4 @@
-package com.zagent.app.ui.components
+package com.zagent.app.ui.components.chat
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -39,6 +39,10 @@ import androidx.compose.ui.unit.sp
 import com.zagent.app.data.AskQuestion
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.Zcolors
+import com.zagent.app.ui.components.common.GlassCard
+import com.zagent.app.ui.components.common.GradientButton
+import com.zagent.app.ui.components.common.Modifier
+import com.zagent.app.ui.components.common.SecondaryButton
 
 /**
  * Carte de questions à choix posées par l'agent (outil ask_user).

@@ -100,10 +100,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.zagent.app.ui.components.GlassAlertDialog
-import com.zagent.app.ui.components.ZMenu
-import com.zagent.app.ui.components.ZMenuItem
-import com.zagent.app.ui.components.CircleIconButton
+import com.zagent.app.ui.components.common.GlassAlertDialog
+import com.zagent.app.ui.components.common.ZMenu
+import com.zagent.app.ui.components.common.ZMenuItem
+import com.zagent.app.ui.components.common.CircleIconButton
 import com.zagent.app.ui.editor.EditorTab
 import com.zagent.app.ui.editor.Kind
 import com.zagent.app.ui.editor.Lang

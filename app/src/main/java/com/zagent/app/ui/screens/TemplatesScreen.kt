@@ -38,8 +38,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.zagent.app.ui.components.Lot5Screen
-import com.zagent.app.ui.components.Lot5Section
+import com.zagent.app.ui.components.common.OverlayScreen
+import com.zagent.app.ui.components.common.OverlaySection
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.SpaceGrotesk
 import com.zagent.app.ui.theme.Zcolors
@@ -225,8 +225,8 @@ fun TemplatesScreen(viewModel: MainViewModel, onClose: () -> Unit) {
     val c = Zcolors
     var busy by remember { mutableStateOf<String?>(null) }
 
-    Lot5Screen(title = "Nouveau projet", subtitle = "Part d'un template, l'agent complète", onBack = onClose) {
-        Lot5Section("Choisis un point de départ")
+    OverlayScreen(title = "Nouveau projet", subtitle = "Part d'un template, l'agent complète", onBack = onClose) {
+        OverlaySection("Choisis un point de départ")
         Text(
             "Chaque template crée l'arborescence initiale dans un nouveau projet, puis envoie automatiquement un premier message à l'agent.",
             style = TextStyle(fontFamily = Inter, fontSize = 12.5.sp, lineHeight = 18.sp),

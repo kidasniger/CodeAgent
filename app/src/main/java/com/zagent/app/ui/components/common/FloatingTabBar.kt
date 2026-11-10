@@ -1,4 +1,4 @@
-package com.zagent.app.ui.components
+package com.zagent.app.ui.components.common
 
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState

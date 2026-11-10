@@ -42,13 +42,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.zagent.app.ui.components.GlassCard
-import com.zagent.app.ui.components.GitDiffView
-import com.zagent.app.ui.components.GradientButton
-import com.zagent.app.ui.components.Lot5EmptyState
-import com.zagent.app.ui.components.Lot5Screen
-import com.zagent.app.ui.components.Lot5Tabs
-import com.zagent.app.ui.components.MonoLine
+import com.zagent.app.ui.components.common.GlassCard
+import com.zagent.app.ui.components.chat.GitDiffView
+import com.zagent.app.ui.components.common.GradientButton
+import com.zagent.app.ui.components.common.OverlayEmptyState
+import com.zagent.app.ui.components.common.OverlayScreen
+import com.zagent.app.ui.components.common.OverlayTabs
+import com.zagent.app.ui.components.common.MonoLine
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.SpaceGrotesk
@@ -76,8 +76,8 @@ fun GitScreen(viewModel: MainViewModel, onClose: () -> Unit) {
         viewModel.refreshGitBranches()
     }
 
-    Lot5Screen(title = "Git", subtitle = viewModel.folderLabel, onBack = onClose) {
-        Lot5Tabs(listOf("Changements", "Historique", "Branches"), tab) { tab = it }
+    OverlayScreen(title = "Git", subtitle = viewModel.folderLabel, onBack = onClose) {
+        OverlayTabs(listOf("Changements", "Historique", "Branches"), tab) { tab = it }
         Spacer(Modifier.height(14.dp))
         when (tab) {
             0 -> ChangesTab(viewModel)
@@ -102,7 +102,7 @@ private fun ChangesTab(viewModel: MainViewModel) {
         return
     }
     if (changes.error != null) {
-        Lot5EmptyState(Icons.Default.CallMerge, "Pas de dépôt Git", changes.error ?: "")
+        OverlayEmptyState(Icons.Default.CallMerge, "Pas de dépôt Git", changes.error ?: "")
         return
     }
 
@@ -235,7 +235,7 @@ private fun HistoryTab(viewModel: MainViewModel) {
     val c = Zcolors
     val log = viewModel.gitLog
     if (log.isEmpty()) {
-        Lot5EmptyState(Icons.Default.Commit, "Aucun commit", "Le dépôt n'a pas encore d'historique, ou le projet n'est pas un dépôt Git.")
+        OverlayEmptyState(Icons.Default.Commit, "Aucun commit", "Le dépôt n'a pas encore d'historique, ou le projet n'est pas un dépôt Git.")
         return
     }
     val df = remember { SimpleDateFormat("d MMM yyyy · HH:mm", Locale.getDefault()) }
@@ -300,7 +300,7 @@ private fun BranchesTab(viewModel: MainViewModel) {
     val c = Zcolors
     val branches = viewModel.gitBranches
     if (branches.isEmpty()) {
-        Lot5EmptyState(Icons.Default.CallMerge, "Aucune branche", "Le projet n'est pas un dépôt Git ou n'a pas encore de branche.")
+        OverlayEmptyState(Icons.Default.CallMerge, "Aucune branche", "Le projet n'est pas un dépôt Git ou n'a pas encore de branche.")
         return
     }
     GlassCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp)) {

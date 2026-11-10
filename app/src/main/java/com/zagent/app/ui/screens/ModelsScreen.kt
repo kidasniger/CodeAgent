@@ -42,9 +42,9 @@ import com.zagent.app.data.Capacite
 import com.zagent.app.data.Fournisseur
 import com.zagent.app.data.ModelCatalog
 import com.zagent.app.data.ModelInfo
-import com.zagent.app.ui.components.Lot5Screen
-import com.zagent.app.ui.components.Lot5Section
-import com.zagent.app.ui.components.SpeedDots
+import com.zagent.app.ui.components.common.OverlayScreen
+import com.zagent.app.ui.components.common.OverlaySection
+import com.zagent.app.ui.components.common.SpeedDots
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.SpaceGrotesk
@@ -68,7 +68,7 @@ fun ModelsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     var customModel by remember { mutableStateOf("") }
     var customUrl by remember { mutableStateOf(viewModel.baseUrlInput) }
 
-    Lot5Screen(title = "Modèles", subtitle = "Actif : " + viewModel.effectiveModel, onBack = onBack) {
+    OverlayScreen(title = "Modèles", subtitle = "Actif : " + viewModel.effectiveModel, onBack = onBack) {
         val priceText = if (viewModel.priceInInput <= 0f && viewModel.priceOutInput <= 0f)
             "Prix non configurés"
         else
@@ -81,7 +81,7 @@ fun ModelsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             val conversationnels = modelesFournisseur.filter { !it.specialized }
             val specialises = modelesFournisseur.filter { it.specialized }
 
-            Lot5Section(f.nom)
+            OverlaySection(f.nom)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 StatusCleFournisseur(f)
             }
@@ -120,7 +120,7 @@ fun ModelsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         }
 
         Spacer(Modifier.height(8.dp))
-        Lot5Section("Modèle personnalisé")
+        OverlaySection("Modèle personnalisé")
         androidx.compose.material3.OutlinedTextField(
             value = customModel,
             onValueChange = { customModel = it },
@@ -171,7 +171,7 @@ fun ModelsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         }
 
         Spacer(Modifier.height(16.dp))
-        Lot5Section("Notes")
+        OverlaySection("Notes")
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.Bolt, null, tint = c.amber, modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(6.dp))

@@ -41,12 +41,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.zagent.app.ui.components.GlassCard
-import com.zagent.app.ui.components.GradientButton
-import com.zagent.app.ui.components.Lot5EmptyState
-import com.zagent.app.ui.components.Lot5Screen
-import com.zagent.app.ui.components.Lot5Section
-import com.zagent.app.ui.components.SecondaryButton
+import com.zagent.app.ui.components.common.GlassCard
+import com.zagent.app.ui.components.common.GradientButton
+import com.zagent.app.ui.components.common.OverlayEmptyState
+import com.zagent.app.ui.components.common.OverlayScreen
+import com.zagent.app.ui.components.common.OverlaySection
+import com.zagent.app.ui.components.common.SecondaryButton
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.Zcolors
@@ -76,7 +76,7 @@ fun ProjectsScreen(viewModel: MainViewModel, onClose: () -> Unit) {
     val favorites = remember { viewModel.settingsManager.favoriteProjects }
     val current = viewModel.workingFolderUriString
 
-    Lot5Screen(
+    OverlayScreen(
         title = "Projets",
         subtitle = current?.substringAfterLast('/') ?: "Aucun projet actif",
         onBack = onClose
@@ -103,7 +103,7 @@ fun ProjectsScreen(viewModel: MainViewModel, onClose: () -> Unit) {
         Spacer(Modifier.height(16.dp))
 
         if (projects.isEmpty()) {
-            Lot5EmptyState(
+            OverlayEmptyState(
                 icon = Icons.Default.FolderOpen,
                 title = "Aucun projet pour l'instant",
                 text = "Crée un projet depuis un template ou importe un dossier de ton téléphone. L'agent n'accède qu'au projet actif."
@@ -113,14 +113,14 @@ fun ProjectsScreen(viewModel: MainViewModel, onClose: () -> Unit) {
             val others = projects.filter { it !in favorites }
 
             if (favs.isNotEmpty()) {
-                Lot5Section("Favoris")
+                OverlaySection("Favoris")
                 GlassCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp)) {
                     favs.forEach { name -> ProjectRow(viewModel, name, current, onClose, isFavorite = true) }
                 }
                 Spacer(Modifier.height(14.dp))
             }
 
-            Lot5Section("Tous les projets")
+            OverlaySection("Tous les projets")
             GlassCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp)) {
                 if (others.isEmpty() && favs.isNotEmpty()) {
                     Text(
@@ -135,7 +135,7 @@ fun ProjectsScreen(viewModel: MainViewModel, onClose: () -> Unit) {
         }
 
         Spacer(Modifier.height(18.dp))
-        Lot5Section("Créer un projet vide")
+        OverlaySection("Créer un projet vide")
         GlassCard {
             androidx.compose.material3.OutlinedTextField(
                 value = newName,

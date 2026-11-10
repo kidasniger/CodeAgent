@@ -42,8 +42,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.zagent.app.ui.components.GlassModalBottomSheet
-import com.zagent.app.ui.components.Lot5Row
+import com.zagent.app.ui.components.common.GlassModalBottomSheet
+import com.zagent.app.ui.components.common.OverlayRow
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.SpaceGrotesk
 import com.zagent.app.ui.theme.Zcolors
@@ -130,7 +130,7 @@ fun ShareSheet(viewModel: MainViewModel, onClose: () -> Unit) {
             }
             Spacer(Modifier.height(12.dp))
 
-            Lot5Row(
+            OverlayRow(
                 icon = Icons.Default.ContentCopy,
                 title = "Copier en Markdown",
                 subtitle = "Le texte complet dans le presse-papiers",
@@ -139,20 +139,20 @@ fun ShareSheet(viewModel: MainViewModel, onClose: () -> Unit) {
                     notice = "Markdown copié"
                 }
             )
-            Lot5Row(
+            OverlayRow(
                 icon = Icons.Default.Save,
                 title = "Enregistrer en .md",
                 subtitle = "Choisir l'emplacement puis sauvegarder",
                 onClick = { saveMd.launch("conversation-zagent.md") }
             )
-            Lot5Row(
+            OverlayRow(
                 icon = Icons.Default.Description,
                 title = "Exporter en PDF",
                 subtitle = "Document paginé, lisible partout",
                 tint = c.red,
                 onClick = { savePdf.launch("conversation-zagent.pdf") }
             )
-            Lot5Row(
+            OverlayRow(
                 icon = Icons.AutoMirrored.Filled.OpenInNew,
                 title = "Partager via…",
                 subtitle = "Intent Android (mail, notes, messageries)",

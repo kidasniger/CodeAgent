@@ -33,10 +33,10 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.zagent.app.ui.components.GlassCard
-import com.zagent.app.ui.components.Lot5Screen
-import com.zagent.app.ui.components.Lot5Section
-import com.zagent.app.ui.components.MonoLine
+import com.zagent.app.ui.components.common.GlassCard
+import com.zagent.app.ui.components.common.OverlayScreen
+import com.zagent.app.ui.components.common.OverlaySection
+import com.zagent.app.ui.components.common.MonoLine
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.SpaceGrotesk
@@ -64,7 +64,7 @@ fun HelpScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     }
     val tip = remember { tips.random() }
 
-    Lot5Screen(title = "Raccourcis & gestes", subtitle = "Tout ce que ZAgent sait faire au doigt", onBack = onBack) {
+    OverlayScreen(title = "Raccourcis & gestes", subtitle = "Tout ce que ZAgent sait faire au doigt", onBack = onBack) {
         // ── Astuce du jour ───────────────────────────────────────────────────
         Row(
             Modifier
@@ -93,7 +93,7 @@ fun HelpScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         Spacer(Modifier.height(16.dp))
 
         // ── Gestes ───────────────────────────────────────────────────────────
-        Lot5Section("Gestes")
+        OverlaySection("Gestes")
         GestureRow(Icons.Default.Swipe, "Tiroir Historique", "Menu ☰ dans la barre du chat : conversations passées, glisse une ligne pour l'épingler ou la supprimer.")
         GestureRow(Icons.Default.TouchApp, "Long-press sur un message", "Cite, copie, modifie ou supprime n'importe quel message du fil.")
         GestureRow(Icons.Default.Bolt, "Champ de saisie", "Le champ s'étend jusqu'à 8 lignes ; le bouton devient Stop pendant la génération.")
@@ -101,7 +101,7 @@ fun HelpScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         Spacer(Modifier.height(16.dp))
 
         // ── Commandes slash ──────────────────────────────────────────────────
-        Lot5Section("Commandes slash")
+        OverlaySection("Commandes slash")
         GlassCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(10.dp)) {
             listOf(
                 "/nouveau" to "Démarrer une nouvelle conversation",
@@ -141,7 +141,7 @@ fun HelpScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         Spacer(Modifier.height(16.dp))
 
         // ── Mentions @ ───────────────────────────────────────────────────────
-        Lot5Section("Joindre des fichiers avec @")
+        OverlaySection("Joindre des fichiers avec @")
         GlassCard {
             Text(
                 "Tape « @ » puis quelques lettres du nom : l'autocomplétion propose les fichiers du projet. Le contenu du fichier cité est joint au message.",
@@ -152,7 +152,7 @@ fun HelpScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         Spacer(Modifier.height(16.dp))
 
         // ── Clavier externe ──────────────────────────────────────────────────
-        Lot5Section("Clavier externe (Bluetooth / OTG)")
+        OverlaySection("Clavier externe (Bluetooth / OTG)")
         GlassCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(10.dp)) {
             listOf(
                 "Entrée" to "Envoyer le message",

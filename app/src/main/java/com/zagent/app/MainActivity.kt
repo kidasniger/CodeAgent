@@ -27,8 +27,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.runtime.CompositionLocalProvider
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
-import com.zagent.app.ui.components.AmbientBackground
-import com.zagent.app.ui.components.FloatingTabBar
+import com.zagent.app.ui.components.common.AmbientBackground
+import com.zagent.app.ui.components.common.FloatingTabBar
 import com.zagent.app.ui.navigation.ZNavHost
 import com.zagent.app.ui.theme.LocalGlass
 import com.zagent.app.ui.theme.LocalHazeState

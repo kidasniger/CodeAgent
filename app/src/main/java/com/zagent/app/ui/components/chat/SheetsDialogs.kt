@@ -1,4 +1,4 @@
-package com.zagent.app.ui.components
+package com.zagent.app.ui.components.chat
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -61,6 +61,11 @@ import com.zagent.app.ui.theme.glassSurface
 import java.util.Locale
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
+import com.zagent.app.ui.components.common.GlassAlertDialog
+import com.zagent.app.ui.components.common.GlassDropdownMenu
+import com.zagent.app.ui.components.common.GlassModalBottomSheet
+import com.zagent.app.ui.components.common.Modifier
+import com.zagent.app.ui.components.common.SecondaryButton
 
 private const val MAX_DIFF_ROWS = 500
 

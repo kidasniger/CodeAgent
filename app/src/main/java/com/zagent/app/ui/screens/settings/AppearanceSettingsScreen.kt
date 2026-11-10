@@ -61,8 +61,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.zagent.app.ui.components.GlassAlertDialog
-import com.zagent.app.ui.components.CircleIconButton
+import com.zagent.app.ui.components.common.GlassAlertDialog
+import com.zagent.app.ui.components.common.CircleIconButton
 import com.zagent.app.data.HapticLevel
 import com.zagent.app.ui.theme.StylePresetIds
 import com.zagent.app.ui.theme.GlassMaterial

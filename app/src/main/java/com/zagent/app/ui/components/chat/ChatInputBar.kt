@@ -1,4 +1,4 @@
-package com.zagent.app.ui.components
+package com.zagent.app.ui.components.chat
 
 import android.Manifest
 import android.content.Intent
@@ -93,6 +93,7 @@ import com.zagent.app.ui.theme.LocalHazeState
 import com.zagent.app.ui.theme.Zcolors
 import com.zagent.app.ui.theme.glassSurface
 import com.zagent.app.ui.viewmodel.MainViewModel
+import com.zagent.app.ui.components.common.Modifier
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Barre de saisie flottante — LOT 4 (MA48 à MA55)
@@ -142,7 +143,7 @@ class MentionHighlight(
 
 /** Barre de saisie flottante du chat, version LOT 4. */
 @Composable
-fun InputBarLot4(
+fun ChatInputBar(
     value: String,
     onValueChange: (String) -> Unit,
     onSend: () -> Unit,

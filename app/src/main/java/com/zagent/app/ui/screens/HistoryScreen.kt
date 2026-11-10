@@ -51,10 +51,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zagent.app.data.ConversationMeta
-import com.zagent.app.ui.components.GradientButton
-import com.zagent.app.ui.components.Lot5SearchField
-import com.zagent.app.ui.components.ZEmptyKind
-import com.zagent.app.ui.components.ZEmptyState
+import com.zagent.app.ui.components.common.GradientButton
+import com.zagent.app.ui.components.common.OverlaySearchField
+import com.zagent.app.ui.components.common.ZEmptyKind
+import com.zagent.app.ui.components.common.ZEmptyState
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.SpaceGrotesk
@@ -131,7 +131,7 @@ fun HistoryDrawer(viewModel: MainViewModel, onClose: () -> Unit) {
                     )
                 }
                 Spacer(Modifier.height(12.dp))
-                Lot5SearchField(query, { query = it }, "Rechercher une conversation…")
+                OverlaySearchField(query, { query = it }, "Rechercher une conversation…")
                 Spacer(Modifier.height(10.dp))
                 GradientButton(
                     text = "Nouvelle conversation",

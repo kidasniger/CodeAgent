@@ -1064,13 +1064,19 @@ done; } 2>&1 | head -c 50000
         }
     }
     var folderLabel by mutableStateOf("Projet")
-    data class BrowserFilePreview(val path: String, val content: String)
-    var browserFilePreview by mutableStateOf<BrowserFilePreview?>(null)
+    // corr-008 : l'état d'UI de l'explorateur est regroupé dans FileBrowserUiState.
+    var browserUi by mutableStateOf(FileBrowserUiState())
         private set
-    var browserFileLoading by mutableStateOf(false)
-        private set
-    var browserError by mutableStateOf<String?>(null)
-        private set
+
+    var browserFilePreview: BrowserFilePreview?
+        get() = browserUi.preview
+        private set(value) { browserUi = browserUi.copy(preview = value) }
+    var browserFileLoading: Boolean
+        get() = browserUi.loading
+        private set(value) { browserUi = browserUi.copy(loading = value) }
+    var browserError: String?
+        get() = browserUi.error
+        private set(value) { browserUi = browserUi.copy(error = value) }
 
     private fun refreshFolderLabel() {
         viewModelScope.launch(Dispatchers.IO) {
@@ -1083,8 +1089,12 @@ done; } 2>&1 | head -c 50000
     val browserChildren = mutableStateMapOf<String, List<FileRepository.Entry>>()
     val expandedDirs = mutableStateMapOf<String, Boolean>()
     private val loadingDirectories = mutableStateMapOf<String, Boolean>()
-    var browserCount by mutableStateOf(0)
-    var browserLoading by mutableStateOf(false)
+    var browserCount: Int
+        get() = browserUi.count
+        set(value) { browserUi = browserUi.copy(count = value) }
+    var browserLoading: Boolean
+        get() = browserUi.loading
+        set(value) { browserUi = browserUi.copy(loading = value) }
 
     fun ensureLoaded(path: String) {
         if (browserChildren.containsKey(path) || loadingDirectories.containsKey(path)) return

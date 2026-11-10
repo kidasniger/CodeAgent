@@ -58,10 +58,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.zagent.app.ui.components.GlassCard
-import com.zagent.app.ui.components.GradientButton
-import com.zagent.app.ui.components.ModelChip
-import com.zagent.app.ui.components.ZLogo
+import com.zagent.app.ui.components.common.GlassCard
+import com.zagent.app.ui.components.common.GradientButton
+import com.zagent.app.ui.components.common.ModelChip
+import com.zagent.app.ui.components.common.ZLogo
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.SpaceGrotesk

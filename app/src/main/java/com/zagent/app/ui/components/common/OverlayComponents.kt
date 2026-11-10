@@ -1,4 +1,4 @@
-package com.zagent.app.ui.components
+package com.zagent.app.ui.components.common
 
 import android.graphics.Bitmap
 import androidx.compose.foundation.Canvas
@@ -55,7 +55,7 @@ import com.zagent.app.ui.theme.Zcolors
 
 /** Squelette des nouveaux écrans plein cadre : barre fine retour + titre, contenu scrollable. */
 @Composable
-fun Lot5Screen(
+fun OverlayScreen(
     title: String,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -115,7 +115,7 @@ fun Lot5Screen(
 
 /** Onglets du LOT 5 : chips égales, style sobre, sans bordure marquée (MA58/MA61). */
 @Composable
-fun Lot5Tabs(tabs: List<String>, selected: Int, modifier: Modifier = Modifier, onSelect: (Int) -> Unit) {
+fun OverlayTabs(tabs: List<String>, selected: Int, modifier: Modifier = Modifier, onSelect: (Int) -> Unit) {
     val c = Zcolors
     Row(
         modifier
@@ -159,7 +159,7 @@ fun Lot5Tabs(tabs: List<String>, selected: Int, modifier: Modifier = Modifier, o
 
 /** État vide illustré du LOT 5 (MA57 et autres écrans). */
 @Composable
-fun Lot5EmptyState(icon: ImageVector, title: String, text: String, modifier: Modifier = Modifier) {
+fun OverlayEmptyState(icon: ImageVector, title: String, text: String, modifier: Modifier = Modifier) {
     val c = Zcolors
     Column(
         modifier
@@ -193,7 +193,7 @@ fun Lot5EmptyState(icon: ImageVector, title: String, text: String, modifier: Mod
 
 /** Ligne réglage générique : icône teintée, titre, sous-titre, action finale. */
 @Composable
-fun Lot5Row(
+fun OverlayRow(
     icon: ImageVector,
     title: String,
     subtitle: String? = null,
@@ -247,7 +247,7 @@ fun Lot5Row(
 
 /** Champ de recherche arrondi, discret (MA56/MA58). */
 @Composable
-fun Lot5SearchField(
+fun OverlaySearchField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
@@ -342,7 +342,7 @@ fun UsageBarChart(
 
 /** Titre de section discret réutilisé par les écrans LOT 5. */
 @Composable
-fun Lot5Section(text: String, modifier: Modifier = Modifier) {
+fun OverlaySection(text: String, modifier: Modifier = Modifier) {
     SectionLabel(text, modifier)
     Spacer(Modifier.height(8.dp))
 }

@@ -45,11 +45,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zagent.app.data.ProjectSearch
-import com.zagent.app.ui.components.Lot5EmptyState
-import com.zagent.app.ui.components.Lot5SearchField
-import com.zagent.app.ui.components.Lot5Screen
-import com.zagent.app.ui.components.Lot5Tabs
-import com.zagent.app.ui.components.MonoLine
+import com.zagent.app.ui.components.common.OverlayEmptyState
+import com.zagent.app.ui.components.common.OverlaySearchField
+import com.zagent.app.ui.components.common.OverlayScreen
+import com.zagent.app.ui.components.common.OverlayTabs
+import com.zagent.app.ui.components.common.MonoLine
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.Zcolors
@@ -90,14 +90,14 @@ fun SearchScreen(viewModel: MainViewModel, onClose: () -> Unit) {
         }
     }
 
-    Lot5Screen(title = "Recherche", subtitle = viewModel.folderLabel, onBack = onClose) {
-        Lot5SearchField(
+    OverlayScreen(title = "Recherche", subtitle = viewModel.folderLabel, onBack = onClose) {
+        OverlaySearchField(
             value = query,
             onValueChange = { query = it },
             placeholder = "Rechercher partout…"
         )
         Spacer(Modifier.height(10.dp))
-        Lot5Tabs(listOf("Conversations", "Fichiers", "Code"), tab) { tab = it }
+        OverlayTabs(listOf("Conversations", "Fichiers", "Code"), tab) { tab = it }
         Spacer(Modifier.height(14.dp))
 
         if (query.isBlank()) {
@@ -127,7 +127,7 @@ fun SearchScreen(viewModel: MainViewModel, onClose: () -> Unit) {
                     }
                 }
             } else {
-                Lot5EmptyState(
+                OverlayEmptyState(
                     icon = Icons.Default.Search,
                     title = "Recherche globale",
                     text = "Retrouve un message, un fichier ou une ligne de code parmi les conversations et le projet actif."
@@ -166,7 +166,7 @@ private fun ConversationResults(
         return
     }
     if (hits.isEmpty()) {
-        Lot5EmptyState(Icons.Default.Search, "Aucun message trouvé", "Le texte recherché n'apparaît dans aucune conversation sauvegardée.")
+        OverlayEmptyState(Icons.Default.Search, "Aucun message trouvé", "Le texte recherché n'apparaît dans aucune conversation sauvegardée.")
         return
     }
     val df = remember { SimpleDateFormat("d MMM · HH:mm", Locale.getDefault()) }
@@ -204,7 +204,7 @@ private fun FileResults(viewModel: MainViewModel, query: String) {
         ProjectSearch.fuzzyFileMatches(viewModel.projectFiles, query.trim(), 30)
     }
     if (matches.isEmpty()) {
-        Lot5EmptyState(Icons.Default.FolderOpen, "Aucun fichier", "Aucun chemin du projet ne correspond. Lance une demande pour rafraîchir la liste des fichiers.")
+        OverlayEmptyState(Icons.Default.FolderOpen, "Aucun fichier", "Aucun chemin du projet ne correspond. Lance une demande pour rafraîchir la liste des fichiers.")
         return
     }
     matches.forEach { path ->
@@ -249,7 +249,7 @@ private fun CodeResults(
         return
     }
     if (hits.isEmpty()) {
-        Lot5EmptyState(Icons.Default.Code, "Aucun résultat de code", "Le texte recherché n'apparaît dans aucun fichier texte du projet (400 fichiers max).")
+        OverlayEmptyState(Icons.Default.Code, "Aucun résultat de code", "Le texte recherché n'apparaît dans aucun fichier texte du projet (400 fichiers max).")
         return
     }
     hits.forEach { hit ->
