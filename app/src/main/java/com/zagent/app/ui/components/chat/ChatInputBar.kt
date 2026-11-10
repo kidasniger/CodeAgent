@@ -40,7 +40,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.CompareArrows
+import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.ExpandMore
@@ -50,6 +52,7 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -107,9 +110,14 @@ private data class SlashUi(val command: String, val icon: ImageVector, val label
 private val slashUiCommands = listOf(
     SlashUi("/nouveau", Icons.Default.Add, "Démarrer une nouvelle conversation"),
     SlashUi("/modèle", Icons.Default.Tune, "Choisir le modèle de la conversation"),
+    SlashUi("/model", Icons.Default.Tune, "Choisir le modèle (alias de /modèle)"), // feat-011
     SlashUi("/diff", Icons.Default.CompareArrows, "Voir les changements Git du projet"),
     SlashUi("/tester", Icons.Default.Science, "Lancer les tests du projet"),
+    SlashUi("/compact", Icons.Default.Compress, "Résumer l'historique ancien pour alléger le contexte"), // feat-009
+    SlashUi("/undo", Icons.Default.Undo, "Annuler le dernier échange"), // feat-011
+    SlashUi("/plan", Icons.Default.Checklist, "Mode Plan : validation d'un plan avant écriture"), // feat-013
     SlashUi("/effacer", Icons.Default.DeleteOutline, "Effacer les messages du fil"),
+    SlashUi("/clear", Icons.Default.DeleteOutline, "Effacer les messages (alias de /effacer)"), // feat-011
     SlashUi("/aide", Icons.Default.HelpOutline, "Voir les commandes disponibles")
 )
 
@@ -252,10 +260,14 @@ fun ChatInputBar(
             .navigationBarsPadding()
             .padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 88.dp)
     ) {
-        // ── MA55 : estimation de tokens, discrète, au-dessus du champ ────────
-        if (value.length > 500) {
+        // ── feat-010 : compteur de tokens du contexte + saisie, au-dessus du champ ──
+        val ctxTokens = viewModel.contextTokenEstimate
+        if (ctxTokens > 0 || value.length > 500) {
             Text(
-                "≈ " + (value.length / 4) + " tokens",
+                if (value.length > 500)
+                    "≈ " + ctxTokens + " tokens (contexte) · ≈ " + (value.length / 4) + " (saisie)"
+                else
+                    "≈ " + ctxTokens + " tokens (contexte)",
                 style = TextStyle(fontFamily = JetBrainsMono, fontSize = 10.5.sp),
                 color = c.text3,
                 modifier = Modifier

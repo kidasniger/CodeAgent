@@ -311,6 +311,7 @@ fun ModelPickerDialog(
                     PuceFiltre("Désactivé", duoMode == null) { duoB = null; onDuoChange(null, null) }
                     PuceFiltre("Collaboration", duoMode == "collaboration") { onDuoChange("collaboration", duoB) }
                     PuceFiltre("Débat", duoMode == "debat") { onDuoChange("debat", duoB) }
+                    PuceFiltre("Comparer", duoMode == "compare") { onDuoChange("compare", duoB) } // feat-005
                 }
                 when (duoMode) {
                     "collaboration" -> Text(
@@ -320,6 +321,11 @@ fun ModelPickerDialog(
                     )
                     "debat" -> Text(
                         "A et B alternent à voix haute, deux tours chacun, puis concluent. Écris ton sujet pour lancer le débat.",
+                        style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp, lineHeight = 16.sp),
+                        color = c.text2
+                    )
+                    "compare" -> Text( // feat-005
+                        "Le même prompt part vers A et B, sans outils : les deux réponses s'affichent l'une sous l'autre, étiquetées, pour comparaison.",
                         style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp, lineHeight = 16.sp),
                         color = c.text2
                     )

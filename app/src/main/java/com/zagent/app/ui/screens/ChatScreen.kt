@@ -519,6 +519,26 @@ fun ChatScreen(
                                                 onPin = { epinglerRow(row.key, row.text) } // feat-002
                                             )
                                         }
+                                        // feat-003 — sélecteur de branche : basculer entre
+                                        // la suite courante et les suites alternatives conservées.
+                                        if (viewModel.hasBranchAt(row.messageIndex)) {
+                                            val bInfo = viewModel.branchInfoAt(row.messageIndex)
+                                            Row(
+                                                Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.End
+                                            ) {
+                                                Text(
+                                                    "Branche " + (bInfo?.first ?: 1) + "/" + (bInfo?.second ?: 1) +
+                                                        " — appuyer pour basculer",
+                                                    style = TextStyle(fontFamily = Inter, fontSize = 11.sp),
+                                                    color = c.cyan,
+                                                    modifier = Modifier
+                                                        .clip(MaterialTheme.shapes.extraSmall)
+                                                        .clickable { viewModel.switchBranch(row.messageIndex) }
+                                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                                )
+                                            }
+                                        }
                                     }
                                     is ChatRow.Agent -> item(key = row.key, contentType = "agent") {
                                         val isLastAgent = index == chatRows.lastIndex && displayLive.isBlank()
@@ -705,6 +725,41 @@ fun ChatScreen(
                 log = viewModel.terminal.devLog,
                 onOpen = { viewModel.openDevPreview() },
                 onStop = { viewModel.stopDevServerByUser() }
+            )
+        }
+        // feat-016 — file de messages en attente d'envoi (l'agent travaille).
+        if (viewModel.messageQueue.isNotEmpty()) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "File : " + viewModel.messageQueue.size + " message(s) en attente — envoi à la fin du tour",
+                    style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp),
+                    color = c.amber,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    "Annuler",
+                    color = c.cyan,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier
+                        .clip(MaterialTheme.shapes.extraSmall)
+                        .clickable { viewModel.annulerFile() }
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+        }
+        // feat-013 — rappel discret que le mode Plan est actif.
+        if (viewModel.planMode) {
+            Text(
+                "Mode Plan : l'agent propose un plan et attend ta validation avant d'écrire (/plan pour désactiver)",
+                style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp),
+                color = c.cyan,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
             )
         }
         if (editingIndex >= 0) {

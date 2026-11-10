@@ -588,6 +588,168 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     /** Changements faits par l'agent pendant la dernière demande, annulables d'un tap. */
     val agentUndo = mutableStateListOf<UndoEntry>()
 
+    // ── feat-003 : branches de conversation ───────────────────────────────
+    /**
+     * feat-003 — Branches de conversation : modifier un message ou régénérer
+     * une réponse conserve l'ancienne suite au lieu de la jeter. Clé = index
+     * du message utilisateur « ancre » ; valeur = pile des suites alternatives
+     * (la plus récente en tête). En mémoire de session : effacer ou changer
+     * de conversation, supprimer l'ancre, remet à zéro.
+     */
+    private val conversationBranches = mutableStateMapOf<Int, MutableList<List<ChatMessage>>>()
+
+    /** Vrai si l'ancre a au moins une suite alternative (affiche le sélecteur). */
+    fun hasBranchAt(anchor: Int): Boolean = !conversationBranches[anchor].isNullOrEmpty()
+
+    /** Nombre de suites alternatives conservées pour l'ancre [anchor]. */
+    fun branchCountAt(anchor: Int): Int = conversationBranches[anchor]?.size ?: 0
+
+    /** Position « courante/total » pour l'affichage (1 + nombre d'alternatives). */
+    fun branchInfoAt(anchor: Int): Pair<Int, Int>? {
+        val n = branchCountAt(anchor)
+        return if (n == 0) null else 1 to (n + 1)
+    }
+
+    /** Enregistre [ancienneSuite] comme branche alternative de l'ancre (plafond 5). */
+    private fun captureBranch(anchor: Int, ancienneSuite: List<ChatMessage>) {
+        if (ancienneSuite.isEmpty()) return
+        val pile = conversationBranches.getOrPut(anchor) { mutableListOf() }
+        pile.add(0, ancienneSuite)
+        while (pile.size > 5) pile.removeAt(pile.lastIndex)
+    }
+
+    /**
+     * feat-003 — Bascule sur la suite alternative suivante de l'ancre : la
+     * suite courante retourne dans la pile, la tête de pile s'affiche.
+     */
+    fun switchBranch(anchor: Int) {
+        if (isLoading) return
+        val pile = conversationBranches[anchor] ?: return
+        if (pile.isEmpty()) return
+        val list = chat.edit.value
+        if (anchor !in list.indices) return
+        val suiteCourante = list.subList(anchor + 1, list.size).toList()
+        val alternative = pile.removeAt(0)
+        if (suiteCourante.isNotEmpty()) pile.add(suiteCourante)
+        chat.edit.value = list.subList(0, anchor + 1) + alternative
+        persistCurrentConversation()
+    }
+
+    private fun clearBranches() { conversationBranches.clear() }
+
+    // ── feat-016 : file de messages ─────────────────────────────────────
+    /**
+     * feat-016 — File d'attente : un message envoyé pendant que l'agent
+     * travaille rejoint la file et part automatiquement dès la fin du tour
+     * en cours (annulable depuis la bannière au-dessus de la saisie).
+     */
+    val messageQueue = mutableStateListOf<String>()
+
+    fun annulerFile() { messageQueue.clear() }
+
+    // ── feat-009/010 : estimation de tokens et résumé du contexte ────────
+    /** Plafond d'estimation de tokens du contexte avant résumé automatique (feat-009). */
+    private val seuilTokensContexte = 28_000
+
+    /** Estimation grossière : 1 token ≈ 4 caractères (français et code). */
+    private fun estimeTokens(texte: String): Int = texte.length / 4
+
+    /** feat-010 — Estimation de tokens du contexte complet (système + historique). */
+    val contextTokenEstimate: Int
+        get() {
+            var total = 1800 // prompt système + schéma des outils, approché
+            for (m in chat.edit.value) total += estimeTokens(m.content.orEmpty()) + 8
+            return total
+        }
+
+    /**
+     * feat-009 — Résume l'historique ancien (tout sauf les 8 derniers messages)
+     * en un message « [Résumé automatique du contexte] » : le fil reste
+     * lisible mais le contexte envoyé au modèle est plafonné. Appelé
+     * automatiquement au seuil [seuilTokensContexte] (début de chaque tour)
+     * ou manuellement via /compact.
+     */
+    suspend fun compacterContexte(force: Boolean = false): Boolean {
+        val history = chat.edit.value
+        if (history.size <= 9) return false
+        if (!force && contextTokenEstimate < seuilTokensContexte) return false
+        val ancien = history.subList(0, history.size - 8)
+        val recent = history.subList(history.size - 8)
+        val aResumer = ancien.joinToString("\n\n") { m ->
+            m.role + " : " + m.content.orEmpty().substringBefore(CTX_MARKER).take(2000)
+        }.take(60_000)
+        withContext(Dispatchers.Main) { statusMessage = "Résumé du contexte en cours…" }
+        val buf = StringBuilder()
+        val reponse = aiRepository.callChatCompletions(
+            baseUrl = ModelCatalog.urlPourModele(effectiveModel, baseUrlInput),
+            apiKey = clePourModele(effectiveModel),
+            model = effectiveModel,
+            messages = buildJsonArray {
+                add(buildJsonObject {
+                    put("role", "system")
+                    put("content", "Tu résumes une conversation entre un utilisateur et un agent de code. " +
+                        "Produis un bloc de notes compact : objectif courant, décisions, fichiers touchés " +
+                        "(chemins exacts), commandes lancées, état et prochaines étapes. 400 mots maximum. " +
+                        "Réponds directement par les notes, sans préambule.")
+                })
+                add(buildJsonObject { put("role", "user"); put("content", aResumer) })
+            },
+            onRetryUpdate = { },
+            onDelta = { bout -> buf.append(bout) },
+            onReasoningDelta = { },
+            avecOutils = false
+        )
+        val resume = (reponse as? AiRepository.ApiResponse.Success)?.messageContent?.trim()
+        if (resume.isNullOrBlank()) return false
+        withContext(Dispatchers.Main) {
+            chat.edit.value = listOf(
+                ChatMessage("assistant", "[Résumé automatique du contexte]\n" + resume)
+            ) + recent
+        }
+        persistCurrentConversation()
+        terminal.logAgent("== Contexte compacté : " + ancien.size + " messages résumés")
+        return true
+    }
+
+    /** feat-011 — /compact : lance la compaction immédiatement depuis l'UI. */
+    fun compacterMaintenant() {
+        if (isLoading) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val ok = runCatching { compacterContexte(force = true) }.getOrDefault(false)
+            withContext(Dispatchers.Main) {
+                statusMessage = if (ok) "Contexte compacté : l'historique ancien a été résumé."
+                else "Rien à compacter (historique trop court ou résumé indisponible)."
+            }
+        }
+    }
+
+    // ── feat-013 : mode Plan ─────────────────────────────────────────────
+    /**
+     * feat-013 — Mode « Plan » : l'agent propose un plan numéroté et attend la
+     * validation (ask_user) avant d'écrire ou d'exécuter quoi que ce soit.
+     * Réglage de session, activé/désactivé par /plan.
+     */
+    var planMode by mutableStateOf(false)
+        private set
+
+    fun basculerModePlan() {
+        planMode = !planMode
+        statusMessage = if (planMode)
+            "Mode Plan activé : l'agent proposera un plan et attendra ta validation avant d'écrire (/plan pour désactiver)."
+        else "Mode Plan désactivé."
+    }
+
+    /** feat-011 — /undo : retire le dernier tour (message utilisateur + tout ce qui suit). */
+    fun annulerDernierTour() {
+        if (isLoading) return
+        val list = chat.edit.value
+        var last = list.lastIndex
+        while (last >= 0 && list[last].role != "user") last--
+        if (last < 0) return
+        chat.edit.value = list.subList(0, last)
+        statusMessage = "Dernier tour annulé."
+    }
+
     /** Console JS partagée entre l'aperçu et le bouton de correction. */
     val console = ConsoleState()
     var previewRequest by mutableStateOf<String?>(null)
@@ -1037,6 +1199,9 @@ done; } 2>&1 | head -c 50000
         summaryCommands.clear()
         fileDiffCounts.clear()
         agentUndo.clear()
+        clearBranches() // feat-003 : les branches ne survivent pas à l'effacement
+        messageQueue.clear() // feat-016
+        planMode = false // feat-013
         isLoading = false
         chat.edit.value = emptyList()
         statusMessage = ""
@@ -1522,9 +1687,86 @@ done; } 2>&1 | head -c 50000
         if (!texte.isNullOrBlank()) persistCurrentConversation()
     }
 
+    /**
+     * feat-005 — Mode Duo « comparer » : le même prompt part vers le modèle A
+     * (modèle courant) et le modèle B, sans outils ; les deux réponses sont
+     * affichées l'une sous l'autre avec leur étiquette de modèle, prêtes à
+     * être comparées. En cas d'échec d'un côté, la réponse de l'autre reste
+     * affichée.
+     */
+    private suspend fun runCompare() {
+        val modeleA = effectiveModel
+        val modeleB = duoModeleB?.takeIf { it.isNotBlank() && it != modeleA }
+            ?: ModelCatalog.chaineRepli(modeleA).firstOrNull { clePourModele(it).isNotBlank() }
+        if (modeleB == null || clePourModele(modeleB).isBlank()) {
+            withContext(Dispatchers.Main) {
+                statusMessage = "Comparer : choisis un modèle B (menu du modèle, section Mode Duo)."
+            }
+            return
+        }
+        val demande = chat.edit.value.lastOrNull { it.role == "user" }
+            ?.content.orEmpty().substringBefore(CTX_MARKER)
+        val labelA = ModelCatalog.find(modeleA)?.label ?: modeleA
+        val labelB = ModelCatalog.find(modeleB)?.label ?: modeleB
+        val consigne = "Réponds à la demande ci-dessous en français, de façon structurée et concise. " +
+            "Tu n'as pas d'outils : réponds directement avec tes connaissances."
+        val messagesA = buildJsonArray {
+            add(buildJsonObject { put("role", "system"); put("content", consigne) })
+            add(buildJsonObject { put("role", "user"); put("content", demande.take(8_000)) })
+        }
+        val messagesB = buildJsonArray {
+            add(buildJsonObject { put("role", "system"); put("content", consigne) })
+            add(buildJsonObject { put("role", "user"); put("content", demande.take(8_000)) })
+        }
+        suspend fun interroger(modele: String, messages: kotlinx.serialization.json.JsonArray): String? {
+            val buf = StringBuilder()
+            val rep = aiRepository.callChatCompletions(
+                baseUrl = ModelCatalog.urlPourModele(modele, baseUrlInput),
+                apiKey = clePourModele(modele),
+                model = modele,
+                messages = messages,
+                onRetryUpdate = { },
+                onDelta = { bout -> buf.append(bout) },
+                onReasoningDelta = { },
+                avecOutils = false
+            )
+            return (rep as? AiRepository.ApiResponse.Success)?.messageContent
+        }
+        withContext(Dispatchers.Main) {
+            liveText = ""
+            liveReasoning = ""
+            statusMessage = "Duo · comparaison de $labelA et $labelB…"
+        }
+        // Séquentiel : évite de doubler la charge réseau d'un même instant.
+        val texteA = runCatching { interroger(modeleA, messagesA) }.getOrNull()
+        withContext(Dispatchers.Main) {
+            liveText = ""
+            if (!texteA.isNullOrBlank()) {
+                chat.edit.value = chat.edit.value + ChatMessage("assistant", texteA, modele = "Comparaison · $labelA")
+            }
+        }
+        val texteB = runCatching { interroger(modeleB, messagesB) }.getOrNull()
+        withContext(Dispatchers.Main) {
+            liveText = ""
+            if (!texteB.isNullOrBlank()) {
+                chat.edit.value = chat.edit.value + ChatMessage("assistant", texteB, modele = "Comparaison · $labelB")
+            }
+            statusMessage = if (texteA.isNullOrBlank() && texteB.isNullOrBlank())
+                "Comparer : les deux modèles ont échoué — vérifie les clés API."
+            else ""
+        }
+        persistCurrentConversation()
+    }
+
     fun sendMessage(userText: String) {
         if (userText.isBlank()) return
-        if (isLoading) return
+        if (isLoading) {
+            // feat-016 — l'agent travaille : le message rejoint la file d'attente
+            // et part automatiquement à la fin du tour en cours.
+            messageQueue.add(userText)
+            statusMessage = "Message mis en file (" + messageQueue.size + " en attente) — envoi dès la fin du tour."
+            return
+        }
         // MàJ 101 — la clé nécessaire dépend du modèle : un modèle NVIDIA exige
         // la clé NVIDIA, pas la clé z.ai.
         if (clePourModele(effectiveModel).isBlank()) {
@@ -1551,6 +1793,7 @@ done; } 2>&1 | head -c 50000
         fileDiffCounts.clear()
 
         isLoading = true
+        var tourInterrompu = false // feat-016
         AgentService.start(getApplication())
         agentJob = viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -1567,12 +1810,14 @@ done; } 2>&1 | head -c 50000
                 // (l'agent A fait la tâche puis le modèle B relit sa réponse).
                 when (duoMode) {
                     "debat" -> runDebat()
+                    "compare" -> runCompare() // feat-005
                     else -> {
                         runAgentLoop()
                         if (duoMode == "collaboration" && !dernierTourEnEchec) runRelectureDuo()
                     }
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
+                tourInterrompu = true // feat-016 : arrêt manuel → la file reste en attente
                 throw e
             } catch (e: Throwable) {
                 // Une erreur inattendue dans la boucle de l'agent ne doit jamais fermer l'appli.
@@ -1588,6 +1833,13 @@ done; } 2>&1 | head -c 50000
                 AgentService.stop(getApplication())
                 withContext(NonCancellable + Dispatchers.Main) {
                     isLoading = false
+                }
+                // feat-016 — dépile le prochain message en attente (sauf arrêt manuel).
+                if (!tourInterrompu) {
+                    val suivant = messageQueue.removeFirstOrNull()
+                    if (suivant != null) {
+                        viewModelScope.launch(Dispatchers.Main) { sendMessage(suivant) }
+                    }
                 }
             }
         }
@@ -1733,7 +1985,7 @@ done; } 2>&1 | head -c 50000
         val cmd = raw.trim().substringBefore(' ').lowercase()
         return when (cmd) {
             "/nouveau" -> { clearConversation(); SlashAction.NONE }
-            "/modèle" -> SlashAction.OPEN_MODEL_PICKER
+            "/modèle", "/model" -> SlashAction.OPEN_MODEL_PICKER // feat-011 : alias EN
             "/diff" -> { openGitChanges(); SlashAction.NONE }
             "/tester" -> {
                 sendMessage(
@@ -1741,7 +1993,10 @@ done; } 2>&1 | head -c 50000
                 )
                 SlashAction.NONE
             }
-            "/effacer" -> { clearMessagesOnly(); SlashAction.NONE }
+            "/effacer", "/clear" -> { clearMessagesOnly(); SlashAction.NONE } // feat-011 : alias EN
+            "/compact" -> { compacterMaintenant(); SlashAction.NONE } // feat-009/011
+            "/undo" -> { annulerDernierTour(); SlashAction.NONE } // feat-011
+            "/plan" -> { basculerModePlan(); SlashAction.NONE } // feat-013
             "/aide" -> { showHelpMessage(); SlashAction.NONE }
             else -> SlashAction.NONE
         }
@@ -1763,7 +2018,11 @@ done; } 2>&1 | head -c 50000
             appendLine("• /modèle — choisir le modèle de la conversation")
             appendLine("• /diff — voir les changements Git du projet")
             appendLine("• /tester — lancer les tests du projet")
-            appendLine("• /effacer — effacer les messages du fil")
+            appendLine("• /effacer (ou /clear) — effacer les messages du fil")
+            appendLine("• /model — choisir le modèle (alias de /modèle)")
+            appendLine("• /compact — résumer l'historique ancien pour alléger le contexte")
+            appendLine("• /undo — annuler le dernier échange")
+            appendLine("• /plan — mode Plan : validation d'un plan avant écriture")
             appendLine("• /aide — afficher cette aide")
             appendLine()
             append("Astuce : tape « @ » pour joindre un fichier du projet au contexte.")
@@ -1800,7 +2059,15 @@ done; } 2>&1 | head -c 50000
             "\nUne mémoire de projet persistante (.zagent/memoire.md) est disponible via l'outil project_memory : " +
             "enregistre-y (action=write) les faits durables appris (stack, conventions, préférences, décisions) et " +
             "consulte-la (action=read) au lieu de redemander une information déjà connue." +
-            projectRules + zagentContexte + custom
+            projectRules + zagentContexte + custom +
+            // feat-013 — mode Plan : l'agent propose avant d'agir.
+            (if (planMode)
+                "\n\nMODE PLAN ACTIF : pour toute demande qui implique d'écrire, de modifier ou de supprimer " +
+                "des fichiers, ou d'exécuter des commandes, propose d'abord un plan numéroté court (8 étapes maximum), " +
+                "puis appelle ask_user avec une seule question « Valider le plan ? » (options : Valider / Ajuster). " +
+                "N'exécute ni écriture ni commande avant cette validation ; si l'utilisateur choisit Ajuster, " +
+                "reformule le plan avec ses remarques et redemande la validation."
+            else "")
 
         var stepCount = 0
         val maxSteps = maxStepsInput
@@ -1809,6 +2076,10 @@ done; } 2>&1 | head -c 50000
         var modeleUtilise = effectiveModel
         var repliEffectue = false
         dernierTourEnEchec = false
+
+        // feat-009 — contexte trop volumineux : résumé automatique de l'ancien
+        // historique avant l'envoi (plafonne le coût, évite les dépassements).
+        runCatching { compacterContexte(force = false) }
 
         while (stepCount < maxSteps) {
             stepCount++
@@ -2058,6 +2329,8 @@ done; } 2>&1 | head -c 50000
         if (isLoading || newText.isBlank()) return
         val list = chat.edit.value
         if (messageIndex !in list.indices || list[messageIndex].role != "user") return
+        // feat-003 — l'ancienne suite du message modifié devient une branche.
+        captureBranch(messageIndex, list.subList(messageIndex + 1, list.size).toList())
         val kept = list.subList(0, messageIndex)
         chat.edit.value = kept + ChatMessage("user", newText.trim())
         agentUndo.clear()
@@ -2074,6 +2347,8 @@ done; } 2>&1 | head -c 50000
         val list = chat.edit.value
         if (messageIndex !in list.indices) return
         chat.edit.value = if (list[messageIndex].role == "user") {
+            // feat-003 — les ancres à partir du message supprimé n'ont plus de sens.
+            conversationBranches.keys.removeAll { it >= messageIndex }
             list.subList(0, messageIndex)
         } else {
             list.filterIndexed { i, _ -> i != messageIndex }
@@ -2087,6 +2362,8 @@ done; } 2>&1 | head -c 50000
         var last = list.lastIndex
         while (last >= 0 && list[last].role != "user") last--
         if (last < 0) return
+        // feat-003 — l'ancienne réponse reste disponible comme branche.
+        captureBranch(last, list.subList(last + 1, list.size).toList())
         chat.edit.value = list.subList(0, last + 1)
         agentUndo.clear()
         fileDiffCounts.clear()
@@ -2689,6 +2966,9 @@ done; } 2>&1 | head -c 50000
     fun switchToConversation(id: String) {
         if (id == conversationId) return
         persistCurrentConversation(immediate = true)
+        // feat-003/016 : branches et file d'attente propres à chaque conversation.
+        clearBranches()
+        messageQueue.clear()
         viewModelScope.launch(Dispatchers.IO) {
             val stored = conversationRepo.loadMessages(id)
             val restored = stored.map { m ->
