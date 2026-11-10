@@ -58,7 +58,7 @@ data class ConversationHit(
  * pour la simulation en tests.
  */
 class ConversationRepository(context: Context) : ConversationRepositoryApi {
-    private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+    private val json = Json { coerceInputValues = true; ignoreUnknownKeys = true; encodeDefaults = true }
     private val dir = File(context.filesDir, "conversations").apply { mkdirs() }
     private val indexFile = File(dir, "index.json")
 

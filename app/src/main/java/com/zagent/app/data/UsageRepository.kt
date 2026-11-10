@@ -28,13 +28,25 @@ data class UsageEntry(
 }
 
 /**
+ * corr-082 — Calcul du coût d'un échange, isolé pour être testé en JVM.
+ * Prix en USD par million de tokens ; renvoie null si aucun prix n'est
+ * renseigné. Un flux interrompu (usage partiel du fournisseur) est géré
+ * naturellement : le token manquant compte pour 0.
+ */
+fun coutEstime(tokensIn: Int, tokensOut: Int, prixInPerM: Float, prixOutPerM: Float): Double? {
+    if (prixInPerM <= 0f && prixOutPerM <= 0f) return null
+    return tokensIn.toDouble() * prixInPerM / 1_000_000.0 +
+        tokensOut.toDouble() * prixOutPerM / 1_000_000.0
+}
+
+/**
  * corr-018 — Journal des consommations : tokens et coûts estimés par session.
  *
  * Entrées plafonnées à Constants.USAGE_ENTREES_MAX, sérialisées en JSON.
  * Alimente l'écran Usage et la ligne d'usage sous les messages (MA45).
  */
 class UsageRepository(context: Context) {
-    private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+    private val json = Json { coerceInputValues = true; ignoreUnknownKeys = true; encodeDefaults = true }
     private val file = File(File(context.filesDir, "usage").apply { mkdirs() }, "entries.json")
 
     fun load(): List<UsageEntry> = runCatching {

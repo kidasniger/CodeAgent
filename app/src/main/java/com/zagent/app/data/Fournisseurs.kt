@@ -46,7 +46,7 @@ object Fournisseurs {
     const val ID_OPENROUTER = "openrouter"
     const val ID_GROQ = "groq"
 
-    val JSON = Json { ignoreUnknownKeys = true }
+    val JSON = Json { coerceInputValues = true; ignoreUnknownKeys = true }
     private val listeSerializer = ListSerializer(Fournisseur.serializer())
 
     /** Fournisseurs intégrés, toujours présents dans la liste enregistrée. */

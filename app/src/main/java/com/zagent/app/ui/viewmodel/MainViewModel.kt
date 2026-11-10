@@ -678,9 +678,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Coût de la conversation, ou null si aucun prix n'est renseigné dans les réglages. */
     val estimatedCost: Double?
-        get() = if (priceInInput <= 0f && priceOutInput <= 0f) null
-        else promptTokens.toDouble() * priceInInput / 1_000_000.0 +
-            completionTokens.toDouble() * priceOutInput / 1_000_000.0
+        get() = com.zagent.app.data.coutEstime(promptTokens, completionTokens, priceInInput, priceOutInput)
 
     fun setPrices(priceIn: Float, priceOut: Float) = settings.setPrices(priceIn, priceOut)
 
@@ -1514,6 +1512,16 @@ done; } 2>&1 | head -c 50000
         if (clePourModele(effectiveModel).isBlank()) {
             navigateTo(AppScreen.SETTINGS)
             statusMessage = "Aucune clé API pour « " + effectiveModel + " » — ajoute-la dans Réglages › Fournisseurs."
+            return
+        }
+        // corr-083 : fournisseur du modèle désactivé → envoi bloqué avec un
+        // message clair et un chemin direct vers Réglages › Fournisseurs.
+        val fournisseurDuModele = ModelCatalog.fournisseurPourModele(effectiveModel, fournisseurs)
+        if (fournisseurDuModele != null && !fournisseurDuModele.actif) {
+            statusMessage = "« " + effectiveModel + " » appartient au fournisseur « " +
+                fournisseurDuModele.nom + " », désactivé. Réactive-le dans Réglages › Fournisseurs."
+            isKeyInvalid = false
+            isLoading = false
             return
         }
 

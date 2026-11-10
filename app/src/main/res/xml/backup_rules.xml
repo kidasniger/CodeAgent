@@ -3,4 +3,7 @@
      n'est pas restaurée sur un autre appareil, ce qui provoquait un crash. -->
 <full-backup-content>
     <exclude domain="sharedpref" path="zagent_secure_prefs.xml"/>
+    <exclude domain="file" path="conversations"/>
+    <exclude domain="file" path="usage"/>
+    <exclude domain="file" path="activity"/>
 </full-backup-content>

@@ -40,7 +40,7 @@ data class ActivityEvent(
 )
 
 class ActivityRepository(context: Context) {
-    private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+    private val json = Json { coerceInputValues = true; ignoreUnknownKeys = true; encodeDefaults = true }
     private val file = File(File(context.filesDir, "activity").apply { mkdirs() }, "events.json")
 
     fun load(): List<ActivityEvent> = runCatching {
