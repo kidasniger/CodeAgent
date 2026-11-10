@@ -37,6 +37,11 @@ object UpdateManager {
     private const val WORK_NAME = "zagent-update-download"
     private const val PREFS = "zagent_update"
     private const val KEY_DISMISSED = "dismissed_tag"
+    private const val KEY_DISMISSED_AT = "dismissed_at"
+    private const val KEY_WIFI_ONLY = "wifi_only"
+    private const val KEY_CANAL_BETA = "canal_beta"
+    // MA71 : après 7 jours, « Plus tard » laisse la release se représenter.
+    private const val DISMISS_RESUME_MS = 7L * 24L * 60L * 60L * 1000L
     private const val STALE_PART_MS = 24L * 60L * 60L * 1000L
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -57,6 +62,11 @@ object UpdateManager {
         appContext = context.applicationContext
         initialized = true
         _dismissedTag.value = prefs().getString(KEY_DISMISSED, null)
+        // MA71 : « Plus tard » expire au bout de 7 jours (date de nouvelle proposition).
+        val dismissedAt = prefs().getLong(KEY_DISMISSED_AT, 0L)
+        if (dismissedAt > 0L && System.currentTimeMillis() - dismissedAt > DISMISS_RESUME_MS) {
+            setDismissed(null)
+        }
         cleanupStale()
     }
 
@@ -87,6 +97,11 @@ object UpdateManager {
     }
 
     private fun resolveState(): UpdateState {
+        // MA74 : garde-fou minSdk — l'APK exige l'API 26 ; sur un appareil plus
+        // ancien l'application n'aurait jamais été installée, on reste défensif.
+        if (Build.VERSION.SDK_INT < 26) {
+            return UpdateState.UpToDate(AppVersion.name(appContext))
+        }
         val parsed = fetchLatest()
         if (parsed is ParseResult.Failure) return UpdateState.Error(parsed.message)
         val release = (parsed as ParseResult.Success).info
@@ -109,8 +124,11 @@ object UpdateManager {
         }
     }
 
+    /** MA67 : canal bêta → scanne les releases récentes (prereleases incluses). */
     private fun fetchLatest(): ParseResult {
-        val url = "https://api.github.com/repos/${UpdateConfig.GITHUB_OWNER}/${UpdateConfig.GITHUB_REPO}/releases/latest"
+        val base = "https://api.github.com/repos/${UpdateConfig.GITHUB_OWNER}/${UpdateConfig.GITHUB_REPO}"
+        val beta = initialized && isCanalBeta()
+        val url = if (beta) "$base/releases?per_page=20" else "$base/releases/latest"
         var conn: HttpURLConnection? = null
         return try {
             conn = URL(url).openConnection() as HttpURLConnection
@@ -120,7 +138,10 @@ object UpdateManager {
             conn.setRequestProperty("User-Agent", "ZAgent-Android")
             conn.setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
             when (val code = conn.responseCode) {
-                200 -> ReleaseParser.parse(conn.inputStream.bufferedReader().use { it.readText() })
+                200 -> {
+                    val text = conn.inputStream.bufferedReader().use { it.readText() }
+                    if (beta) parseBetaList(text) else ReleaseParser.parse(text)
+                }
                 404 -> ParseResult.Failure("Aucune release publiée pour le moment.")
                 403, 429 -> ParseResult.Failure("Limite GitHub atteinte, réessaie plus tard.")
                 else -> ParseResult.Failure("Erreur GitHub (HTTP $code).")
@@ -205,8 +226,30 @@ object UpdateManager {
         _dismissedTag.value = tag
         if (!initialized) return
         val editor = prefs().edit()
-        if (tag == null) editor.remove(KEY_DISMISSED) else editor.putString(KEY_DISMISSED, tag)
+        if (tag == null) {
+            editor.remove(KEY_DISMISSED)
+            editor.remove(KEY_DISMISSED_AT)
+        } else {
+            editor.putString(KEY_DISMISSED, tag)
+            editor.putLong(KEY_DISMISSED_AT, System.currentTimeMillis())
+        }
         editor.apply()
+    }
+
+    // ---------- Réglages de mise à jour (MA67 / MA72) ----------
+
+    /** MA72 : ne télécharger les mises à jour qu'en Wi-Fi (contrainte UNMETERED). */
+    fun isWifiOnly(): Boolean = initialized && prefs().getBoolean(KEY_WIFI_ONLY, false)
+
+    fun setWifiOnly(value: Boolean) {
+        if (initialized) prefs().edit().putBoolean(KEY_WIFI_ONLY, value).apply()
+    }
+
+    /** MA67 : canal stable (défaut) ou bêta (prereleases incluses). */
+    fun isCanalBeta(): Boolean = initialized && prefs().getBoolean(KEY_CANAL_BETA, false)
+
+    fun setCanalBeta(value: Boolean) {
+        if (initialized) prefs().edit().putBoolean(KEY_CANAL_BETA, value).apply()
     }
 
     // ---------- Téléchargement ----------
@@ -227,7 +270,12 @@ object UpdateManager {
             .build()
         val request = OneTimeWorkRequestBuilder<UpdateDownloadWorker>()
             .setInputData(data)
-            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .setConstraints(
+                Constraints.Builder()
+                    // MA72 : « Wi-Fi uniquement » → contrainte UNMETERED.
+                    .setRequiredNetworkType(if (isWifiOnly()) NetworkType.UNMETERED else NetworkType.CONNECTED)
+                    .build()
+            )
             .build()
         WorkManager.getInstance(appContext)
             .enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.REPLACE, request)
@@ -333,5 +381,17 @@ object UpdateManager {
 
     fun dismiss(tag: String) {
         setDismissed(tag)
+    }
+
+    /** MA67 : première release (prerelease acceptée) d'une réponse « /releases ». */
+    private fun parseBetaList(text: String): ParseResult {
+        val candidates = ReleaseParser.parseArray(text) ?: return ParseResult.Failure("Réponse GitHub invalide.")
+        for (raw in candidates) {
+            when (val res = ReleaseParser.parse(raw, allowBeta = true)) {
+                is ParseResult.Success -> return res
+                is ParseResult.Failure -> continue
+            }
+        }
+        return ParseResult.Failure("Aucune release disponible.")
     }
 }

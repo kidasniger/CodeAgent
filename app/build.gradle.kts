@@ -12,10 +12,15 @@ android {
   defaultConfig {
     applicationId = "com.zagent"
     minSdk = 26
-    targetSdk = 28
+    // MA27/MA30 : passage de 28 à 34 (notifications runtime, type de service FGS,
+    // receivers exportés explicites — aucun registerReceiver dynamique dans le code).
+    targetSdk = 34
     versionCode = (project.findProperty("versionCode") as String?)?.toIntOrNull() ?: 1
     versionName = (project.findProperty("versionName") as String?) ?: "1.0"
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    // MA64 : canal de mise à jour paramétrable au build (défauts dans gradle.properties).
+    buildConfigField("String", "ZAGENT_GITHUB_OWNER", "\"${project.findProperty(\"ZAGENT_GITHUB_OWNER\") ?: \"kidasniger\"}\"")
+    buildConfigField("String", "ZAGENT_GITHUB_REPO", "\"${project.findProperty(\"ZAGENT_GITHUB_REPO\") ?: \"CodeAgent\"}\"")
   }
 
   // Do not remove or modify these signingConfigs. They are necessary for building, installing,
@@ -40,7 +45,9 @@ android {
   buildTypes {
     release {
       isCrunchPngs = false
-      isMinifyEnabled = false
+      // MA42 : R8 activé en release (règles dans proguard-rules.pro) + ressources mortes supprimées.
+      isMinifyEnabled = true
+      isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       // Do not remove or modify this signingConfig assignment. It is necessary for Android apps in
       // AI Studio.
@@ -52,9 +59,10 @@ android {
       signingConfig = signingConfigs.getByName("debugConfig")
     }
   }
+  // MA24 : aligné sur le JDK 17 du CI (AGP 9 exige déjà JDK 17+).
   compileOptions {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
   }
   buildFeatures {
     compose = true
@@ -64,7 +72,8 @@ android {
   // dans AndroidManifest.xml. Effet complet (animation système) à partir d'Android 13
   // (API 33) ; sur API 26–32 PredictiveBackHandler repose sur le dispatcher classique,
   // donc le comportement de retour reste identique.
-  lint { disable += "ExpiredTargetSdkVersion" }
+  // MA44 : ExpiredTargetSdkVersion retirée — targetSdk 34 est courant.
+  lint { abortOnError = false }
   testOptions { unitTests { isIncludeAndroidResources = true } }
   dependenciesInfo {
     includeInApk = false

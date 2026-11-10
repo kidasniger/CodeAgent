@@ -3,8 +3,10 @@ package com.zagent.app.agent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.IBinder
 import android.os.PowerManager
+import androidx.core.app.ServiceCompat
 
 /** Service au premier plan : garde l'agent actif quand l'écran s'éteint ou que l'appli passe en arrière-plan. */
 class AgentService : Service() {
@@ -16,7 +18,12 @@ class AgentService : Service() {
         AgentNotifier.ensureChannels(this)
         val text = intent?.getStringExtra("text") ?: "L'agent travaille…"
         try {
-            startForeground(1, AgentNotifier.runningNotification(this, text))
+            // MA29 : type dataSync déclaré (manifeste) et passé explicitement ;
+            // ServiceCompat ignore le type sous API 29.
+            ServiceCompat.startForeground(
+                this, 1, AgentNotifier.runningNotification(this, text),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            )
         } catch (e: Exception) {
             stopSelf()
             return START_NOT_STICKY

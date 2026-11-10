@@ -40,20 +40,21 @@ jobs:
       tag: ${{ steps.ver.outputs.tag }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: 'temurin'
           java-version: '17'
 
+      # MA46/MA47 : actions aux dernières versions majeures (vérifiées par git ls-remote)
+      # et ./gradlew au lieu de gradle-version → même version Gradle en local et en CI,
+      # cache des dépendances (jitpack inclus) géré par setup-gradle (MA48).
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '9.8.2'
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Calculer la version
         id: ver
@@ -88,10 +89,22 @@ jobs:
           KS_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
           set -euo pipefail
-          [[ -n "${KS_B64:-}" ]] || { echo "::error::Secret KEYSTORE_BASE64 manquant"; exit 1; }
-          [[ -n "${KS_PASS:-}" ]] || { echo "::error::Secret KEYSTORE_PASSWORD manquant"; exit 1; }
-          [[ -n "${KS_ALIAS:-}" ]] || { echo "::error::Secret KEY_ALIAS manquant"; exit 1; }
-
+          # MA49 : le build debug ne doit pas échouer sans secrets — repli sur un
+          # keystore debug généré à la volée ; le job release reste strict.
+          if [[ -z "${KS_B64:-}" ]]; then
+            echo "::warning::KEYSTORE_BASE64 absent : keystore debug généré pour ce build."
+            KS="$RUNNER_TEMP/debug-fallback.keystore"
+            keytool -genkeypair -v -keystore "$KS" -storepass android -keypass android \
+              -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=ZAgent Debug, O=ZAgent, C=FR"
+            {
+              echo "KEYSTORE_PATH=$KS"
+              echo "KEYSTORE_PASSWORD=android"
+              echo "KEY_PASSWORD=android"
+              echo "KEY_ALIAS=androiddebugkey"
+            } >> "$GITHUB_ENV"
+            exit 0
+          fi
           printf '%s' "$KS_B64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
           test -s "$RUNNER_TEMP/release.keystore" || {
             echo "::error::Le keystore décodé est vide"
@@ -108,7 +121,32 @@ jobs:
       - name: Build Debug APK
         run: |
           set -o pipefail
-          gradle assembleDebug -PversionName=${{ steps.ver.outputs.name }} -PversionCode=${{ steps.ver.outputs.code }} 2>&1 | tee build.log
+          ./gradlew assembleDebug -PversionName=${{ steps.ver.outputs.name }} -PversionCode=${{ steps.ver.outputs.code }} 2>&1 | tee build.log
+
+      # MA55 : tests unitaires en CI avec publication du rapport.
+      - name: Tests unitaires
+        run: ./gradlew :app:testDebugUnitTest
+
+      - name: Rapport de tests (artefact)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports
+          path: app/build/reports/tests/
+          if-no-files-found: ignore
+
+      # MA56 : lint informatif avec rapport HTML en artefact.
+      - name: Lint (informatif)
+        continue-on-error: true
+        run: ./gradlew :app:lintDebug
+
+      - name: Rapport lint (artefact)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lint-report
+          path: app/build/reports/lint-results-debug.html
+          if-no-files-found: ignore
 
       - name: Rapport erreurs compilation
         if: failure()
@@ -123,7 +161,7 @@ jobs:
           fi
 
       - name: Upload Debug APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
@@ -137,6 +175,9 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: write
+    # MA57 : la publication passe par l'environnement GitHub « production »
+    # (règles de protection / relecteurs configurables côté dépôt).
+    environment: production
     # Les releases se publient une par une ; si main avance, seule la dernière en attente est gardée.
     concurrency:
       group: zagent-release
@@ -145,20 +186,18 @@ jobs:
       RELEASE_NOTES: ${{ inputs.notes || '' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: JDK
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
 
       - name: Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "9.8.2"
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Licences Android
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
@@ -189,14 +228,14 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Tests unitaires
-        run: gradle :app:testDebugUnitTest
+        run: ./gradlew :app:testDebugUnitTest
 
       - name: Lint (informatif)
         continue-on-error: true
-        run: gradle :app:lintDebug
+        run: ./gradlew :app:lintDebug
 
       - name: Build release signé
-        run: gradle assembleRelease -PversionName=${{ needs.build.outputs.name }} -PversionCode=${{ needs.build.outputs.code }}
+        run: ./gradlew assembleRelease -PversionName=${{ needs.build.outputs.name }} -PversionCode=${{ needs.build.outputs.code }}
 
       - name: Nommer l'APK et calculer le SHA-256
         shell: bash

@@ -1,21 +1,36 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# MA42 — Règles R8 pour la build release (minify + shrinkResources).
+# Objectif : garder intacte la sérialisation kotlinx, OkHttp, Termux et les
+# composants Compose manipulés par réflexion, tout en réduisant l'APK.
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# ── kotlinx.serialization ──────────────────────────────────────────────
+-keepattributes *Annotation*, InnerClasses
+-dontnote kotlinx.serialization.**
+-keepclassmembers class kotlinx.serialization.json.** { *** Companion; }
+-keepclasseswithmembers class kotlinx.serialization.json.** { kotlinx.serialization.KSerializer serializer(...); }
+-keep,includedescriptorclasses class com.zagent.app.**$$serializer { *; }
+-keepclassmembers class com.zagent.app.** { *** Companion; }
+-keepclasseswithmembers class com.zagent.app.** { kotlinx.serialization.KSerializer serializer(...); }
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# ── OkHttp / Okio ──────────────────────────────────────────────────────
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-dontwarn javax.annotation.**
+-dontwarn org.codehaus.mojo.animal_sniffer.*
+-keepnames class okhttp3.internal.publicsuffix.PublicSuffixDatabase
+-dontwarn org.conscrypt.**
+-dontwarn org.bouncycastle.**
+-dontwarn org.openjsse.**
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# ── Termux (terminal-view / terminal-emulator, liaison JNI et réflexion) ──
+-keep class com.termux.** { *; }
+
+# ── ZXing (QR code) ────────────────────────────────────────────────────
+-keep class com.google.zxing.** { *; }
+-dontwarn com.google.zxing.**
+
+# ── Compose : préserve les previews et les constructeurs reflection ────
+-dontwarn androidx.compose.**
+
+# ── Diagnostic facilité en cas de crash R8 ──────────────────────────────
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile

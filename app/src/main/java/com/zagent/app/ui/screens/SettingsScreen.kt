@@ -118,7 +118,9 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
     }
 
     // ── Sous-écrans du LOT 5 (MA56 → MA70) ───────────────────────────────
-    var showModels by rememberSaveable { mutableStateOf(false) }
+    // MA39 : un raccourci « Modèles » peut pré-demander l'ouverture de cet écran.
+    var showModels by rememberSaveable { mutableStateOf(viewModel.pendingOpenModels) }
+    LaunchedEffect(Unit) { viewModel.pendingOpenModels = false }
     var showUsage by rememberSaveable { mutableStateOf(false) }
     var showInstructions by rememberSaveable { mutableStateOf(false) }
     var showPermissions by rememberSaveable { mutableStateOf(false) }

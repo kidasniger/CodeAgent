@@ -79,10 +79,45 @@ fun AboutScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 color = c.text
             )
             Spacer(Modifier.height(2.dp))
-            MonoLine("Version " + UpdateManager.currentVersionName(), c.text2)
+            // MA95 : versionName + versionCode depuis BuildConfig.
+            MonoLine(
+                "Version " + UpdateManager.currentVersionName() + " · build " +
+                    com.zagent.app.BuildConfig.VERSION_CODE,
+                c.text2
+            )
         }
 
-        // ── Mises à jour ─────────────────────────────────────────────────────
+        // ── Licences open source (MA96) ─────────────────────────────────────
+        Lot5Section("Licences open source")
+        GlassCard {
+            val licences = listOf(
+                "Jetpack Compose & AndroidX" to "Apache 2.0",
+                "OkHttp / Okio (Square)" to "Apache 2.0",
+                "Coil (coil3)" to "Apache 2.0",
+                "Haze (Chris Banes)" to "Apache 2.0",
+                "ZXing" to "Apache 2.0",
+                "kotlinx.coroutines & serialization" to "Apache 2.0",
+                "Termux (terminal-view, terminal-emulator)" to "GPLv3"
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                licences.forEach { (lib, lic) ->
+                    Row(Modifier.fillMaxWidth()) {
+                        Text(
+                            lib,
+                            style = TextStyle(fontFamily = Inter, fontSize = 13.sp),
+                            color = c.text,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            lic,
+                            style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.5.sp),
+                            color = c.text2
+                        )
+                    }
+                }
+            }
+        }
+
         Lot5Section("Mises à jour")
         GlassCard {
             Row(verticalAlignment = Alignment.CenterVertically) {

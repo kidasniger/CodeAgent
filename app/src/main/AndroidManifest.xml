@@ -4,6 +4,8 @@
 
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- MA29 : type de service dataSync exigé à partir de targetSdk 34 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- MA54 : dictée vocale (SpeechRecognizer) -->
@@ -44,7 +46,8 @@
         </activity>
     <service
             android:name=".agent.AgentService"
-            android:exported="false" />
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
     <!-- MàJ 100 : persistance de la langue par application (repli API 26-32 via
          AppCompatDelegate ; natif à partir d'Android 13). -->
     <service

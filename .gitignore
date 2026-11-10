@@ -15,6 +15,7 @@
 .cxx
 local.properties
 .env
+*.apk
 debug.keystore
 *.keystore
 /tmp

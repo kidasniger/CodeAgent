@@ -163,7 +163,9 @@ class MainActivity : AppCompatActivity() {
         val action = intent?.action ?: return
         if (action == MainViewModel.ACTION_SHORTCUT_NEW_CHAT ||
             action == MainViewModel.ACTION_SHORTCUT_OPEN_TERMINAL ||
-            action == MainViewModel.ACTION_SHORTCUT_LAST_PROJECT
+            action == MainViewModel.ACTION_SHORTCUT_LAST_PROJECT ||
+            action == MainViewModel.ACTION_SHORTCUT_OPEN_GIT ||
+            action == MainViewModel.ACTION_SHORTCUT_OPEN_MODELS
         ) {
             viewModel.handleAppShortcut(action)
         }

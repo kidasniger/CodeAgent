@@ -1,0 +1,4202 @@
+[
+ {
+  "id": "maj-001",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Audit des versions",
+  "text": "Ouvre gradle/libs.versions.toml et app/build.gradle.kts : liste chaque dépendance avec sa version actuelle et la dernière version stable dans un tableau. Ne modifie rien."
+ },
+ {
+  "id": "maj-002",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Gradle wrapper",
+  "text": "Mets à jour gradle/wrapper/gradle-wrapper.properties vers la dernière version stable de Gradle et aligne gradle-version dans .github/workflows/build.yml."
+ },
+ {
+  "id": "maj-003",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Android Gradle Plugin",
+  "text": "Monte AGP à la dernière version stable compatible avec ton Gradle et compileSdk 36 ; corrige les dépréciations signalées."
+ },
+ {
+  "id": "maj-004",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Kotlin",
+  "text": "Mets Kotlin et le plugin kotlin.compose à la dernière version stable ; recompile et corrige les erreurs."
+ },
+ {
+  "id": "maj-005",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Compose BOM",
+  "text": "Mets à jour androidx.compose.bom ; vérifie que les API expérimentales utilisées (Material3, window size class) compilent toujours."
+ },
+ {
+  "id": "maj-006",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Material3",
+  "text": "Aligne Material3 sur le BOM et remplace les composants dépréciés dans ui/components/ZComponents.kt."
+ },
+ {
+  "id": "maj-007",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Navigation Compose",
+  "text": "Mets à jour navigation-compose (2.8.9 aujourd’hui) et vérifie ZNavHost.kt : transitions, deep links zagent://, saveState/restoreState."
+ },
+ {
+  "id": "maj-008",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Lifecycle",
+  "text": "Mets à jour lifecycle-runtime-compose, runtime-ktx et viewmodel-compose ; utilise collectAsStateWithLifecycle là où c’est pertinent."
+ },
+ {
+  "id": "maj-009",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Coroutines",
+  "text": "Mets à jour kotlinx-coroutines (core, android, test) et fais passer les tests existants."
+ },
+ {
+  "id": "maj-010",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Serialization",
+  "text": "Mets à jour kotlinx-serialization-json et son plugin ; vérifie Fournisseurs.kt, ConversationRepository.kt et ModelCatalog.kt."
+ },
+ {
+  "id": "maj-011",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "OkHttp",
+  "text": "Mets à jour OkHttp ; adapte data/AiRepository.kt (timeouts, flux SSE) si l’API a changé."
+ },
+ {
+  "id": "maj-012",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Coil",
+  "text": "Mets à jour coil-compose ; vérifie les vignettes d’images jointes (AttachSheet.kt, InputBarLot4.kt)."
+ },
+ {
+  "id": "maj-013",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Haze",
+  "text": "Mets à jour haze et haze-materials ; teste le rendu verre (ui/theme/Glass.kt, GlassOverlays.kt) sur API 26 et 34."
+ },
+ {
+  "id": "maj-014",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "WorkManager",
+  "text": "work-runtime-ktx est écrit en dur à 2.9.1 : déplace-le dans libs.versions.toml à la dernière version stable."
+ },
+ {
+  "id": "maj-015",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Libs Termux",
+  "text": "terminal-view et terminal-emulator sont en dur en v0.118.0 : centralise-les dans le catalogue de versions et vérifie la dernière version compatible."
+ },
+ {
+  "id": "maj-016",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "ZXing",
+  "text": "Mets à jour zxing-core et vérifie le QR code de ui/editor/PreviewScreen.kt."
+ },
+ {
+  "id": "maj-017",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Security-crypto",
+  "text": "Mets à jour androidx.security.crypto ; vérifie SettingsManager.kt (EncryptedSharedPreferences) sans perdre les clés déjà enregistrées."
+ },
+ {
+  "id": "maj-018",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "AppCompat",
+  "text": "Mets à jour appcompat (langue par application) et teste le changement de langue sur API 26-32 et 33+."
+ },
+ {
+  "id": "maj-019",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Splash screen",
+  "text": "Mets à jour core-splashscreen ; vérifie SplashScreen.kt et le thème Theme.ZAgent.Starting."
+ },
+ {
+  "id": "maj-020",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "ProfileInstaller",
+  "text": "Mets à jour profileinstaller et complète baseline-prof.txt avec Chat, Terminal, Git et Modèles."
+ },
+ {
+  "id": "maj-021",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Bibliothèques de test",
+  "text": "Mets à jour junit, robolectric, androidx.test et compose ui-test ; fais passer les 5 fichiers de tests existants."
+ },
+ {
+  "id": "maj-022",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Plugin secrets",
+  "text": "Mets à jour le plugin secrets-gradle et supprime la configuration devenue inutile dans app/build.gradle.kts."
+ },
+ {
+  "id": "maj-023",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Foojay resolver",
+  "text": "Mets à jour org.gradle.toolchains.foojay-resolver-convention dans settings.gradle.kts."
+ },
+ {
+  "id": "maj-024",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Java 17",
+  "text": "Aligne sourceCompatibility, targetCompatibility et le jvmTarget Kotlin sur Java 17 comme le JDK du CI."
+ },
+ {
+  "id": "maj-025",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Catalogue unique",
+  "text": "Vérifie que TOUTES les dépendances de app/build.gradle.kts passent par libs.versions.toml (plus aucune version écrite en dur)."
+ },
+ {
+  "id": "maj-026",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Build-tools et compileSdk",
+  "text": "Vérifie que compileSdk 36 et ses build-tools sont bien installés dans le CI et mets à jour ce qui manque."
+ },
+ {
+  "id": "maj-027",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "targetSdk 33",
+  "text": "Passe targetSdk de 28 à 33 en suivant docs/LOT6-navigation.md (étape 6). Liste d’abord ce qui peut casser, puis corrige."
+ },
+ {
+  "id": "maj-028",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Permission notifications",
+  "text": "Ajoute la demande à l’exécution de POST_NOTIFICATIONS (OnboardingScreen.kt) pour que AgentNotifier.kt puisse notifier."
+ },
+ {
+  "id": "maj-029",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Type de service",
+  "text": "Déclare android:foregroundServiceType=\"dataSync\" sur AgentService et la permission FOREGROUND_SERVICE_DATA_SYNC dans AndroidManifest.xml."
+ },
+ {
+  "id": "maj-030",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "targetSdk 34",
+  "text": "Une fois le 33 validé, passe à 34 ; précise RECEIVER_EXPORTED ou RECEIVER_NOT_EXPORTED sur chaque receiver enregistré dynamiquement."
+ },
+ {
+  "id": "maj-031",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Préparer targetSdk 35",
+  "text": "Prépare targetSdk 35 : edge-to-edge obligatoire, vérifie les insets dans MainActivity.kt et ui/components/FloatingTabBar.kt."
+ },
+ {
+  "id": "maj-032",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Stockage ciblé",
+  "text": "Audite data/FileRepository.kt : supprime toute lecture directe de /sdcard et passe par SAF ou le home privé de l’appli."
+ },
+ {
+  "id": "maj-033",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Retour prédictif",
+  "text": "Vérifie PredictiveBackHandler (MainActivity.kt) sur API 33+ maintenant que enableOnBackInvokedCallback est effectif."
+ },
+ {
+  "id": "maj-034",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Locales config",
+  "text": "Mets à jour res/xml/locales_config.xml avec les langues réellement traduites (fr, en)."
+ },
+ {
+  "id": "maj-035",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Règles de sauvegarde",
+  "text": "Mets à jour backup_rules.xml et data_extraction_rules.xml pour exclure aussi caches et données sensibles."
+ },
+ {
+  "id": "maj-036",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Config réseau",
+  "text": "Revois network_security_config.xml : cleartext uniquement pour 127.0.0.1 et localhost, et commente pourquoi."
+ },
+ {
+  "id": "maj-037",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Package applicatif",
+  "text": "applicationId vaut com.zagent alors que namespace et bootstrap utilisent com.zagent.app : audite la cohérence et documente la décision avant de changer quoi que ce soit."
+ },
+ {
+  "id": "maj-038",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Icône monochrome",
+  "text": "Ajoute une couche monochrome (icônes thématiques Android 13) dans mipmap-anydpi-v26/ic_launcher.xml."
+ },
+ {
+  "id": "maj-039",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Raccourcis",
+  "text": "Mets à jour res/xml/shortcuts.xml avec Git et Modèles ; garde 4 raccourcis maximum."
+ },
+ {
+  "id": "maj-040",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Deep links",
+  "text": "Complète les deep links (zagent://git, zagent://models) dans le manifeste et documente-les dans docs/LOT6-navigation.md."
+ },
+ {
+  "id": "maj-041",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Baseline profile",
+  "text": "Ajoute à baseline-prof.txt les classes du démarrage : MainActivity, ZNavHost, ChatScreen."
+ },
+ {
+  "id": "maj-042",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "R8 en release",
+  "text": "Active isMinifyEnabled et isShrinkResources en release avec règles keep pour serialization, OkHttp, Termux et Compose."
+ },
+ {
+  "id": "maj-043",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Rapport de dépendances",
+  "text": "Vérifie dependenciesInfo et ajoute un rapport de licences des dépendances au build."
+ },
+ {
+  "id": "maj-044",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Lint",
+  "text": "Retire ExpiredTargetSdkVersion de la config lint une fois targetSdk au moins 34 et corrige les avertissements bloquants."
+ },
+ {
+  "id": "maj-045",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Métriques Compose",
+  "text": "Active les rapports du compilateur Compose et liste les composables instables de ChatComponents.kt."
+ },
+ {
+  "id": "maj-046",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Actions GitHub",
+  "text": "Mets à jour toutes les actions (checkout, setup-java, setup-gradle, upload-artifact) vers les dernières versions majeures dans build.yml et bootstrap.yml."
+ },
+ {
+  "id": "maj-047",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Wrapper en CI",
+  "text": "Remplace gradle-version: '9.3.1' par ./gradlew pour avoir la même version en local et en CI."
+ },
+ {
+  "id": "maj-048",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Cache Gradle",
+  "text": "Vérifie le cache de setup-gradle et ajoute le cache des dépendances jitpack (Termux)."
+ },
+ {
+  "id": "maj-049",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Build sans secrets",
+  "text": "Dans build.yml, ne fais plus échouer le job build debug quand KEYSTORE_* est absent : repli sur le keystore debug."
+ },
+ {
+  "id": "maj-050",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "versionCode stable",
+  "text": "Documente et sécurise le calcul de versionCode (git rev-list --count) avec fetch-depth: 0."
+ },
+ {
+  "id": "maj-051",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Notes automatiques",
+  "text": "Génère les notes de release depuis les messages de commit dans build.yml."
+ },
+ {
+  "id": "maj-052",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Somme SHA-256",
+  "text": "Joins à la release un fichier .sha256 de l’APK lisible par update/ApkVerifier.kt."
+ },
+ {
+  "id": "maj-053",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Dependabot",
+  "text": "Ajoute .github/dependabot.yml pour Gradle et GitHub Actions, en hebdomadaire."
+ },
+ {
+  "id": "maj-054",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Groupes Dependabot",
+  "text": "Groupe les mises à jour par famille : compose, kotlin, androidx, okhttp."
+ },
+ {
+  "id": "maj-055",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Tests en CI",
+  "text": "Ajoute un job qui lance ./gradlew testDebugUnitTest et publie le rapport."
+ },
+ {
+  "id": "maj-056",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Lint en CI",
+  "text": "Ajoute ./gradlew lintDebug avec envoi du rapport HTML en artefact."
+ },
+ {
+  "id": "maj-057",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Release protégée",
+  "text": "Fais tourner le job release uniquement sur main et derrière un environnement GitHub « production »."
+ },
+ {
+  "id": "maj-058",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Concurrence",
+  "text": "Vérifie les groupes de concurrence pour que build et release ne s’annulent pas entre eux."
+ },
+ {
+  "id": "maj-059",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Bootstrap épinglé",
+  "text": "Dans bootstrap.yml, épingle termux-packages à un commit ou un tag au lieu de git clone --depth 1 sur la branche par défaut."
+ },
+ {
+  "id": "maj-060",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Cache bootstrap",
+  "text": "Ajoute un cache et des artefacts versionnés au workflow bootstrap pour éviter de reconstruire 345 minutes."
+ },
+ {
+  "id": "maj-061",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Paquets par défaut",
+  "text": "Mets à jour la liste par défaut (git, openssh, curl) et propose python et nodejs en option."
+ },
+ {
+  "id": "maj-062",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Architectures",
+  "text": "Ajoute arm, i686 et x86_64 en option du workflow bootstrap (émulateur, Chromebook)."
+ },
+ {
+  "id": "maj-063",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Script orphelin",
+  "text": "app/applet/parse_update.py utilise /tmp et un autre owner que UpdateConfig : supprime-le ou déplace-le dans tools/."
+ },
+ {
+  "id": "maj-064",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "UpdateConfig paramétrable",
+  "text": "Rends GITHUB_OWNER et GITHUB_REPO configurables via BuildConfig depuis gradle.properties au lieu de constantes."
+ },
+ {
+  "id": "maj-065",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "ReleaseParser",
+  "text": "Mets à jour update/ReleaseParser.kt pour gérer prereleases, drafts et plusieurs assets (arm64, universal)."
+ },
+ {
+  "id": "maj-066",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "VersionComparator",
+  "text": "Étends update/VersionComparator.kt aux suffixes -bNNN et ajoute des tests aux limites."
+ },
+ {
+  "id": "maj-067",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Canal stable ou bêta",
+  "text": "Ajoute un choix de canal dans Réglages lu par UpdateManager.kt."
+ },
+ {
+  "id": "maj-068",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Reprise de téléchargement",
+  "text": "Fais reprendre UpdateDownloadWorker.kt avec l’en-tête Range après une interruption."
+ },
+ {
+  "id": "maj-069",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Signature de l’APK",
+  "text": "Dans ApkVerifier.kt, compare aussi le certificat du paquet téléchargé avec celui de l’appli installée."
+ },
+ {
+  "id": "maj-070",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Notes dans l’appli",
+  "text": "Affiche les notes de version dans update/UpdateUi.kt en markdown simple."
+ },
+ {
+  "id": "maj-071",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Rappel plus tard",
+  "text": "Ajoute « Plus tard » avec date de nouvelle proposition."
+ },
+ {
+  "id": "maj-072",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Màj en Wi-Fi",
+  "text": "Ajoute l’option de ne télécharger les mises à jour que sur Wi-Fi (contraintes WorkManager)."
+ },
+ {
+  "id": "maj-073",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Écran Nouveautés",
+  "text": "Ajoute dans AboutScreen.kt la liste des dernières versions publiées."
+ },
+ {
+  "id": "maj-074",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Compat minSdk",
+  "text": "Vérifie la compatibilité minSdk d’une release avant de la proposer."
+ },
+ {
+  "id": "maj-075",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Source inconnue",
+  "text": "Guide l’utilisateur vers « Installer des applis inconnues » quand REQUEST_INSTALL_PACKAGES n’est pas accordée."
+ },
+ {
+  "id": "maj-076",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "FileProvider",
+  "text": "Limite update_file_paths.xml au seul dossier des APK téléchargés."
+ },
+ {
+  "id": "maj-077",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Nettoyage des APK",
+  "text": "Supprime les anciens APK téléchargés après une installation réussie."
+ },
+ {
+  "id": "maj-078",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Tests de mise à jour",
+  "text": "Ajoute des tests simulant une réponse GitHub complète dans ReleaseParserTest.kt."
+ },
+ {
+  "id": "maj-079",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Catalogue de modèles",
+  "text": "Mets à jour data/ModelCatalog.kt avec les modèles actuels de z.ai (GLM) et NVIDIA NIM ; marque les retirés comme obsolètes."
+ },
+ {
+  "id": "maj-080",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "URLs des fournisseurs",
+  "text": "Compare ModelCatalog.URL_ZAI et URL_NVIDIA à la documentation officielle actuelle."
+ },
+ {
+  "id": "maj-081",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Détection fournisseur",
+  "text": "Mets à jour Fournisseurs.detecter() pour reconnaître les préfixes de clés d’autres fournisseurs."
+ },
+ {
+  "id": "maj-082",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Nouveaux fournisseurs",
+  "text": "Ajoute OpenRouter et Groq comme fournisseurs intégrés optionnels dans Fournisseurs.integres()."
+ },
+ {
+  "id": "maj-083",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Paramètres de génération",
+  "text": "Supporte temperature, top_p et max_tokens par modèle dans AiRepository.kt."
+ },
+ {
+  "id": "maj-084",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Fenêtre de contexte",
+  "text": "Stocke la fenêtre de contexte de chaque modèle dans ModelCatalog et affiche-la dans ModelsScreen.kt."
+ },
+ {
+  "id": "maj-085",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Tarifs",
+  "text": "Ajoute le tarif (ou « gratuit ») par modèle pour le calcul de coût dans UsageRepository.kt."
+ },
+ {
+  "id": "maj-086",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Format des outils",
+  "text": "Mets à jour la définition des outils dans AgentTools.kt vers le schéma tools et tool_choice le plus récent."
+ },
+ {
+  "id": "maj-087",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Raisonnement",
+  "text": "Gère les champs de raisonnement (reasoning_content) des modèles récents dans le flux SSE."
+ },
+ {
+  "id": "maj-088",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Tests du catalogue",
+  "text": "Étends ModelCatalogTest.kt aux nouveaux modèles et à la détection."
+ },
+ {
+  "id": "maj-089",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "README",
+  "text": "Crée README.md : présentation, build, secrets CI, architecture, captures."
+ },
+ {
+  "id": "maj-090",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "CHANGELOG",
+  "text": "Crée CHANGELOG.md au format Keep a Changelog en reprenant les MA et MàJ existantes."
+ },
+ {
+  "id": "maj-091",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Architecture",
+  "text": "Ajoute docs/ARCHITECTURE.md décrivant les couches data, ui, terminal, update."
+ },
+ {
+  "id": "maj-092",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Index des lots",
+  "text": "Crée docs/README.md qui indexe les documents de lots (LOT6-navigation.md…)."
+ },
+ {
+  "id": "maj-093",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Placeholder Gemini",
+  "text": "Retire GEMINI_API_KEY de .env.example et la capability Gemini de metadata.json : l’appli ne les utilise pas."
+ },
+ {
+  "id": "maj-094",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": ".gitignore",
+  "text": "Complète .gitignore : keystores, local.properties, build, .env, *.apk."
+ },
+ {
+  "id": "maj-095",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Version affichée",
+  "text": "Affiche versionName et versionCode (BuildConfig) dans AboutScreen.kt."
+ },
+ {
+  "id": "maj-096",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Licences",
+  "text": "Ajoute un écran Licences open source (OkHttp, Coil, Termux, Haze…)."
+ },
+ {
+  "id": "maj-097",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Politique de version",
+  "text": "Documente SemVer et le suffixe -bNNN dans docs/VERSIONING.md."
+ },
+ {
+  "id": "maj-098",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Vérification des mises à jour",
+  "text": "Relance build, tests et lint complets ; liste les mises à jour appliquées et celles qui restent."
+ },
+ {
+  "id": "maj-099",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Mise à jour des chaînes",
+  "text": "Synchronise values/strings.xml et values-en/strings.xml (même nombre de clés) après toutes les modifications."
+ },
+ {
+  "id": "maj-100",
+  "cat": "maj",
+  "catName": "Mises à jour",
+  "title": "Synthèse finale",
+  "text": "Produis un rapport final : versions avant/après, ce qui a été migré, risques restants et ordre conseillé pour les prochaines mises à jour."
+ },
+ {
+  "id": "corr-001",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Cartographie du ViewModel",
+  "text": "ui/viewmodel/MainViewModel.kt pèse 138 Ko : liste ses responsabilités (chat, terminal, navigation, réglages, git, mises à jour) sans coder, avec le découpage proposé."
+ },
+ {
+  "id": "corr-002",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "ChatViewModel",
+  "text": "Extrais la logique du chat dans un ChatViewModel avec la même API publique, sans changer le comportement."
+ },
+ {
+  "id": "corr-003",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "NavigationViewModel",
+  "text": "Extrais navRouteRequest, navBackRequest et syncScreenFromRoute dans un NavigationViewModel."
+ },
+ {
+  "id": "corr-004",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "SettingsViewModel",
+  "text": "Extrais les états de réglages (maxStepsInput, etc.) dans un SettingsViewModel."
+ },
+ {
+  "id": "corr-005",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "TerminalViewModel",
+  "text": "Extrais la gestion des onglets du terminal dans son propre ViewModel."
+ },
+ {
+  "id": "corr-006",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Injection de dépendances",
+  "text": "Introduis un conteneur simple pour SettingsManager, FileRepository et AiRepository au lieu de les instancier dans le ViewModel."
+ },
+ {
+  "id": "corr-007",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Interfaces de dépôts",
+  "text": "Crée des interfaces pour AiRepository, FileRepository et ConversationRepository afin de les simuler dans les tests."
+ },
+ {
+  "id": "corr-008",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "UiState par écran",
+  "text": "Remplace les nombreux mutableStateOf par une data class UiState par écran."
+ },
+ {
+  "id": "corr-009",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Événements uniques",
+  "text": "Remplace les drapeaux booléens d’événements uniques (toasts, navigation) par des SharedFlow."
+ },
+ {
+  "id": "corr-010",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Découper ChatScreen",
+  "text": "ChatScreen.kt fait 42 Ko : sépare en fichiers cohérents (liste, en-tête, saisie) sans changer le rendu."
+ },
+ {
+  "id": "corr-011",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Découper ZComponents",
+  "text": "ZComponents.kt fait 55 Ko : sépare par famille (boutons, menus, cartes, feuilles)."
+ },
+ {
+  "id": "corr-012",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Noms fonctionnels",
+  "text": "Renomme Lot4Components, Lot5Components et InputBarLot4 en noms décrivant leur rôle."
+ },
+ {
+  "id": "corr-013",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Langue du code",
+  "text": "Choisis une langue pour les identifiants et uniformise-la dans les fichiers que tu touches."
+ },
+ {
+  "id": "corr-014",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Packages",
+  "text": "Réorganise ui/components en sous-packages (chat, editor, common)."
+ },
+ {
+  "id": "corr-015",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Constantes",
+  "text": "Regroupe timeouts, tailles et limites dans un fichier Constants.kt."
+ },
+ {
+  "id": "corr-016",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Code mort",
+  "text": "Détecte et supprime fonctions, imports et ressources inutilisés grâce à lint."
+ },
+ {
+  "id": "corr-017",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Previews",
+  "text": "Revois Previews.kt : une preview par composant clé avec données factices."
+ },
+ {
+  "id": "corr-018",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "KDoc",
+  "text": "Ajoute des KDoc aux classes publiques de data/ (AiRepository, AgentTools, FileRepository)."
+ },
+ {
+  "id": "corr-019",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Journalisation",
+  "text": "Crée un wrapper ZLog qui masque les clés API et coupe les logs verbeux en release."
+ },
+ {
+  "id": "corr-020",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "État de l’agent",
+  "text": "Modélise l’état de l’agent (Idle, Streaming, ExecutingTool, WaitingUser, Error) avec une sealed class."
+ },
+ {
+  "id": "corr-021",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Clé API dans les logs",
+  "text": "Cherche tout log, toast ou exception pouvant afficher une clé API et masque-la."
+ },
+ {
+  "id": "corr-022",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Champ de clé",
+  "text": "Dans Réglages, affiche les clés en champ mot de passe avec bouton afficher/masquer."
+ },
+ {
+  "id": "corr-023",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Presse-papiers",
+  "text": "Marque le texte copié contenant une clé comme sensible (Android 13+) et évite de le garder."
+ },
+ {
+  "id": "corr-024",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Sauvegarde Android",
+  "text": "Revois allowBackup=true : exclus aussi les données de conversation sensibles."
+ },
+ {
+  "id": "corr-025",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Chemins et liens",
+  "text": "Dans FileRepository.resolveInside, gère liens symboliques et chemins encodés et ajoute des tests."
+ },
+ {
+  "id": "corr-026",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "validatePath",
+  "text": "Remplace le simple contains(\"..\") par une vraie canonicalisation ; teste ../, ..\\ et %2e%2e."
+ },
+ {
+  "id": "corr-027",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Commandes dangereuses",
+  "text": "Dans run_command, exige une confirmation renforcée pour rm -rf /, mkfs, dd, fork bomb et équivalents."
+ },
+ {
+  "id": "corr-028",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Confirmations",
+  "text": "Vérifie dans ChatConfirmations.kt que write_file, delete_file et run_command demandent bien confirmation selon le mode choisi."
+ },
+ {
+  "id": "corr-029",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Mode lecture seule",
+  "text": "Ajoute un mode qui bloque tous les outils d’écriture dans AgentTools.executeTool."
+ },
+ {
+  "id": "corr-030",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Confinement au projet",
+  "text": "Empêche l’agent de sortir du dossier projet, y compris via run_command (cd /, chemins absolus)."
+ },
+ {
+  "id": "corr-031",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Environnement des processus",
+  "text": "Nettoie les variables d’environnement passées aux ProcessBuilder de TerminalController pour ne pas exposer de clés."
+ },
+ {
+  "id": "corr-032",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Timeout maximal",
+  "text": "Impose côté appli un timeout maximal à run_command, quelle que soit la valeur timeout_seconds demandée par le modèle."
+ },
+ {
+  "id": "corr-033",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Sorties volumineuses",
+  "text": "Tronque les sorties de commandes et les fichiers lus avant envoi au modèle."
+ },
+ {
+  "id": "corr-034",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Injection de prompt",
+  "text": "Marque le contenu des fichiers lus comme données non fiables dans le prompt système pour limiter l’injection de prompt."
+ },
+ {
+  "id": "corr-035",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Serveur d’aperçu local",
+  "text": "Limite PreviewServer.kt à 127.0.0.1 par défaut et protège l’accès réseau local par un jeton aléatoire."
+ },
+ {
+  "id": "corr-036",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Traversée de chemin aperçu",
+  "text": "Empêche PreviewServer de servir un fichier hors du dossier projet."
+ },
+ {
+  "id": "corr-037",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "En-têtes de sécurité",
+  "text": "Ajoute CSP et X-Content-Type-Options aux réponses du serveur d’aperçu."
+ },
+ {
+  "id": "corr-038",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "WebView",
+  "text": "Dans PreviewPane.kt, désactive l’accès aux fichiers et toute interface JavaScript inutile."
+ },
+ {
+  "id": "corr-039",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Paramètres de deep link",
+  "text": "Valide zagent://editor?path= : le chemin doit rester dans le projet."
+ },
+ {
+  "id": "corr-040",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Intents entrants",
+  "text": "Valide taille et type MIME des intents de partage reçus dans MainActivity."
+ },
+ {
+  "id": "corr-041",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Preuve d’intégrité",
+  "text": "Rends ApkVerifier obligatoire : refuse l’installation si le SHA-256 attendu est absent."
+ },
+ {
+  "id": "corr-042",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "HTTPS obligatoire",
+  "text": "Impose HTTPS pour les baseUrl de fournisseurs personnalisés, sauf localhost explicitement autorisé."
+ },
+ {
+  "id": "corr-043",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Certificats",
+  "text": "Vérifie qu’aucun TrustManager permissif n’existe et affiche un message clair sur erreur SSL."
+ },
+ {
+  "id": "corr-044",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Scan de dépendances",
+  "text": "Lance un scan de vulnérabilités (osv-scanner ou dependency-check) et corrige."
+ },
+ {
+  "id": "corr-045",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Release propre",
+  "text": "Assure que la release n’embarque aucun outil de debug et que debuggable est faux."
+ },
+ {
+  "id": "corr-046",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Keystores",
+  "text": "Vérifie qu’aucun keystore n’est commité et que le mot de passe par défaut « android » n’est utilisé qu’en debug."
+ },
+ {
+  "id": "corr-047",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Secrets du CI",
+  "text": "Évite de dupliquer KEY_PASSWORD depuis KS_PASS dans build.yml et documente la gestion des secrets."
+ },
+ {
+  "id": "corr-048",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Permissions minimales",
+  "text": "Ne demande RECORD_AUDIO qu’au moment d’utiliser la dictée."
+ },
+ {
+  "id": "corr-049",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Composants exportés",
+  "text": "Vérifie android:exported sur chaque composant et intent-filter."
+ },
+ {
+  "id": "corr-050",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Recompositions",
+  "text": "Mesure les recompositions de ChatScreen et corrige avec remember, derivedStateOf et clés stables."
+ },
+ {
+  "id": "corr-051",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Clés LazyColumn",
+  "text": "Ajoute key et contentType stables à toutes les LazyColumn (messages, fichiers, historique)."
+ },
+ {
+  "id": "corr-052",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Flux en continu",
+  "text": "Regroupe les deltas du flux SSE toutes les 50 ms environ au lieu de recomposer à chaque token."
+ },
+ {
+  "id": "corr-053",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Cache markdown",
+  "text": "Mets en cache le rendu markdown des messages terminés."
+ },
+ {
+  "id": "corr-054",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Coloration",
+  "text": "Dans SyntaxHighlighter.kt, ne recolorie que les lignes visibles ou modifiées."
+ },
+ {
+  "id": "corr-055",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Gros fichiers",
+  "text": "Charge les gros fichiers de l’éditeur par morceaux et plafonne l’ouverture au-delà d’un seuil."
+ },
+ {
+  "id": "corr-056",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "AnsiText",
+  "text": "Optimise AnsiText.kt pour de longues sorties avec une AnnotatedString incrémentale."
+ },
+ {
+  "id": "corr-057",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Tampon terminal",
+  "text": "Limite la taille du tampon du terminal pour éviter un OutOfMemory."
+ },
+ {
+  "id": "corr-058",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "ProjectSearch",
+  "text": "Rends ProjectSearch.kt annulable, exécuté sur Dispatchers.IO et limité en résultats."
+ },
+ {
+  "id": "corr-059",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Flou verre",
+  "text": "Réduis ou coupe le flou Haze sur appareils faibles ou avant API 31."
+ },
+ {
+  "id": "corr-060",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Images jointes",
+  "text": "Redimensionne les images jointes avant envoi dans AttachSheet.kt."
+ },
+ {
+  "id": "corr-061",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Démarrage à froid",
+  "text": "Mesure le démarrage à froid et reporte les initialisations lourdes après la première image."
+ },
+ {
+  "id": "corr-062",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "SettingsManager",
+  "text": "EncryptedSharedPreferences.create est lent : initialise SettingsManager hors du thread principal."
+ },
+ {
+  "id": "corr-063",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Sauvegarde conversations",
+  "text": "Fais écrire ConversationRepository de façon incrémentale avec debounce."
+ },
+ {
+  "id": "corr-064",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Dispatchers",
+  "text": "Passe en revue les usages de Dispatchers et garantis qu’aucune E/S ne tourne sur Main."
+ },
+ {
+  "id": "corr-065",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Fuites mémoire",
+  "text": "Vérifie que collecteurs de flows, PreviewServer et TerminalController sont libérés à la destruction."
+ },
+ {
+  "id": "corr-066",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "WakeLock",
+  "text": "Libère le WakeLock d’AgentService dans tous les chemins (erreur, annulation) avec un timeout."
+ },
+ {
+  "id": "corr-067",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Batterie",
+  "text": "Remplace tout polling inutile (statut en ligne, serveur de dev) par des callbacks."
+ },
+ {
+  "id": "corr-068",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Taille de l’APK",
+  "text": "spacegrotesk_bold.ttf et spacegrotesk_medium.ttf ont exactement la même taille : vérifie le doublon et supprime les polices inutilisées."
+ },
+ {
+  "id": "corr-069",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Pagination historique",
+  "text": "Pagine HistoryScreen.kt au lieu de charger toutes les conversations."
+ },
+ {
+  "id": "corr-070",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Tests de DiffUtil",
+  "text": "Ajoute des tests à data/DiffUtil.kt : fichiers vides, CRLF, très gros diff."
+ },
+ {
+  "id": "corr-071",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "edit_file strict",
+  "text": "Fais échouer edit_file proprement si l’ancien texte est absent ou non unique, avec un message explicite."
+ },
+ {
+  "id": "corr-072",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Écriture atomique",
+  "text": "Écris les fichiers via fichier temporaire puis renommage dans FileRepository."
+ },
+ {
+  "id": "corr-073",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Encodage",
+  "text": "Force UTF-8 et gère BOM et fins de ligne à la lecture et à l’écriture."
+ },
+ {
+  "id": "corr-074",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Annulation",
+  "text": "Garantis que l’arrêt de l’agent annule la requête OkHttp et les commandes en cours."
+ },
+ {
+  "id": "corr-075",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Double envoi",
+  "text": "Empêche l’envoi multiple d’un même message pendant le chargement."
+ },
+ {
+  "id": "corr-076",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Limite d’étapes",
+  "text": "Vérifie la logique stepLimitReached et maxSteps, y compris la reprise « Continuer »."
+ },
+ {
+  "id": "corr-077",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "update_todos",
+  "text": "Corrige la fusion des tâches et leur persistance par conversation."
+ },
+ {
+  "id": "corr-078",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Rotation",
+  "text": "Conserve conversation, brouillon et position de défilement après rotation."
+ },
+ {
+  "id": "corr-079",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Mort du processus",
+  "text": "Restaure écran, projet ouvert et brouillon après la mort du processus (SavedStateHandle)."
+ },
+ {
+  "id": "corr-080",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Locale",
+  "text": "Utilise la locale de l’utilisateur pour dates et salutations (matin, après-midi, soir)."
+ },
+ {
+  "id": "corr-081",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Fuseaux horaires",
+  "text": "Corrige tout calcul de date sensible au fuseau dans ActivityRepository et UsageRepository."
+ },
+ {
+  "id": "corr-082",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Calcul d’usage",
+  "text": "Teste le calcul des tokens et coûts de UsageRepository.kt, y compris un flux interrompu."
+ },
+ {
+  "id": "corr-083",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Fournisseur inactif",
+  "text": "Si le fournisseur du modèle choisi est désactivé, bloque l’envoi avec un message clair et un lien vers Réglages."
+ },
+ {
+  "id": "corr-084",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Bonne clé, bon fournisseur",
+  "text": "Ajoute un test garantissant que chaque requête part avec la clé de son fournisseur (MoteurMultiFournisseursTest)."
+ },
+ {
+  "id": "corr-085",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Anciens JSON",
+  "text": "Ajoute valeurs par défaut et coerceInputValues pour relire les anciens JSON enregistrés."
+ },
+ {
+  "id": "corr-086",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Version de schéma",
+  "text": "Introduis un numéro de version des données locales avec migrations."
+ },
+ {
+  "id": "corr-087",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Barre d’onglets",
+  "text": "Corrige les cas où FloatingTabBar reste masquée (changement d’écran, liste courte)."
+ },
+ {
+  "id": "corr-088",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Badge",
+  "text": "Vérifie pendingConfirmationCount : décrément après réponse, annulation et expiration."
+ },
+ {
+  "id": "corr-089",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Clavier",
+  "text": "Corrige la barre de saisie avec adjustResize et les insets (clavier ouvert, tablette, paysage)."
+ },
+ {
+  "id": "corr-090",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Panneaux divisés",
+  "text": "Valide proportions minimale et maximale de SplitEditorChat et l’état après rotation."
+ },
+ {
+  "id": "corr-091",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "GitScreen",
+  "text": "Corrige les états vides, l’absence de dépôt, les conflits et les sorties très longues."
+ },
+ {
+  "id": "corr-092",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Onglets de l’éditeur",
+  "text": "Corrige EditorTabBar et EditorState : fermeture avec modifications non enregistrées, onglets en double."
+ },
+ {
+  "id": "corr-093",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Annuler/rétablir",
+  "text": "Vérifie la pile undo/redo de EditorState.kt (limite, après sauvegarde)."
+ },
+ {
+  "id": "corr-094",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Recherche globale",
+  "text": "Corrige SearchScreen : requête vide, regex invalide, fichiers binaires ignorés."
+ },
+ {
+  "id": "corr-095",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Modèles de prompts",
+  "text": "Valide les variables de TemplatesScreen et évite d’envoyer des {placeholders} non remplis."
+ },
+ {
+  "id": "corr-096",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Écran Permissions",
+  "text": "PermissionsScreen reflète l’état réel au retour des réglages système."
+ },
+ {
+  "id": "corr-097",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Notifications",
+  "text": "AgentNotifier : canal créé une seule fois, textes localisés, un tap ouvre la bonne conversation."
+ },
+ {
+  "id": "corr-098",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Écritures simultanées",
+  "text": "Évite deux écritures simultanées sur le même fichier avec un verrou par chemin dans FileRepository."
+ },
+ {
+  "id": "corr-099",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Tests de non-régression",
+  "text": "Ajoute 15 tests unitaires ciblant les correctifs précédents."
+ },
+ {
+  "id": "corr-100",
+  "cat": "corr",
+  "catName": "Corrections",
+  "title": "Revue des corrections",
+  "text": "Relis toutes les corrections, lance build, tests et lint, et liste les risques restants."
+ },
+ {
+  "id": "feat-001",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Recherche dans la conversation",
+  "text": "Ajoute la recherche de texte dans la conversation courante avec surlignage et navigation précédent/suivant."
+ },
+ {
+  "id": "feat-002",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Messages épinglés",
+  "text": "Permets d’épingler des messages importants et de les retrouver dans un panneau."
+ },
+ {
+  "id": "feat-003",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Branches de conversation",
+  "text": "Quand on modifie un message, garde l’ancienne branche et permets de basculer entre les branches."
+ },
+ {
+  "id": "feat-004",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Régénérer",
+  "text": "Ajoute « Régénérer la réponse » avec choix d’un autre modèle."
+ },
+ {
+  "id": "feat-005",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Comparer deux modèles",
+  "text": "Envoie le même prompt à deux modèles et affiche les réponses côte à côte."
+ },
+ {
+  "id": "feat-006",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Fichier ZAGENT.md",
+  "text": "Lis un fichier ZAGENT.md à la racine du projet et injecte-le dans le prompt système."
+ },
+ {
+  "id": "feat-007",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Instructions globales",
+  "text": "Complète InstructionsScreen.kt : instructions globales et par projet."
+ },
+ {
+  "id": "feat-008",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Mémoire de projet",
+  "text": "Ajoute une mémoire de projet (faits persistants) que l’agent lit et écrit via un outil."
+ },
+ {
+  "id": "feat-009",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Résumé automatique",
+  "text": "Quand le contexte approche de la limite, résume automatiquement l’historique ancien."
+ },
+ {
+  "id": "feat-010",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Compteur de tokens",
+  "text": "Affiche l’estimation de tokens du contexte dans la barre de saisie."
+ },
+ {
+  "id": "feat-011",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Commandes slash",
+  "text": "Ajoute /clear, /model, /compact, /undo et /plan dans la barre de saisie."
+ },
+ {
+  "id": "feat-012",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Mentions de fichiers",
+  "text": "Taper @ ouvre la liste des fichiers du projet et joint le fichier choisi."
+ },
+ {
+  "id": "feat-013",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Mode plan",
+  "text": "Ajoute un mode « Plan » : l’agent propose un plan et attend la validation avant d’écrire."
+ },
+ {
+  "id": "feat-014",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Autorisation par conversation",
+  "text": "Interrupteur par conversation pour autoriser ou non les outils d’écriture."
+ },
+ {
+  "id": "feat-015",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Tâches en arrière-plan",
+  "text": "Permets de lancer une tâche agent en arrière-plan avec notification de fin (AgentService)."
+ },
+ {
+  "id": "feat-016",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "File de messages",
+  "text": "Mets en file les messages envoyés pendant que l’agent travaille."
+ },
+ {
+  "id": "feat-017",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Évaluer une réponse",
+  "text": "Pouces haut et bas sur les réponses, stockés localement."
+ },
+ {
+  "id": "feat-018",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Export de conversation",
+  "text": "Exporte une conversation en Markdown et JSON via ShareSheet.kt."
+ },
+ {
+  "id": "feat-019",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Import de conversation",
+  "text": "Importe une conversation JSON exportée."
+ },
+ {
+  "id": "feat-020",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Dossiers et étiquettes",
+  "text": "Organise les conversations en dossiers et étiquettes."
+ },
+ {
+  "id": "feat-021",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Titres automatiques",
+  "text": "Génère un titre court pour chaque conversation."
+ },
+ {
+  "id": "feat-022",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Dictée améliorée",
+  "text": "Améliore la dictée : langue, ponctuation, mode continu."
+ },
+ {
+  "id": "feat-023",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Lecture à voix haute",
+  "text": "Lecture d’une réponse avec la synthèse vocale Android."
+ },
+ {
+  "id": "feat-024",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Images en entrée",
+  "text": "Envoie captures et images aux modèles qui gèrent la vision."
+ },
+ {
+  "id": "feat-025",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Modèle de secours",
+  "text": "Bascule automatiquement vers un modèle de secours en cas de surcharge, avec réglage."
+ },
+ {
+  "id": "feat-026",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Outil find_files",
+  "text": "Ajoute un outil find_files (glob) à data/AgentTools.kt."
+ },
+ {
+  "id": "feat-027",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Outil move_file",
+  "text": "Ajoute un outil de déplacement et renommage de fichier."
+ },
+ {
+  "id": "feat-028",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Outil copy_file",
+  "text": "Ajoute un outil de copie de fichier."
+ },
+ {
+  "id": "feat-029",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Outil apply_patch",
+  "text": "Ajoute apply_patch (diff unifié) pour modifier plusieurs fichiers de façon atomique."
+ },
+ {
+  "id": "feat-030",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Outils git",
+  "text": "Ajoute git_status, git_diff et git_commit pour l’agent, avec confirmation."
+ },
+ {
+  "id": "feat-031",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Outil fetch_url",
+  "text": "Ajoute fetch_url en lecture seule et taille limitée pour lire de la documentation."
+ },
+ {
+  "id": "feat-032",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Recherche web",
+  "text": "Ajoute un outil de recherche web optionnel via un fournisseur configurable."
+ },
+ {
+  "id": "feat-033",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Outil run_tests",
+  "text": "Ajoute run_tests qui détecte gradle, npm ou pytest et résume les échecs."
+ },
+ {
+  "id": "feat-034",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Outil de lint",
+  "text": "Ajoute un outil de lint et de formatage selon le type de projet."
+ },
+ {
+  "id": "feat-035",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Lecture par lignes",
+  "text": "Permets à read_file de lire une plage de lignes pour les gros fichiers."
+ },
+ {
+  "id": "feat-036",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Outil file_info",
+  "text": "Ajoute un outil donnant taille, date et type d’un fichier."
+ },
+ {
+  "id": "feat-037",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Outil de diff",
+  "text": "Ajoute un outil de diff entre deux fichiers."
+ },
+ {
+  "id": "feat-038",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Points de restauration",
+  "text": "Crée automatiquement un point de restauration avant chaque série de modifications de l’agent."
+ },
+ {
+  "id": "feat-039",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Annuler le tour",
+  "text": "Ajoute « Annuler les changements de ce tour » basé sur les points de restauration."
+ },
+ {
+  "id": "feat-040",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Recherche de symboles",
+  "text": "Ajoute un outil de recherche de fonctions et classes par regex selon le langage."
+ },
+ {
+  "id": "feat-041",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Infos du projet",
+  "text": "Ajoute get_project_info (langages, gestionnaire de paquets, scripts)."
+ },
+ {
+  "id": "feat-042",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Serveur de dev détecté",
+  "text": "start_dev_server détecte la commande adaptée (npm run dev, python -m http.server…)."
+ },
+ {
+  "id": "feat-043",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Logs du serveur",
+  "text": "Ajoute un outil pour lire la sortie du serveur de dev."
+ },
+ {
+  "id": "feat-044",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Installation de paquets",
+  "text": "Ajoute un outil pkg_install sûr avec confirmation."
+ },
+ {
+  "id": "feat-045",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Permission par outil",
+  "text": "Dans Réglages : autoriser, demander ou refuser chaque outil."
+ },
+ {
+  "id": "feat-046",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Touches spéciales",
+  "text": "Ajoute une barre de touches (Ctrl, Alt, Tab, flèches, Échap) au-dessus du clavier du terminal."
+ },
+ {
+  "id": "feat-047",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Historique de commandes",
+  "text": "Historique persistant des commandes avec recherche."
+ },
+ {
+  "id": "feat-048",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Sessions nommées",
+  "text": "Permets de renommer et restaurer les onglets du terminal."
+ },
+ {
+  "id": "feat-049",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Copier et coller",
+  "text": "Sélection de texte, copie, collage et partage de la sortie."
+ },
+ {
+  "id": "feat-050",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Zoom du terminal",
+  "text": "Pincer pour changer la taille du texte du terminal."
+ },
+ {
+  "id": "feat-051",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Thèmes du terminal",
+  "text": "Palettes de couleurs ANSI au choix."
+ },
+ {
+  "id": "feat-052",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Gestion des paquets",
+  "text": "Écran listant, installant et supprimant les paquets Termux."
+ },
+ {
+  "id": "feat-053",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Assistant d’installation",
+  "text": "Assistant de première installation du bootstrap avec progression et reprise."
+ },
+ {
+  "id": "feat-054",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Alias",
+  "text": "Fichier .bashrc modifiable avec des modèles d’alias."
+ },
+ {
+  "id": "feat-055",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Exécuter le fichier",
+  "text": "« Exécuter ce fichier » selon son extension, depuis l’éditeur."
+ },
+ {
+  "id": "feat-056",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Sorties cliquables",
+  "text": "Détecte chemin:ligne dans la sortie et ouvre l’éditeur à cette ligne."
+ },
+ {
+  "id": "feat-057",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Recherche dans la sortie",
+  "text": "Recherche de texte dans la sortie du terminal."
+ },
+ {
+  "id": "feat-058",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Clés SSH",
+  "text": "Génère et gère des clés SSH pour git."
+ },
+ {
+  "id": "feat-059",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Rechercher et remplacer",
+  "text": "Dans l’éditeur : regex, casse, mot entier."
+ },
+ {
+  "id": "feat-060",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Aller à la ligne",
+  "text": "Dialogue « aller à la ligne »."
+ },
+ {
+  "id": "feat-061",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Numéros de ligne",
+  "text": "Numéros de ligne et ligne courante surlignée."
+ },
+ {
+  "id": "feat-062",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Indentation",
+  "text": "Indentation automatique, tabulation ou espaces configurable."
+ },
+ {
+  "id": "feat-063",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Fermeture automatique",
+  "text": "Ferme automatiquement parenthèses et guillemets."
+ },
+ {
+  "id": "feat-064",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Repli de code",
+  "text": "Repli des blocs de code."
+ },
+ {
+  "id": "feat-065",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Barre de symboles",
+  "text": "Barre de symboles ({ } ( ) ; =>) au-dessus du clavier de l’éditeur."
+ },
+ {
+  "id": "feat-066",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Sauvegarde auto",
+  "text": "Sauvegarde automatique avec indicateur."
+ },
+ {
+  "id": "feat-067",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Diff avant validation",
+  "text": "Montre le diff des modifications de l’agent avant acceptation (DiffUtil)."
+ },
+ {
+  "id": "feat-068",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Coloration étendue",
+  "text": "Étends SyntaxHighlighter.kt : Kotlin, Python, JS/TS, JSON, YAML, Markdown, shell, XML."
+ },
+ {
+  "id": "feat-069",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Aperçu Markdown",
+  "text": "Aperçu rendu des fichiers .md."
+ },
+ {
+  "id": "feat-070",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Images dans l’éditeur",
+  "text": "Ouvre les images (png, jpg, svg) dans l’éditeur."
+ },
+ {
+  "id": "feat-071",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Sélection multiple",
+  "text": "Sélection multiple dans FileBrowserScreen : déplacer, supprimer, zipper."
+ },
+ {
+  "id": "feat-072",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Glisser-déposer",
+  "text": "Déplacement de fichiers par glisser-déposer."
+ },
+ {
+  "id": "feat-073",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Zip et dézip",
+  "text": "Compresser et extraire des archives dans le projet."
+ },
+ {
+  "id": "feat-074",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Importer un projet",
+  "text": "Importe un dossier ou un zip du stockage (SAF) comme projet."
+ },
+ {
+  "id": "feat-075",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Exporter un projet",
+  "text": "Exporte le projet en zip vers les téléchargements ou le partage."
+ },
+ {
+  "id": "feat-076",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Favoris et récents",
+  "text": "Fichiers favoris et récemment ouverts."
+ },
+ {
+  "id": "feat-077",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Ouvrir avec",
+  "text": "Ouvrir un fichier avec une autre application."
+ },
+ {
+  "id": "feat-078",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Fichier depuis modèle",
+  "text": "Nouveau fichier depuis un modèle (HTML, Kotlin, Python, README)."
+ },
+ {
+  "id": "feat-079",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Corbeille",
+  "text": "Corbeille du projet avec suppression récupérable pendant 7 jours."
+ },
+ {
+  "id": "feat-080",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Respect de .gitignore",
+  "text": "Recherche et arborescence respectent .gitignore."
+ },
+ {
+  "id": "feat-081",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Cloner un dépôt",
+  "text": "Cloner un dépôt par URL (https, jeton) avec progression."
+ },
+ {
+  "id": "feat-082",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Jeton GitHub",
+  "text": "Stockage chiffré d’un jeton GitHub."
+ },
+ {
+  "id": "feat-083",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Commit guidé",
+  "text": "Écran de commit avec sélection par fichier et message proposé par l’IA."
+ },
+ {
+  "id": "feat-084",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Branches",
+  "text": "Créer, changer et supprimer des branches."
+ },
+ {
+  "id": "feat-085",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Push et pull",
+  "text": "Push et pull avec gestion des erreurs."
+ },
+ {
+  "id": "feat-086",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Stash",
+  "text": "Mettre de côté et restaurer des modifications."
+ },
+ {
+  "id": "feat-087",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Journal des commits",
+  "text": "Liste des commits et diff."
+ },
+ {
+  "id": "feat-088",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Pull request",
+  "text": "Créer une pull request GitHub depuis l’appli."
+ },
+ {
+  "id": "feat-089",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Statut des Actions",
+  "text": "Afficher le statut des GitHub Actions du dépôt."
+ },
+ {
+  "id": "feat-090",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Modèles de projet",
+  "text": "Dans TemplatesScreen, ajoute des modèles de projet (web, Compose, Python)."
+ },
+ {
+  "id": "feat-091",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Sauvegarde des réglages",
+  "text": "Export et import chiffrés des réglages (sans les clés)."
+ },
+ {
+  "id": "feat-092",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Profils de réglages",
+  "text": "Profils de réglages (travail, économie de données)."
+ },
+ {
+  "id": "feat-093",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Widget",
+  "text": "Widget d’écran d’accueil : nouvelle conversation et dernier projet."
+ },
+ {
+  "id": "feat-094",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Partager vers ZAgent",
+  "text": "Reçoit texte et fichiers via « Partager vers ZAgent »."
+ },
+ {
+  "id": "feat-095",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Multi-fenêtre",
+  "text": "Support du multi-fenêtre sur tablette."
+ },
+ {
+  "id": "feat-096",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Mode hors ligne",
+  "text": "Éditeur et terminal utilisables hors ligne, chat désactivé proprement avec file d’attente."
+ },
+ {
+  "id": "feat-097",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Tableau de bord d’usage",
+  "text": "UsageScreen avec graphiques par jour et par modèle."
+ },
+ {
+  "id": "feat-098",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Budget",
+  "text": "Plafond de coût ou de tokens avec alerte."
+ },
+ {
+  "id": "feat-099",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Journal d’activité",
+  "text": "Journal d’activité exportable (ActivityScreen)."
+ },
+ {
+  "id": "feat-100",
+  "cat": "feat",
+  "catName": "Fonctionnalités",
+  "title": "Visite guidée",
+  "text": "Visite guidée interactive avec mise en évidence des éléments (HelpScreen, onboarding)."
+ },
+ {
+  "id": "ui-001",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Audit visuel",
+  "text": "Passe chaque écran en revue et liste les incohérences d’espacement, de couleur et de typographie (ui/theme/Theme.kt, Color.kt). Ne modifie rien."
+ },
+ {
+  "id": "ui-002",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Design tokens",
+  "text": "Centralise espacements (4, 8, 12, 16, 24), rayons et élévations dans un fichier Dimens.kt et remplace les valeurs en dur."
+ },
+ {
+  "id": "ui-003",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Contraste sombre",
+  "text": "Revois la palette du thème sombre (Color.kt) pour atteindre le contraste AA (4,5:1)."
+ },
+ {
+  "id": "ui-004",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Contraste clair",
+  "text": "Même revue pour le thème clair."
+ },
+ {
+  "id": "ui-005",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Thème noir pur",
+  "text": "Ajoute un thème AMOLED à fond noir pur dans ThemeSettingsScreen.kt."
+ },
+ {
+  "id": "ui-006",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Couleurs dynamiques",
+  "text": "Ajoute Material You (couleurs dynamiques) en option sur Android 12+."
+ },
+ {
+  "id": "ui-007",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Couleur d’accent",
+  "text": "Ajoute un sélecteur de couleur d’accent dans les réglages de thème."
+ },
+ {
+  "id": "ui-008",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Typographie",
+  "text": "Définis la hiérarchie dans Type.kt : Inter pour le texte, JetBrains Mono pour le code, Space Grotesk pour les titres."
+ },
+ {
+  "id": "ui-009",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Taille de police",
+  "text": "Respecte la taille de police système et le réglage de FontSettingsScreen.kt partout."
+ },
+ {
+  "id": "ui-010",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Doublon de police",
+  "text": "Vérifie spacegrotesk_bold et spacegrotesk_medium (même taille) et supprime le doublon si c’est le même fichier."
+ },
+ {
+  "id": "ui-011",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Intensité du verre",
+  "text": "Harmonise l’intensité du verre (Glass.kt) entre tous les composants."
+ },
+ {
+  "id": "ui-012",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Verre désactivé",
+  "text": "Crée un rendu opaque soigné quand le flou est désactivé ou indisponible."
+ },
+ {
+  "id": "ui-013",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Élévations",
+  "text": "Applique ombres et bordures cohérentes sur toutes les cartes."
+ },
+ {
+  "id": "ui-014",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Jeu d’icônes",
+  "text": "Uniformise taille et style des icônes sur tout l’appli."
+ },
+ {
+  "id": "ui-015",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Splash",
+  "text": "Soigne SplashScreen.kt : logo centré et transition douce vers l’accueil."
+ },
+ {
+  "id": "ui-016",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Icône de l’appli",
+  "text": "Retouche les calques de ic_launcher (foreground et background) pour un rendu net sur toutes les densités."
+ },
+ {
+  "id": "ui-017",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Rayons des coins",
+  "text": "Définis trois rayons (petit, moyen, grand) et applique-les partout."
+ },
+ {
+  "id": "ui-018",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "États des composants",
+  "text": "Définis les états normal, pressé, désactivé et focus des boutons, chips et cartes."
+ },
+ {
+  "id": "ui-019",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Aperçu du thème",
+  "text": "Affiche un aperçu en direct du thème dans ThemeSettingsScreen.kt."
+ },
+ {
+  "id": "ui-020",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Bulles de chat",
+  "text": "Refonte de ui/screens/ChatBulles.kt : largeur maximale, espacement, regroupement par expéditeur."
+ },
+ {
+  "id": "ui-021",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Indicateurs d’expéditeur",
+  "text": "Ajoute un indicateur discret pour l’agent et pour l’utilisateur."
+ },
+ {
+  "id": "ui-022",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Rendu markdown",
+  "text": "Titres, listes, tableaux, citations et liens bien rendus dans les messages."
+ },
+ {
+  "id": "ui-023",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Blocs de code",
+  "text": "Blocs de code avec nom du langage, bouton copier, retour à la ligne et numéros de ligne."
+ },
+ {
+  "id": "ui-024",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Coloration dans le chat",
+  "text": "Applique SyntaxHighlighter aux blocs de code du chat."
+ },
+ {
+  "id": "ui-025",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Cartes d’outils",
+  "text": "Cartes compactes et repliables pour chaque appel d’outil (nom, arguments, résultat)."
+ },
+ {
+  "id": "ui-026",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Icône par outil",
+  "text": "Une icône distincte par outil (lecture, écriture, commande)."
+ },
+ {
+  "id": "ui-027",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Diff en ligne",
+  "text": "Affiche un diff vert et rouge pour edit_file."
+ },
+ {
+  "id": "ui-028",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Liste de tâches",
+  "text": "Améliore ChatTaches.kt : liste visuelle avec progression."
+ },
+ {
+  "id": "ui-029",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Indicateur de réflexion",
+  "text": "Animation fluide pour « L’agent travaille »."
+ },
+ {
+  "id": "ui-030",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "En-tête du chat",
+  "text": "Rends ChatBarreHaute.kt plus compacte : titre, modèle et statut."
+ },
+ {
+  "id": "ui-031",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Pastille de statut",
+  "text": "Pastille Agent actif, Erreur, En ligne avec couleur et animation douce."
+ },
+ {
+  "id": "ui-032",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Écran d’accueil",
+  "text": "Accueil du chat : salutation, suggestions en cartes, derniers projets."
+ },
+ {
+  "id": "ui-033",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Cartes de suggestions",
+  "text": "Cartes de suggestions avec icônes et couleurs distinctes."
+ },
+ {
+  "id": "ui-034",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Barre de saisie",
+  "text": "Barre arrondie multi-ligne avec bouton d’envoi animé (InputBarLot4.kt)."
+ },
+ {
+  "id": "ui-035",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Envoyer et arrêter",
+  "text": "Transition fluide entre le bouton envoyer et le bouton arrêter."
+ },
+ {
+  "id": "ui-036",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Pièces jointes",
+  "text": "Vignettes avec bouton retirer et indication de taille."
+ },
+ {
+  "id": "ui-037",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Séparateurs de date",
+  "text": "Séparateurs « Aujourd’hui » et « Hier » dans le fil."
+ },
+ {
+  "id": "ui-038",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Bouton de défilement",
+  "text": "Bouton « Nouveau message » avec compteur."
+ },
+ {
+  "id": "ui-039",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Cartes d’erreur",
+  "text": "Cartes d’erreur uniformes : icône, texte et action."
+ },
+ {
+  "id": "ui-040",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Cartes de confirmation",
+  "text": "Refonte de ChatConfirmations.kt : lisible, boutons clairs, aperçu de la commande."
+ },
+ {
+  "id": "ui-041",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "AskCard",
+  "text": "Améliore AskCard.kt : choix en chips, champ libre, progression des questions."
+ },
+ {
+  "id": "ui-042",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Messages longs",
+  "text": "Ajoute « Voir plus » sur les très longs messages."
+ },
+ {
+  "id": "ui-043",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Sélection de texte",
+  "text": "Sélection et copie fluides dans les bulles."
+ },
+ {
+  "id": "ui-044",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Menu d’un message",
+  "text": "Menu d’appui long (copier, modifier, supprimer, régénérer) avec ZMenu."
+ },
+ {
+  "id": "ui-045",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Barre d’onglets",
+  "text": "Affine FloatingTabBar.kt : hauteur, icônes, badge et animation de sélection."
+ },
+ {
+  "id": "ui-046",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "ZMenu partout",
+  "text": "Utilise ZMenu dans l’éditeur et l’explorateur de fichiers."
+ },
+ {
+  "id": "ui-047",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Transitions partagées",
+  "text": "Ajoute des transitions entre liste et détail là où c’est pertinent."
+ },
+ {
+  "id": "ui-048",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Feuilles modales",
+  "text": "Poignée, coins et voile identiques pour toutes les feuilles."
+ },
+ {
+  "id": "ui-049",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Écran Historique",
+  "text": "HistoryScreen.kt : cartes, épingles, aperçu du dernier message."
+ },
+ {
+  "id": "ui-050",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Écran Recherche",
+  "text": "SearchScreen.kt : résultats groupés par fichier avec extrait surligné."
+ },
+ {
+  "id": "ui-051",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Écran Modèles",
+  "text": "ModelsScreen.kt : cartes avec fournisseur, contexte et badge gratuit ou payant."
+ },
+ {
+  "id": "ui-052",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Écran Projets",
+  "text": "ProjectsScreen.kt : cartes avec icône de type, date et taille."
+ },
+ {
+  "id": "ui-053",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Explorateur",
+  "text": "FileBrowserScreen.kt : icônes par type, indentation, fil d’Ariane."
+ },
+ {
+  "id": "ui-054",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Écran Éditeur",
+  "text": "EditorScreen.kt : barre d’outils compacte, onglets défilables."
+ },
+ {
+  "id": "ui-055",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Onglets de l’éditeur",
+  "text": "EditorTabBar.kt : point de modification et bouton fermer."
+ },
+ {
+  "id": "ui-056",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Écran Terminal",
+  "text": "TerminalScreen.kt : marges, curseur et fond cohérents avec le thème."
+ },
+ {
+  "id": "ui-057",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Écran Git",
+  "text": "GitScreen.kt : statut en sections avec compteurs et couleurs."
+ },
+ {
+  "id": "ui-058",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Écran Réglages",
+  "text": "SettingsScreen.kt : sections groupées avec icônes et descriptions."
+ },
+ {
+  "id": "ui-059",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Réglages d’apparence",
+  "text": "Apparence, Densité, Police, Verre, Thème : chacun avec un aperçu."
+ },
+ {
+  "id": "ui-060",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Densité",
+  "text": "Applique la densité compacte ou confortable à tous les écrans."
+ },
+ {
+  "id": "ui-061",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Écran Usage",
+  "text": "UsageScreen.kt : graphiques propres et légendes."
+ },
+ {
+  "id": "ui-062",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Écran Activité",
+  "text": "ActivityScreen.kt : présentation en chronologie."
+ },
+ {
+  "id": "ui-063",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Écran À propos",
+  "text": "AboutScreen.kt : logo, version et liens."
+ },
+ {
+  "id": "ui-064",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Écran Aide",
+  "text": "HelpScreen.kt : sections repliables."
+ },
+ {
+  "id": "ui-065",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Onboarding",
+  "text": "OnboardingScreen.kt : pages illustrées avec indicateur de progression."
+ },
+ {
+  "id": "ui-066",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Écran Permissions",
+  "text": "PermissionsScreen.kt : cartes d’état claires."
+ },
+ {
+  "id": "ui-067",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Écran Instructions",
+  "text": "InstructionsScreen.kt : éditeur propre avec compteur de caractères."
+ },
+ {
+  "id": "ui-068",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Écran Modèles de prompts",
+  "text": "TemplatesScreen.kt : grille de gabarits."
+ },
+ {
+  "id": "ui-069",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Feuille de partage",
+  "text": "ShareSheet.kt : aperçu avant export."
+ },
+ {
+  "id": "ui-070",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Grands écrans",
+  "text": "AdaptiveScaffold.kt : largeurs maximales et marges sur tablette."
+ },
+ {
+  "id": "ui-071",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Pliables",
+  "text": "Gère les postures de pliables (mode tablette, mode livre)."
+ },
+ {
+  "id": "ui-072",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Paysage",
+  "text": "Revois chaque écran en paysage sur téléphone."
+ },
+ {
+  "id": "ui-073",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Poignée du split",
+  "text": "Rends la poignée de SplitEditorChat plus visible avec aimantation à 50/50."
+ },
+ {
+  "id": "ui-074",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Petits écrans",
+  "text": "Teste une largeur de 320 dp et corrige les débordements."
+ },
+ {
+  "id": "ui-075",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Police à 200 %",
+  "text": "Teste la police système à 200 % sans troncature."
+ },
+ {
+  "id": "ui-076",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Bord à bord",
+  "text": "Gère les insets système (barres, encoche) sur tous les écrans."
+ },
+ {
+  "id": "ui-077",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Contenu et clavier",
+  "text": "Le contenu ne passe jamais sous le clavier."
+ },
+ {
+  "id": "ui-078",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Barre gestuelle",
+  "text": "Ajoute le padding bas pour la navigation par gestes."
+ },
+ {
+  "id": "ui-079",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Barre d’état",
+  "text": "Icônes de barre d’état lisibles dans les deux thèmes."
+ },
+ {
+  "id": "ui-080",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Orientation",
+  "text": "Aucune perte d’état visuel au changement d’orientation."
+ },
+ {
+  "id": "ui-081",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Droite à gauche",
+  "text": "Vérifie supportsRtl : alignements et miroirs d’icônes."
+ },
+ {
+  "id": "ui-082",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Animations réduites",
+  "text": "Tous les écrans respectent le réglage reduceAnimations."
+ },
+ {
+  "id": "ui-083",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Squelettes de chargement",
+  "text": "Ajoute des squelettes de chargement aux listes."
+ },
+ {
+  "id": "ui-084",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Animations de liste",
+  "text": "Utilise animateItem pour l’ajout et la suppression d’éléments."
+ },
+ {
+  "id": "ui-085",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Retour haptique",
+  "text": "Vibration légère sur les actions clés (envoi, confirmation)."
+ },
+ {
+  "id": "ui-086",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Animation de succès",
+  "text": "Petite animation de succès ou d’erreur en Compose, sans bibliothèque."
+ },
+ {
+  "id": "ui-087",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Tirer pour actualiser",
+  "text": "Ajoute le geste sur les listes concernées."
+ },
+ {
+  "id": "ui-088",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Actions par balayage",
+  "text": "Balayage pour supprimer ou épingler dans HistoryScreen.kt."
+ },
+ {
+  "id": "ui-089",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Effet de chargement",
+  "text": "Effet shimmer pendant le flux de réponse."
+ },
+ {
+  "id": "ui-090",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Barres de progression",
+  "text": "Style cohérent pour mise à jour, bootstrap et téléchargements."
+ },
+ {
+  "id": "ui-091",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Messages éphémères",
+  "text": "Toasts et snackbars stylés avec le thème."
+ },
+ {
+  "id": "ui-092",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Previews clair et sombre",
+  "text": "Une preview claire et une sombre pour chaque composant principal."
+ },
+ {
+  "id": "ui-093",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Tests visuels",
+  "text": "Étends ui/visuel/VisualRegressionTest.kt aux composants refondus."
+ },
+ {
+  "id": "ui-094",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Captures d’écran",
+  "text": "Génère une capture de chaque écran pour la documentation."
+ },
+ {
+  "id": "ui-095",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Bascule de thème",
+  "text": "Bascule clair/sombre sans clignotement."
+ },
+ {
+  "id": "ui-096",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "États vides",
+  "text": "Illustrations simples pour les états vides (historique, projets, recherche)."
+ },
+ {
+  "id": "ui-097",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Cohérence des textes",
+  "text": "Uniformise casse, ponctuation et tutoiement ou vouvoiement dans toute l’interface."
+ },
+ {
+  "id": "ui-098",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Accessibilité visuelle",
+  "text": "Vérifie le contraste AA sur tous les écrans."
+ },
+ {
+  "id": "ui-099",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Aucun emoji",
+  "text": "Vérifie qu’aucun emoji n’apparaît dans l’interface et remplace-les par des icônes."
+ },
+ {
+  "id": "ui-100",
+  "cat": "ui",
+  "catName": "UI",
+  "title": "Revue visuelle finale",
+  "text": "Compare avant et après écran par écran et liste les écarts restants."
+ },
+ {
+  "id": "ux-001",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Premier lancement",
+  "text": "Conçois un parcours en 3 étapes : clé API, projet, première demande, dans OnboardingScreen.kt."
+ },
+ {
+  "id": "ux-002",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Obtenir une clé",
+  "text": "Aide à obtenir une clé z.ai ou NVIDIA avec lien et explications."
+ },
+ {
+  "id": "ux-003",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Test de connexion",
+  "text": "Ajoute un bouton « Tester la clé » avec un résultat clair."
+ },
+ {
+  "id": "ux-004",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Détection du fournisseur",
+  "text": "Au collage d’une clé, détecte le fournisseur (Fournisseurs.detecter) et demande confirmation."
+ },
+ {
+  "id": "ux-005",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Permissions au bon moment",
+  "text": "Demande micro et notifications au moment où elles servent, avec une explication."
+ },
+ {
+  "id": "ux-006",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Projet d’exemple",
+  "text": "Propose un projet d’exemple prérempli au premier lancement."
+ },
+ {
+  "id": "ux-007",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Installation du terminal",
+  "text": "Explique l’installation du terminal et sa taille avant le téléchargement."
+ },
+ {
+  "id": "ux-008",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Données mobiles",
+  "text": "Prévient avant un gros téléchargement en données mobiles."
+ },
+ {
+  "id": "ux-009",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Choix de la langue",
+  "text": "Propose le choix de langue au démarrage."
+ },
+ {
+  "id": "ux-010",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Étapes facultatives",
+  "text": "Chaque étape d’onboarding peut être passée et reprise plus tard."
+ },
+ {
+  "id": "ux-011",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Astuces contextuelles",
+  "text": "Affiche chaque astuce une seule fois par fonctionnalité."
+ },
+ {
+  "id": "ux-012",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Ton uniforme",
+  "text": "Choisis tutoiement ou vouvoiement et applique-le partout."
+ },
+ {
+  "id": "ux-013",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Brouillons",
+  "text": "Conserve un brouillon par conversation."
+ },
+ {
+  "id": "ux-014",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Touche Entrée",
+  "text": "Entrée fait un retour à la ligne ; ajoute une option Entrée = envoyer pour clavier physique."
+ },
+ {
+  "id": "ux-015",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Annuler un envoi",
+  "text": "Permets d’annuler un message tout juste envoyé."
+ },
+ {
+  "id": "ux-016",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Modifier un message",
+  "text": "Rends la bannière de modification claire, avec avertissement que la suite sera remplacée."
+ },
+ {
+  "id": "ux-017",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Réessayer",
+  "text": "Réessayer en un tap après une erreur, avec le même message."
+ },
+ {
+  "id": "ux-018",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Continuer",
+  "text": "À la limite d’étapes, propose « Continuer » et d’augmenter la limite."
+ },
+ {
+  "id": "ux-019",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Confirmations groupées",
+  "text": "Ajoute « Tout autoriser pour ce tour » quand plusieurs confirmations se suivent."
+ },
+ {
+  "id": "ux-020",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Autorisations mémorisées",
+  "text": "Ajoute « Toujours autoriser cet outil dans ce projet »."
+ },
+ {
+  "id": "ux-021",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Voir avant d’écrire",
+  "text": "Montre le diff avant de valider write_file et edit_file."
+ },
+ {
+  "id": "ux-022",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Annulation facile",
+  "text": "Affiche une barre « Annuler » après une action destructrice."
+ },
+ {
+  "id": "ux-023",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Progression visible",
+  "text": "Résume en direct ce que fait l’agent (fichier en cours, commande)."
+ },
+ {
+  "id": "ux-024",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Interruption",
+  "text": "L’arrêt de l’agent est immédiat avec un retour d’état clair."
+ },
+ {
+  "id": "ux-025",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Défilement intelligent",
+  "text": "Le défilement automatique s’arrête si l’utilisateur remonte."
+ },
+ {
+  "id": "ux-026",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Copie rapide",
+  "text": "Appui long pour copier un message et bouton copier sur le code."
+ },
+ {
+  "id": "ux-027",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Partage de code",
+  "text": "Permets de partager un bloc de code."
+ },
+ {
+  "id": "ux-028",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Suites proposées",
+  "text": "Affiche des chips de suite après une réponse."
+ },
+ {
+  "id": "ux-029",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Dernier chat",
+  "text": "Accès au dernier chat en un geste."
+ },
+ {
+  "id": "ux-030",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Nouvelle conversation",
+  "text": "Raccourci pour une nouvelle conversation, avec confirmation s’il y a un brouillon."
+ },
+ {
+  "id": "ux-031",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Renommer",
+  "text": "Renommer une conversation facilement."
+ },
+ {
+  "id": "ux-032",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Suppression annulable",
+  "text": "Suppression avec annulation pendant 30 secondes."
+ },
+ {
+  "id": "ux-033",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Recherche filtrée",
+  "text": "Recherche avec filtres : projet, date, modèle."
+ },
+ {
+  "id": "ux-034",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Épingler par balayage",
+  "text": "Épingler une conversation par balayage."
+ },
+ {
+  "id": "ux-035",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Modèle toujours visible",
+  "text": "Le modèle actif est visible en permanence et se change en deux taps."
+ },
+ {
+  "id": "ux-036",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Coût visible",
+  "text": "Affiche l’usage ou le coût du tour en cours."
+ },
+ {
+  "id": "ux-037",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Erreurs en langage simple",
+  "text": "Chaque erreur est expliquée simplement avec une solution proposée."
+ },
+ {
+  "id": "ux-038",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Bannière hors ligne",
+  "text": "Bannière hors ligne claire avec file d’attente des messages."
+ },
+ {
+  "id": "ux-039",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Latence perçue",
+  "text": "Affiche « Connexion… » puis le premier token le plus vite possible."
+ },
+ {
+  "id": "ux-040",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Détails repliés",
+  "text": "Replie par défaut les détails techniques des outils."
+ },
+ {
+  "id": "ux-041",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Ouvrir depuis le chat",
+  "text": "Un tap sur un chemin de fichier dans le chat ouvre l’éditeur."
+ },
+ {
+  "id": "ux-042",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Bouton retour",
+  "text": "Le bouton retour ramène toujours où l’utilisateur était."
+ },
+ {
+  "id": "ux-043",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "État d’enregistrement",
+  "text": "Indicateur d’enregistrement et état « non enregistré »."
+ },
+ {
+  "id": "ux-044",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Quitter sans enregistrer",
+  "text": "Dialogue de protection avant de perdre des modifications."
+ },
+ {
+  "id": "ux-045",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Fichiers récents",
+  "text": "Accès rapide aux fichiers récents."
+ },
+ {
+  "id": "ux-046",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Mode sélection",
+  "text": "Mode de sélection multiple clair et réversible."
+ },
+ {
+  "id": "ux-047",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Actions de fichier",
+  "text": "Menu contextuel standard : renommer, dupliquer, supprimer, partager."
+ },
+ {
+  "id": "ux-048",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Suppression sûre",
+  "text": "Confirmation avec le nom du fichier et possibilité d’annuler."
+ },
+ {
+  "id": "ux-049",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Création guidée",
+  "text": "Nouveau fichier ou dossier avec nom suggéré."
+ },
+ {
+  "id": "ux-050",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Fichier modifié ailleurs",
+  "text": "Si le fichier a changé sur disque (agent), propose recharger ou garder."
+ },
+ {
+  "id": "ux-051",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Modifié par l’agent",
+  "text": "Marque les fichiers modifiés par l’agent avec accès au diff."
+ },
+ {
+  "id": "ux-052",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Recherche depuis l’explorateur",
+  "text": "Barre de recherche dans FileBrowserScreen.kt."
+ },
+ {
+  "id": "ux-053",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Fil d’Ariane",
+  "text": "Navigation rapide dans l’arborescence par fil d’Ariane."
+ },
+ {
+  "id": "ux-054",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Changer de projet",
+  "text": "Changer de projet en deux taps et mémoriser le dernier."
+ },
+ {
+  "id": "ux-055",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Créer un projet",
+  "text": "Assistant de création de projet avec modèles."
+ },
+ {
+  "id": "ux-056",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Aperçu en un tap",
+  "text": "Ouvrir l’aperçu depuis l’éditeur en un tap avec rafraîchissement automatique."
+ },
+ {
+  "id": "ux-057",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "QR code local",
+  "text": "Partager l’aperçu avec un QR code et une explication."
+ },
+ {
+  "id": "ux-058",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Serveur de développement",
+  "text": "Statut, port et bouton d’arrêt toujours visibles."
+ },
+ {
+  "id": "ux-059",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Erreurs de build cliquables",
+  "text": "Affiche les erreurs avec un lien vers le fichier et la ligne."
+ },
+ {
+  "id": "ux-060",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Langage détecté",
+  "text": "Détection automatique du langage du fichier."
+ },
+ {
+  "id": "ux-061",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Zoom de l’éditeur",
+  "text": "Pincer pour changer la taille du texte."
+ },
+ {
+  "id": "ux-062",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Barre de symboles",
+  "text": "Barre de symboles de code au-dessus du clavier."
+ },
+ {
+  "id": "ux-063",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Terminal prêt",
+  "text": "État d’installation du terminal clair, relance en un tap."
+ },
+ {
+  "id": "ux-064",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Commande en cours",
+  "text": "Bouton d’arrêt (Ctrl+C) visible pendant une commande."
+ },
+ {
+  "id": "ux-065",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Historique du terminal",
+  "text": "Accès à l’historique des commandes par flèches."
+ },
+ {
+  "id": "ux-066",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Copier la sortie",
+  "text": "Partage de la sortie du terminal."
+ },
+ {
+  "id": "ux-067",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Gestes des onglets",
+  "text": "Changer d’onglet terminal par geste."
+ },
+ {
+  "id": "ux-068",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Menu rapide Terminal",
+  "text": "Appui long sur l’onglet Terminal pour les actions courantes."
+ },
+ {
+  "id": "ux-069",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Git simplifié",
+  "text": "Vocabulaire compréhensible et assistants (« Enregistrer mes changements »)."
+ },
+ {
+  "id": "ux-070",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Compteurs Git",
+  "text": "Affiche le nombre de fichiers modifiés, ajoutés et supprimés."
+ },
+ {
+  "id": "ux-071",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Message de commit",
+  "text": "Message proposé par l’IA, modifiable avant validation."
+ },
+ {
+  "id": "ux-072",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Résolution de conflits",
+  "text": "Guide pas à pas de résolution de conflits."
+ },
+ {
+  "id": "ux-073",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Push expliqué",
+  "text": "Progression du push et erreurs expliquées (authentification, réseau)."
+ },
+ {
+  "id": "ux-074",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Dépôt absent",
+  "text": "Propose git init ou clone quand le dossier n’est pas un dépôt."
+ },
+ {
+  "id": "ux-075",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Annuler en Git",
+  "text": "Annulation des opérations réversibles."
+ },
+ {
+  "id": "ux-076",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Opérations destructrices",
+  "text": "Avertissement avant reset --hard et opérations similaires."
+ },
+ {
+  "id": "ux-077",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Recherche de réglages",
+  "text": "Ajoute une barre de recherche dans les réglages."
+ },
+ {
+  "id": "ux-078",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Valeurs visibles",
+  "text": "Affiche la valeur actuelle de chaque réglage sans ouvrir son écran."
+ },
+ {
+  "id": "ux-079",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Réinitialiser",
+  "text": "Réinitialisation par section."
+ },
+ {
+  "id": "ux-080",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Descriptions",
+  "text": "Chaque réglage a une courte description."
+ },
+ {
+  "id": "ux-081",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Section Avancé",
+  "text": "Replie les réglages avancés par défaut."
+ },
+ {
+  "id": "ux-082",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Ajouter un fournisseur",
+  "text": "Ajout d’un fournisseur en 3 étapes avec test."
+ },
+ {
+  "id": "ux-083",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Gestion des clés",
+  "text": "Voir, masquer, tester et supprimer une clé."
+ },
+ {
+  "id": "ux-084",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Espace utilisé",
+  "text": "Affiche l’espace utilisé et permet de vider les caches."
+ },
+ {
+  "id": "ux-085",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Confidentialité",
+  "text": "Explique clairement ce qui est envoyé au modèle."
+ },
+ {
+  "id": "ux-086",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Export et import",
+  "text": "Export et import des réglages depuis l’écran des données."
+ },
+ {
+  "id": "ux-087",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Changement de langue",
+  "text": "La langue change immédiatement sans redémarrage."
+ },
+ {
+  "id": "ux-088",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Application du thème",
+  "text": "Le thème s’applique instantanément avec aperçu."
+ },
+ {
+  "id": "ux-089",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Lecteur d’écran",
+  "text": "Audite les contentDescription = null et ajoute des descriptions dans strings.xml pour tous les éléments interactifs."
+ },
+ {
+  "id": "ux-090",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Ordre du focus",
+  "text": "Ordre de focus logique sur tous les écrans."
+ },
+ {
+  "id": "ux-091",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Cibles tactiles",
+  "text": "Toutes les cibles tactiles font au moins 48 dp."
+ },
+ {
+  "id": "ux-092",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Contraste",
+  "text": "Vérifie le contraste AA sur les écrans principaux."
+ },
+ {
+  "id": "ux-093",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Annonces dynamiques",
+  "text": "Annonce les états dynamiques aux lecteurs d’écran."
+ },
+ {
+  "id": "ux-094",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Clavier physique",
+  "text": "Raccourcis : Ctrl+Entrée pour envoyer, Ctrl+K pour la recherche."
+ },
+ {
+  "id": "ux-095",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Alternatives aux gestes",
+  "text": "Chaque geste a une alternative visible."
+ },
+ {
+  "id": "ux-096",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Information sans couleur",
+  "text": "Aucune information n’est transmise par la couleur seule."
+ },
+ {
+  "id": "ux-097",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Animations réduites",
+  "text": "Tous les mouvements respectent la réduction des animations."
+ },
+ {
+  "id": "ux-098",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Signaler un problème",
+  "text": "Bouton « Signaler un problème » qui joint un journal sans secrets."
+ },
+ {
+  "id": "ux-099",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Libellés d’actions",
+  "text": "Relis tous les libellés de boutons : chacun décrit l’action avec un verbe, de façon cohérente."
+ },
+ {
+  "id": "ux-100",
+  "cat": "ux",
+  "catName": "UX",
+  "title": "Parcours de test final",
+  "text": "Déroule un parcours complet (installation, clé, projet, demande, édition, commit) et liste les frictions restantes."
+ },
+ {
+  "id": "err-001",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Erreurs de build",
+  "text": "Lance assembleDebug, liste tous les avertissements et erreurs, groupe-les par cause et corrige dans l’ordre."
+ },
+ {
+  "id": "err-002",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Rapport d’erreurs CI",
+  "text": "Améliore l’étape « Rapport erreurs compilation » de build.yml pour produire des annotations lisibles."
+ },
+ {
+  "id": "err-003",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Secrets manquants",
+  "text": "Quand KEYSTORE_BASE64, KEYSTORE_PASSWORD ou KEY_ALIAS manquent, explique comment les créer dans le message d’erreur du workflow."
+ },
+ {
+  "id": "err-004",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Keystore invalide",
+  "text": "Détecte un keystore corrompu ou un mauvais mot de passe et explique la cause."
+ },
+ {
+  "id": "err-005",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Version invalide",
+  "text": "Rends clairs les messages d’erreur sur le format de version du workflow."
+ },
+ {
+  "id": "err-006",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Conflits de dépendances",
+  "text": "Résous les conflits avec dependencyInsight et des contraintes de version."
+ },
+ {
+  "id": "err-007",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Classes en double",
+  "text": "Corrige les erreurs duplicate class et les conflits META-INF."
+ },
+ {
+  "id": "err-008",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Mémoire de Gradle",
+  "text": "Ajuste org.gradle.jvmargs pour éviter l’OutOfMemory sur le runner."
+ },
+ {
+  "id": "err-009",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Cache de configuration",
+  "text": "Résous les incompatibilités avec org.gradle.configuration-cache."
+ },
+ {
+  "id": "err-010",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Démon Kotlin",
+  "text": "Vérifie kotlin.compiler.execution.strategy=in-process et prévois une alternative."
+ },
+ {
+  "id": "err-011",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Échec de jitpack",
+  "text": "Gère l’indisponibilité de jitpack (libs Termux) avec cache ou dépôt de repli."
+ },
+ {
+  "id": "err-012",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Erreurs lint fatales",
+  "text": "Corrige toutes les erreurs lint bloquantes."
+ },
+ {
+  "id": "err-013",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Ressources manquantes",
+  "text": "Vérifie toutes les références @string, @xml et @drawable."
+ },
+ {
+  "id": "err-014",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Fusion du manifeste",
+  "text": "Corrige les conflits de fusion du manifeste."
+ },
+ {
+  "id": "err-015",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Erreurs R8",
+  "text": "Corrige les « missing classes » après activation de la minification."
+ },
+ {
+  "id": "err-016",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Tests en échec",
+  "text": "Corrige les 5 fichiers de tests existants et stabilise Robolectric."
+ },
+ {
+  "id": "err-017",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Tests instables",
+  "text": "Détecte et corrige les tests instables."
+ },
+ {
+  "id": "err-018",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Échec du bootstrap",
+  "text": "Diagnostique bootstrap.yml (espace disque, miroirs gnupg, sous-paquets) et ajoute des tentatives de reprise."
+ },
+ {
+  "id": "err-019",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Cohérence com.zagent",
+  "text": "Vérifie la cohérence entre com.zagent (applicationId), com.zagent.app (namespace, bootstrap), zagent-patch-debs.sh et TerminalController ; corrige les chemins /data/data."
+ },
+ {
+  "id": "err-020",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Script de patch des paquets",
+  "text": "Rends zagent-patch-debs.sh robuste (échec dpkg-deb, droits, liens symboliques) avec des logs clairs."
+ },
+ {
+  "id": "err-021",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Réseau absent",
+  "text": "Détecte l’absence de réseau avant d’envoyer et affiche un message clair."
+ },
+ {
+  "id": "err-022",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Erreur 401",
+  "text": "Erreur 401 : « clé refusée » avec le nom du fournisseur concerné."
+ },
+ {
+  "id": "err-023",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Erreur 403",
+  "text": "Erreur 403 : explique que l’accès au modèle est refusé et que faire."
+ },
+ {
+  "id": "err-024",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Erreur 404",
+  "text": "Modèle introuvable ou retiré : propose une alternative."
+ },
+ {
+  "id": "err-025",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Délai dépassé",
+  "text": "Délai de 180 s dépassé : message clair et nouvelle tentative."
+ },
+ {
+  "id": "err-026",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Erreur 429",
+  "text": "Backoff exponentiel en respectant l’en-tête Retry-After."
+ },
+ {
+  "id": "err-027",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Erreurs 5xx",
+  "text": "Nouvelles tentatives limitées avec jitter."
+ },
+ {
+  "id": "err-028",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Erreur 529",
+  "text": "Modèle surchargé : propose un autre modèle (toast_other_model)."
+ },
+ {
+  "id": "err-029",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Code 1305 z.ai",
+  "text": "Gère explicitement le code 1305 de z.ai dans AiRepository.kt."
+ },
+ {
+  "id": "err-030",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Erreurs SSL",
+  "text": "Erreur de certificat ou d’horloge : message adapté."
+ },
+ {
+  "id": "err-031",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Erreur DNS",
+  "text": "Échec de résolution DNS : message adapté."
+ },
+ {
+  "id": "err-032",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Proxy",
+  "text": "Prends en compte le proxy du système."
+ },
+ {
+  "id": "err-033",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Flux interrompu",
+  "text": "Reprise ou message clair quand le flux SSE est coupé en pleine réponse."
+ },
+ {
+  "id": "err-034",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "JSON invalide",
+  "text": "Tolère les arguments d’outil en JSON partiel ou malformé."
+ },
+ {
+  "id": "err-035",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Validation des arguments",
+  "text": "Valide les arguments de chaque outil et renvoie au modèle une erreur utile."
+ },
+ {
+  "id": "err-036",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Outil inconnu",
+  "text": "Réponse standard quand le modèle appelle un outil qui n’existe pas."
+ },
+ {
+  "id": "err-037",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Boucle d’outils",
+  "text": "Détecte les appels répétés identiques et arrête la boucle."
+ },
+ {
+  "id": "err-038",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Réponse vide",
+  "text": "Gère une réponse vide ou finish_reason = length."
+ },
+ {
+  "id": "err-039",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Contexte dépassé",
+  "text": "Gère context_length_exceeded : résume ou tronque."
+ },
+ {
+  "id": "err-040",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Quota épuisé",
+  "text": "Message clair quand le quota du fournisseur est épuisé."
+ },
+ {
+  "id": "err-041",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Message du fournisseur",
+  "text": "Affiche le message d’erreur du fournisseur, nettoyé et sans secrets."
+ },
+ {
+  "id": "err-042",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Journal réseau",
+  "text": "Journal des erreurs réseau (sans clés) consultable."
+ },
+ {
+  "id": "err-043",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Fournisseur de secours",
+  "text": "Bascule vers un fournisseur de secours si configuré."
+ },
+ {
+  "id": "err-044",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "URL personnalisée",
+  "text": "Valide baseUrl (schéma, chemin chat/completions) avec un message précis."
+ },
+ {
+  "id": "err-045",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Ollama local",
+  "text": "Message précis quand un serveur local est injoignable (cleartext, 127.0.0.1)."
+ },
+ {
+  "id": "err-046",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Fichier introuvable",
+  "text": "Message cohérent sur tous les écrans et outils."
+ },
+ {
+  "id": "err-047",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Permission refusée",
+  "text": "Gère l’erreur d’accès refusé sur les fichiers."
+ },
+ {
+  "id": "err-048",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Disque plein",
+  "text": "Gère le manque d’espace avant et pendant l’écriture."
+ },
+ {
+  "id": "err-049",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Fichier trop gros",
+  "text": "Limite et explique."
+ },
+ {
+  "id": "err-050",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Fichier binaire",
+  "text": "Détecte les binaires et refuse l’ouverture comme texte."
+ },
+ {
+  "id": "err-051",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Encodage invalide",
+  "text": "Gère les octets invalides à la lecture."
+ },
+ {
+  "id": "err-052",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Chemin invalide",
+  "text": "Messages précis : traversée, caractères interdits."
+ },
+ {
+  "id": "err-053",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Nom déjà utilisé",
+  "text": "Propose renommer ou écraser."
+ },
+ {
+  "id": "err-054",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Écriture échouée",
+  "text": "Annule proprement une écriture incomplète."
+ },
+ {
+  "id": "err-055",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Accès SAF perdu",
+  "text": "Si l’URI SAF est révoquée, redemande l’accès."
+ },
+ {
+  "id": "err-056",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Projet supprimé",
+  "text": "Au lancement, projet introuvable : nettoie et prévient."
+ },
+ {
+  "id": "err-057",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Modification concurrente",
+  "text": "Gère les modifications simultanées par l’agent et l’utilisateur."
+ },
+ {
+  "id": "err-058",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Échec de edit_file",
+  "text": "Renvoie à l’agent un extrait de contexte quand l’ancien texte est introuvable."
+ },
+ {
+  "id": "err-059",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Regex invalide",
+  "text": "Message clair dans la recherche."
+ },
+ {
+  "id": "err-060",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Archive corrompue",
+  "text": "Gère les zip invalides."
+ },
+ {
+  "id": "err-061",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Port occupé",
+  "text": "Aperçu : choisis un autre port si celui-ci est pris."
+ },
+ {
+  "id": "err-062",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Aperçu vide",
+  "text": "Si index.html est absent, guide l’utilisateur."
+ },
+ {
+  "id": "err-063",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Bootstrap absent",
+  "text": "Détecte le préfixe manquant et propose la réinstallation."
+ },
+ {
+  "id": "err-064",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "bash introuvable",
+  "text": "Erreur claire si bash est absent du préfixe."
+ },
+ {
+  "id": "err-065",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Commande inconnue",
+  "text": "Suggère pkg install avec le bon paquet."
+ },
+ {
+  "id": "err-066",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Délai de commande",
+  "text": "Message avec option de prolonger."
+ },
+ {
+  "id": "err-067",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Processus orphelins",
+  "text": "Nettoie les processus enfants à l’arrêt."
+ },
+ {
+  "id": "err-068",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Sortie énorme",
+  "text": "Signale clairement la troncature."
+ },
+ {
+  "id": "err-069",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "UTF-8 invalide",
+  "text": "Gère les caractères invalides dans la sortie."
+ },
+ {
+  "id": "err-070",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Variables d’environnement",
+  "text": "Valide PATH, HOME et PREFIX avant chaque commande."
+ },
+ {
+  "id": "err-071",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Architecture non supportée",
+  "text": "Détecte une ABI non supportée par le bootstrap."
+ },
+ {
+  "id": "err-072",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Téléchargement du bootstrap",
+  "text": "Reprise, vérification de somme et message d’erreur clair."
+ },
+ {
+  "id": "err-073",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Espace insuffisant",
+  "text": "Vérifie l’espace libre avant l’extraction."
+ },
+ {
+  "id": "err-074",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Réparer le terminal",
+  "text": "Ajoute l’option « Réparer le terminal »."
+ },
+ {
+  "id": "err-075",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Erreurs Git",
+  "text": "Traduis les erreurs git courantes (authentification, conflit, pas un dépôt)."
+ },
+ {
+  "id": "err-076",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Erreurs SSH",
+  "text": "Gère clé d’hôte et permissions de .ssh."
+ },
+ {
+  "id": "err-077",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Gestionnaire de crash",
+  "text": "Ajoute un handler global qui journalise la stacktrace localement."
+ },
+ {
+  "id": "err-078",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Écran de récupération",
+  "text": "Après un crash, affiche un écran de récupération au redémarrage."
+ },
+ {
+  "id": "err-079",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Rapport de diagnostic",
+  "text": "Exporte un rapport de diagnostic sans secrets."
+ },
+ {
+  "id": "err-080",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "ANR",
+  "text": "Détecte et réduit les ANR."
+ },
+ {
+  "id": "err-081",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "StrictMode",
+  "text": "Active StrictMode en debug et corrige les violations."
+ },
+ {
+  "id": "err-082",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "OutOfMemory",
+  "text": "Gère OutOfMemoryError sur gros fichiers et gros tampons de terminal."
+ },
+ {
+  "id": "err-083",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Restauration d’état",
+  "text": "Restaure l’état après la mort du processus."
+ },
+ {
+  "id": "err-084",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Clés chiffrées corrompues",
+  "text": "Gère AEADBadTagException et un KeyStore corrompu dans SettingsManager : réinitialise proprement avec un message."
+ },
+ {
+  "id": "err-085",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Sauvegarde restaurée",
+  "text": "Quand les clés sont absentes après restauration, guide l’utilisateur."
+ },
+ {
+  "id": "err-086",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Notifications refusées",
+  "text": "Prévois un repli quand la permission de notification est refusée."
+ },
+ {
+  "id": "err-087",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Micro refusé",
+  "text": "Message clair et lien vers les réglages système."
+ },
+ {
+  "id": "err-088",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Dictée indisponible",
+  "text": "Gère l’absence de SpeechRecognizer."
+ },
+ {
+  "id": "err-089",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Service interdit",
+  "text": "Prévois un repli quand le service au premier plan est interdit (API 34)."
+ },
+ {
+  "id": "err-090",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Verrous de réveil",
+  "text": "Évite toute fuite de WakeLock."
+ },
+ {
+  "id": "err-091",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Chaîne manquante",
+  "text": "Repli propre quand une chaîne manque dans une langue."
+ },
+ {
+  "id": "err-092",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Route inconnue",
+  "text": "Écran d’erreur propre pour un deep link ou une route invalide."
+ },
+ {
+  "id": "err-093",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Mise à jour échouée",
+  "text": "Téléchargement, vérification ou installation échoués : messages précis et reprise."
+ },
+ {
+  "id": "err-094",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Signature différente",
+  "text": "Explique l’échec d’installation dû à une signature différente."
+ },
+ {
+  "id": "err-095",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Conversations corrompues",
+  "text": "Isole et sauvegarde un fichier de conversation corrompu."
+ },
+ {
+  "id": "err-096",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Échec de migration",
+  "text": "Sauvegarde avant migration et restauration en cas d’échec."
+ },
+ {
+  "id": "err-097",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Journal d’erreurs",
+  "text": "Écran de journal avec filtres."
+ },
+ {
+  "id": "err-098",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Tests d’erreurs",
+  "text": "Ajoute des tests unitaires pour chaque classe d’erreur."
+ },
+ {
+  "id": "err-099",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Audit des messages",
+  "text": "Passe en revue tous les messages d’erreur et mets-les dans strings.xml en français et en anglais."
+ },
+ {
+  "id": "err-100",
+  "cat": "err",
+  "catName": "Résolution d’erreurs",
+  "title": "Checklist finale",
+  "text": "Produis une checklist de non-régression et relance build, tests et lint."
+ }
+]

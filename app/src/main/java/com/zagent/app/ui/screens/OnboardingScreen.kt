@@ -1,5 +1,7 @@
 package com.zagent.app.ui.screens
 
+import android.Manifest
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -40,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -94,6 +97,17 @@ fun OnboardingScreen(
     var urlPerso by remember { mutableStateOf("") }
     var themeChoice by remember { mutableStateOf(initialThemeMode) }
     var glassTrial by remember { mutableStateOf(false) }
+
+    // MA28 : demande de POST_NOTIFICATIONS à la dernière page d'onboarding —
+    // c'est à ce moment que la notification de l'agent devient utile.
+    val notifPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { }
+    LaunchedEffect(page) {
+        if (page == 2 && Build.VERSION.SDK_INT >= 33) {
+            notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 
     val folderLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree()

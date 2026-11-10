@@ -7,10 +7,12 @@ on:
   workflow_dispatch:
     inputs:
       packages:
-        description: "Paquets à inclure en plus (séparés par des virgules)"
+        # MA61 : python et nodejs sont proposés en option (alourdissent le bootstrap).
+        description: "Paquets à inclure en plus (séparés par des virgules) — ex : python, nodejs"
         default: "git,openssh,curl"
       arch:
-        description: "Architecture (aarch64 pour un téléphone récent)"
+        # MA62 : architectures supportées par termux-packages (émulateur, Chromebook…).
+        description: "Architecture : aarch64 (téléphone récent), arm, i686, x86_64"
         default: "aarch64"
 
 permissions:
@@ -25,8 +27,32 @@ jobs:
       PACKAGES: ${{ inputs.packages }}
       APP_PACKAGE: com.zagent.app
     steps:
+      - name: Valider l'architecture (MA62)
+        run: |
+          case "$ARCH" in
+            aarch64|arm|i686|x86_64) echo "Architecture : $ARCH" ;;
+            *) echo "::error::Architecture non supportée : $ARCH (aarch64, arm, i686, x86_64)"; exit 1 ;;
+          esac
+
       - name: Cloner termux-packages
-        run: git clone --depth 1 https://github.com/termux/termux-packages.git tp
+        run: |
+          # MA59 : épinglé à un commit précis (master mouvant = builds non reproductibles).
+          # Pour changer : relancer git ls-remote https://github.com/termux/termux-packages.git master
+          # et mettre à jour TERMUX_REF ci-dessous après vérification.
+          git init tp
+          git -C tp fetch --depth 1 origin "8f6d47ce1d4b1b818cf24f5a283ed4b632894e4c"
+          git -C tp checkout --quiet FETCH_HEAD
+
+      # MA60 : les paquets déjà compilés sont mis en cache entre les runs pour
+      # ne pas reconstruire 345 minutes depuis zéro.
+      - name: Cache des paquets compilés (MA60)
+        uses: actions/cache@v6
+        with:
+          path: |
+            tp/termux-built-debs
+            tp/output
+          key: bootstrap-${{ inputs.arch }}-${{ github.run_id }}
+          restore-keys: bootstrap-${{ inputs.arch }}-
 
       - name: Libérer de l'espace disque
         run: |

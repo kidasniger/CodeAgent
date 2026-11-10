@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- MA77 : raccourcis d'application (appui long sur l'icône du lanceur). -->
+<!-- MA39 : raccourcis mis à jour — Git et Modèles rejoignent Nouvelle
+     conversation et Terminal (4 raccourcis maximum). -->
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
     <shortcut
         android:shortcutId="new_chat"
@@ -24,13 +25,24 @@
             android:targetClass="com.zagent.app.MainActivity" />
     </shortcut>
     <shortcut
-        android:shortcutId="last_project"
+        android:shortcutId="open_git"
         android:enabled="true"
         android:icon="@drawable/ic_shortcut_folder"
-        android:shortcutShortLabel="@string/shortcut_last_project"
-        android:shortcutLongLabel="@string/shortcut_last_project_long">
+        android:shortcutShortLabel="@string/shortcut_git"
+        android:shortcutLongLabel="@string/shortcut_git_long">
         <intent
-            android:action="com.zagent.app.action.LAST_PROJECT"
+            android:action="com.zagent.app.action.OPEN_GIT"
+            android:targetPackage="com.zagent"
+            android:targetClass="com.zagent.app.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="open_models"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_chat"
+        android:shortcutShortLabel="@string/shortcut_models"
+        android:shortcutLongLabel="@string/shortcut_models_long">
+        <intent
+            android:action="com.zagent.app.action.OPEN_MODELS"
             android:targetPackage="com.zagent"
             android:targetClass="com.zagent.app.MainActivity" />
     </shortcut>

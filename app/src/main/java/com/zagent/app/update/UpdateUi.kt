@@ -30,13 +30,16 @@ import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -344,6 +347,35 @@ fun UpdateSettingsCard(modifier: Modifier = Modifier) {
                         color = c.text2
                     )
                 }
+            }
+            Spacer(Modifier.height(10.dp))
+            // MA72 : ne télécharger les mises à jour qu'en Wi-Fi.
+            var wifiOnly by remember { mutableStateOf(UpdateManager.isWifiOnly()) }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Télécharger uniquement en Wi-Fi",
+                    style = TextStyle(fontFamily = Inter, fontSize = 13.sp),
+                    color = c.text2,
+                    modifier = Modifier.weight(1f)
+                )
+                Switch(
+                    checked = wifiOnly,
+                    onCheckedChange = { wifiOnly = it; UpdateManager.setWifiOnly(it) }
+                )
+            }
+            // MA67 : canal stable (défaut) ou bêta (prereleases incluses).
+            var canalBeta by remember { mutableStateOf(UpdateManager.isCanalBeta()) }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Canal bêta (prereleases)",
+                    style = TextStyle(fontFamily = Inter, fontSize = 13.sp),
+                    color = c.text2,
+                    modifier = Modifier.weight(1f)
+                )
+                Switch(
+                    checked = canalBeta,
+                    onCheckedChange = { canalBeta = it; UpdateManager.setCanalBeta(it) }
+                )
             }
             val status = when (val s = state) {
                 UpdateState.Idle -> null

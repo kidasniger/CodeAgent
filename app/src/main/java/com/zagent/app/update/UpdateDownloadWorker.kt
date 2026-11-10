@@ -33,6 +33,9 @@ class UpdateDownloadWorker(context: Context, params: WorkerParameters) : Corouti
 
         val dir = File(applicationContext.cacheDir, "updates")
         dir.mkdirs()
+        // MA77 : purge des anciens APK téléchargés après installation réussie —
+        // un seul téléchargement est actif à la fois, les autres fichiers sont obsolètes.
+        dir.listFiles()?.forEach { f -> if (f.name != name && f.name != "$name.part") f.delete() }
         val finalFile = File(dir, name)
         val part = File(dir, "$name.part")
 

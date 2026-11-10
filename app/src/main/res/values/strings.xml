@@ -75,4 +75,10 @@
     <string name="error_title_model_overloaded">Le modèle est surchargé</string>
     <string name="error_title_step_limit">Limite d\'étapes atteinte</string>
     <string name="error_title_generic">Une erreur est survenue</string>
+
+    <!-- MA39 : raccourcis Git et Modèles -->
+    <string name="shortcut_git">Git</string>
+    <string name="shortcut_git_long">Ouvrir Git</string>
+    <string name="shortcut_models">Modèles</string>
+    <string name="shortcut_models_long">Ouvrir les modèles</string>
 </resources>

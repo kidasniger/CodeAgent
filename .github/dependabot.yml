@@ -1,0 +1,31 @@
+# MA53/MA54 : mises à jour hebdomadaires des dépendances Gradle (via
+# libs.versions.toml) et des GitHub Actions, regroupées par familles.
+version: 2
+updates:
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      compose:
+        patterns:
+          - "androidx.compose*"
+          - "com.google.accompanist*"
+      kotlin:
+        patterns:
+          - "org.jetbrains.kotlin*"
+          - "org.jetbrains.kotlinx*"
+      androidx:
+        patterns:
+          - "androidx.*"
+        exclude-patterns:
+          - "androidx.compose*"
+      okhttp:
+        patterns:
+          - "com.squareup.okhttp*"
+          - "com.squareup.moshi*"
+          - "com.squareup.retrofit*"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

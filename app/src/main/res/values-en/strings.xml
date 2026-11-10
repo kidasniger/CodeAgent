@@ -71,4 +71,10 @@
     <string name="error_title_model_overloaded">The model is overloaded</string>
     <string name="error_title_step_limit">Step limit reached</string>
     <string name="error_title_generic">Something went wrong</string>
+
+    <!-- MA39 : Git and Models shortcuts -->
+    <string name="shortcut_git">Git</string>
+    <string name="shortcut_git_long">Open Git</string>
+    <string name="shortcut_models">Models</string>
+    <string name="shortcut_models_long">Open models</string>
 </resources>

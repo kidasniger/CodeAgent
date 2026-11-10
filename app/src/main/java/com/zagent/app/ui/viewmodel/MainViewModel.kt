@@ -1582,6 +1582,9 @@ done; } 2>&1 | head -c 50000
         const val ACTION_SHORTCUT_NEW_CHAT = "com.zagent.app.action.NEW_CHAT"
         const val ACTION_SHORTCUT_OPEN_TERMINAL = "com.zagent.app.action.OPEN_TERMINAL"
         const val ACTION_SHORTCUT_LAST_PROJECT = "com.zagent.app.action.LAST_PROJECT"
+        // MA39 : raccourcis Git et Modèles.
+        const val ACTION_SHORTCUT_OPEN_GIT = "com.zagent.app.action.OPEN_GIT"
+        const val ACTION_SHORTCUT_OPEN_MODELS = "com.zagent.app.action.OPEN_MODELS"
     }
 
     /**
@@ -1611,6 +1614,18 @@ done; } 2>&1 | head -c 50000
                 // sinon l'écran de sélection de projet s'ouvre par-dessus.
                 if (workingFolderUriString.isNullOrBlank()) isProjectPickerOpen = true
                 navRouteRequest = ZRoutes.FILES
+                true
+            }
+            ACTION_SHORTCUT_OPEN_GIT -> {
+                // MA39 : ouvre la feuille Git (état existant du ViewModel).
+                isGitScreenOpen = true
+                true
+            }
+            ACTION_SHORTCUT_OPEN_MODELS -> {
+                // MA39 : l'écran Modèles est une feuille du LOT 5 accrochée aux
+                // Réglages — on ouvre les Réglages avec une demande en attente.
+                pendingOpenModels = true
+                navRouteRequest = ZRoutes.SETTINGS
                 true
             }
             else -> false
@@ -3063,6 +3078,9 @@ done; } 2>&1 | head -c 50000
     var isHistoryOpen by mutableStateOf(false)
     var isSearchOpen by mutableStateOf(false)
     var isGitScreenOpen by mutableStateOf(false)
+
+    /** MA39 : demande en attente d'ouverture de l'écran Modèles (raccourci). */
+    var pendingOpenModels by mutableStateOf(false)
     var isTemplatesOpen by mutableStateOf(false)
     var isShareSheetOpen by mutableStateOf(false)
 

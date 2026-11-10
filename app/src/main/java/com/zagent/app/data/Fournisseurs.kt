@@ -35,6 +35,9 @@ object Fournisseurs {
 
     const val ID_ZAI = "zai"
     const val ID_NVIDIA = "nvidia"
+    // MA82 : fournisseurs intégrés optionnels (clé configurée par l'utilisateur).
+    const val ID_OPENROUTER = "openrouter"
+    const val ID_GROQ = "groq"
 
     val JSON = Json { ignoreUnknownKeys = true }
     private val listeSerializer = ListSerializer(Fournisseur.serializer())
@@ -42,25 +45,35 @@ object Fournisseurs {
     /** Fournisseurs intégrés, toujours présents dans la liste enregistrée. */
     fun integres(): List<Fournisseur> = listOf(
         Fournisseur(ID_ZAI, "z.ai (GLM)", ModelCatalog.URL_ZAI),
-        Fournisseur(ID_NVIDIA, "NVIDIA NIM", ModelCatalog.URL_NVIDIA)
+        Fournisseur(ID_NVIDIA, "NVIDIA NIM", ModelCatalog.URL_NVIDIA),
+        // MA82 : optionnels — restent visibles mais ne servent qu'avec une clé personnelle.
+        Fournisseur(ID_OPENROUTER, "OpenRouter", "https://openrouter.ai/api/v1/chat/completions"),
+        Fournisseur(ID_GROQ, "Groq", "https://api.groq.com/openai/v1/chat/completions")
     )
 
     /**
      * Détection automatique (MàJ 101) : devine le fournisseur d'après la clé collée
      * ou l'URL. Règles simples et déterministes :
      *  - clé commençant par « nvapi- » → NVIDIA NIM ;
+     *  - clé commençant par « sk-or- » → OpenRouter (MA82) ;
+     *  - clé commençant par « gsk_ » → Groq (MA82) ;
      *  - URL/texte contenant « z.ai » → z.ai ;
      *  - URL/texte contenant « nvidia » → NVIDIA NIM ;
+     *  - URL/texte contenant « openrouter » ou « groq » → MA82 ;
      *  - sinon null : ce sera un fournisseur personnalisé.
      */
     fun detecter(cleOuUrl: String): String? {
         val v = cleOuUrl.trim()
         if (v.isEmpty()) return null
         if (v.startsWith("nvapi-", ignoreCase = true)) return ID_NVIDIA
+        if (v.startsWith("sk-or-", ignoreCase = true)) return ID_OPENROUTER
+        if (v.startsWith("gsk_", ignoreCase = true)) return ID_GROQ
         val bas = v.lowercase()
         return when {
             "z.ai" in bas -> ID_ZAI
             "nvidia" in bas -> ID_NVIDIA
+            "openrouter" in bas -> ID_OPENROUTER
+            "groq" in bas -> ID_GROQ
             else -> null
         }
     }

@@ -1,0 +1,631 @@
+# Backlog ZAgent — 600 prompts
+
+Source : « ZAgent · 600 prompts à copier » (HTML uploadé).
+Statuts dans `state.json` ; ce fichier est régénéré par `/home/z/my-project/scripts/make_backlog.py`.
+**Progression globale : 91/600 prompts traités (15 %).**
+
+
+## Mises à jour (91/100 faits, 8 partiels)
+*Dépendances, plateforme, CI, mises à jour de l’appli, modèles IA, documentation.*
+
+- ☐ **maj-001** Audit des versions — *à faire*
+- ✔️ **maj-002** Gradle wrapper — *déjà en place*
+- ✔️ **maj-003** Android Gradle Plugin — *déjà en place*
+- ✔️ **maj-004** Kotlin — *déjà en place*
+- ✔️ **maj-005** Compose BOM — *déjà en place*
+- ✔️ **maj-006** Material3 — *déjà en place*
+- ✔️ **maj-007** Navigation Compose — *déjà en place*
+- ✔️ **maj-008** Lifecycle — *déjà en place*
+- ✔️ **maj-009** Coroutines — *déjà en place*
+- ✔️ **maj-010** Serialization — *déjà en place*
+- ✔️ **maj-011** OkHttp — *déjà en place*
+- ✔️ **maj-012** Coil — *déjà en place*
+- ✔️ **maj-013** Haze — *déjà en place*
+- ✔️ **maj-014** WorkManager — *déjà en place*
+- ✔️ **maj-015** Libs Termux — *déjà en place*
+- ✔️ **maj-016** ZXing — *déjà en place*
+- ✔️ **maj-017** Security-crypto — *déjà en place*
+- ✔️ **maj-018** AppCompat — *déjà en place*
+- ✔️ **maj-019** Splash screen — *déjà en place*
+- ✔️ **maj-020** ProfileInstaller — *déjà en place*
+- ✔️ **maj-021** Bibliothèques de test — *déjà en place*
+- ✔️ **maj-022** Plugin secrets — *déjà en place*
+- ✔️ **maj-023** Foojay resolver — *déjà en place*
+- ✅ **maj-024** Java 17 — *fait (cette session)*
+- ✔️ **maj-025** Catalogue unique — *déjà en place*
+- ✅ **maj-026** Build-tools et compileSdk — *fait (cette session)*
+- ✅ **maj-027** targetSdk 33 — *fait (cette session)*
+- ✅ **maj-028** Permission notifications — *fait (cette session)*
+- ✅ **maj-029** Type de service — *fait (cette session)*
+- ✅ **maj-030** targetSdk 34 — *fait (cette session)*
+- ◐ **maj-031** Préparer targetSdk 35 — *partiel*
+- ✔️ **maj-032** Stockage ciblé — *déjà en place*
+- ✔️ **maj-033** Retour prédictif — *déjà en place*
+- ✔️ **maj-034** Locales config — *déjà en place*
+- ✔️ **maj-035** Règles de sauvegarde — *déjà en place*
+- ✔️ **maj-036** Config réseau — *déjà en place*
+- ✅ **maj-037** Package applicatif — *fait (cette session)*
+- ✔️ **maj-038** Icône monochrome — *déjà en place*
+- ✅ **maj-039** Raccourcis — *fait (cette session)*
+- ◐ **maj-040** Deep links — *partiel*
+- ✔️ **maj-041** Baseline profile — *déjà en place*
+- ✅ **maj-042** R8 en release — *fait (cette session)*
+- ✅ **maj-043** Rapport de dépendances — *fait (cette session)*
+- ✅ **maj-044** Lint — *fait (cette session)*
+- ◐ **maj-045** Métriques Compose — *partiel*
+- ✅ **maj-046** Actions GitHub — *fait (cette session)*
+- ✅ **maj-047** Wrapper en CI — *fait (cette session)*
+- ✅ **maj-048** Cache Gradle — *fait (cette session)*
+- ✅ **maj-049** Build sans secrets — *fait (cette session)*
+- ✔️ **maj-050** versionCode stable — *déjà en place*
+- ✔️ **maj-051** Notes automatiques — *déjà en place*
+- ✔️ **maj-052** Somme SHA-256 — *déjà en place*
+- ✅ **maj-053** Dependabot — *fait (cette session)*
+- ✅ **maj-054** Groupes Dependabot — *fait (cette session)*
+- ✅ **maj-055** Tests en CI — *fait (cette session)*
+- ✅ **maj-056** Lint en CI — *fait (cette session)*
+- ✅ **maj-057** Release protégée — *fait (cette session)*
+- ✔️ **maj-058** Concurrence — *déjà en place*
+- ✅ **maj-059** Bootstrap épinglé — *fait (cette session)*
+- ✅ **maj-060** Cache bootstrap — *fait (cette session)*
+- ✅ **maj-061** Paquets par défaut — *fait (cette session)*
+- ✅ **maj-062** Architectures — *fait (cette session)*
+- ✅ **maj-063** Script orphelin — *fait (cette session)*
+- ✅ **maj-064** UpdateConfig paramétrable — *fait (cette session)*
+- ✅ **maj-065** ReleaseParser — *fait (cette session)*
+- ✔️ **maj-066** VersionComparator — *déjà en place*
+- ✅ **maj-067** Canal stable ou bêta — *fait (cette session)*
+- ✔️ **maj-068** Reprise de téléchargement — *déjà en place*
+- ✅ **maj-069** Signature de l’APK — *fait (cette session)*
+- ◐ **maj-070** Notes dans l’appli — *partiel*
+- ✅ **maj-071** Rappel plus tard — *fait (cette session)*
+- ✅ **maj-072** Màj en Wi-Fi — *fait (cette session)*
+- ◐ **maj-073** Écran Nouveautés — *partiel*
+- ✅ **maj-074** Compat minSdk — *fait (cette session)*
+- ✔️ **maj-075** Source inconnue — *déjà en place*
+- ◐ **maj-076** FileProvider — *partiel*
+- ✅ **maj-077** Nettoyage des APK — *fait (cette session)*
+- ✔️ **maj-078** Tests de mise à jour — *déjà en place*
+- ✔️ **maj-079** Catalogue de modèles — *déjà en place*
+- ✔️ **maj-080** URLs des fournisseurs — *déjà en place*
+- ✔️ **maj-081** Détection fournisseur — *déjà en place*
+- ✅ **maj-082** Nouveaux fournisseurs — *fait (cette session)*
+- ◐ **maj-083** Paramètres de génération — *partiel*
+- ✔️ **maj-084** Fenêtre de contexte — *déjà en place*
+- ✔️ **maj-085** Tarifs — *déjà en place*
+- ✔️ **maj-086** Format des outils — *déjà en place*
+- ✔️ **maj-087** Raisonnement — *déjà en place*
+- ✔️ **maj-088** Tests du catalogue — *déjà en place*
+- ✅ **maj-089** README — *fait (cette session)*
+- ✅ **maj-090** CHANGELOG — *fait (cette session)*
+- ✅ **maj-091** Architecture — *fait (cette session)*
+- ✅ **maj-092** Index des lots — *fait (cette session)*
+- ✅ **maj-093** Placeholder Gemini — *fait (cette session)*
+- ✅ **maj-094** .gitignore — *fait (cette session)*
+- ✅ **maj-095** Version affichée — *fait (cette session)*
+- ✅ **maj-096** Licences — *fait (cette session)*
+- ✅ **maj-097** Politique de version — *fait (cette session)*
+- ◐ **maj-098** Vérification des mises à jour — *partiel*
+- ✔️ **maj-099** Mise à jour des chaînes — *déjà en place*
+- ✅ **maj-100** Synthèse finale — *fait (cette session)*
+
+## Corrections (0/100 faits, 0 partiels)
+*Architecture, sécurité, performance et justesse du code.*
+
+- ☐ **corr-001** Cartographie du ViewModel — *à faire*
+- ☐ **corr-002** ChatViewModel — *à faire*
+- ☐ **corr-003** NavigationViewModel — *à faire*
+- ☐ **corr-004** SettingsViewModel — *à faire*
+- ☐ **corr-005** TerminalViewModel — *à faire*
+- ☐ **corr-006** Injection de dépendances — *à faire*
+- ☐ **corr-007** Interfaces de dépôts — *à faire*
+- ☐ **corr-008** UiState par écran — *à faire*
+- ☐ **corr-009** Événements uniques — *à faire*
+- ☐ **corr-010** Découper ChatScreen — *à faire*
+- ☐ **corr-011** Découper ZComponents — *à faire*
+- ☐ **corr-012** Noms fonctionnels — *à faire*
+- ☐ **corr-013** Langue du code — *à faire*
+- ☐ **corr-014** Packages — *à faire*
+- ☐ **corr-015** Constantes — *à faire*
+- ☐ **corr-016** Code mort — *à faire*
+- ☐ **corr-017** Previews — *à faire*
+- ☐ **corr-018** KDoc — *à faire*
+- ☐ **corr-019** Journalisation — *à faire*
+- ☐ **corr-020** État de l’agent — *à faire*
+- ☐ **corr-021** Clé API dans les logs — *à faire*
+- ☐ **corr-022** Champ de clé — *à faire*
+- ☐ **corr-023** Presse-papiers — *à faire*
+- ☐ **corr-024** Sauvegarde Android — *à faire*
+- ☐ **corr-025** Chemins et liens — *à faire*
+- ☐ **corr-026** validatePath — *à faire*
+- ☐ **corr-027** Commandes dangereuses — *à faire*
+- ☐ **corr-028** Confirmations — *à faire*
+- ☐ **corr-029** Mode lecture seule — *à faire*
+- ☐ **corr-030** Confinement au projet — *à faire*
+- ☐ **corr-031** Environnement des processus — *à faire*
+- ☐ **corr-032** Timeout maximal — *à faire*
+- ☐ **corr-033** Sorties volumineuses — *à faire*
+- ☐ **corr-034** Injection de prompt — *à faire*
+- ☐ **corr-035** Serveur d’aperçu local — *à faire*
+- ☐ **corr-036** Traversée de chemin aperçu — *à faire*
+- ☐ **corr-037** En-têtes de sécurité — *à faire*
+- ☐ **corr-038** WebView — *à faire*
+- ☐ **corr-039** Paramètres de deep link — *à faire*
+- ☐ **corr-040** Intents entrants — *à faire*
+- ☐ **corr-041** Preuve d’intégrité — *à faire*
+- ☐ **corr-042** HTTPS obligatoire — *à faire*
+- ☐ **corr-043** Certificats — *à faire*
+- ☐ **corr-044** Scan de dépendances — *à faire*
+- ☐ **corr-045** Release propre — *à faire*
+- ☐ **corr-046** Keystores — *à faire*
+- ☐ **corr-047** Secrets du CI — *à faire*
+- ☐ **corr-048** Permissions minimales — *à faire*
+- ☐ **corr-049** Composants exportés — *à faire*
+- ☐ **corr-050** Recompositions — *à faire*
+- ☐ **corr-051** Clés LazyColumn — *à faire*
+- ☐ **corr-052** Flux en continu — *à faire*
+- ☐ **corr-053** Cache markdown — *à faire*
+- ☐ **corr-054** Coloration — *à faire*
+- ☐ **corr-055** Gros fichiers — *à faire*
+- ☐ **corr-056** AnsiText — *à faire*
+- ☐ **corr-057** Tampon terminal — *à faire*
+- ☐ **corr-058** ProjectSearch — *à faire*
+- ☐ **corr-059** Flou verre — *à faire*
+- ☐ **corr-060** Images jointes — *à faire*
+- ☐ **corr-061** Démarrage à froid — *à faire*
+- ☐ **corr-062** SettingsManager — *à faire*
+- ☐ **corr-063** Sauvegarde conversations — *à faire*
+- ☐ **corr-064** Dispatchers — *à faire*
+- ☐ **corr-065** Fuites mémoire — *à faire*
+- ☐ **corr-066** WakeLock — *à faire*
+- ☐ **corr-067** Batterie — *à faire*
+- ☐ **corr-068** Taille de l’APK — *à faire*
+- ☐ **corr-069** Pagination historique — *à faire*
+- ☐ **corr-070** Tests de DiffUtil — *à faire*
+- ☐ **corr-071** edit_file strict — *à faire*
+- ☐ **corr-072** Écriture atomique — *à faire*
+- ☐ **corr-073** Encodage — *à faire*
+- ☐ **corr-074** Annulation — *à faire*
+- ☐ **corr-075** Double envoi — *à faire*
+- ☐ **corr-076** Limite d’étapes — *à faire*
+- ☐ **corr-077** update_todos — *à faire*
+- ☐ **corr-078** Rotation — *à faire*
+- ☐ **corr-079** Mort du processus — *à faire*
+- ☐ **corr-080** Locale — *à faire*
+- ☐ **corr-081** Fuseaux horaires — *à faire*
+- ☐ **corr-082** Calcul d’usage — *à faire*
+- ☐ **corr-083** Fournisseur inactif — *à faire*
+- ☐ **corr-084** Bonne clé, bon fournisseur — *à faire*
+- ☐ **corr-085** Anciens JSON — *à faire*
+- ☐ **corr-086** Version de schéma — *à faire*
+- ☐ **corr-087** Barre d’onglets — *à faire*
+- ☐ **corr-088** Badge — *à faire*
+- ☐ **corr-089** Clavier — *à faire*
+- ☐ **corr-090** Panneaux divisés — *à faire*
+- ☐ **corr-091** GitScreen — *à faire*
+- ☐ **corr-092** Onglets de l’éditeur — *à faire*
+- ☐ **corr-093** Annuler/rétablir — *à faire*
+- ☐ **corr-094** Recherche globale — *à faire*
+- ☐ **corr-095** Modèles de prompts — *à faire*
+- ☐ **corr-096** Écran Permissions — *à faire*
+- ☐ **corr-097** Notifications — *à faire*
+- ☐ **corr-098** Écritures simultanées — *à faire*
+- ☐ **corr-099** Tests de non-régression — *à faire*
+- ☐ **corr-100** Revue des corrections — *à faire*
+
+## Fonctionnalités (0/100 faits, 0 partiels)
+*Chat et IA, outils de l’agent, terminal, éditeur, fichiers, Git, réglages.*
+
+- ☐ **feat-001** Recherche dans la conversation — *à faire*
+- ☐ **feat-002** Messages épinglés — *à faire*
+- ☐ **feat-003** Branches de conversation — *à faire*
+- ☐ **feat-004** Régénérer — *à faire*
+- ☐ **feat-005** Comparer deux modèles — *à faire*
+- ☐ **feat-006** Fichier ZAGENT.md — *à faire*
+- ☐ **feat-007** Instructions globales — *à faire*
+- ☐ **feat-008** Mémoire de projet — *à faire*
+- ☐ **feat-009** Résumé automatique — *à faire*
+- ☐ **feat-010** Compteur de tokens — *à faire*
+- ☐ **feat-011** Commandes slash — *à faire*
+- ☐ **feat-012** Mentions de fichiers — *à faire*
+- ☐ **feat-013** Mode plan — *à faire*
+- ☐ **feat-014** Autorisation par conversation — *à faire*
+- ☐ **feat-015** Tâches en arrière-plan — *à faire*
+- ☐ **feat-016** File de messages — *à faire*
+- ☐ **feat-017** Évaluer une réponse — *à faire*
+- ☐ **feat-018** Export de conversation — *à faire*
+- ☐ **feat-019** Import de conversation — *à faire*
+- ☐ **feat-020** Dossiers et étiquettes — *à faire*
+- ☐ **feat-021** Titres automatiques — *à faire*
+- ☐ **feat-022** Dictée améliorée — *à faire*
+- ☐ **feat-023** Lecture à voix haute — *à faire*
+- ☐ **feat-024** Images en entrée — *à faire*
+- ☐ **feat-025** Modèle de secours — *à faire*
+- ☐ **feat-026** Outil find_files — *à faire*
+- ☐ **feat-027** Outil move_file — *à faire*
+- ☐ **feat-028** Outil copy_file — *à faire*
+- ☐ **feat-029** Outil apply_patch — *à faire*
+- ☐ **feat-030** Outils git — *à faire*
+- ☐ **feat-031** Outil fetch_url — *à faire*
+- ☐ **feat-032** Recherche web — *à faire*
+- ☐ **feat-033** Outil run_tests — *à faire*
+- ☐ **feat-034** Outil de lint — *à faire*
+- ☐ **feat-035** Lecture par lignes — *à faire*
+- ☐ **feat-036** Outil file_info — *à faire*
+- ☐ **feat-037** Outil de diff — *à faire*
+- ☐ **feat-038** Points de restauration — *à faire*
+- ☐ **feat-039** Annuler le tour — *à faire*
+- ☐ **feat-040** Recherche de symboles — *à faire*
+- ☐ **feat-041** Infos du projet — *à faire*
+- ☐ **feat-042** Serveur de dev détecté — *à faire*
+- ☐ **feat-043** Logs du serveur — *à faire*
+- ☐ **feat-044** Installation de paquets — *à faire*
+- ☐ **feat-045** Permission par outil — *à faire*
+- ☐ **feat-046** Touches spéciales — *à faire*
+- ☐ **feat-047** Historique de commandes — *à faire*
+- ☐ **feat-048** Sessions nommées — *à faire*
+- ☐ **feat-049** Copier et coller — *à faire*
+- ☐ **feat-050** Zoom du terminal — *à faire*
+- ☐ **feat-051** Thèmes du terminal — *à faire*
+- ☐ **feat-052** Gestion des paquets — *à faire*
+- ☐ **feat-053** Assistant d’installation — *à faire*
+- ☐ **feat-054** Alias — *à faire*
+- ☐ **feat-055** Exécuter le fichier — *à faire*
+- ☐ **feat-056** Sorties cliquables — *à faire*
+- ☐ **feat-057** Recherche dans la sortie — *à faire*
+- ☐ **feat-058** Clés SSH — *à faire*
+- ☐ **feat-059** Rechercher et remplacer — *à faire*
+- ☐ **feat-060** Aller à la ligne — *à faire*
+- ☐ **feat-061** Numéros de ligne — *à faire*
+- ☐ **feat-062** Indentation — *à faire*
+- ☐ **feat-063** Fermeture automatique — *à faire*
+- ☐ **feat-064** Repli de code — *à faire*
+- ☐ **feat-065** Barre de symboles — *à faire*
+- ☐ **feat-066** Sauvegarde auto — *à faire*
+- ☐ **feat-067** Diff avant validation — *à faire*
+- ☐ **feat-068** Coloration étendue — *à faire*
+- ☐ **feat-069** Aperçu Markdown — *à faire*
+- ☐ **feat-070** Images dans l’éditeur — *à faire*
+- ☐ **feat-071** Sélection multiple — *à faire*
+- ☐ **feat-072** Glisser-déposer — *à faire*
+- ☐ **feat-073** Zip et dézip — *à faire*
+- ☐ **feat-074** Importer un projet — *à faire*
+- ☐ **feat-075** Exporter un projet — *à faire*
+- ☐ **feat-076** Favoris et récents — *à faire*
+- ☐ **feat-077** Ouvrir avec — *à faire*
+- ☐ **feat-078** Fichier depuis modèle — *à faire*
+- ☐ **feat-079** Corbeille — *à faire*
+- ☐ **feat-080** Respect de .gitignore — *à faire*
+- ☐ **feat-081** Cloner un dépôt — *à faire*
+- ☐ **feat-082** Jeton GitHub — *à faire*
+- ☐ **feat-083** Commit guidé — *à faire*
+- ☐ **feat-084** Branches — *à faire*
+- ☐ **feat-085** Push et pull — *à faire*
+- ☐ **feat-086** Stash — *à faire*
+- ☐ **feat-087** Journal des commits — *à faire*
+- ☐ **feat-088** Pull request — *à faire*
+- ☐ **feat-089** Statut des Actions — *à faire*
+- ☐ **feat-090** Modèles de projet — *à faire*
+- ☐ **feat-091** Sauvegarde des réglages — *à faire*
+- ☐ **feat-092** Profils de réglages — *à faire*
+- ☐ **feat-093** Widget — *à faire*
+- ☐ **feat-094** Partager vers ZAgent — *à faire*
+- ☐ **feat-095** Multi-fenêtre — *à faire*
+- ☐ **feat-096** Mode hors ligne — *à faire*
+- ☐ **feat-097** Tableau de bord d’usage — *à faire*
+- ☐ **feat-098** Budget — *à faire*
+- ☐ **feat-099** Journal d’activité — *à faire*
+- ☐ **feat-100** Visite guidée — *à faire*
+
+## UI (0/100 faits, 0 partiels)
+*Thèmes, composants, écrans, adaptatif, animations, qualité visuelle.*
+
+- ☐ **ui-001** Audit visuel — *à faire*
+- ☐ **ui-002** Design tokens — *à faire*
+- ☐ **ui-003** Contraste sombre — *à faire*
+- ☐ **ui-004** Contraste clair — *à faire*
+- ☐ **ui-005** Thème noir pur — *à faire*
+- ☐ **ui-006** Couleurs dynamiques — *à faire*
+- ☐ **ui-007** Couleur d’accent — *à faire*
+- ☐ **ui-008** Typographie — *à faire*
+- ☐ **ui-009** Taille de police — *à faire*
+- ☐ **ui-010** Doublon de police — *à faire*
+- ☐ **ui-011** Intensité du verre — *à faire*
+- ☐ **ui-012** Verre désactivé — *à faire*
+- ☐ **ui-013** Élévations — *à faire*
+- ☐ **ui-014** Jeu d’icônes — *à faire*
+- ☐ **ui-015** Splash — *à faire*
+- ☐ **ui-016** Icône de l’appli — *à faire*
+- ☐ **ui-017** Rayons des coins — *à faire*
+- ☐ **ui-018** États des composants — *à faire*
+- ☐ **ui-019** Aperçu du thème — *à faire*
+- ☐ **ui-020** Bulles de chat — *à faire*
+- ☐ **ui-021** Indicateurs d’expéditeur — *à faire*
+- ☐ **ui-022** Rendu markdown — *à faire*
+- ☐ **ui-023** Blocs de code — *à faire*
+- ☐ **ui-024** Coloration dans le chat — *à faire*
+- ☐ **ui-025** Cartes d’outils — *à faire*
+- ☐ **ui-026** Icône par outil — *à faire*
+- ☐ **ui-027** Diff en ligne — *à faire*
+- ☐ **ui-028** Liste de tâches — *à faire*
+- ☐ **ui-029** Indicateur de réflexion — *à faire*
+- ☐ **ui-030** En-tête du chat — *à faire*
+- ☐ **ui-031** Pastille de statut — *à faire*
+- ☐ **ui-032** Écran d’accueil — *à faire*
+- ☐ **ui-033** Cartes de suggestions — *à faire*
+- ☐ **ui-034** Barre de saisie — *à faire*
+- ☐ **ui-035** Envoyer et arrêter — *à faire*
+- ☐ **ui-036** Pièces jointes — *à faire*
+- ☐ **ui-037** Séparateurs de date — *à faire*
+- ☐ **ui-038** Bouton de défilement — *à faire*
+- ☐ **ui-039** Cartes d’erreur — *à faire*
+- ☐ **ui-040** Cartes de confirmation — *à faire*
+- ☐ **ui-041** AskCard — *à faire*
+- ☐ **ui-042** Messages longs — *à faire*
+- ☐ **ui-043** Sélection de texte — *à faire*
+- ☐ **ui-044** Menu d’un message — *à faire*
+- ☐ **ui-045** Barre d’onglets — *à faire*
+- ☐ **ui-046** ZMenu partout — *à faire*
+- ☐ **ui-047** Transitions partagées — *à faire*
+- ☐ **ui-048** Feuilles modales — *à faire*
+- ☐ **ui-049** Écran Historique — *à faire*
+- ☐ **ui-050** Écran Recherche — *à faire*
+- ☐ **ui-051** Écran Modèles — *à faire*
+- ☐ **ui-052** Écran Projets — *à faire*
+- ☐ **ui-053** Explorateur — *à faire*
+- ☐ **ui-054** Écran Éditeur — *à faire*
+- ☐ **ui-055** Onglets de l’éditeur — *à faire*
+- ☐ **ui-056** Écran Terminal — *à faire*
+- ☐ **ui-057** Écran Git — *à faire*
+- ☐ **ui-058** Écran Réglages — *à faire*
+- ☐ **ui-059** Réglages d’apparence — *à faire*
+- ☐ **ui-060** Densité — *à faire*
+- ☐ **ui-061** Écran Usage — *à faire*
+- ☐ **ui-062** Écran Activité — *à faire*
+- ☐ **ui-063** Écran À propos — *à faire*
+- ☐ **ui-064** Écran Aide — *à faire*
+- ☐ **ui-065** Onboarding — *à faire*
+- ☐ **ui-066** Écran Permissions — *à faire*
+- ☐ **ui-067** Écran Instructions — *à faire*
+- ☐ **ui-068** Écran Modèles de prompts — *à faire*
+- ☐ **ui-069** Feuille de partage — *à faire*
+- ☐ **ui-070** Grands écrans — *à faire*
+- ☐ **ui-071** Pliables — *à faire*
+- ☐ **ui-072** Paysage — *à faire*
+- ☐ **ui-073** Poignée du split — *à faire*
+- ☐ **ui-074** Petits écrans — *à faire*
+- ☐ **ui-075** Police à 200 % — *à faire*
+- ☐ **ui-076** Bord à bord — *à faire*
+- ☐ **ui-077** Contenu et clavier — *à faire*
+- ☐ **ui-078** Barre gestuelle — *à faire*
+- ☐ **ui-079** Barre d’état — *à faire*
+- ☐ **ui-080** Orientation — *à faire*
+- ☐ **ui-081** Droite à gauche — *à faire*
+- ☐ **ui-082** Animations réduites — *à faire*
+- ☐ **ui-083** Squelettes de chargement — *à faire*
+- ☐ **ui-084** Animations de liste — *à faire*
+- ☐ **ui-085** Retour haptique — *à faire*
+- ☐ **ui-086** Animation de succès — *à faire*
+- ☐ **ui-087** Tirer pour actualiser — *à faire*
+- ☐ **ui-088** Actions par balayage — *à faire*
+- ☐ **ui-089** Effet de chargement — *à faire*
+- ☐ **ui-090** Barres de progression — *à faire*
+- ☐ **ui-091** Messages éphémères — *à faire*
+- ☐ **ui-092** Previews clair et sombre — *à faire*
+- ☐ **ui-093** Tests visuels — *à faire*
+- ☐ **ui-094** Captures d’écran — *à faire*
+- ☐ **ui-095** Bascule de thème — *à faire*
+- ☐ **ui-096** États vides — *à faire*
+- ☐ **ui-097** Cohérence des textes — *à faire*
+- ☐ **ui-098** Accessibilité visuelle — *à faire*
+- ☐ **ui-099** Aucun emoji — *à faire*
+- ☐ **ui-100** Revue visuelle finale — *à faire*
+
+## UX (0/100 faits, 0 partiels)
+*Parcours, retours à l’utilisateur, confirmations, accessibilité.*
+
+- ☐ **ux-001** Premier lancement — *à faire*
+- ☐ **ux-002** Obtenir une clé — *à faire*
+- ☐ **ux-003** Test de connexion — *à faire*
+- ☐ **ux-004** Détection du fournisseur — *à faire*
+- ☐ **ux-005** Permissions au bon moment — *à faire*
+- ☐ **ux-006** Projet d’exemple — *à faire*
+- ☐ **ux-007** Installation du terminal — *à faire*
+- ☐ **ux-008** Données mobiles — *à faire*
+- ☐ **ux-009** Choix de la langue — *à faire*
+- ☐ **ux-010** Étapes facultatives — *à faire*
+- ☐ **ux-011** Astuces contextuelles — *à faire*
+- ☐ **ux-012** Ton uniforme — *à faire*
+- ☐ **ux-013** Brouillons — *à faire*
+- ☐ **ux-014** Touche Entrée — *à faire*
+- ☐ **ux-015** Annuler un envoi — *à faire*
+- ☐ **ux-016** Modifier un message — *à faire*
+- ☐ **ux-017** Réessayer — *à faire*
+- ☐ **ux-018** Continuer — *à faire*
+- ☐ **ux-019** Confirmations groupées — *à faire*
+- ☐ **ux-020** Autorisations mémorisées — *à faire*
+- ☐ **ux-021** Voir avant d’écrire — *à faire*
+- ☐ **ux-022** Annulation facile — *à faire*
+- ☐ **ux-023** Progression visible — *à faire*
+- ☐ **ux-024** Interruption — *à faire*
+- ☐ **ux-025** Défilement intelligent — *à faire*
+- ☐ **ux-026** Copie rapide — *à faire*
+- ☐ **ux-027** Partage de code — *à faire*
+- ☐ **ux-028** Suites proposées — *à faire*
+- ☐ **ux-029** Dernier chat — *à faire*
+- ☐ **ux-030** Nouvelle conversation — *à faire*
+- ☐ **ux-031** Renommer — *à faire*
+- ☐ **ux-032** Suppression annulable — *à faire*
+- ☐ **ux-033** Recherche filtrée — *à faire*
+- ☐ **ux-034** Épingler par balayage — *à faire*
+- ☐ **ux-035** Modèle toujours visible — *à faire*
+- ☐ **ux-036** Coût visible — *à faire*
+- ☐ **ux-037** Erreurs en langage simple — *à faire*
+- ☐ **ux-038** Bannière hors ligne — *à faire*
+- ☐ **ux-039** Latence perçue — *à faire*
+- ☐ **ux-040** Détails repliés — *à faire*
+- ☐ **ux-041** Ouvrir depuis le chat — *à faire*
+- ☐ **ux-042** Bouton retour — *à faire*
+- ☐ **ux-043** État d’enregistrement — *à faire*
+- ☐ **ux-044** Quitter sans enregistrer — *à faire*
+- ☐ **ux-045** Fichiers récents — *à faire*
+- ☐ **ux-046** Mode sélection — *à faire*
+- ☐ **ux-047** Actions de fichier — *à faire*
+- ☐ **ux-048** Suppression sûre — *à faire*
+- ☐ **ux-049** Création guidée — *à faire*
+- ☐ **ux-050** Fichier modifié ailleurs — *à faire*
+- ☐ **ux-051** Modifié par l’agent — *à faire*
+- ☐ **ux-052** Recherche depuis l’explorateur — *à faire*
+- ☐ **ux-053** Fil d’Ariane — *à faire*
+- ☐ **ux-054** Changer de projet — *à faire*
+- ☐ **ux-055** Créer un projet — *à faire*
+- ☐ **ux-056** Aperçu en un tap — *à faire*
+- ☐ **ux-057** QR code local — *à faire*
+- ☐ **ux-058** Serveur de développement — *à faire*
+- ☐ **ux-059** Erreurs de build cliquables — *à faire*
+- ☐ **ux-060** Langage détecté — *à faire*
+- ☐ **ux-061** Zoom de l’éditeur — *à faire*
+- ☐ **ux-062** Barre de symboles — *à faire*
+- ☐ **ux-063** Terminal prêt — *à faire*
+- ☐ **ux-064** Commande en cours — *à faire*
+- ☐ **ux-065** Historique du terminal — *à faire*
+- ☐ **ux-066** Copier la sortie — *à faire*
+- ☐ **ux-067** Gestes des onglets — *à faire*
+- ☐ **ux-068** Menu rapide Terminal — *à faire*
+- ☐ **ux-069** Git simplifié — *à faire*
+- ☐ **ux-070** Compteurs Git — *à faire*
+- ☐ **ux-071** Message de commit — *à faire*
+- ☐ **ux-072** Résolution de conflits — *à faire*
+- ☐ **ux-073** Push expliqué — *à faire*
+- ☐ **ux-074** Dépôt absent — *à faire*
+- ☐ **ux-075** Annuler en Git — *à faire*
+- ☐ **ux-076** Opérations destructrices — *à faire*
+- ☐ **ux-077** Recherche de réglages — *à faire*
+- ☐ **ux-078** Valeurs visibles — *à faire*
+- ☐ **ux-079** Réinitialiser — *à faire*
+- ☐ **ux-080** Descriptions — *à faire*
+- ☐ **ux-081** Section Avancé — *à faire*
+- ☐ **ux-082** Ajouter un fournisseur — *à faire*
+- ☐ **ux-083** Gestion des clés — *à faire*
+- ☐ **ux-084** Espace utilisé — *à faire*
+- ☐ **ux-085** Confidentialité — *à faire*
+- ☐ **ux-086** Export et import — *à faire*
+- ☐ **ux-087** Changement de langue — *à faire*
+- ☐ **ux-088** Application du thème — *à faire*
+- ☐ **ux-089** Lecteur d’écran — *à faire*
+- ☐ **ux-090** Ordre du focus — *à faire*
+- ☐ **ux-091** Cibles tactiles — *à faire*
+- ☐ **ux-092** Contraste — *à faire*
+- ☐ **ux-093** Annonces dynamiques — *à faire*
+- ☐ **ux-094** Clavier physique — *à faire*
+- ☐ **ux-095** Alternatives aux gestes — *à faire*
+- ☐ **ux-096** Information sans couleur — *à faire*
+- ☐ **ux-097** Animations réduites — *à faire*
+- ☐ **ux-098** Signaler un problème — *à faire*
+- ☐ **ux-099** Libellés d’actions — *à faire*
+- ☐ **ux-100** Parcours de test final — *à faire*
+
+## Résolution d’erreurs (0/100 faits, 0 partiels)
+*Build, réseau et IA, fichiers, terminal, plantages, données.*
+
+- ☐ **err-001** Erreurs de build — *à faire*
+- ☐ **err-002** Rapport d’erreurs CI — *à faire*
+- ☐ **err-003** Secrets manquants — *à faire*
+- ☐ **err-004** Keystore invalide — *à faire*
+- ☐ **err-005** Version invalide — *à faire*
+- ☐ **err-006** Conflits de dépendances — *à faire*
+- ☐ **err-007** Classes en double — *à faire*
+- ☐ **err-008** Mémoire de Gradle — *à faire*
+- ☐ **err-009** Cache de configuration — *à faire*
+- ☐ **err-010** Démon Kotlin — *à faire*
+- ☐ **err-011** Échec de jitpack — *à faire*
+- ☐ **err-012** Erreurs lint fatales — *à faire*
+- ☐ **err-013** Ressources manquantes — *à faire*
+- ☐ **err-014** Fusion du manifeste — *à faire*
+- ☐ **err-015** Erreurs R8 — *à faire*
+- ☐ **err-016** Tests en échec — *à faire*
+- ☐ **err-017** Tests instables — *à faire*
+- ☐ **err-018** Échec du bootstrap — *à faire*
+- ☐ **err-019** Cohérence com.zagent — *à faire*
+- ☐ **err-020** Script de patch des paquets — *à faire*
+- ☐ **err-021** Réseau absent — *à faire*
+- ☐ **err-022** Erreur 401 — *à faire*
+- ☐ **err-023** Erreur 403 — *à faire*
+- ☐ **err-024** Erreur 404 — *à faire*
+- ☐ **err-025** Délai dépassé — *à faire*
+- ☐ **err-026** Erreur 429 — *à faire*
+- ☐ **err-027** Erreurs 5xx — *à faire*
+- ☐ **err-028** Erreur 529 — *à faire*
+- ☐ **err-029** Code 1305 z.ai — *à faire*
+- ☐ **err-030** Erreurs SSL — *à faire*
+- ☐ **err-031** Erreur DNS — *à faire*
+- ☐ **err-032** Proxy — *à faire*
+- ☐ **err-033** Flux interrompu — *à faire*
+- ☐ **err-034** JSON invalide — *à faire*
+- ☐ **err-035** Validation des arguments — *à faire*
+- ☐ **err-036** Outil inconnu — *à faire*
+- ☐ **err-037** Boucle d’outils — *à faire*
+- ☐ **err-038** Réponse vide — *à faire*
+- ☐ **err-039** Contexte dépassé — *à faire*
+- ☐ **err-040** Quota épuisé — *à faire*
+- ☐ **err-041** Message du fournisseur — *à faire*
+- ☐ **err-042** Journal réseau — *à faire*
+- ☐ **err-043** Fournisseur de secours — *à faire*
+- ☐ **err-044** URL personnalisée — *à faire*
+- ☐ **err-045** Ollama local — *à faire*
+- ☐ **err-046** Fichier introuvable — *à faire*
+- ☐ **err-047** Permission refusée — *à faire*
+- ☐ **err-048** Disque plein — *à faire*
+- ☐ **err-049** Fichier trop gros — *à faire*
+- ☐ **err-050** Fichier binaire — *à faire*
+- ☐ **err-051** Encodage invalide — *à faire*
+- ☐ **err-052** Chemin invalide — *à faire*
+- ☐ **err-053** Nom déjà utilisé — *à faire*
+- ☐ **err-054** Écriture échouée — *à faire*
+- ☐ **err-055** Accès SAF perdu — *à faire*
+- ☐ **err-056** Projet supprimé — *à faire*
+- ☐ **err-057** Modification concurrente — *à faire*
+- ☐ **err-058** Échec de edit_file — *à faire*
+- ☐ **err-059** Regex invalide — *à faire*
+- ☐ **err-060** Archive corrompue — *à faire*
+- ☐ **err-061** Port occupé — *à faire*
+- ☐ **err-062** Aperçu vide — *à faire*
+- ☐ **err-063** Bootstrap absent — *à faire*
+- ☐ **err-064** bash introuvable — *à faire*
+- ☐ **err-065** Commande inconnue — *à faire*
+- ☐ **err-066** Délai de commande — *à faire*
+- ☐ **err-067** Processus orphelins — *à faire*
+- ☐ **err-068** Sortie énorme — *à faire*
+- ☐ **err-069** UTF-8 invalide — *à faire*
+- ☐ **err-070** Variables d’environnement — *à faire*
+- ☐ **err-071** Architecture non supportée — *à faire*
+- ☐ **err-072** Téléchargement du bootstrap — *à faire*
+- ☐ **err-073** Espace insuffisant — *à faire*
+- ☐ **err-074** Réparer le terminal — *à faire*
+- ☐ **err-075** Erreurs Git — *à faire*
+- ☐ **err-076** Erreurs SSH — *à faire*
+- ☐ **err-077** Gestionnaire de crash — *à faire*
+- ☐ **err-078** Écran de récupération — *à faire*
+- ☐ **err-079** Rapport de diagnostic — *à faire*
+- ☐ **err-080** ANR — *à faire*
+- ☐ **err-081** StrictMode — *à faire*
+- ☐ **err-082** OutOfMemory — *à faire*
+- ☐ **err-083** Restauration d’état — *à faire*
+- ☐ **err-084** Clés chiffrées corrompues — *à faire*
+- ☐ **err-085** Sauvegarde restaurée — *à faire*
+- ☐ **err-086** Notifications refusées — *à faire*
+- ☐ **err-087** Micro refusé — *à faire*
+- ☐ **err-088** Dictée indisponible — *à faire*
+- ☐ **err-089** Service interdit — *à faire*
+- ☐ **err-090** Verrous de réveil — *à faire*
+- ☐ **err-091** Chaîne manquante — *à faire*
+- ☐ **err-092** Route inconnue — *à faire*
+- ☐ **err-093** Mise à jour échouée — *à faire*
+- ☐ **err-094** Signature différente — *à faire*
+- ☐ **err-095** Conversations corrompues — *à faire*
+- ☐ **err-096** Échec de migration — *à faire*
+- ☐ **err-097** Journal d’erreurs — *à faire*
+- ☐ **err-098** Tests d’erreurs — *à faire*
+- ☐ **err-099** Audit des messages — *à faire*
+- ☐ **err-100** Checklist finale — *à faire*
+

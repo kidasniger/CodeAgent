@@ -2,6 +2,7 @@ package com.zagent.app.update
 
 import android.content.Context
 import android.content.pm.PackageInfo
+import android.content.pm.PackageManager
 import android.os.Build
 import java.io.File
 import java.security.MessageDigest
@@ -52,9 +53,51 @@ object ApkVerifier {
         if (archive.packageName != context.packageName) {
             return "Cet APK appartient à une autre application."
         }
+        // MA69 : l'APK doit être signé avec la même clé que l'application installée.
+        verifyCertificateMatch(context, file)?.let { return it }
         if (AppVersion.codeOf(archive) <= AppVersion.code(context)) {
             return "Cette version n'est pas plus récente que celle installée."
         }
         return null
+    }
+
+    /**
+     * MA69 : compare le certificat de signature du paquet téléchargé avec celui
+     * de l'application installée. Refuse l'installation d'un APK signé par une
+     * autre clé (Android refuserait de toute façon, mais on explique pourquoi).
+     */
+    fun verifyCertificateMatch(context: Context, file: File): String? {
+        val pm = context.packageManager
+        @Suppress("DEPRECATION")
+        val archiveSigs = pm.getPackageArchiveInfo(file.absolutePath, PackageManager.GET_SIGNATURES)
+            ?.signatures.orEmpty().map { bytesSha256(it.toByteArray()) }.toSet()
+        if (archiveSigs.isEmpty()) return null // signature illisible : le système tranchera
+        val installed = installedSignatureDigests(context)
+        if (installed.isEmpty()) return null
+        return if (archiveSigs.intersect(installed).isEmpty()) {
+            "Cet APK n'est pas signé avec la même clé que l'application installée."
+        } else {
+            null
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun installedSignatureDigests(context: Context): Set<String> {
+        val pm = context.packageManager
+        return if (Build.VERSION.SDK_INT >= 28) {
+            val info = pm.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+            val signing = info.signingInfo ?: return emptySet()
+            val chain = if (signing.hasMultipleSigners()) signing.apkContentsSigners
+            else signing.signingCertificateHistory
+            chain.map { bytesSha256(it.toByteArray()) }.toSet()
+        } else {
+            pm.getPackageInfo(context.packageName, PackageManager.GET_SIGNATURES)
+                .signatures.orEmpty().map { bytesSha256(it.toByteArray()) }.toSet()
+        }
+    }
+
+    private fun bytesSha256(bytes: ByteArray): String {
+        val digest = MessageDigest.getInstance("SHA-256").digest(bytes)
+        return digest.joinToString("") { "%02x".format(it) }
     }
 }
