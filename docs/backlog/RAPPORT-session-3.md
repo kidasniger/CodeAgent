@@ -8,7 +8,28 @@ Date : 2026-11-10 · Branche : `main` · Dépôt : `kidasniger/CodeAgent`
 2. Suivre le build GitHub Actions (« Build & Release APK »).
 3. Poursuivre l'implémentation des 600 prompts : début des **Fonctionnalités (feat-xxx)**.
 
-## 1. Push et CI
+## 1. Push et CI — RÉSULTAT FINAL : ✅ SUCCESS
+
+**Le run #287 (commit `6fd853f`) est le premier build entièrement vert :
+job build ✅ (APK debug + 87 tests unitaires + lint) et job release ✅
+(Release `v1.0-b298` publiée : `ZAgent-v1.0-b298.apk` + `.sha256`).**
+
+Chaîne de corrections CI (runs 276→287) :
+1. `9efbc15` — build.gradle.kts : échappement `\"` invalide dans template Kotlin (MA64).
+2. `a4ca5f3` — 137 erreurs Kotlin révélées (jamais compilées avant) : syntaxe
+   (char literal, fragments orphelins Theme/Type/SheetsDialogs, doublon ZEmptyState),
+   28 `override` manquants (corr-007), imports Modifier corrompus (5 fichiers),
+   imports Constants/rememberSaveable/TerminalSession/isActive, timeouts Long,
+   raw string `$HOME`, chemins ui.components.common.
+3. `0e8f89e` + `3361942` — retrait des défauts sur 7 `override` + arguments
+   manquants aux 4 appels callChatCompletions/searchContent.
+4. `2890497` — commentaire orphelin de ZCards.kt qui masquait tout le fichier.
+5. `3472952` + `eadd2fc` — tests unitaires : noms JVM-ilégaux, imports démodés,
+   7 tests alignés sur le comportement documenté (coutEstime, ZLog github_pat_,
+   DiffUtil trailing-newline/seuil 300, Fournisseurs complete/détecter).
+6. `6fd853f` — R8 : -dontwarn annotations errorprone de Tink → release signée OK.
+
+## 1bis. Historique initial du push et de la CI
 
 - 13 commits en attente poussés (`42c7d12..47d8bc8`) puis les commits de session.
 - Analyse du run #276 (échec) : **erreur de syntaxe Kotlin DSL** dans `app/build.gradle.kts`
