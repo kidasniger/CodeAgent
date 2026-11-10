@@ -11,7 +11,7 @@ import java.io.File
  * [rootPath] = chemin absolu du dossier du projet, par exemple
  * /data/data/com.zagent/files/home/projects/monprojet
  */
-class FileRepository(private val context: Context, private val rootPath: String?) : FileRepositoryApi {
+class FileRepository(private val context: Context?, private val rootPath: String?) : FileRepositoryApi {
 
     private fun getRootFolder(): File? {
         val p = rootPath ?: return null
@@ -20,13 +20,46 @@ class FileRepository(private val context: Context, private val rootPath: String?
         return if (f.isDirectory) f else null
     }
 
+    /**
+     * corr-098 — Verrou par chemin canonique : deux écritures concurrentes sur
+     * le même fichier sont sérialisées (le HashMap est lui-même protégé par
+     * synchronized ; le verrou du chemin est pris pendant toute l'écriture).
+     */
+    private val pathLocks = HashMap<String, Any>()
+
+    private fun lockFor(canonical: String): Any =
+        synchronized(pathLocks) { pathLocks.getOrPut(canonical) { Any() } }
+
+    /** Décode les séquences %XX (corr-026 : %2e%2e = « .. » encodé). */
+    private fun decodePercent(p: String): String {
+        if (!p.contains('%')) return p
+        return Regex("%[0-9A-Fa-f]{2}").replace(p) { m ->
+            m.value.substring(1).toInt(16).toChar().toString()
+        }
+    }
+
+    /**
+     * corr-026 — Validation stricte d'un chemin relatif : après décodage
+     * percent-encoding, refuse toute traversée (« .. », séparateurs Windows),
+     * tout caractère nul. La containment canonique est vérifiée dans
+     * [resolveInside] (liens symboliques inclus, corr-025).
+     */
     private fun validatePath(path: String): Boolean {
-        if (path.contains("..")) return false
+        if (path.isEmpty()) return true
+        val decoded = decodePercent(path)
+        if (decoded.contains("..")) return false
+        if (decoded.contains('\')) return false
+        if (decoded.contains('\u0000')) return false
         return true
     }
 
-    /** Résout [path] dans le projet (existe ou non). Retourne null si le chemin sort du projet. */
+    /**
+     * corr-025 — Résout [path] dans le projet (existe ou non). Retourne null si
+     * le chemin sort du projet, y compris via un lien symbolique : le chemin
+     * canonique (qui suit les liens) doit rester sous la racine canonique.
+     */
     private fun resolveInside(root: File, path: String): File? {
+        if (!validatePath(path)) return null
         val clean = path.removePrefix("./").removePrefix("/")
         if (clean.isEmpty() || clean == ".") return root
         val f = File(root, clean)
@@ -118,6 +151,7 @@ class FileRepository(private val context: Context, private val rootPath: String?
         val root = getRootFolder() ?: return null
         val file = resolveExisting(root, path) ?: return null
         if (file.isDirectory) return null
+        if (context == null) return null
         return try {
             FileProvider.getUriForFile(context, "${context.packageName}.updateprovider", file)
         } catch (e: Exception) {
@@ -157,6 +191,10 @@ class FileRepository(private val context: Context, private val rootPath: String?
 
         return try {
             target.inputStream().bufferedReader(Charsets.UTF_8).use { reader ->
+                // corr-073 : un BOM UTF-8 éventuel est retiré (il apparaîtrait
+                // sinon comme ﻿ en tête du contenu affiché à l'agent).
+                reader.mark(1)
+                if (reader.read() != 0xFEFF.toChar().code) reader.reset()
                 val sb = StringBuilder()
                 var charCount = 0
                 val buffer = CharArray(1024)
@@ -200,7 +238,12 @@ class FileRepository(private val context: Context, private val rootPath: String?
         if (target.length() > 500_000L) {
             return Result.failure(IllegalStateException("Fichier trop volumineux pour l'éditeur (> 500 Ko)."))
         }
-        return runCatching { target.readBytes().toString(Charsets.UTF_8) }
+        return runCatching {
+            // corr-073 : UTF-8 strict, BOM retiré pour l'édition ; les fins de
+            // ligne (CRLF/LF) sont préservées telles quelles.
+            val text = target.readBytes().toString(Charsets.UTF_8)
+            if (text.startsWith("\uFEFF")) text.substring(1) else text
+        }
     }
 
     fun createFile(path: String): String {
@@ -256,6 +299,12 @@ class FileRepository(private val context: Context, private val rootPath: String?
         if (!validatePath(path)) return "Erreur: Chemin invalide (.. interdit)"
         val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
         val target = resolveInside(root, path) ?: return "Erreur: Chemin invalide: $path"
+        if (target.isDirectory) return "Erreur: C'est un dossier: $path"
+        // corr-098 : une seule écriture à la fois par chemin canonique.
+        synchronized(lockFor(target.canonicalPath)) { return writeFileLocked(target, path, content) }
+    }
+
+    private fun writeFileLocked(target: File, path: String, content: String): String {
         if (target.isDirectory) return "Erreur: C'est un dossier: $path"
         val tmp = File(target.parentFile, target.name + ".zagent-tmp")
         return try {
