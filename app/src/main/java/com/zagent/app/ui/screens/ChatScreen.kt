@@ -197,6 +197,36 @@ fun ChatScreen(
     var editingIndex by rememberSaveable { mutableStateOf(-1) }
     var applyCode by remember { mutableStateOf<String?>(null) }
 
+    // feat-001 — recherche dans la conversation courante : barre, surlignage des
+    // occurrences (bulles et rendu markdown) et navigation précédent/suivant qui
+    // fait défiler jusqu'à la ligne du fil contenant l'occurrence courante.
+    var searchOpen by rememberSaveable { mutableStateOf(false) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var searchIdx by rememberSaveable { mutableStateOf(0) }
+    val searchMatches = remember(searchQuery, chatRows) {
+        if (searchQuery.isBlank()) emptyList()
+        else chatRows.mapIndexed { i, row ->
+            val texte = when (row) {
+                is ChatRow.User -> row.text
+                is ChatRow.Agent -> row.content
+                is ChatRow.OrphanTool -> row.text
+                else -> ""
+            }
+            if (texte.contains(searchQuery, ignoreCase = true)) i else -1
+        }.filter { it >= 0 }
+    }
+    LaunchedEffect(searchQuery) { searchIdx = 0 }
+    LaunchedEffect(searchIdx, searchMatches.size, searchOpen) {
+        if (searchOpen && searchMatches.isNotEmpty()) {
+            listState.animateScrollToItem(searchMatches[searchIdx.coerceIn(0, searchMatches.size - 1)])
+        }
+    }
+    val naviguerRecherche: (Int) -> Unit = { delta ->
+        val n = searchMatches.size
+        if (n > 0) searchIdx = (((searchIdx + delta) % n) + n) % n
+        if (n > 0) searchIdx = (((searchIdx + delta) % n) + n) % n
+    }
+
     // MA55 : restaure le brouillon enregistré pour cette conversation, et synchronise
     // chaque frappe vers le brouillon (sauvegarde différée côté MainViewModel).
     val setInput: (String) -> Unit = { t ->
@@ -246,7 +276,8 @@ fun ChatScreen(
         }.collect { userAtBottom = it }
     }
     LaunchedEffect(chatRows.size, displayLive.length) {
-        if (userAtBottom && chatRows.isNotEmpty()) {
+        // feat-001 : pendant une recherche, l'auto-scroll ne vole le focus à personne.
+        if (userAtBottom && chatRows.isNotEmpty() && !(searchOpen && searchMatches.isNotEmpty())) {
             if (displayLive.isNotBlank()) listState.scrollToItem(chatRows.size)
             else listState.animateScrollToItem(chatRows.size - 1)
         }
@@ -295,7 +326,8 @@ fun ChatScreen(
             viewModel = viewModel,
             scrolled = barreDefilee,
             onNewConversation = { viewModel.clearConversation() },
-            onOpenSettings = onOpenSettings
+            onOpenSettings = onOpenSettings,
+            onSearchInConversation = { searchOpen = true } // feat-001
         )
 
         // MA43 : une seule notification discrète à la fois, en pilule de verre
@@ -304,6 +336,63 @@ fun ChatScreen(
 
         // Liste de tâches de l'agent (MA40)
         TodoPanel(viewModel.todos, viewModel.isLoading)
+
+        // feat-001 — barre de recherche dans la conversation courante
+        AnimatedVisibility(visible = searchOpen) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = {
+                        Text(
+                            "Rechercher dans la conversation",
+                            style = TextStyle(fontFamily = Inter, fontSize = 13.sp),
+                            color = c.text3
+                        )
+                    },
+                    singleLine = true,
+                    shape = CircleShape,
+                    textStyle = TextStyle(fontFamily = Inter, fontSize = 14.sp, color = c.text),
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    if (searchMatches.isEmpty()) "0/0"
+                    else "" + (searchIdx + 1) + "/" + searchMatches.size,
+                    style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp),
+                    color = c.text3,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
+                Box(
+                    Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .clickable { naviguerRecherche(-1) },
+                    contentAlignment = Alignment.Center
+                ) { Icon(Icons.Default.ExpandLess, "Occurrence précédente", tint = c.text2) }
+                Box(
+                    Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .clickable { naviguerRecherche(1) },
+                    contentAlignment = Alignment.Center
+                ) { Icon(Icons.Default.ExpandMore, "Occurrence suivante", tint = c.text2) }
+                Box(
+                    Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .clickable {
+                            searchOpen = false
+                            searchQuery = ""
+                        },
+                    contentAlignment = Alignment.Center
+                ) { Icon(Icons.Default.Close, "Fermer la recherche", tint = c.text2) }
+            }
+        }
 
         // Liste des messages (MA38 : sélection de texte partout)
         val selectionColors = TextSelectionColors(handleColor = c.cyan, backgroundColor = c.cyan.copy(alpha = 0.25f))
@@ -345,7 +434,8 @@ fun ChatScreen(
                                                 messageIndex = row.messageIndex,
                                                 onEdit = { i, t -> setInput(t); editingIndex = i },
                                                 onQuote = { t -> setInput("> " + t.replace("\n", "\n> ") + "\n\n") },
-                                                onDelete = { viewModel.deleteFromMessage(it) }
+                                                onDelete = { viewModel.deleteFromMessage(it) },
+                                                highlight = searchQuery // feat-001
                                             )
                                         }
                                     }
@@ -374,7 +464,8 @@ fun ChatScreen(
                                                 liveId = viewModel.liveCommandId,
                                                 liveOutput = { viewModel.liveOutput },
                                                 liveStartedAt = viewModel.liveStartedAt,
-                                                onStop = { viewModel.stopLiveCommand() }
+                                                onStop = { viewModel.stopLiveCommand() },
+                                                highlight = searchQuery // feat-001
                                             )
                                         }
                                     }

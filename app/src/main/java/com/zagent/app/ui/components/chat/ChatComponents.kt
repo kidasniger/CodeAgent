@@ -248,17 +248,50 @@ fun parseInlineSpans(text: String): List<MdSpan> {
     return out
 }
 
+/**
+ * feat-001 — Surligne les occurrences (insensibles à la casse) de [query] dans [s]
+ * en appliquant [bg] comme fond. Les styles existants (code, gras, liens) sont
+ * conservés ; le surlignage est ajouté par-dessus. Retourne [s] inchangé si la
+ * requête est vide ou sans occurrence.
+ */
+fun highlightMatches(
+    s: AnnotatedString,
+    query: String,
+    bg: Color
+): AnnotatedString {
+    val q = query.trim()
+    if (q.isEmpty() || s.text.isEmpty()) return s
+    val source = s.text.lowercase()
+    val needle = q.lowercase()
+    return buildAnnotatedString {
+        append(s) // conserve les span styles existants
+        var i = source.indexOf(needle)
+        while (i >= 0) {
+            addStyle(SpanStyle(background = bg), i, i + needle.length)
+            i = source.indexOf(needle, i + needle.length)
+        }
+    }
+}
+
 /** Version compatible du rendu en ligne (bulles utilisateur, chips) : gras + code + liens + chemins. */
 fun buildInlineMarkdown(
     text: String,
     baseColor: Color,
     codeColor: Color,
     codeBg: Color?,
-    bold: Boolean = false
-): AnnotatedString = annotatedFromSpans(
-    parseInlineSpans(text), baseColor, codeColor, codeBg,
-    bold = bold, baseFontSize = 15.sp
-)
+    bold: Boolean = false,
+    /** feat-001 — requête de recherche à surligner ("" = aucun). */
+    highlight: String = "",
+    /** feat-001 — couleur de fond du surlignage ; null = pas de surlignage. */
+    highlightBg: Color? = null
+): AnnotatedString {
+    val base = annotatedFromSpans(
+        parseInlineSpans(text), baseColor, codeColor, codeBg,
+        bold = bold, baseFontSize = 15.sp
+    )
+    return if (highlight.isBlank() || highlightBg == null) base
+    else highlightMatches(base, highlight, highlightBg)
+}
 
 private fun AnnotatedString.Builder.appendSpans(
     spans: List<MdSpan>,
@@ -426,13 +459,16 @@ private fun AnnotatedText(
     lineHeight: TextUnit = 26.sp,
     bold: Boolean = false,
     italic: Boolean = false,
-    onFileTap: (String, Int?) -> Unit = { _, _ -> }
+    onFileTap: (String, Int?) -> Unit = { _, _ -> },
+    /** feat-001 — requête de recherche à surligner ("" = aucun). */
+    highlight: String = ""
 ) {
     val c = Zcolors
-    val annotated = remember(spans, baseColor, bold, italic) {
-        buildAnnotatedString {
+    val annotated = remember(spans, baseColor, bold, italic, highlight) {
+        val base = buildAnnotatedString {
             appendSpans(spans, baseColor, baseColor, codeBg, bold = bold, italic = italic, baseFontSize = fontSize)
         }
+        if (highlight.isBlank()) base else highlightMatches(base, highlight, c.amber.copy(alpha = 0.4f))
     }
     val layout = remember { mutableStateOf<TextLayoutResult?>(null) }
     val uriHandler = LocalUriHandler.current
@@ -472,7 +508,9 @@ fun MarkdownText(
     baseColor: Color = Zcolors.text,
     fontSize: TextUnit = 16.sp,
     lineHeight: TextUnit = 26.sp,
-    onFileTap: (String, Int?) -> Unit = { _, _ -> }
+    onFileTap: (String, Int?) -> Unit = { _, _ -> },
+    /** feat-001 — requête de recherche à surligner ("" = aucun). */
+    highlight: String = ""
 ) {
     val c = Zcolors
     val blocks = remember(text) { parseMarkdownBlocks(text) }
@@ -489,14 +527,16 @@ fun MarkdownText(
                     },
                     lineHeight = lineHeight * 1.2f,
                     bold = true,
-                    onFileTap = onFileTap
+                    onFileTap = onFileTap,
+                    highlight = highlight
                 )
                 is MdBlock.Paragraph -> AnnotatedText(
                     block.spans,
                     baseColor = baseColor,
                     fontSize = fontSize,
                     lineHeight = lineHeight,
-                    onFileTap = onFileTap
+                    onFileTap = onFileTap,
+                    highlight = highlight
                 )
                 is MdBlock.ListBlock -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     block.items.forEach { item ->
@@ -512,7 +552,8 @@ fun MarkdownText(
                                 baseColor = baseColor,
                                 fontSize = fontSize,
                                 lineHeight = lineHeight,
-                                onFileTap = onFileTap
+                                onFileTap = onFileTap,
+                                highlight = highlight
                             )
                         }
                     }
@@ -532,7 +573,8 @@ fun MarkdownText(
                         fontSize = fontSize * 0.94f,
                         lineHeight = lineHeight,
                         italic = true,
-                        onFileTap = onFileTap
+                        onFileTap = onFileTap,
+                        highlight = highlight
                     )
                 }
                 is MdBlock.Table -> Column(

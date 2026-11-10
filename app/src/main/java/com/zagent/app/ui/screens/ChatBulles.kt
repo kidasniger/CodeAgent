@@ -126,7 +126,9 @@ internal fun UserBubble(
     messageIndex: Int,
     onEdit: (Int, String) -> Unit,
     onQuote: (String) -> Unit,
-    onDelete: (Int) -> Unit
+    onDelete: (Int) -> Unit,
+    /** feat-001 — requête de recherche à surligner ("" = aucun). */
+    highlight: String = ""
 ) {
     val c = Zcolors
     val clipboard = LocalClipboardManager.current
@@ -151,7 +153,14 @@ internal fun UserBubble(
         ) {
             Column {
                 Text(
-                    buildInlineMarkdown(visibleText, baseColor = c.text, codeColor = c.cyan, codeBg = c.cyanBg),
+                    buildInlineMarkdown(
+                        visibleText,
+                        baseColor = c.text,
+                        codeColor = c.cyan,
+                        codeBg = c.cyanBg,
+                        highlight = highlight,
+                        highlightBg = if (highlight.isBlank()) null else c.amber.copy(alpha = 0.4f)
+                    ),
                     style = TextStyle(fontFamily = Inter, fontSize = 15.sp, lineHeight = 22.sp),
                     color = c.text
                 )
@@ -286,7 +295,9 @@ internal fun AgentCard(
     liveId: String? = null,
     liveOutput: () -> String = { "" },
     liveStartedAt: Long = 0L,
-    onStop: () -> Unit = {}
+    onStop: () -> Unit = {},
+    /** feat-001 — requête de recherche à surligner ("" = aucun). */
+    highlight: String = ""
 ) {
     val c = Zcolors
     var actionsRevealed by remember(messageIndex) { mutableStateOf(false) }
@@ -341,7 +352,8 @@ internal fun AgentCard(
                         seg.text.trim(),
                         fontSize = 16.sp,
                         lineHeight = 26.sp,
-                        onFileTap = onFileTap
+                        onFileTap = onFileTap,
+                        highlight = highlight
                     )
                 }
                 if (i < (tools.size + 1)) Spacer(Modifier.height(10.dp))

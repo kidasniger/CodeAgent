@@ -85,7 +85,9 @@ internal fun AmbientTopBar(
     viewModel: MainViewModel,
     scrolled: Boolean,
     onNewConversation: () -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    /** feat-001 — ouvre la barre de recherche dans la conversation courante. */
+    onSearchInConversation: () -> Unit = {}
 ) {
     val c = Zcolors
     val haptique = rememberZHaptics() // MàJ 91
@@ -188,6 +190,15 @@ internal fun AmbientTopBar(
                             onClick = {
                                 moreMenuOpen = false
                                 viewModel.isTemplatesOpen = true
+                            }
+                        )
+                        // feat-001 — recherche dans la conversation courante
+                        ZMenuItem(
+                            label = "Rechercher dans la conversation",
+                            icon = Icons.Default.Search,
+                            onClick = {
+                                moreMenuOpen = false
+                                onSearchInConversation()
                             }
                         )
                         ZMenuSeparator()
