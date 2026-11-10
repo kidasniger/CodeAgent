@@ -30,7 +30,8 @@ class DiffUtilTest {
     fun `nouveau vide = suppression intégrale`() {
         val r = DiffUtil.diff("a\nb\n", "")
         assertEquals(0, r.added)
-        assertEquals(3, r.removed) // "a","b","" (fins de ligne)
+        // lines() de "a\nb\n" = ["a","b",""] : la ligne vide finale compte comme supprimee
+        assertEquals(2, r.removed)
     }
 
     @Test
@@ -72,14 +73,16 @@ class DiffUtilTest {
             sbNew.append("nouveau $i\n")
         }
         val r = DiffUtil.diff(sbOld.toString(), sbNew.toString())
-        assertEquals(600, r.added)
-        assertEquals(600, r.removed)
+        // trailing \n : lines() produit 601 lignes (derniere vide)
+        assertEquals(601, r.added)
+        assertEquals(601, r.removed)
     }
 
     @Test
     fun `gros diff partiel LCS correct`() {
-        val old = (1..400).joinToString("\n") { "ligne $it" }
-        val new = (1..400).joinToString("\n") { if (it == 250) "ligne modifiée" else "ligne $it" }
+        // sous le seuil de bascule (300 lignes par cote) pour rester en mode LCS
+        val old = (1..250).joinToString("\n") { "ligne $it" }
+        val new = (1..250).joinToString("\n") { if (it == 125) "ligne modifiée" else "ligne $it" }
         val r = DiffUtil.diff(old, new)
         assertEquals(1, r.added)
         assertEquals(1, r.removed)

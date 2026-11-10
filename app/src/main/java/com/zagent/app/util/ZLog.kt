@@ -43,7 +43,7 @@ object ZLog {
         // Authorization: Bearer xyz → Authorization: Bearer ••••
         out = out.replace(Regex("(?i)(authorization\\s*[:=]\\s*bearer\\s*)\\S+"), "$1••••")
         // jetons style sk-… / pat_… / github_pat_… éventuellement imprimés
-        out = out.replace(Regex("(?i)\\b(sk-[A-Za-z0-9_-]{8,}|pat_[A-Za-z0-9_-]{8,})\\b"), "••••")
+        out = out.replace(Regex("(?i)(sk-[A-Za-z0-9_-]{8,}|github_pat_[A-Za-z0-9_-]{8,}|\\bpat_[A-Za-z0-9_-]{8,})"), "••••")
         return out
     }
 

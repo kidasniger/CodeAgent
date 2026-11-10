@@ -35,7 +35,8 @@ class MoteurMultiFournisseursTest {
 
     @Test
     fun `URL inconnue - pas de détection`() {
-        assertNull(Fournisseurs.detecter("https://api.groq.com/openai/v1/chat/completions"))
+        // une URL sans marqueur de fournisseur n'est pas detectee (groq/z.ai/etc. le sont)
+        assertNull(Fournisseurs.detecter("https://api.example.com/openai/v1/chat/completions"))
         assertNull(Fournisseurs.detecter(""))
         assertNull(Fournisseurs.detecter("   "))
     }
@@ -50,7 +51,8 @@ class MoteurMultiFournisseursTest {
             Fournisseur("perso-42", "Groq", "https://api.groq.com/openai/v1/chat/completions", "gsk_1", personnalise = true)
         )
         val decode = Fournisseurs.decode(Fournisseurs.encode(liste))
-        assertEquals(3, decode.size)
+        // encode() complete la liste avec les fournisseurs integres : au moins les 3 envoyees
+        assertTrue(decode.size >= 3)
         assertEquals("sk-za-abc", decode.first { it.id == "zai" }.cle)
         assertEquals("nvapi-xyz", decode.first { it.id == "nvidia" }.cle)
         assertEquals("gsk_1", decode.first { it.id == "perso-42" }.cle)

@@ -34,6 +34,9 @@ data class UsageEntry(
  * naturellement : le token manquant compte pour 0.
  */
 fun coutEstime(tokensIn: Int, tokensOut: Int, prixInPerM: Float, prixOutPerM: Float): Double? {
+    // Prix negatif = donnee corrompue ou non renseignee : pas d'estimation fiable.
+    if (prixInPerM < 0f || prixOutPerM < 0f) return null
+    // Prix nul des deux cotes = gratuit : rien a estimer.
     if (prixInPerM <= 0f && prixOutPerM <= 0f) return null
     return tokensIn.toDouble() * prixInPerM / 1_000_000.0 +
         tokensOut.toDouble() * prixOutPerM / 1_000_000.0
