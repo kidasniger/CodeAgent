@@ -128,7 +128,9 @@ internal fun UserBubble(
     onQuote: (String) -> Unit,
     onDelete: (Int) -> Unit,
     /** feat-001 — requête de recherche à surligner ("" = aucun). */
-    highlight: String = ""
+    highlight: String = "",
+    /** feat-002 — épingle le message dans le panneau des épinglés (null = masqué). */
+    onPin: (() -> Unit)? = null
 ) {
     val c = Zcolors
     val clipboard = LocalClipboardManager.current
@@ -217,6 +219,12 @@ internal fun UserBubble(
                     text = { Text("Citer", color = c.text) },
                     onClick = { menuOpen = false; onQuote(visibleText) }
                 )
+                if (onPin != null) {
+                    DropdownMenuItem(
+                        text = { Text("Épingler", color = c.text) },
+                        onClick = { menuOpen = false; onPin() } // feat-002
+                    )
+                }
                 DropdownMenuItem(
                     text = { Text("Supprimer", color = c.red) },
                     onClick = { menuOpen = false; onDelete(messageIndex) }
@@ -301,7 +309,9 @@ internal fun AgentCard(
     /** feat-004 — modèles alternatifs pour la régénération. */
     modelesRegeneration: List<String> = emptyList(),
     /** feat-004 — régénère après bascule sur le modèle donné. */
-    onRegenerateWith: (String) -> Unit = {}
+    onRegenerateWith: (String) -> Unit = {},
+    /** feat-002 — épingle le message dans le panneau des épinglés. */
+    onPin: () -> Unit = {}
 ) {
     val c = Zcolors
     var actionsRevealed by remember(messageIndex) { mutableStateOf(false) }
@@ -408,7 +418,8 @@ internal fun AgentCard(
                 onQuote = onQuote,
                 onDelete = onDeleteMessage,
                 onRegenerateWith = onRegenerateWith, // feat-004
-                modelesRegeneration = modelesRegeneration // feat-004
+                modelesRegeneration = modelesRegeneration, // feat-004
+                onPin = onPin // feat-002
             )
         }
     }
@@ -442,7 +453,9 @@ internal fun MessageActionsBar(
     /** feat-004 — régénère la réponse en basculant d'abord sur le modèle donné. */
     onRegenerateWith: (String) -> Unit = {},
     /** feat-004 — modèles alternatifs proposés dans le menu de régénération. */
-    modelesRegeneration: List<String> = emptyList()
+    modelesRegeneration: List<String> = emptyList(),
+    /** feat-002 — épingle le message dans le panneau des épinglés. */
+    onPin: () -> Unit = {}
 ) {
     val c = Zcolors
     val clipboard = LocalClipboardManager.current
@@ -507,6 +520,10 @@ internal fun MessageActionsBar(
                         menuOpen = false
                         Toast.makeText(ctx, "Maintiens ton doigt sur le texte pour le sélectionner", Toast.LENGTH_SHORT).show()
                     }
+                )
+                DropdownMenuItem(
+                    text = { Text("Épingler", color = c.text) },
+                    onClick = { menuOpen = false; onPin() } // feat-002
                 )
                 DropdownMenuItem(text = { Text("Supprimer", color = c.red) }, onClick = { menuOpen = false; onDelete() })
             }

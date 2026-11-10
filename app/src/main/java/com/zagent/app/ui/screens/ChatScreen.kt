@@ -62,6 +62,7 @@ import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
@@ -89,6 +90,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -224,7 +226,18 @@ fun ChatScreen(
     val naviguerRecherche: (Int) -> Unit = { delta ->
         val n = searchMatches.size
         if (n > 0) searchIdx = (((searchIdx + delta) % n) + n) % n
-        if (n > 0) searchIdx = (((searchIdx + delta) % n) + n) % n
+    }
+
+    // feat-002 — messages épinglés : extraits de la conversation courante (en
+    // mémoire), retrouvables dans un panneau qui défile jusqu'au message épinglé.
+    val epingles = remember { mutableStateListOf<Pair<String, String>>() }
+    var panneauEpingles by remember { mutableStateOf(false) }
+    LaunchedEffect(viewModel.conversationId) { epingles.clear() }
+    val epinglerRow: (String, String) -> Unit = { cle, texte ->
+        if (epingles.none { it.first == cle }) {
+            val apercu = texte.substringBefore(MainViewModel.CTX_MARKER).trim()
+            epingles.add(cle to apercu.lineSequence().firstOrNull().orEmpty().take(160))
+        }
     }
 
     // MA55 : restaure le brouillon enregistré pour cette conversation, et synchronise
@@ -333,7 +346,9 @@ fun ChatScreen(
             scrolled = barreDefilee,
             onNewConversation = { viewModel.clearConversation() },
             onOpenSettings = onOpenSettings,
-            onSearchInConversation = { searchOpen = true } // feat-001
+            onSearchInConversation = { searchOpen = true }, // feat-001
+            onOpenPinned = { panneauEpingles = true }, // feat-002
+            nbEpingles = epingles.size // feat-002
         )
 
         // MA43 : une seule notification discrète à la fois, en pilule de verre
@@ -400,6 +415,65 @@ fun ChatScreen(
             }
         }
 
+        // feat-002 — panneau des messages épinglés
+        if (panneauEpingles) {
+            val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+            GlassModalBottomSheet(
+                onDismissRequest = { panneauEpingles = false },
+                sheetState = sheetState
+            ) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .imePadding()
+                        .navigationBarsPadding()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 20.dp)
+                        .padding(bottom = 24.dp)
+                ) {
+                    Text(
+                        "Messages épinglés",
+                        style = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.SemiBold, fontSize = 17.sp),
+                        color = c.text
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    if (epingles.isEmpty()) {
+                        Text(
+                            "Aucun message épinglé. Ouvre le menu d'un message puis « Épingler ».",
+                            style = TextStyle(fontFamily = Inter, fontSize = 12.5.sp),
+                            color = c.text2
+                        )
+                    }
+                    epingles.toList().forEach { (cle, extrait) ->
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(c.surface2)
+                                .clickable {
+                                    panneauEpingles = false
+                                    val idx = chatRows.indexOfFirst { it.key == cle }
+                                    if (idx >= 0) scope.launch { listState.animateScrollToItem(idx) }
+                                }
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.PushPin, null, tint = c.cyan, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                extrait,
+                                style = TextStyle(fontFamily = Inter, fontSize = 12.5.sp, lineHeight = 17.sp),
+                                color = c.text,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
+                    }
+                }
+            }
+        }
+
         // Liste des messages (MA38 : sélection de texte partout)
         val selectionColors = TextSelectionColors(handleColor = c.cyan, backgroundColor = c.cyan.copy(alpha = 0.25f))
         Box(Modifier.weight(1f)) {
@@ -441,7 +515,8 @@ fun ChatScreen(
                                                 onEdit = { i, t -> setInput(t); editingIndex = i },
                                                 onQuote = { t -> setInput("> " + t.replace("\n", "\n> ") + "\n\n") },
                                                 onDelete = { viewModel.deleteFromMessage(it) },
-                                                highlight = searchQuery // feat-001
+                                                highlight = searchQuery, // feat-001
+                                                onPin = { epinglerRow(row.key, row.text) } // feat-002
                                             )
                                         }
                                     }
@@ -473,7 +548,8 @@ fun ChatScreen(
                                                 liveOutput = { viewModel.liveOutput },
                                                 liveStartedAt = viewModel.liveStartedAt,
                                                 onStop = { viewModel.stopLiveCommand() },
-                                                highlight = searchQuery // feat-001
+                                                highlight = searchQuery, // feat-001
+                                                onPin = { epinglerRow(row.key, row.content) } // feat-002
                                             )
                                         }
                                     }

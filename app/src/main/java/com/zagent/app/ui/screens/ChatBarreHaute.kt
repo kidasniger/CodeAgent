@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
@@ -87,7 +88,11 @@ internal fun AmbientTopBar(
     onNewConversation: () -> Unit,
     onOpenSettings: () -> Unit,
     /** feat-001 — ouvre la barre de recherche dans la conversation courante. */
-    onSearchInConversation: () -> Unit = {}
+    onSearchInConversation: () -> Unit = {},
+    /** feat-002 — ouvre le panneau des messages épinglés. */
+    onOpenPinned: () -> Unit = {},
+    /** feat-002 — nombre de messages épinglés (affiché dans le menu). */
+    nbEpingles: Int = 0
 ) {
     val c = Zcolors
     val haptique = rememberZHaptics() // MàJ 91
@@ -199,6 +204,15 @@ internal fun AmbientTopBar(
                             onClick = {
                                 moreMenuOpen = false
                                 onSearchInConversation()
+                            }
+                        )
+                        // feat-002 — panneau des messages épinglés
+                        ZMenuItem(
+                            label = if (nbEpingles > 0) "Messages épinglés (" + nbEpingles + ")" else "Messages épinglés",
+                            icon = Icons.Default.PushPin,
+                            onClick = {
+                                moreMenuOpen = false
+                                onOpenPinned()
                             }
                         )
                         ZMenuSeparator()
