@@ -21,16 +21,16 @@ import java.util.concurrent.atomic.AtomicReference
  */
 class AiRepository : AiRepositoryApi {
     private val client = OkHttpClient.Builder()
-        .connectTimeout(Constants.RESEAU_TIMEOUT_S, TimeUnit.SECONDS)
-        .readTimeout(Constants.RESEAU_TIMEOUT_S, TimeUnit.SECONDS)
-        .writeTimeout(Constants.RESEAU_TIMEOUT_S, TimeUnit.SECONDS)
+        .connectTimeout(Constants.RESEAU_TIMEOUT_S.toLong(), TimeUnit.SECONDS)
+        .readTimeout(Constants.RESEAU_TIMEOUT_S.toLong(), TimeUnit.SECONDS)
+        .writeTimeout(Constants.RESEAU_TIMEOUT_S.toLong(), TimeUnit.SECONDS)
         .build()
 
     /** Appel réseau en cours : permet de l'interrompre quand la conversation est vidée. */
     private val activeCall = AtomicReference<Call?>(null)
 
     /** Annule l'appel réseau en cours (sinon le flux SSE continue en tâche de fond après l'annulation). */
-    fun cancelActive() {
+    override fun cancelActive() {
         activeCall.getAndSet(null)?.cancel()
     }
 
@@ -63,7 +63,7 @@ class AiRepository : AiRepositoryApi {
      * « Tester la connexion » des Réglages et à l'import des modèles d'un
      * fournisseur personnalisé. Retourne les identifiants renvoyés par le serveur.
      */
-    suspend fun listerModeles(baseUrl: String, apiKey: String): List<String> {
+    override suspend fun listerModeles(baseUrl: String, apiKey: String): List<String> {
         val url = (if (baseUrl.isBlank()) ModelCatalog.URL_ZAI else baseUrl)
             .replace("chat/completions", "models")
         val request = Request.Builder()
@@ -179,7 +179,7 @@ class AiRepository : AiRepositoryApi {
         return ApiResponse.Success(content, calls, up, uc, reasoning)
     }
 
-    suspend fun callChatCompletions(
+    override suspend fun callChatCompletions(
         baseUrl: String,
         apiKey: String,
         model: String,

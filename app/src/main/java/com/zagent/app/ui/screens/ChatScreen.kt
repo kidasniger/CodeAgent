@@ -180,7 +180,7 @@ import java.util.Locale
 // Écran principal : conversation avec l'agent (style minimaliste — LOT 3)
 // ─────────────────────────────────────────────────────────────────────────────
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
     viewModel: MainViewModel,
@@ -214,7 +214,7 @@ fun ChatScreen(
                 is ChatRow.OrphanTool -> row.text
                 else -> ""
             }
-            if (texte.contains(searchQuery, ignoreCase = true)) i else -1
+            if (texte?.contains(searchQuery, ignoreCase = true) == true) i else -1
         }.filter { it >= 0 }
     }
     LaunchedEffect(searchQuery) { searchIdx = 0 }
@@ -549,7 +549,7 @@ fun ChatScreen(
                                                 liveStartedAt = viewModel.liveStartedAt,
                                                 onStop = { viewModel.stopLiveCommand() },
                                                 highlight = searchQuery, // feat-001
-                                                onPin = { epinglerRow(row.key, row.content) } // feat-002
+                                                onPin = { epinglerRow(row.key, row.content.orEmpty()) } // feat-002
                                             )
                                         }
                                     }

@@ -867,7 +867,7 @@ private fun CarteFournisseur(
 
 /** MàJ 101 — ajout d'un fournisseur : URL + clé, avec détection automatique (z.ai / NVIDIA). */
 @Composable
-private fun AjoutFournisseurSection(onAjouter: (String, String, String) -> Unit) {
+private fun AjoutFournisseurSection(onAjouter: (String, String, String) -> String) {
     val c = Zcolors
     var ouvert by rememberSaveable { mutableStateOf(false) }
     var nom by rememberSaveable { mutableStateOf("") }

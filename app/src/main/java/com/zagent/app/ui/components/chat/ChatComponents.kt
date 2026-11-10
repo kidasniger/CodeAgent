@@ -68,7 +68,6 @@ import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.Zcolors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import com.zagent.app.ui.components.common.Modifier
 import com.zagent.app.ui.components.common.shimmer
 
 // ─────────────────────────────────────────────────────────────────────────────

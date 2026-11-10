@@ -94,21 +94,21 @@ class ConversationRepository(context: Context) : ConversationRepositoryApi {
     }
 
     /** Charge l'index des conversations (trié par épinglage puis date décroissante). */
-    fun loadIndex(): List<ConversationMeta> = runCatching {
+    override fun loadIndex(): List<ConversationMeta> = runCatching {
         if (!indexFile.exists()) return emptyList()
         json.decodeFromString(ListSerializer(ConversationMeta.serializer()), indexFile.readText())
     }.getOrNull().orEmpty().sortedWith(
         compareByDescending<ConversationMeta> { it.pinned }.thenByDescending { it.updatedAt }
     )
 
-    fun saveIndex(list: List<ConversationMeta>) {
+    override fun saveIndex(list: List<ConversationMeta>) {
         runCatching {
             indexFile.writeText(json.encodeToString(ListSerializer(ConversationMeta.serializer()), list))
         }
     }
 
     /** Sauvegarde les messages d'une conversation (contenu plafonné à 200 000 caractères par message). */
-    fun saveMessages(id: String, messages: List<StoredMessage>) {
+    override fun saveMessages(id: String, messages: List<StoredMessage>) {
         runCatching {
             File(dir, "$id.json").writeText(
                 json.encodeToString(ListSerializer(StoredMessage.serializer()), messages)
@@ -116,13 +116,13 @@ class ConversationRepository(context: Context) : ConversationRepositoryApi {
         }
     }
 
-    fun loadMessages(id: String): List<StoredMessage> = runCatching {
+    override fun loadMessages(id: String): List<StoredMessage> = runCatching {
         val f = File(dir, "$id.json")
         if (!f.exists()) return emptyList()
         json.decodeFromString(ListSerializer(StoredMessage.serializer()), f.readText())
     }.getOrNull().orEmpty()
 
-    fun deleteMessages(id: String) {
+    override fun deleteMessages(id: String) {
         runCatching {
             File(dir, "$id.json").delete()
             File(dir, "$id.todos.json").delete()
@@ -135,7 +135,7 @@ class ConversationRepository(context: Context) : ConversationRepositoryApi {
      * l'écrase pas. Fichier séparé <id>.todos.json pour ne pas casser le
      * format des messages.
      */
-    fun saveTodos(id: String, todos: List<TodoItem>) {
+    override fun saveTodos(id: String, todos: List<TodoItem>) {
         runCatching {
             File(dir, "$id.todos.json").writeText(
                 json.encodeToString(ListSerializer(TodoItem.serializer()), todos)
@@ -143,7 +143,7 @@ class ConversationRepository(context: Context) : ConversationRepositoryApi {
         }
     }
 
-    fun loadTodos(id: String): List<TodoItem> = runCatching {
+    override fun loadTodos(id: String): List<TodoItem> = runCatching {
         val f = File(dir, "$id.todos.json")
         if (!f.exists()) return emptyList()
         json.decodeFromString(ListSerializer(TodoItem.serializer()), f.readText())
@@ -153,7 +153,7 @@ class ConversationRepository(context: Context) : ConversationRepositoryApi {
      * Recherche plein texte dans les conversations sauvegardées (MA58) :
      * renvoie au plus [maxPer] extraits par conversation, conversations plafonnées à 40.
      */
-    fun searchContent(query: String, maxPer: Int = 3): List<ConversationHit> {
+    override fun searchContent(query: String, maxPer: Int = 3): List<ConversationHit> {
         val q = query.trim()
         if (q.isEmpty()) return emptyList()
         val hits = ArrayList<ConversationHit>()
@@ -180,7 +180,7 @@ class ConversationRepository(context: Context) : ConversationRepositoryApi {
     }
 
     /** Titre auto-généré : première ligne du premier message utilisateur (MA56). */
-    fun autoTitle(firstUserText: String?): String {
+    override fun autoTitle(firstUserText: String?): String {
         val raw = firstUserText.orEmpty().trim()
         if (raw.isEmpty()) return "Nouvelle conversation"
         val line = raw.lineSequence().first().trim()
@@ -188,7 +188,7 @@ class ConversationRepository(context: Context) : ConversationRepositoryApi {
     }
 
     /** Aperçu d'une ligne : première ligne du dernier message utile (MA56). */
-    fun autoPreview(lastText: String?): String {
+    override fun autoPreview(lastText: String?): String {
         val raw = lastText.orEmpty().trim()
         if (raw.isEmpty()) return ""
         val line = raw.lineSequence().first().trim()

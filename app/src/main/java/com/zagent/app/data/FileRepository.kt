@@ -48,7 +48,7 @@ class FileRepository(private val context: Context?, private val rootPath: String
         if (path.isEmpty()) return true
         val decoded = decodePercent(path)
         if (decoded.contains("..")) return false
-        if (decoded.contains('\')) return false
+        if (decoded.contains('\\')) return false
         if (decoded.contains('\u0000')) return false
         return true
     }
@@ -75,7 +75,7 @@ class FileRepository(private val context: Context?, private val rootPath: String
     private fun resolveExisting(root: File, path: String): File? =
         resolveInside(root, path)?.takeIf { it.exists() }
 
-    fun listDir(path: String = "."): String {
+    override fun listDir(path: String = "."): String {
         if (!validatePath(path)) return "Erreur: Chemin invalide (.. interdit)"
         val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
         val target = resolveExisting(root, path) ?: return "Erreur: Dossier introuvable: $path"
@@ -120,11 +120,11 @@ class FileRepository(private val context: Context?, private val rootPath: String
      * Liste plate et structurée d'un dossier (pour l'explorateur).
      * [path] = "." ou chemin relatif. Tri : dossiers d'abord puis alphabétique.
      */
-    fun listEntries(path: String = "."): List<Entry> =
+    override fun listEntries(path: String = "."): List<Entry> =
         listEntriesResult(path).getOrDefault(emptyList())
 
     /** Variante diagnostique : distingue un dossier réellement vide d'un dossier illisible/invalide. */
-    fun listEntriesResult(path: String = "."): Result<List<Entry>> = runCatching {
+    override fun listEntriesResult(path: String = "."): Result<List<Entry>> = runCatching {
         require(!path.contains("..")) { "Chemin invalide : .. n'est pas autorisé." }
         val root = getRootFolder()
             ?: throw IllegalStateException("Aucun dossier de projet valide n'est sélectionné.")
@@ -146,7 +146,7 @@ class FileRepository(private val context: Context?, private val rootPath: String
     }
 
     /** URI de partage d'un fichier du projet (via FileProvider). */
-    fun fileUri(path: String): Uri? {
+    override fun fileUri(path: String): Uri? {
         if (!validatePath(path)) return null
         val root = getRootFolder() ?: return null
         val file = resolveExisting(root, path) ?: return null
@@ -160,7 +160,7 @@ class FileRepository(private val context: Context?, private val rootPath: String
     }
 
     /** Les fichiers texte sont lus dans l'aperçu intégré ; les autres passent par Android. */
-    fun isTextFile(path: String): Boolean {
+    override fun isTextFile(path: String): Boolean {
         val extension = path.substringAfterLast('.', "").lowercase()
         return extension in setOf(
             "txt", "md", "markdown", "kt", "kts", "java", "js", "jsx", "ts", "tsx",
@@ -170,7 +170,7 @@ class FileRepository(private val context: Context?, private val rootPath: String
         )
     }
 
-    fun mimeType(path: String): String {
+    override fun mimeType(path: String): String {
         if (isTextFile(path)) return "text/plain"
         val extension = path.substringAfterLast('.', "").lowercase()
         return if (extension.isEmpty()) "application/octet-stream"
@@ -178,12 +178,12 @@ class FileRepository(private val context: Context?, private val rootPath: String
             ?: "application/octet-stream"
     }
 
-    fun folderName(): String {
+    override fun folderName(): String {
         val root = getRootFolder() ?: return "Projet"
         return root.name.ifEmpty { "Projet" }
     }
 
-    fun readFile(path: String): String {
+    override fun readFile(path: String): String {
         if (!validatePath(path)) return "Erreur: Chemin invalide (.. interdit)"
         val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
         val target = resolveExisting(root, path) ?: return "Erreur: Fichier introuvable: $path"
@@ -215,7 +215,7 @@ class FileRepository(private val context: Context?, private val rootPath: String
     }
 
     /** Lecture binaire d'une ressource du projet (aperçu web). Limite : 20 Mo. */
-    fun readBytes(path: String): ByteArray? {
+    override fun readBytes(path: String): ByteArray? {
         if (!validatePath(path)) return null
         val root = getRootFolder() ?: return null
         val target = resolveExisting(root, path) ?: return null
@@ -228,7 +228,7 @@ class FileRepository(private val context: Context?, private val rootPath: String
     }
 
     /** Lecture complète (sans troncature) pour l'éditeur. Limite : 500 Ko. */
-    fun readFileForEdit(path: String): Result<String> {
+    override fun readFileForEdit(path: String): Result<String> {
         if (!validatePath(path)) return Result.failure(IllegalArgumentException("Chemin invalide (.. interdit)"))
         val root = getRootFolder()
             ?: return Result.failure(IllegalStateException("Aucun dossier de travail sélectionné."))
@@ -246,7 +246,7 @@ class FileRepository(private val context: Context?, private val rootPath: String
         }
     }
 
-    fun createFile(path: String): String {
+    override fun createFile(path: String): String {
         if (!validatePath(path)) return "Erreur: Chemin invalide (.. interdit)"
         val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
         val target = resolveInside(root, path) ?: return "Erreur: Chemin invalide: $path"
@@ -259,7 +259,7 @@ class FileRepository(private val context: Context?, private val rootPath: String
         }
     }
 
-    fun deletePath(path: String): String {
+    override fun deletePath(path: String): String {
         if (!validatePath(path)) return "Erreur: Chemin invalide (.. interdit)"
         if (path == "." || path.isEmpty() || path == "/") return "Erreur: Impossible de supprimer la racine."
         val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
@@ -273,7 +273,7 @@ class FileRepository(private val context: Context?, private val rootPath: String
         }
     }
 
-    fun renamePath(path: String, newName: String): String {
+    override fun renamePath(path: String, newName: String): String {
         if (!validatePath(path) || newName.contains('/') || newName.contains("..")) return "Erreur: Nom invalide"
         val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
         val target = resolveExisting(root, path) ?: return "Erreur: Introuvable: $path"
@@ -287,7 +287,7 @@ class FileRepository(private val context: Context?, private val rootPath: String
         }
     }
 
-    fun makeDir(path: String): String {
+    override fun makeDir(path: String): String {
         if (!validatePath(path)) return "Erreur: Chemin invalide (.. interdit)"
         val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
         val target = resolveInside(root, path) ?: return "Erreur: Chemin invalide: $path"
@@ -295,7 +295,7 @@ class FileRepository(private val context: Context?, private val rootPath: String
         return if (target.mkdirs()) "Succès: Dossier créé $path" else "Erreur: Impossible de créer le dossier $path"
     }
 
-    fun writeFile(path: String, content: String): String {
+    override fun writeFile(path: String, content: String): String {
         if (!validatePath(path)) return "Erreur: Chemin invalide (.. interdit)"
         val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
         val target = resolveInside(root, path) ?: return "Erreur: Chemin invalide: $path"

@@ -55,6 +55,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -615,7 +616,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             pendingDelete != null -> AgentState.WaitingUser(AgentState.WaitingUser.Motif.SUPPRESSION)
             pendingCommand != null -> AgentState.WaitingUser(AgentState.WaitingUser.Motif.COMMANDE)
             pendingAsk != null -> AgentState.WaitingUser(AgentState.WaitingUser.Motif.QUESTION)
-            liveCommand != null -> AgentState.ExecutingTool(liveCommand, liveCommandId)
+            // copie locale : smart cast impossible sur une propriété déléguée
+            liveCommand != null -> AgentState.ExecutingTool(liveCommand ?: "", liveCommandId)
             hasBlockingError -> AgentState.Error(statusMessage)
             isLoading -> AgentState.Streaming(liveText, liveReasoning)
             else -> AgentState.Idle
@@ -2267,7 +2269,7 @@ done; } 2>&1 | head -c 50000
             val isCommit = commitRegex.containsMatchIn(command)
             // corr-030 : une commande qui quitte explicitement le dossier du projet
             // (cd /, cd ~, cd $HOME, cd ..) est toujours confirmée.
-            val quitteLeProjet = Regex("""(^|[;&|]\s*)cd\s+(?:/|~|\$HOME|\.\.)""").containsMatchIn(command)
+            val quitteLeProjet = Regex("(^|[;&|]\\s*)cd\\s+(?:/|~|\\$HOME|\\.\\.)").containsMatchIn(command)
             // Une commande clairement destructrice est toujours confirmée, même en mode Auto.
             val isDangerous = destructiveRegexes.any { it.containsMatchIn(command) } || quitteLeProjet
             val note = if (isPush) describePushTarget(command) else null

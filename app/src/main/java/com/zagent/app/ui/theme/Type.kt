@@ -74,11 +74,6 @@ val JetBrainsMono = FontFamily(
  * puis remplacer la valeur par FontFamily(Font(R.font.sourceserif4_variable, …)).
  */
 val SerifTitres: FontFamily = FontFamily.Serif
-    fontFamily = JetBrainsMono,
-    fontWeight = FontWeight.Normal,
-    fontSize = 12.sp,
-    lineHeight = 16.sp
-)
 
 /**
  * Échelle typographique du design system :

@@ -64,7 +64,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import com.zagent.app.ui.components.common.GlassAlertDialog
 import com.zagent.app.ui.components.common.GlassDropdownMenu
 import com.zagent.app.ui.components.common.GlassModalBottomSheet
-import com.zagent.app.ui.components.common.Modifier
 import com.zagent.app.ui.components.common.SecondaryButton
 
 private const val MAX_DIFF_ROWS = 500
@@ -493,9 +492,6 @@ private fun ModelRow(label: String, selected: Boolean, onClick: () -> Unit) {
         )
     }
 }
-    "glm-4.5-flash" to "Rapide et économique — parfait au quotidien",
-    "glm-4.7-flash" to "Plus récent, un peu plus capable"
-)
 
 /** Nom court affiché dans le chip : dernier segment de l'identifiant, tronqué. */
 private fun shortModelName(model: String): String =

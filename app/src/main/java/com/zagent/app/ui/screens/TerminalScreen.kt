@@ -262,7 +262,7 @@ private fun AgentLogPane(controller: TerminalController, modifier: Modifier) {
     val c = Zcolors
     val fullLog = controller.agentLog
     val log = androidx.compose.runtime.remember(fullLog) {
-        com.zagent.app.ui.components.tailForDisplay(fullLog, 16000)
+        com.zagent.app.ui.components.common.tailForDisplay(fullLog, 16000)
     }
     val scroll = rememberScrollState()
     LaunchedEffect(log) { scroll.scrollTo(scroll.maxValue) }
@@ -298,7 +298,7 @@ private fun AgentLogPane(controller: TerminalController, modifier: Modifier) {
                 .verticalScroll(scroll)
                 .padding(horizontal = 12.dp, vertical = 6.dp)
         ) {
-            com.zagent.app.ui.components.AnsiText(
+            com.zagent.app.ui.components.common.AnsiText(
                 text = log.ifEmpty { "Aucune commande lancée par l'agent pour le moment." },
                 style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp, lineHeight = 16.sp),
                 baseColor = if (log.isEmpty()) c.text3 else c.text,

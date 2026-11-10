@@ -93,7 +93,6 @@ import com.zagent.app.ui.theme.LocalHazeState
 import com.zagent.app.ui.theme.Zcolors
 import com.zagent.app.ui.theme.glassSurface
 import com.zagent.app.ui.viewmodel.MainViewModel
-import com.zagent.app.ui.components.common.Modifier
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Barre de saisie flottante — LOT 4 (MA48 à MA55)

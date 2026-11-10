@@ -27,7 +27,7 @@ object ZLog {
 
     /** Alimente la liste des secrets à masquer (clés API des fournisseurs). */
     fun rafraichirSecrets(cles: Collection<String>) {
-        secrets = cles.filter { it.isNotBlank() }.toSet()
+        secrets = cles.filterNotNull().filter { it.isNotBlank() }.toSet()
     }
 
     /**

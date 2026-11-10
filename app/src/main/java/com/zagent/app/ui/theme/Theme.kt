@@ -122,7 +122,6 @@ fun echelleAnimationsSysteme(context: Context): Float =
         Settings.Global.ANIMATOR_DURATION_SCALE,
         1f
     )
-    reglageInterne || echelleAnimationsSysteme(context) == 0f
 
 /**
  * Formes du design system pilotées par le réglage « Arrondi » (mise à jour 13) :

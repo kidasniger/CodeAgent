@@ -532,7 +532,7 @@ class TerminalController(
         currentProc = null
         emit(sb.toString())
 
-        val out = com.zagent.app.ui.components.cleanForModel(sb.toString()).let {
+        val out = com.zagent.app.ui.components.common.cleanForModel(sb.toString()).let {
             if (it.length > outLimit) "[début de la sortie tronqué]\n" + it.takeLast(outLimit) else it
         }
         val secs = "%.1f".format(java.util.Locale.US, (System.currentTimeMillis() - started) / 1000.0)
@@ -668,7 +668,7 @@ class TerminalController(
                         if (n < 0) break
                         sb.append(buf, 0, n)
                         if (sb.length > 40000) sb.delete(0, sb.length - 30000)
-                        val clean = com.zagent.app.ui.components.cleanForModel(sb.toString())
+                        val clean = com.zagent.app.ui.components.common.cleanForModel(sb.toString())
                         devLog = clean
                         if (devUrl == null) {
                             val found = detectDevUrl(clean)

@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import com.zagent.app.data.Constants
 import com.zagent.app.data.HapticLevel
 import com.zagent.app.data.SettingsManager
 import com.zagent.app.ui.theme.GlassSettings
