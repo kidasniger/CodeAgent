@@ -121,6 +121,20 @@ internal fun fusionnerTodos(actuelles: List<TodoItem>, nouvelles: List<TodoItem>
     return out.take(30)
 }
 
+/**
+ * corr-095 — Neutralise les variables de modèle non remplies : {{var}} et
+ * {variable_snake} deviennent « [à préciser] » au lieu d'aller telles quelles
+ * au modèle (qui les interpréterait comme des instructions littérales).
+ */
+private val PLACEHOLDER_RE = Regex("""\{\{\s*[\w. ]+\s*\}\}|\{\s*[a-z_][a-z0-9_]*\s*\}""")
+
+internal fun nettoyerPlaceholders(message: String): String {
+    val nettoyé = PLACEHOLDER_RE.replace(message, "[à préciser]")
+    return if (nettoyé != message) {
+        nettoyé + "\n(NB : certaines variables du modèle n'étaient pas remplies.)"
+    } else message
+}
+
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     // corr-006 : les dépôts de données sont instanciés dans le conteneur
     // d'injection (testable, remplaçable) plutôt que directement ici.
@@ -1982,7 +1996,7 @@ done; } 2>&1 | head -c 50000
 
     /** Notification Android si l'appli n'est pas à l'écran. */
     private fun alertUser(title: String, text: String) {
-        AgentNotifier.alert(getApplication(), title, text)
+        AgentNotifier.alert(getApplication(), title, text, conversationId)
     }
 
     /** Renvoie à l'agent une commande en erreur pour qu'il la corrige. */
@@ -2994,7 +3008,10 @@ done; } 2>&1 | head -c 50000
                 transferStatus = if (success) "Projet créé : $name" else "Erreur lors de la création du projet"
                 if (success) {
                     isTemplatesOpen = false
-                    sendMessage(firstMessage)
+                    // corr-095 : un {placeholder} non rempli ne part jamais vers le
+                    // modèle — il est remplacé par « [à préciser] » et signalé.
+                    val message = nettoyerPlaceholders(firstMessage)
+                    sendMessage(message)
                 }
                 onDone(success)
             }

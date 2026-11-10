@@ -77,4 +77,6 @@
     <string name="shortcut_git_long">Open Git</string>
     <string name="shortcut_models">Models</string>
     <string name="shortcut_models_long">Open models</string>
+    <string name="notif_channel_run">Agent running</string>
+    <string name="notif_channel_alert">Agent alerts</string>
 </resources>

@@ -81,4 +81,6 @@
     <string name="shortcut_git_long">Ouvrir Git</string>
     <string name="shortcut_models">Modèles</string>
     <string name="shortcut_models_long">Ouvrir les modèles</string>
+    <string name="notif_channel_run">Agent en cours</string>
+    <string name="notif_channel_alert">Alertes de l\'agent</string>
 </resources>

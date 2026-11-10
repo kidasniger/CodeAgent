@@ -67,7 +67,26 @@ fun PermissionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     var allowedPaths by remember { mutableStateOf(viewModel.settingsManager.alwaysAllowedPaths.toList().sorted()) }
     var events by remember { mutableStateOf<List<ActivityEvent>>(emptyList()) }
 
-    LaunchedEffect(Unit) { events = viewModel.activityRepoSnapshot() }
+    // corr-096 — Interrupteurs en état Compose : les préférences chiffrées
+    // n'émettent rien d'observable, donc sans miroir local le commutateur ne
+    // se redessinerait pas et l'écran pourrait montrer un état périmé au
+    // retour des réglages système.
+    var lecture by remember { mutableStateOf(viewModel.settingsManager.allowRead) }
+    var ecriture by remember { mutableStateOf(viewModel.settingsManager.allowWrite) }
+    var suppression by remember { mutableStateOf(viewModel.settingsManager.allowDelete) }
+    var execution by remember { mutableStateOf(viewModel.settingsManager.allowExecute) }
+    var lectureSeule by remember { mutableStateOf(viewModel.settingsManager.lectureSeule) }
+
+    LaunchedEffect(Unit) {
+        events = viewModel.activityRepoSnapshot()
+        // Ré-synchronisation à chaque ouverture : reflète l'état réel.
+        lecture = viewModel.settingsManager.allowRead
+        ecriture = viewModel.settingsManager.allowWrite
+        suppression = viewModel.settingsManager.allowDelete
+        execution = viewModel.settingsManager.allowExecute
+        lectureSeule = viewModel.settingsManager.lectureSeule
+        allowedPaths = viewModel.settingsManager.alwaysAllowedPaths.toList().sorted()
+    }
 
     OverlayScreen(title = "Permissions & sécurité", subtitle = "Ce que l'agent peut faire sans te demander", onBack = onBack) {
         // ── Mode général ─────────────────────────────────────────────────────
@@ -94,40 +113,40 @@ fun PermissionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             ModeRow(
                 title = "Lire les fichiers",
                 subtitle = "L'agent peut explorer et lire le projet.",
-                checked = viewModel.settingsManager.allowRead,
-                onToggle = { viewModel.settingsManager.allowRead = it },
+                checked = lecture,
+                onToggle = { viewModel.settingsManager.allowRead = it; lecture = it },
                 icon = Icons.Default.Visibility,
                 tint = c.cyan
             )
             ModeRow(
                 title = "Mode lecture seule",
                 subtitle = "Bloque tout : écritures, suppressions et commandes. L'agent ne peut que lire et analyser.",
-                checked = viewModel.settingsManager.lectureSeule,
-                onToggle = { viewModel.settingsManager.lectureSeule = it },
+                checked = lectureSeule,
+                onToggle = { viewModel.settingsManager.lectureSeule = it; lectureSeule = it },
                 icon = Icons.Default.Lock,
                 tint = c.text2
             )
             ModeRow(
                 title = "Écrire les fichiers",
                 subtitle = "Créations et modifications sans confirmation.",
-                checked = viewModel.settingsManager.allowWrite,
-                onToggle = { viewModel.settingsManager.allowWrite = it },
+                checked = ecriture,
+                onToggle = { viewModel.settingsManager.allowWrite = it; ecriture = it },
                 icon = Icons.Default.Bolt,
                 tint = c.amber
             )
             ModeRow(
                 title = "Supprimer des fichiers",
                 subtitle = "Suppressions sans confirmation.",
-                checked = viewModel.settingsManager.allowDelete,
-                onToggle = { viewModel.settingsManager.allowDelete = it },
+                checked = suppression,
+                onToggle = { viewModel.settingsManager.allowDelete = it; suppression = it },
                 icon = Icons.Default.Delete,
                 tint = c.red
             )
             ModeRow(
                 title = "Exécuter des commandes",
                 subtitle = "Commandes shell sans confirmation (git push, commit et commandes destructrices restent confirmés).",
-                checked = viewModel.settingsManager.allowExecute,
-                onToggle = { viewModel.settingsManager.allowExecute = it },
+                checked = execution,
+                onToggle = { viewModel.settingsManager.allowExecute = it; execution = it },
                 icon = Icons.Default.Terminal,
                 tint = c.violet
             )

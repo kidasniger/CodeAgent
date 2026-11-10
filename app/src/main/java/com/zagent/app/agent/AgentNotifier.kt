@@ -10,6 +10,8 @@ import com.zagent.app.MainActivity
 
 /** Notifications de l'agent : service en cours et alertes (fin de tâche, confirmation attendue). */
 object AgentNotifier {
+    /** corr-097 : extra portant la conversation à rouvrir au tap. */
+    const val EXTRA_CONVERSATION = "conv_id"
     private const val CH_RUN = "agent_run"
     private const val CH_ALERT = "agent_alert"
     private const val ID_ALERT = 2
@@ -19,20 +21,40 @@ object AgentNotifier {
     var appInForeground = false
 
     fun ensureChannels(ctx: Context) {
+        // corr-097 : créer un canal existant est un no-op système — les réglages
+        // utilisateur ne sont jamais écrasés ; noms localisés via les ressources.
         val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.createNotificationChannel(
-            NotificationChannel(CH_RUN, "Agent en cours", NotificationManager.IMPORTANCE_LOW)
+            NotificationChannel(
+                CH_RUN,
+                ctx.getString(com.zagent.app.R.string.notif_channel_run),
+                NotificationManager.IMPORTANCE_LOW
+            )
         )
         nm.createNotificationChannel(
-            NotificationChannel(CH_ALERT, "Alertes de l'agent", NotificationManager.IMPORTANCE_DEFAULT)
+            NotificationChannel(
+                CH_ALERT,
+                ctx.getString(com.zagent.app.R.string.notif_channel_alert),
+                NotificationManager.IMPORTANCE_DEFAULT
+            )
         )
     }
 
-    private fun openApp(ctx: Context): PendingIntent {
+    /**
+     * corr-097 — Le tap sur une notification rouvre l'application ET la
+     * conversation en cours : l'identifiant est transmis en extra et lu par
+     * MainActivity pour appeler switchToConversation.
+     */
+    private fun openApp(ctx: Context, conversationId: String? = null): PendingIntent {
         val intent = Intent(ctx, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            conversationId?.let { putExtra(EXTRA_CONVERSATION, it) }
         }
-        return PendingIntent.getActivity(ctx, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val code = conversationId?.hashCode() ?: 0
+        return PendingIntent.getActivity(
+            ctx, code, intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
     }
 
     fun runningNotification(ctx: Context, text: String): Notification =
@@ -44,7 +66,7 @@ object AgentNotifier {
             .setContentIntent(openApp(ctx))
             .build()
 
-    fun alert(ctx: Context, title: String, text: String) {
+    fun alert(ctx: Context, title: String, text: String, conversationId: String? = null) {
         if (appInForeground) return
         try {
             ensureChannels(ctx)
@@ -54,7 +76,7 @@ object AgentNotifier {
                 .setContentText(text)
                 .setStyle(Notification.BigTextStyle().bigText(text))
                 .setAutoCancel(true)
-                .setContentIntent(openApp(ctx))
+                .setContentIntent(openApp(ctx, conversationId))
                 .build()
             (ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).notify(ID_ALERT, n)
         } catch (e: Exception) {

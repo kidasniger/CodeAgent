@@ -62,6 +62,37 @@ class ConversationRepository(context: Context) : ConversationRepositoryApi {
     private val dir = File(context.filesDir, "conversations").apply { mkdirs() }
     private val indexFile = File(dir, "index.json")
 
+    /**
+     * corr-086 — Version du schéma des données locales. Persistée dans
+     * schema.json ; un numéro absent (= données antérieures au versionnage) ou
+     * inférieur déclenche [migrer]. Aujourd'hui la migration v0 → v1 est
+     * couverte par les valeurs par défaut + coerceInputValues (les anciens
+     * fichiers manquant des champs se relient sans crash) ; les migrations
+     * futures s'ajoutent ici une à une.
+     */
+    companion object {
+        const val SCHEMA_VERSION = 1
+    }
+
+    private fun versionFichier() = File(dir, "schema.json")
+
+    init {
+        runCatching {
+            val vf = versionFichier()
+            val lue = if (vf.exists()) vf.readText().trim().toIntOrNull() ?: 0 else 0
+            if (lue < SCHEMA_VERSION) {
+                migrer(lue)
+                vf.writeText(SCHEMA_VERSION.toString())
+            }
+        }
+    }
+
+    private fun migrer(depuis: Int) {
+        // v0 → v1 : les champs manquants des anciens index/messages sont déjà
+        // tolérés (Json coerceInputValues + valeurs par défaut des data class).
+        // Rien à faire ici pour l'instant ; point d'entrée des migrations à venir.
+    }
+
     /** Charge l'index des conversations (trié par épinglage puis date décroissante). */
     fun loadIndex(): List<ConversationMeta> = runCatching {
         if (!indexFile.exists()) return emptyList()

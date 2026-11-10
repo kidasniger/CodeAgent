@@ -105,6 +105,8 @@ class MainActivity : AppCompatActivity() {
         AgentNotifier.ensureChannels(this)
         // MA77 : raccourcis d'application (appui long sur l'icône) — démarrage à froid.
         handleShortcutIntent(intent)
+        // corr-097 : tap sur une notification → rouvre la conversation visée.
+        restoreConversationFromIntent(intent)
         setContent {
             val systemDark = isSystemInDarkTheme()
             var scheduleTick by remember { mutableIntStateOf(0) }
@@ -156,6 +158,16 @@ class MainActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         // MA77 : raccourcis pendant que l'activité est déjà au premier plan (singleTop).
         handleShortcutIntent(intent)
+        // corr-097 : notification reçue pendant que l'appli tourne déjà.
+        restoreConversationFromIntent(intent)
+    }
+
+    /** corr-097 : rouvre la conversation pointée par une notification. */
+    private fun restoreConversationFromIntent(intent: Intent?) {
+        val convId = intent?.getStringExtra(com.zagent.app.agent.AgentNotifier.EXTRA_CONVERSATION) ?: return
+        if (convId.isNotBlank() && convId != viewModel.conversationId) {
+            viewModel.switchToConversation(convId)
+        }
     }
 
     /** MA77 : applique l'action d'un raccourci d'application, si reconnue. */
@@ -191,6 +203,10 @@ private fun AppRoot(
 ) {
     val hazeState = remember { HazeState() }
     var navVisible by remember { mutableStateOf(true) }
+    // corr-087 : un changement d'écran réaffiche toujours la barre — sinon une
+    // navigation depuis un fil déroulé laissait la barre masquée sur un écran
+    // sans défilement (terminal, réglages), sans moyen de la faire revenir.
+    LaunchedEffect(viewModel.currentScreen) { navVisible = true }
     val navScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
