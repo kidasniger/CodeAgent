@@ -79,6 +79,11 @@ interface ConversationRepositoryApi {
 
     fun deleteMessages(id: String)
 
+    /** corr-077 — liste de tâches par conversation. */
+    fun saveTodos(id: String, todos: List<TodoItem>)
+
+    fun loadTodos(id: String): List<TodoItem>
+
     fun searchContent(query: String, maxPer: Int): List<ConversationHit>
 
     fun autoTitle(firstUserText: String?): String

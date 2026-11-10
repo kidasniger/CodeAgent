@@ -92,8 +92,31 @@ class ConversationRepository(context: Context) : ConversationRepositoryApi {
     }.getOrNull().orEmpty()
 
     fun deleteMessages(id: String) {
-        runCatching { File(dir, "$id.json").delete() }
+        runCatching {
+            File(dir, "$id.json").delete()
+            File(dir, "$id.todos.json").delete()
+        }
     }
+
+    /**
+     * corr-077 — Liste de tâches (update_todos) persistée PAR conversation :
+     * rouvrir la conversation restaure sa liste, et une autre conversation ne
+     * l'écrase pas. Fichier séparé <id>.todos.json pour ne pas casser le
+     * format des messages.
+     */
+    fun saveTodos(id: String, todos: List<TodoItem>) {
+        runCatching {
+            File(dir, "$id.todos.json").writeText(
+                json.encodeToString(ListSerializer(TodoItem.serializer()), todos)
+            )
+        }
+    }
+
+    fun loadTodos(id: String): List<TodoItem> = runCatching {
+        val f = File(dir, "$id.todos.json")
+        if (!f.exists()) return emptyList()
+        json.decodeFromString(ListSerializer(TodoItem.serializer()), f.readText())
+    }.getOrNull().orEmpty()
 
     /**
      * Recherche plein texte dans les conversations sauvegardées (MA58) :

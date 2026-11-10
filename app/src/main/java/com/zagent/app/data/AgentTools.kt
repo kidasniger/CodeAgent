@@ -338,7 +338,8 @@ fun parseAskQuestions(argumentsJson: String): List<AskQuestion> = try {
     emptyList()
 }
 
-/** Une tâche de la liste affichée en haut du chat (outil update_todos). */
+/** Une tâche de la liste affichée en haut du chat (outil update_todos) ; corr-077 : sérialisable pour la persistance par conversation. */
+@kotlinx.serialization.Serializable
 data class TodoItem(val text: String, val done: Boolean)
 
 /** Lit les arguments JSON de update_todos ; renvoie une liste vide si rien d'exploitable. */

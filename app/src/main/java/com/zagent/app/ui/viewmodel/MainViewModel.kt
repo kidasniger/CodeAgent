@@ -97,6 +97,30 @@ data class ChatMessage(
 
 enum class AppScreen { CHAT, SETTINGS, TERMINAL, EDITOR, FILE_BROWSER }
 
+/**
+ * corr-077 — Fusion robuste des listes de tâches : les tâches re-émises par le
+ * modèle (même texte, casse/espaces ignorés) remplacent leur pendant, les
+ * nouvelles sont ajoutées dans l'ordre émis, les anciennes non mentionnées
+ * sont conservées à la fin (plafond 30).
+ */
+internal fun fusionnerTodos(actuelles: List<TodoItem>, nouvelles: List<TodoItem>): List<TodoItem> {
+    if (actuelles.isEmpty()) return nouvelles
+    val norme = { t: String -> t.trim().lowercase() }
+    val vues = HashSet<String>()
+    val out = ArrayList<TodoItem>(nouvelles.size + actuelles.size)
+    for (item in nouvelles) {
+        out.add(item)
+        vues.add(norme(item.text))
+    }
+    for (item in actuelles) {
+        if (norme(item.text) !in vues) {
+            out.add(item)
+            vues.add(norme(item.text))
+        }
+    }
+    return out.take(30)
+}
+
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     // corr-006 : les dépôts de données sont instanciés dans le conteneur
     // d'injection (testable, remplaçable) plutôt que directement ici.
@@ -1972,6 +1996,9 @@ done; } 2>&1 | head -c 50000
         agentJob?.cancel()
         agentJob = null
         aiRepository.cancelActive()
+        // corr-074 : arrêt immédiat de la commande en cours — le watchdog la
+        // tuerait aussi via l'annulation de la coroutine, mais sans délai.
+        terminal.stopCurrentCommand()
         onWriteConfirmed = null
         pendingWrite = null
         onAskAnswered = null
@@ -2229,8 +2256,17 @@ done; } 2>&1 | head -c 50000
         }
         if (tc.name == "update_todos") {
             val list = parseTodos(tc.arguments)
-            withContext(Dispatchers.Main) { todos = list }
-            return "Liste de tâches mise à jour (" + list.count { it.done } + "/" + list.size + " terminées)."
+            withContext(Dispatchers.Main) {
+                // corr-077 : fusion — une mise à jour partielle ne perd pas les
+                // tâches existantes ; l'ordre suit la nouvelle liste, les tâches
+                // non mentionnées restent en fin de liste.
+                todos = fusionnerTodos(todos, list)
+            }
+            val courante = todos
+            // corr-077 : la liste est persistée par conversation.
+            val cid = conversationId
+            withContext(Dispatchers.IO) { conversationRepo.saveTodos(cid, courante) }
+            return "Liste de tâches mise à jour (" + courante.count { it.done } + "/" + courante.size + " terminées)."
         }
         if (tc.name == "ask_user") {
             val questions = parseAskQuestions(tc.arguments)
@@ -2505,50 +2541,72 @@ done; } 2>&1 | head -c 50000
 
     fun refreshConversations() = chat.refreshConversations()
 
-    /** Archive la conversation courante (index + messages) sur le thread IO. */
-    fun persistCurrentConversation() {
+    /**
+     * corr-063 — Archive la conversation courante sur le thread IO, avec
+     * « debounce » : les archives successives d'un même tour (chaque outil,
+     * chaque message) sont regroupées — au plus une écriture par 2 s, au lieu
+     * de réécrire tout l'historique après chaque événement. [immediate] force
+     * l'écriture (changement de conversation, vidage, arrêt).
+     */
+    private var persistJob: Job? = null
+
+    fun persistCurrentConversation(immediate: Boolean = false) {
         val msgs = chat.edit.value
         val id = conversationId
+        val tds = todos // corr-077 : la liste de tâches est archivée avec la conversation
         if (msgs.isEmpty()) return
-        viewModelScope.launch(Dispatchers.IO) {
-            val firstUser = msgs.firstOrNull { it.role == "user" }?.content?.let { it.substringBefore(CTX_MARKER) }
-            val lastVisible = msgs.lastOrNull { it.role == "assistant" }?.content
-                ?: msgs.lastOrNull()?.content
-            val index = conversationRepo.loadIndex().toMutableList()
-            val existing = index.firstOrNull { it.id == id }
-            val meta = ConversationMeta(
-                id = id,
-                title = existing?.title ?: conversationRepo.autoTitle(firstUser),
-                preview = conversationRepo.autoPreview(lastVisible),
-                updatedAt = System.currentTimeMillis(),
-                messageCount = msgs.size,
-                pinned = existing?.pinned ?: false
-            )
-            index.removeAll { it.id == id }
-            index.add(meta)
-            conversationRepo.saveIndex(index)
-            conversationRepo.saveMessages(id, msgs.map { m ->
-                StoredMessage(
-                    role = m.role,
-                    content = m.content?.take(Constants.MESSAGE_ARCHIVE_MAX),
-                    time = m.time,
-                    reasoning = m.reasoning,
-                    toolCallId = m.toolCallId,
-                    name = m.name,
-                    toolLog = m.toolLog,
-                    toolCalls = m.toolCalls?.map { StoredToolCall(it.id, it.name, it.arguments) },
-                    modele = m.modele
-                )
-            })
-            val fresh = conversationRepo.loadIndex()
-            withContext(Dispatchers.Main) { conversationList = fresh }
+        if (!immediate) {
+            persistJob?.cancel()
+            persistJob = viewModelScope.launch(Dispatchers.IO) {
+                delay(2000)
+                archiveConversation(msgs, id, tds)
+            }
+            return
         }
+        persistJob?.cancel()
+        viewModelScope.launch(Dispatchers.IO) { archiveConversation(msgs, id, tds) }
     }
 
-    /** Rouvre une conversation sauvegardée : archive la courante puis charge les messages. */
+    private suspend fun archiveConversation(msgs: List<ChatMessage>, id: String, tds: List<TodoItem>) {
+        val firstUser = msgs.firstOrNull { it.role == "user" }?.content?.let { it.substringBefore(CTX_MARKER) }
+        val lastVisible = msgs.lastOrNull { it.role == "assistant" }?.content
+            ?: msgs.lastOrNull()?.content
+        val index = conversationRepo.loadIndex().toMutableList()
+        val existing = index.firstOrNull { it.id == id }
+        val meta = ConversationMeta(
+            id = id,
+            title = existing?.title ?: conversationRepo.autoTitle(firstUser),
+            preview = conversationRepo.autoPreview(lastVisible),
+            updatedAt = System.currentTimeMillis(),
+            messageCount = msgs.size,
+            pinned = existing?.pinned ?: false
+        )
+        index.removeAll { it.id == id }
+        index.add(meta)
+        conversationRepo.saveIndex(index)
+        conversationRepo.saveMessages(id, msgs.map { m ->
+            StoredMessage(
+                role = m.role,
+                content = m.content?.take(Constants.MESSAGE_ARCHIVE_MAX),
+                time = m.time,
+                reasoning = m.reasoning,
+                toolCallId = m.toolCallId,
+                name = m.name,
+                toolLog = m.toolLog,
+                toolCalls = m.toolCalls?.map { StoredToolCall(it.id, it.name, it.arguments) },
+                modele = m.modele
+            )
+        })
+        // corr-077 : la liste de tâches accompagne l'archive de la conversation.
+        conversationRepo.saveTodos(id, tds)
+        val fresh = conversationRepo.loadIndex()
+        withContext(Dispatchers.Main) { conversationList = fresh }
+    }
+
+    /** Rouvre une conversation sauvegardée : archive la courante (immédiat, corr-063) puis charge les messages. */
     fun switchToConversation(id: String) {
         if (id == conversationId) return
-        persistCurrentConversation()
+        persistCurrentConversation(immediate = true)
         viewModelScope.launch(Dispatchers.IO) {
             val stored = conversationRepo.loadMessages(id)
             val restored = stored.map { m ->
@@ -2584,6 +2642,8 @@ done; } 2>&1 | head -c 50000
                 liveCommand = null
                 liveCommandId = null
                 chat.cancelDraftSave()
+                // corr-077 : chaque conversation possède sa liste de tâches.
+                todos = conversationRepo.loadTodos(id)
             }
         }
     }

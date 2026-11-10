@@ -65,6 +65,7 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.runtime.mutableIntStateOf
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MA56 — Tiroir Historique des conversations : ouvert depuis l'icône menu de la
@@ -91,6 +92,10 @@ fun HistoryDrawer(viewModel: MainViewModel, onClose: () -> Unit) {
             it.title.lowercase().contains(q) || it.preview.lowercase().contains(q)
         }
     }
+    // corr-069 — pagination du rendu : la fenêtre affichée grandit par pas de
+    // 60 lignes via « Afficher plus » ; l'index reste chargé en entier (léger :
+    // métadonnées seules), ce sont les lignes composées qui sont bornées.
+    var lignesAffichees by rememberSaveable { mutableIntStateOf(60) }
 
     Box(Modifier.fillMaxSize()) {
         // Voile : un tap ferme le tiroir
@@ -168,22 +173,39 @@ fun HistoryDrawer(viewModel: MainViewModel, onClose: () -> Unit) {
                         modifier = Modifier.weight(1f)
                     ) {
                         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                        val visibles = filtered.take(lignesAffichees)
                         listOf(
                             "Aujourd'hui" to 0,
                             "Hier" to 1,
                             "7 derniers jours" to 7,
                             "Plus ancien" to Int.MAX_VALUE
                         ).forEach { (label, _) ->
-                            val group = filtered.filter { it.pinned == false && groupOf(it.updatedAt) == label }
+                            val group = visibles.filter { it.pinned == false && groupOf(it.updatedAt) == label }
                             if (group.isNotEmpty()) {
                                 GroupHeader(label)
                                 group.forEach { meta -> HistoryRow(viewModel, meta, onClose) }
                             }
                         }
-                        val pinned = filtered.filter { it.pinned }
+                        val pinned = visibles.filter { it.pinned }
                         if (pinned.isNotEmpty()) {
                             GroupHeader("Épinglées")
                             pinned.forEach { meta -> HistoryRow(viewModel, meta, onClose) }
+                        }
+                        if (filtered.size > lignesAffichees) {
+                            // corr-069 : page suivante de l'historique.
+                            Row(
+                                horizontalArrangement = Arrangement.Center,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { lignesAffichees += 60 }
+                                    .padding(vertical = 14.dp)
+                            ) {
+                                Text(
+                                    "Afficher plus (" + (filtered.size - lignesAffichees) + " restantes)",
+                                    style = TextStyle(fontFamily = Inter, fontSize = 12.5.sp),
+                                    color = c.cyan
+                                )
+                            }
                         }
                         Spacer(Modifier.height(24.dp))
                         }

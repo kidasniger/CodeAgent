@@ -26,7 +26,32 @@ import com.zagent.app.data.UsageRepository
  */
 class AppContainer(private val application: Application) {
 
-    val settingsManager = SettingsManager(application)
+    /**
+     * corr-061/062 — EncryptedSharedPreferences.create est coûteux (150-300 ms).
+     * Il est construit sur un thread d'arrière-plan lancé immédiatement, en
+     * PARALLÈLE avec le reste du démarrage (splash, composition) ; le premier
+     * accès au getter attend simplement la fin de ce travail. Le démarrage à
+     * froid n'est plus séquentiel : réglages ⟂ composition.
+     */
+    private val settingsReady = java.util.concurrent.CountDownLatch(1)
+
+    @Volatile
+    private var _settingsManager: SettingsManager? = null
+
+    private val settingsThread = Thread {
+        try {
+            _settingsManager = SettingsManager(application)
+        } finally {
+            settingsReady.countDown()
+        }
+    }.apply { name = "settings-warmup"; isDaemon = true; start() }
+
+    val settingsManager: SettingsManager
+        get() {
+            settingsReady.await()
+            return _settingsManager ?: SettingsManager(application)
+        }
+
     val aiRepository = AiRepository()
     val conversationRepo = ConversationRepository(application)
     val usageRepo = UsageRepository(application)
