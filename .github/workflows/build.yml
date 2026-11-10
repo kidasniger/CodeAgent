@@ -44,6 +44,21 @@ jobs:
         with:
           fetch-depth: 0
 
+      # corr-044 : scan des dépendances contre la base OSV (vulnérabilités connues).
+      # Non bloquant tant que le traitement du rapport est en cours ; l'artefact
+      # osv-report conserve le détail.
+      - name: Scan vulnérabilités dépendances (osv-scanner)
+        continue-on-error: true
+        run: |
+          curl -sSfL https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64 -o osv-scanner || true
+          chmod +x osv-scanner 2>/dev/null || true
+          if [ -x ./osv-scanner ]; then
+            ./osv-scanner scan source --lockfile gradle/libs.versions.toml --format json > osv-report.json || true
+          else
+            echo "::warning::osv-scanner indisponible — scan ignoré"
+            echo '{}' > osv-report.json
+          fi
+
       - name: Set up JDK 17
         uses: actions/setup-java@v6
         with:
@@ -114,6 +129,7 @@ jobs:
           {
             echo "KEYSTORE_PATH=$RUNNER_TEMP/release.keystore"
             echo "KEYSTORE_PASSWORD=$KS_PASS"
+            # corr-047 : KEY_PASSWORD dérivé de KS_PASS, pas re-déclaré
             echo "KEY_PASSWORD=$KS_PASS"
             echo "KEY_ALIAS=$KS_ALIAS"
           } >> "$GITHUB_ENV"
@@ -146,6 +162,15 @@ jobs:
         with:
           name: lint-report
           path: app/build/reports/lint-results-debug.html
+          if-no-files-found: ignore
+
+      # corr-044 : le rapport du scan OSV est conservé en artefact.
+      - name: Rapport scan OSV (artefact)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: osv-report
+          path: osv-report.json
           if-no-files-found: ignore
 
       - name: Rapport erreurs compilation
@@ -223,6 +248,7 @@ jobs:
           {
             echo "KEYSTORE_PATH=$RUNNER_TEMP/release.keystore"
             echo "KEYSTORE_PASSWORD=$KS_PASS"
+            # corr-047 : KEY_PASSWORD dérivé de KS_PASS, pas re-déclaré
             echo "KEY_PASSWORD=$KS_PASS"
             echo "KEY_ALIAS=$KS_ALIAS"
           } >> "$GITHUB_ENV"

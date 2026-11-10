@@ -208,6 +208,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun ajouterFournisseur(nom: String, url: String, cle: String): String {
         val u = url.trim()
+        // corr-042 : HTTPS obligatoire, sauf localhost explicitement autorisé
+        // (tests locaux). Une passerelle en clair exposerait la clé API sur le
+        // réseau. Retourne un identifiant vide = refus affiché par l'appelant.
+        if (u.isNotEmpty()) {
+            val hote = u.removePrefix("https://").removePrefix("http://").substringBefore('/').substringBefore(':')
+            val local = hote == "localhost" || hote == "127.0.0.1" || hote == "::1" || hote.startsWith("192.168.") || hote.startsWith("10.")
+            if (!local && u.startsWith("http://")) return ""
+        }
         val c = cle.trim()
         val detecte = Fournisseurs.detecter(if (c.isNotBlank()) c else u)
         val existantParUrl = fournisseurs.firstOrNull { it.baseUrl.equals(u, ignoreCase = true) }
@@ -258,7 +266,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     if (modeles.isEmpty()) "Connecté — le serveur ne liste aucun modèle."
                     else "Connecté — " + modeles.size + " modèles disponibles."
                 } catch (e: Exception) {
-                    "Échec : " + (e.message ?: e.javaClass.simpleName).take(90)
+                    // corr-043 : message explicite sur une erreur TLS (aucun
+                    // TrustManager permissif n'existe dans le code, vérifié).
+                    when (e) {
+                        is javax.net.ssl.SSLException ->
+                            "Échec TLS : certificat du serveur invalide ou non fiable. Vérifie l'URL (HTTPS) et le certificat."
+                        else -> "Échec : " + (e.message ?: e.javaClass.simpleName).take(90)
+                    }
                 }
             }
             withContext(Dispatchers.Main) {

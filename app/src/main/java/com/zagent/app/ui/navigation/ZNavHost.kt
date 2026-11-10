@@ -187,8 +187,17 @@ fun ZNavHost(
             val path = entry.arguments?.getString("path")
             // Deep link ou restauration : ouvre le fichier demandé si l'éditeur
             // n'a encore aucun onglet (sinon on conserve l'état existant).
+            // corr-039 : le chemin d'un deep link doit rester un chemin RELATIF
+            // du projet — toute traversée (.., séparateur absolu, encodage) est
+            // ignorée ; la lecture reste de toute façon confinée par
+            // FileRepository.
             LaunchedEffect(path) {
-                if (!path.isNullOrBlank() && viewModel.editor.tabs.isEmpty()) {
+                val valide = !path.isNullOrBlank() &&
+                    !path.contains("..") &&
+                    !path.startsWith("/") &&
+                    !path.contains('\\') &&
+                    !path.contains('\u0000')
+                if (valide && viewModel.editor.tabs.isEmpty()) {
                     viewModel.openFilePath(path)
                 }
             }

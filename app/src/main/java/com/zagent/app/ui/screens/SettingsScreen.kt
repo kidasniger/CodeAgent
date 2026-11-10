@@ -873,6 +873,8 @@ private fun AjoutFournisseurSection(onAjouter: (String, String, String) -> Unit)
     var nom by rememberSaveable { mutableStateOf("") }
     var url by rememberSaveable { mutableStateOf("") }
     var cle by rememberSaveable { mutableStateOf("") }
+    // corr-042 : retour visuel si l'URL a été refusée (HTTP non local).
+    var erreurUrl by rememberSaveable { mutableStateOf(false) }
 
     Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
         Row(
@@ -903,7 +905,15 @@ private fun AjoutFournisseurSection(onAjouter: (String, String, String) -> Unit)
             Spacer(Modifier.height(10.dp))
             ChampSimple(nom, { nom = it }, "Nom (optionnel — sinon détecté)", mono = false)
             Spacer(Modifier.height(8.dp))
-            ChampSimple(url, { url = it }, "URL de l'API (…/v1/chat/completions)", mono = true)
+            ChampSimple(url, { url = it; erreurUrl = false }, "URL de l'API (…/v1/chat/completions)", mono = true)
+            if (erreurUrl) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "HTTPS obligatoire (sauf localhost/192.168.x/10.x) : corrige l'URL ou utilise une passerelle locale.",
+                    color = c.red,
+                    style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp, lineHeight = 15.sp)
+                )
+            }
             Spacer(Modifier.height(8.dp))
             ChampSimple(cle, { cle = it }, "Clé API", mono = true)
             if (cle.isNotBlank() || url.isNotBlank()) {
@@ -929,9 +939,15 @@ private fun AjoutFournisseurSection(onAjouter: (String, String, String) -> Unit)
                     .background(if (valide) c.cyanBg else c.surface2)
                     .border(1.dp, if (valide) c.cyan else c.border2, RoundedCornerShape(50))
                     .clickable(enabled = valide) {
-                        onAjouter(nom, url, cle)
-                        nom = ""; url = ""; cle = ""
-                        ouvert = false
+                        val id = onAjouter(nom, url, cle)
+                        if (id.isEmpty()) {
+                            // corr-042 : URL refusée (HTTP hors local) — on garde la saisie et on affiche l'erreur.
+                            erreurUrl = true
+                        } else {
+                            erreurUrl = false
+                            nom = ""; url = ""; cle = ""
+                            ouvert = false
+                        }
                     },
                 contentAlignment = Alignment.Center
             ) {

@@ -48,6 +48,9 @@ android {
       // MA42 : R8 activé en release (règles dans proguard-rules.pro) + ressources mortes supprimées.
       isMinifyEnabled = true
       isShrinkResources = true
+      // corr-045 : explicite — la release n'est jamais débogable et n'embarque
+      // pas d'outils de debug (les debugImplementation restent hors release).
+      isDebuggable = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       // Do not remove or modify this signingConfig assignment. It is necessary for Android apps in
       // AI Studio.

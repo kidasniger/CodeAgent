@@ -45,7 +45,12 @@ object ApkVerifier {
         if (expectedSize > 0 && file.length() != expectedSize) {
             return "Taille incorrecte : le fichier est incomplet ou corrompu."
         }
-        if (expectedSha256 != null && !sha256(file).equals(expectedSha256, ignoreCase = true)) {
+        // corr-041 : la preuve d'intégrité est OBLIGATOIRE — sans empreinte
+        // attendue (release sans fichier .sha256), l'installation est refusée.
+        if (expectedSha256 == null) {
+            return "Empreinte SHA-256 attendue absente pour cette mise à jour : installation refusée."
+        }
+        if (!sha256(file).equals(expectedSha256, ignoreCase = true)) {
             return "Empreinte SHA-256 incorrecte : fichier corrompu ou modifié."
         }
         val archive = context.packageManager.getPackageArchiveInfo(file.absolutePath, 0)
