@@ -19,8 +19,12 @@ android {
     versionName = (project.findProperty("versionName") as String?) ?: "1.0"
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     // MA64 : canal de mise à jour paramétrable au build (défauts dans gradle.properties).
-    buildConfigField("String", "ZAGENT_GITHUB_OWNER", "\"${project.findProperty(\"ZAGENT_GITHUB_OWNER\") ?: \"kidasniger\"}\"")
-    buildConfigField("String", "ZAGENT_GITHUB_REPO", "\"${project.findProperty(\"ZAGENT_GITHUB_REPO\") ?: \"CodeAgent\"}\"")
+    // NB : pas d'échappement \" à l'intérieur d'un template ${ } Kotlin — on passe
+    // par des variables locales pour éviter l'erreur « Expecting an argument ».
+    val ghOwner = project.findProperty("ZAGENT_GITHUB_OWNER") as String? ?: "kidasniger"
+    val ghRepo = project.findProperty("ZAGENT_GITHUB_REPO") as String? ?: "CodeAgent"
+    buildConfigField("String", "ZAGENT_GITHUB_OWNER", "\"$ghOwner\"")
+    buildConfigField("String", "ZAGENT_GITHUB_REPO", "\"$ghRepo\"")
   }
 
   // Do not remove or modify these signingConfigs. They are necessary for building, installing,
