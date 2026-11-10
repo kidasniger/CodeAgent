@@ -315,6 +315,12 @@ fun ChatScreen(
     }
 
     val onFileTap: (String, Int?) -> Unit = { path, line -> viewModel.openFilePath(path, line) }
+    // feat-004 — modèles alternatifs proposés dans le menu « Régénérer »
+    val modelesRegeneration = remember(viewModel.effectiveModel) {
+        viewModel.modelesConversationnels(null).map { it.id }
+            .filter { it != viewModel.effectiveModel }
+            .take(4)
+    }
     val thinkingSeconds = ((nowTick - viewModel.thinkingStartedAt) / 1000).toInt().coerceAtLeast(0)
 
     Column(
@@ -457,6 +463,8 @@ fun ChatScreen(
                                                 onFileTap = onFileTap,
                                                 onApplyCode = { applyCode = it },
                                                 onRegenerate = { viewModel.regenerateLast() },
+                                                onRegenerateWith = { m -> viewModel.regenerateLastWith(m) }, // feat-004
+                                                modelesRegeneration = modelesRegeneration, // feat-004
                                                 onQuote = { t -> setInput("> " + t.replace("\n", "\n> ") + "\n\n") },
                                                 onDeleteMessage = { viewModel.deleteFromMessage(row.messageIndex) },
                                                 fixId = if (viewModel.isLoading) null else lastFailedCmdId,

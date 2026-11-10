@@ -297,7 +297,11 @@ internal fun AgentCard(
     liveStartedAt: Long = 0L,
     onStop: () -> Unit = {},
     /** feat-001 — requête de recherche à surligner ("" = aucun). */
-    highlight: String = ""
+    highlight: String = "",
+    /** feat-004 — modèles alternatifs pour la régénération. */
+    modelesRegeneration: List<String> = emptyList(),
+    /** feat-004 — régénère après bascule sur le modèle donné. */
+    onRegenerateWith: (String) -> Unit = {}
 ) {
     val c = Zcolors
     var actionsRevealed by remember(messageIndex) { mutableStateOf(false) }
@@ -402,7 +406,9 @@ internal fun AgentCard(
                 onToggle = { actionsRevealed = true },
                 onRegenerate = onRegenerate,
                 onQuote = onQuote,
-                onDelete = onDeleteMessage
+                onDelete = onDeleteMessage,
+                onRegenerateWith = onRegenerateWith, // feat-004
+                modelesRegeneration = modelesRegeneration // feat-004
             )
         }
     }
@@ -432,7 +438,11 @@ internal fun MessageActionsBar(
     onToggle: () -> Unit,
     onRegenerate: () -> Unit,
     onQuote: (String) -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    /** feat-004 — régénère la réponse en basculant d'abord sur le modèle donné. */
+    onRegenerateWith: (String) -> Unit = {},
+    /** feat-004 — modèles alternatifs proposés dans le menu de régénération. */
+    modelesRegeneration: List<String> = emptyList()
 ) {
     val c = Zcolors
     val clipboard = LocalClipboardManager.current
@@ -440,12 +450,39 @@ internal fun MessageActionsBar(
     val haptique = rememberZHaptics() // MàJ 91
     var feedback by rememberSaveable(messageKey) { mutableStateOf(0) }
     var menuOpen by remember { mutableStateOf(false) }
+    // feat-004 — menu de régénération avec choix d'un autre modèle
+    var regenMenuOpen by remember { mutableStateOf(false) }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         if (!full) {
             ActionIcon(Icons.Default.MoreHoriz, "Actions") { onToggle() }
         } else {
             ActionIcon(Icons.Default.ContentCopy, "Copier") { clipboard.setText(AnnotatedString(messageText)) }
-            if (canRegenerate) ActionIcon(Icons.Default.Refresh, "Régénérer") { onRegenerate() }
+            if (canRegenerate) {
+                // feat-004 — « Régénérer la réponse » avec choix d'un autre modèle :
+                // s'il existe des modèles alternatifs, le bouton ouvre un menu
+                // (modèle actuel + alternatives) ; sinon régénération directe.
+                Box {
+                    ActionIcon(
+                        Icons.Default.Refresh,
+                        if (modelesRegeneration.isEmpty()) "Régénérer" else "Régénérer (choix du modèle)"
+                    ) {
+                        if (modelesRegeneration.isEmpty()) onRegenerate()
+                        else { haptique.menu(); regenMenuOpen = !regenMenuOpen }
+                    }
+                    DropdownMenu(expanded = regenMenuOpen, onDismissRequest = { regenMenuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Régénérer avec le modèle actuel", color = c.text) },
+                            onClick = { regenMenuOpen = false; onRegenerate() }
+                        )
+                        modelesRegeneration.forEach { m ->
+                            DropdownMenuItem(
+                                text = { Text("Régénérer avec " + m, color = c.text) },
+                                onClick = { regenMenuOpen = false; onRegenerateWith(m) }
+                            )
+                        }
+                    }
+                }
+            }
             ActionIcon(
                 Icons.Default.ThumbUp, "Utile",
                 tint = if (feedback == 1) c.green else c.text3

@@ -1782,11 +1782,17 @@ done; } 2>&1 | head -c 50000
         val rules = fileRepo.readFile("AGENT.md")
         val projectRules = if (rules.startsWith("Erreur") || rules.isBlank()) ""
             else "\n\nRègles du projet (fichier AGENT.md), à respecter :\n" + rules.take(6000)
+        // feat-006 — fichier ZAGENT.md à la racine du projet : contexte et consignes
+        // dédiés à l'agent (architecture, conventions, commandes), injectés dans le
+        // prompt système après les règles AGENT.md, avant les instructions customs.
+        val zagentMd = fileRepo.readFile("ZAGENT.md")
+        val zagentContexte = if (zagentMd.startsWith("Erreur") || zagentMd.isBlank()) ""
+            else "\n\nContexte du projet (fichier ZAGENT.md), à prendre en compte :\n" + zagentMd.take(6000)
         val customInstrSource = settingsManager.projectInstructionsFor(folderLabel).ifBlank { customInstructionsInput }
         val custom = customInstrSource.trim().let {
             if (it.isEmpty()) "" else "\n\nInstructions personnalisées de l'utilisateur :\n" + it.take(4000)
         }
-        val systemPrompt = basePrompt + projectRules + custom
+        val systemPrompt = basePrompt + projectRules + zagentContexte + custom
 
         var stepCount = 0
         val maxSteps = maxStepsInput
@@ -2076,6 +2082,16 @@ done; } 2>&1 | head -c 50000
         agentUndo.clear()
         fileDiffCounts.clear()
         retryLast()
+    }
+
+    /**
+     * feat-004 — « Régénérer la réponse » avec choix d'un autre modèle : bascule
+     * le modèle de la conversation sur [model] (null = réglage global), puis
+     * relance la régénération classique.
+     */
+    fun regenerateLastWith(model: String?) {
+        selectChatModel(model)
+        regenerateLast()
     }
 
     /** Ouvre un chemin de fichier repéré dans le chat, à la ligne si fournie (MA46). */
