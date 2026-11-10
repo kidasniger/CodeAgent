@@ -57,3 +57,4 @@ aucune appliquée sans prompt dédié).
    MA73 (historique des versions), MA40 (deep links git/models), MA45/MA31/MA76/MA98.
 3. **feat-001…** puis **ui**, **ux**, **err** — par lots de ~40 prompts par session,
    en gardant `state.json` comme source de vérité.
+

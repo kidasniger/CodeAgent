@@ -2625,7 +2625,9 @@ done; } 2>&1 | head -c 50000
         viewModelScope.launch(Dispatchers.IO) {
             val convs = conversationRepo.searchContent(query)
             val files = if (workingFolderUriString != null) {
-                ProjectSearch.codeSearch(getFileRepo(), query)
+                // corr-058 : la recherche est annulable (Dispatchers.IO) — l'arrêt
+                // du ViewModel ou une nouvelle recherche interrompt le balayage.
+                ProjectSearch.codeSearch(getFileRepo(), query) { !isActive }
             } else emptyList()
             withContext(Dispatchers.Main) { onDone(convs, files) }
         }

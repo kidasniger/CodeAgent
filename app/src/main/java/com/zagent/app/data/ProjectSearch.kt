@@ -11,13 +11,25 @@ object ProjectSearch {
     private const val MAX_FILES = 400
     private const val MAX_FILE_BYTES = 500_000L
 
-    fun search(repo: FileRepository, query: String, path: String, caseSensitive: Boolean): String {
+    /**
+     * corr-058 — [annule] est sondé à chaque entrée de dossier et chaque fichier :
+     * une recherche lancée par l'agent peut être stoppée sans balayer tout le
+     * projet. Exécution attendue sur Dispatchers.IO (côté appelant).
+     */
+    fun search(
+        repo: FileRepository,
+        query: String,
+        path: String,
+        caseSensitive: Boolean,
+        annule: () -> Boolean = { false }
+    ): String {
         if (query.isEmpty()) return "Erreur: query vide."
         val results = ArrayList<String>()
         var scanned = 0
         var truncated = false
 
         fun walk(dir: String, depth: Int) {
+            if (annule()) { truncated = true; return }
             if (truncated || depth > 8) return
             for (e in repo.listEntries(dir)) {
                 if (truncated) return
@@ -25,6 +37,7 @@ object ProjectSearch {
                     if (e.name !in ignoredDirs) walk(e.path, depth + 1)
                     continue
                 }
+                if (annule()) { truncated = true; return }
                 if (!repo.isTextFile(e.path) || e.size > MAX_FILE_BYTES) continue
                 if (scanned >= MAX_FILES) { truncated = true; return }
                 scanned++
@@ -96,7 +109,12 @@ object ProjectSearch {
      * Recherche de code structurée pour l'écran Recherche globale (MA58) :
      * renvoie des [CodeHit] (chemin, ligne, extrait), même parcours que [search].
      */
-    fun codeSearch(repo: FileRepository, query: String, maxHits: Int = 120): List<CodeHit> {
+    fun codeSearch(
+        repo: FileRepository,
+        query: String,
+        maxHits: Int = 120,
+        annule: () -> Boolean = { false }
+    ): List<CodeHit> {
         val q = query.trim()
         if (q.isEmpty()) return emptyList()
         val results = ArrayList<CodeHit>()
@@ -104,6 +122,7 @@ object ProjectSearch {
         var truncated = false
 
         fun walk(dir: String, depth: Int) {
+            if (annule()) { truncated = true; return }
             if (truncated || depth > 8) return
             for (e in repo.listEntries(dir)) {
                 if (truncated) return
@@ -111,6 +130,7 @@ object ProjectSearch {
                     if (e.name !in ignoredDirs) walk(e.path, depth + 1)
                     continue
                 }
+                if (annule()) { truncated = true; return }
                 if (!repo.isTextFile(e.path) || e.size > MAX_FILE_BYTES) continue
                 if (scanned >= MAX_FILES) { truncated = true; return }
                 scanned++
