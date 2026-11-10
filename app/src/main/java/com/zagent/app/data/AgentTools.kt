@@ -2,6 +2,14 @@ package com.zagent.app.data
 
 import kotlinx.serialization.json.*
 
+/**
+ * corr-018 — Catalogue des outils exécutables par l'agent (function calling).
+ *
+ * Expose le schéma transmis au modèle, l'exécution des outils et les
+ * garde-fous associés : confirmation des écritures, des suppressions et des
+ * commandes, périmètre du projet. Chaque outil suit le contrat OpenAI
+ * « tools » : nom, description JSON-Schema, arguments sérialisés.
+ */
 object AgentTools {
     val toolsJson = buildJsonArray {
         add(buildJsonObject {

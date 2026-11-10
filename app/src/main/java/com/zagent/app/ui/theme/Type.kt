@@ -74,9 +74,6 @@ val JetBrainsMono = FontFamily(
  * puis remplacer la valeur par FontFamily(Font(R.font.sourceserif4_variable, …)).
  */
 val SerifTitres: FontFamily = FontFamily.Serif
-
-/** Style mono prêt à l'emploi pour chemins, noms d'outils et fragments de code. */
-val MonoSmall = TextStyle(
     fontFamily = JetBrainsMono,
     fontWeight = FontWeight.Normal,
     fontSize = 12.sp,

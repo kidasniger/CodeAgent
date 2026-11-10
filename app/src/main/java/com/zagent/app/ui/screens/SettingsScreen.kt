@@ -678,23 +678,6 @@ private fun ExpandableRow(
     }
 }
 
-/** Contrôle segmenté à 3 options : Système / Clair / Sombre. */
-@Composable
-private fun ThemeSegmented(mode: ThemeMode, onSelect: (ThemeMode) -> Unit) {
-    val c = Zcolors
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .background(c.surface3)
-            .border(1.dp, c.border, RoundedCornerShape(50))
-            .padding(3.dp)
-    ) {
-        SegOption("Système", mode == ThemeMode.SYSTEM, { onSelect(ThemeMode.SYSTEM) }, c)
-        SegOption("Clair", mode == ThemeMode.LIGHT, { onSelect(ThemeMode.LIGHT) }, c)
-        SegOption("Sombre", mode == ThemeMode.DARK, { onSelect(ThemeMode.DARK) }, c)
-    }
-}
-
 @Composable
 private fun SegOption(label: String, selected: Boolean, onClick: () -> Unit, c: com.zagent.app.ui.theme.ZColors) {
     Box(

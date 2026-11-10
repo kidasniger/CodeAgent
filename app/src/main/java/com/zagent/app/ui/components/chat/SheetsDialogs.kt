@@ -493,11 +493,6 @@ private fun ModelRow(label: String, selected: Boolean, onClick: () -> Unit) {
         )
     }
 }
-
-// ── MA51 : chip modèle de la barre de saisie + menu ancré ───────────────────
-
-/** Descriptions d'une ligne des modèles connus (menu du chip modèle). */
-private val knownModelDescriptions = mapOf(
     "glm-4.5-flash" to "Rapide et économique — parfait au quotidien",
     "glm-4.7-flash" to "Plus récent, un peu plus capable"
 )

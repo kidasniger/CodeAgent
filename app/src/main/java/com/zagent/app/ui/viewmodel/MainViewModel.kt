@@ -38,6 +38,7 @@ import com.zagent.app.data.UsageRepository
 import com.zagent.app.data.FileRepository
 import com.zagent.app.data.HapticLevel
 import com.zagent.app.data.ProjectSearch
+import com.zagent.app.data.Constants
 import com.zagent.app.data.SettingsManager
 import com.zagent.app.di.AppContainer
 import com.zagent.app.ui.editor.ConsoleState
@@ -150,7 +151,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         private set(value) {
             fournisseursState.value = value
             settingsManager.fournisseurs = value
+            // corr-019 : le masquage des logs suit les clés réellement enregistrées.
+            com.zagent.app.util.ZLog.rafraichirSecrets(value.map { it.cle })
         }
+
+    init {
+        // corr-019 : secrets initiaux pour ZLog (clés déjà stockées).
+        com.zagent.app.util.ZLog.rafraichirSecrets(settingsManager.fournisseurs.map { it.cle })
+    }
 
     /**
      * Clé historique des réglages = clé du fournisseur z.ai. Les anciens points
@@ -547,6 +555,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         previewTick++
         previewRequest = path
     }
+
+    /** corr-020 — État unique de l'agent, dérivé des drapeaux existants. */
+    val agentState: AgentState
+        get() = when {
+            pendingWrite != null -> AgentState.WaitingUser(AgentState.WaitingUser.Motif.ECRITURE)
+            pendingDelete != null -> AgentState.WaitingUser(AgentState.WaitingUser.Motif.SUPPRESSION)
+            pendingCommand != null -> AgentState.WaitingUser(AgentState.WaitingUser.Motif.COMMANDE)
+            pendingAsk != null -> AgentState.WaitingUser(AgentState.WaitingUser.Motif.QUESTION)
+            liveCommand != null -> AgentState.ExecutingTool(liveCommand, liveCommandId)
+            hasBlockingError -> AgentState.Error(statusMessage)
+            isLoading -> AgentState.Streaming(liveText, liveReasoning)
+            else -> AgentState.Idle
+        }
 
     /** Fichiers modifiés par l'agent pendant la session (badge explorateur). */
     val modifiedPaths = mutableStateMapOf<String, Boolean>()
@@ -1910,7 +1931,7 @@ done; } 2>&1 | head -c 50000
     /** Raccourcit une ancienne sortie d'outil avant de la renvoyer à l'IA (contexte plus léger, requêtes plus rapides). */
     private fun compactToolOutput(content: String?): String? {
         if (content == null || content.length <= 3000) return content
-        return content.take(1500) + "\n[... sortie ancienne raccourcie ...]\n" + content.takeLast(1000)
+        return content.take(Constants.SORTIE_COMMANDE_MAX) + "\n[... sortie ancienne raccourcie ...]\n" + content.takeLast(Constants.SORTIE_COMMANDE_QUEUE)
     }
 
     /** Notification Android si l'appli n'est pas à l'écran. */
@@ -1920,7 +1941,7 @@ done; } 2>&1 | head -c 50000
 
     /** Renvoie à l'agent une commande en erreur pour qu'il la corrige. */
     fun fixCommandWithAi(command: String, result: String) {
-        val out = result.substringAfter('\n', "").trim().takeLast(1500)
+        val out = result.substringAfter('\n', "").trim().takeLast(Constants.SORTIE_COMMANDE_MAX)
         sendMessage(
             "La commande `" + command + "` a échoué.\n\n```\n" + out +
                 "\n```\nAnalyse l'erreur, corrige le problème, puis relance la commande."
@@ -2470,7 +2491,7 @@ done; } 2>&1 | head -c 50000
             conversationRepo.saveMessages(id, msgs.map { m ->
                 StoredMessage(
                     role = m.role,
-                    content = m.content?.take(200_000),
+                    content = m.content?.take(Constants.MESSAGE_ARCHIVE_MAX),
                     time = m.time,
                     reasoning = m.reasoning,
                     toolCallId = m.toolCallId,

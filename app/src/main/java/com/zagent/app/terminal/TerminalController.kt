@@ -35,6 +35,7 @@ import java.nio.file.LinkOption
 import java.util.concurrent.TimeUnit
 import java.util.zip.ZipInputStream
 import kotlin.math.roundToInt
+import com.zagent.app.data.Constants
 
 /**
  * Gère le bootstrap (téléchargement + extraction) et la session shell du terminal embarqué.
@@ -132,7 +133,7 @@ class TerminalController(
     /** Ajoute une ligne au journal de l'onglet Agent (actions de l'agent autres que les commandes). */
     @Synchronized
     fun logAgent(line: String) {
-        agentBase = (agentBase + line + "\n").takeLast(60000)
+        agentBase = (agentBase + line + "\n").takeLast(Constants.JOURNAL_AGENT_MAX)
         agentLog = agentBase
     }
 
@@ -457,7 +458,7 @@ class TerminalController(
             pb.environment()[e.substring(0, i)] = e.substring(i + 1)
         }
         if (!silent) {
-            agentBase = (agentLog + "\n$ " + command + "\n").takeLast(60000)
+            agentBase = (agentLog + "\n$ " + command + "\n").takeLast(Constants.JOURNAL_AGENT_MAX)
             agentLog = agentBase
         }
         val emit: (String) -> Unit = { out ->
@@ -792,7 +793,7 @@ class TerminalController(
     fun copyAll() {
         val text = session?.emulator?.screen?.transcriptText?.trimEnd() ?: return
         val cm = app.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        cm.setPrimaryClip(ClipData.newPlainText("terminal", text.takeLast(50000)))
+        cm.setPrimaryClip(ClipData.newPlainText("terminal", text.takeLast(Constants.TERMINAL_COPIE_MAX)))
         android.widget.Toast.makeText(app, "Terminal copié", android.widget.Toast.LENGTH_SHORT).show()
     }
 

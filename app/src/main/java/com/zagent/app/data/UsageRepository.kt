@@ -27,6 +27,12 @@ data class UsageEntry(
     val totalTokens: Int get() = tokensIn + tokensOut
 }
 
+/**
+ * corr-018 — Journal des consommations : tokens et coûts estimés par session.
+ *
+ * Entrées plafonnées à Constants.USAGE_ENTREES_MAX, sérialisées en JSON.
+ * Alimente l'écran Usage et la ligne d'usage sous les messages (MA45).
+ */
 class UsageRepository(context: Context) {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     private val file = File(File(context.filesDir, "usage").apply { mkdirs() }, "entries.json")
@@ -40,7 +46,7 @@ class UsageRepository(context: Context) {
         runCatching {
             val list = load() + entry
             // Plafond : 2 000 entrées (les plus anciennes sont retirées).
-            val trimmed = if (list.size > 2000) list.takeLast(2000) else list
+            val trimmed = if (list.size > Constants.USAGE_ENTREES_MAX) list.takeLast(Constants.USAGE_ENTREES_MAX) else list
             file.writeText(json.encodeToString(ListSerializer(UsageEntry.serializer()), trimmed))
         }
     }

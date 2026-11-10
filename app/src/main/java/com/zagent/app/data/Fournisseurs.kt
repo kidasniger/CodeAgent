@@ -31,6 +31,13 @@ data class Fournisseur(
     val personnalise: Boolean = false
 )
 
+/**
+ * corr-018 — Catalogue et logique des fournisseurs IA (MàJ 101).
+ *
+ * Une clé API par fournisseur ; detecter reconnaît z.ai et NVIDIA d'après la
+ * clé ou l'URL, complete garantit la présence des fournisseurs intégrés.
+ * Les passerelles personnalisées OpenAI-compatible sont aussi gérées.
+ */
 object Fournisseurs {
 
     const val ID_ZAI = "zai"

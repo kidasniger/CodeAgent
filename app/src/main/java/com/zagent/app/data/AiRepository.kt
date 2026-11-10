@@ -9,11 +9,21 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
+/**
+ * corr-018 — Client IA unique de l'application (protocole chat/completions).
+ *
+ * Construit la requête OpenAI-compatible (modèle, historique, outils), lit le
+ * flux SSE en incrémentant le contenu affiché (onDelta) et le raisonnement
+ * (onReasoningDelta), réassemble les appels d'outils par index, gère le repli
+ * JSON non-flux et l'annulation (cancelActive). La clé et l'URL viennent du
+ * fournisseur du modèle choisi (MàJ 101) ; la configuration réseau commune
+ * vit dans Constants.
+ */
 class AiRepository : AiRepositoryApi {
     private val client = OkHttpClient.Builder()
-        .connectTimeout(180, TimeUnit.SECONDS)
-        .readTimeout(180, TimeUnit.SECONDS)
-        .writeTimeout(180, TimeUnit.SECONDS)
+        .connectTimeout(Constants.RESEAU_TIMEOUT_S, TimeUnit.SECONDS)
+        .readTimeout(Constants.RESEAU_TIMEOUT_S, TimeUnit.SECONDS)
+        .writeTimeout(Constants.RESEAU_TIMEOUT_S, TimeUnit.SECONDS)
         .build()
 
     /** Appel réseau en cours : permet de l'interrompre quand la conversation est vidée. */
@@ -266,7 +276,7 @@ class AiRepository : AiRepositoryApi {
                 delay(delaySeconds * 1000L)
                 delaySeconds += 5L
             } catch (e: Exception) {
-                return ApiResponse.Error("Une erreur inattendue est survenue : " + (e.localizedMessage ?: e.javaClass.simpleName))
+                return ApiResponse.Error("Une erreur inattendue est survenue : " + com.zagent.app.util.ZLog.masquer(e.localizedMessage ?: e.javaClass.simpleName))
             }
         }
         return ApiResponse.Error("Échec de la requête après plusieurs tentatives.")

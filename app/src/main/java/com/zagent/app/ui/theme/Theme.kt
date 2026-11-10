@@ -122,9 +122,6 @@ fun echelleAnimationsSysteme(context: Context): Float =
         Settings.Global.ANIMATOR_DURATION_SCALE,
         1f
     )
-
-/** MàJ 95 — faut-il réduire les animations ? (réglage interne OU échelle système à 0) */
-fun mouvementReduit(context: Context, reglageInterne: Boolean): Boolean =
     reglageInterne || echelleAnimationsSysteme(context) == 0f
 
 /**

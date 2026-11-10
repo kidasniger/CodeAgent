@@ -123,3 +123,80 @@ private fun ApercuBarreOnglets() {
         )
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// corr-017 — une preview par composant clé, avec données factices.
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Preview(name = "État vide · Clair", showBackground = true)
+@Preview(name = "État vide · Sombre", showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun ApercuEtatVide() {
+    ApercuTheme(sombre = false) {
+        ZEmptyState(
+            kind = ZEmptyKind.FOLDER,
+            title = "Aucun projet choisi",
+            body = "Crée ou choisis un dossier pour que l'agent puisse lire et écrire les fichiers.",
+            actionText = "Choisir un projet",
+            onAction = {}
+        )
+        EmptyState(
+            icon = Icons.Default.Search,
+            tint = Zcolors.cyan,
+            title = "Aucun résultat",
+            body = "Aucune conversation ne correspond à « cache ».",
+            primaryText = "Réinitialiser",
+            onPrimary = {}
+        )
+    }
+}
+
+@Preview(name = "Menu · Clair", showBackground = true)
+@Composable
+private fun ApercuMenu() {
+    ApercuTheme(sombre = false) {
+        ZMenu(expanded = true, onDismiss = {}) {
+            ZMenuItem("Épingler", Icons.Default.Close, onClick = {})
+            ZMenuItem("Renommer", Icons.Default.Search, onClick = {})
+            ZMenuSeparator()
+            ZMenuItem("Supprimer", Icons.Default.Close, onClick = {})
+        }
+    }
+}
+
+@Preview(name = "Puces modèles · Sombre", showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun ApercuPucesModeles() {
+    ApercuTheme(sombre = true) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            ModelChip("glm-4.7", selected = true, onClick = {})
+            ModelChip("nvidia/llama-3.1-70b", selected = false, onClick = {})
+            MonoChip("2 048 tokens")
+            GradientProgress(0.42f)
+        }
+    }
+}
+
+@Preview(name = "Squelettes · Clair", showBackground = true)
+@Composable
+private fun ApercuSquelettes() {
+    ApercuTheme(sombre = false) {
+        RectangleSquelette(Modifier.fillMaxWidth())
+        SkeletonListe(lignes = 3)
+        SkeletonCartesModeles(cartes = 2)
+    }
+}
+
+@Preview(name = "Réglage curseur · Clair", showBackground = true)
+@Composable
+private fun ApercuCurseur() {
+    ApercuTheme(sombre = false) {
+        ZSliderRow(
+            "Budget d'étapes",
+            20f,
+            5f..100f,
+            { "20 étapes" },
+            onChange = {}
+        )
+    }
+}

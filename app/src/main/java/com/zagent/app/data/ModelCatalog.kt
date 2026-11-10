@@ -56,6 +56,13 @@ data class ModelInfo(
         get() = !specialized && (Capacite.TEXTE in capacites || Capacite.CODE in capacites)
 }
 
+/**
+ * corr-018 — Catalogue statique des modèles et résolution par fournisseur.
+ *
+ * Renseigne pour chaque modèle : capacité (vision, outils…), URL de base du
+ * fournisseur (urlPourModele), chaîne de repli (chaineRepli), filtres pour
+ * les sélecteurs (conversationnels). Source unique de URL_ZAI.
+ */
 object ModelCatalog {
 
     /** Endpoint z.ai par défaut (format OpenAI également). */

@@ -27,6 +27,14 @@ enum class HapticLevel(val libelle: String) {
     NORMAL("Normal")
 }
 
+/**
+ * corr-018 — Persistance chiffrée des réglages (EncryptedSharedPreferences).
+ *
+ * Point d'entrée unique du stockage : clés API par fournisseur, modèle, dossier
+ * de travail, apparence, polices, verre, haptique, langue, onboarding,
+ * brouillons par conversation (MA55), sessions d'éditeur, favoris, instructions
+ * de projet. Les ViewModel en gardent des miroirs d'état (SettingsViewModel).
+ */
 class SettingsManager(context: Context) {
     private val masterKey = MasterKey.Builder(context)
         .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
@@ -285,8 +293,8 @@ class SettingsManager(context: Context) {
 
     var fontScale: Float
         // MàJ 97 — plage étendue à 130 % (au lieu de 125 %).
-        get() = prefs.getFloat(KEY_FONT_SCALE, 1f).coerceIn(0.85f, 1.30f)
-        set(value) = prefs.edit().putFloat(KEY_FONT_SCALE, value.coerceIn(0.85f, 1.30f)).apply()
+        get() = prefs.getFloat(KEY_FONT_SCALE, 1f).coerceIn(Constants.FONT_SCALE_MIN, Constants.FONT_SCALE_MAX)
+        set(value) = prefs.edit().putFloat(KEY_FONT_SCALE, value.coerceIn(Constants.FONT_SCALE_MIN, Constants.FONT_SCALE_MAX)).apply()
 
     /** Échelle de densité appliquée aux dimensions dp de l'interface. */
     var densityScale: Float
@@ -447,8 +455,8 @@ class SettingsManager(context: Context) {
      * pincement sur l'éditeur ou depuis Réglages › Apparence › Police.
      */
     var editorFontSize: Int
-        get() = prefs.getInt(KEY_EDITOR_FONT_SIZE, 14).coerceIn(10, 22)
-        set(value) = prefs.edit().putInt(KEY_EDITOR_FONT_SIZE, value.coerceIn(10, 22)).apply()
+        get() = prefs.getInt(KEY_EDITOR_FONT_SIZE, 14).coerceIn(Constants.POLICE_EDITOR_MIN, Constants.POLICE_EDITOR_MAX)
+        set(value) = prefs.edit().putInt(KEY_EDITOR_FONT_SIZE, value.coerceIn(Constants.POLICE_EDITOR_MIN, Constants.POLICE_EDITOR_MAX)).apply()
 
     // ── LOT 5 ────────────────────────────────────────────────────────────────
 
@@ -525,7 +533,7 @@ class SettingsManager(context: Context) {
 
     /** Nombre maximal d'étapes de l'agent par demande (5 à 100). */
     var maxSteps: Int
-        get() = prefs.getInt(KEY_MAX_STEPS, 20).coerceIn(5, 100)
+        get() = prefs.getInt(KEY_MAX_STEPS, 20).coerceIn(Constants.ETAPES_MIN, Constants.ETAPES_MAX)
         set(value) = prefs.edit().putInt(KEY_MAX_STEPS, value.coerceIn(5, 100)).apply()
 
     /** Prix par million de tokens en entrée (0 = inconnu), pour le calcul du coût. */

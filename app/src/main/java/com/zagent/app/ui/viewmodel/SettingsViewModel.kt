@@ -50,8 +50,8 @@ class SettingsViewModel(
 
     fun updateFontFamily(value: String) { fontFamilyId = value; settings.fontFamilyId = value }
     // MàJ 97 — plage d'échelle de texte 85 % – 130 %.
-    fun updateFontScale(value: Float) { fontScale = value.coerceIn(0.85f, 1.30f); settings.fontScale = fontScale }
-    fun updateDensityScale(value: Float) { densityScale = value.coerceIn(0.88f, 1.12f); settings.densityScale = densityScale }
+    fun updateFontScale(value: Float) { fontScale = value.coerceIn(Constants.FONT_SCALE_MIN, Constants.FONT_SCALE_MAX); settings.fontScale = fontScale }
+    fun updateDensityScale(value: Float) { densityScale = value.coerceIn(Constants.DENSITE_MIN, Constants.DENSITE_MAX); settings.densityScale = densityScale }
 
     fun updateOledBlack(value: Boolean) { oledBlack = value; settings.oledBlack = value }
     fun updateDynamicSystemColors(value: Boolean) { dynamicSystemColors = value; settings.dynamicSystemColors = value }
@@ -105,7 +105,7 @@ class SettingsViewModel(
         private set
 
     fun updateEditorFontSize(value: Int) {
-        val target = value.coerceIn(10, 22)
+        val target = value.coerceIn(Constants.POLICE_EDITOR_MIN, Constants.POLICE_EDITOR_MAX)
         if (target == editorFontSize) return
         editorFontSize = target
         settings.editorFontSize = target
@@ -142,7 +142,7 @@ class SettingsViewModel(
     var maxStepsInput by mutableStateOf(settings.maxSteps)
 
     fun setMaxSteps(value: Int) {
-        val n = value.coerceIn(5, 100)
+        val n = value.coerceIn(Constants.ETAPES_MIN, Constants.ETAPES_MAX)
         maxStepsInput = n
         settings.maxSteps = n
     }

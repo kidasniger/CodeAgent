@@ -49,6 +49,14 @@ data class ConversationHit(
     val snippet: String
 )
 
+/**
+ * corr-018 — Stockage local des conversations : index (métadonnées) + messages.
+ *
+ * JSON sur le disque dans le répertoire privé de l'application. Fournit
+ * l'index trié/épinglable, les messages par conversation, la recherche plein
+ * texte et les libellés automatiques. Implémente ConversationRepositoryApi
+ * pour la simulation en tests.
+ */
 class ConversationRepository(context: Context) : ConversationRepositoryApi {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     private val dir = File(context.filesDir, "conversations").apply { mkdirs() }
