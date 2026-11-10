@@ -53,6 +53,17 @@ class PreviewServer(private val readResource: (String) -> ByteArray?) {
     private var pool: ExecutorService? = null
 
     /**
+     * corr-035 — Jeton aléatoire exigé sur chaque requête : même si le serveur
+     * n'écoute que sur 127.0.0.1, une autre appli de l'appareil pourrait s'y
+     * connecter. Le WebView reçoit le jeton via cookie (posé par PreviewPane)
+     * ou paramètre « ?t= » ; toute autre connexion reçoit 403.
+     */
+    val token: String = java.security.SecureRandom().let { rnd ->
+        val chars = "0123456789abcdef"
+        buildString { repeat(24) { append(chars[rnd.nextInt(chars.length)]) } }
+    }
+
+    /**
      * Dossiers (du plus proche au plus lointain) où chercher une ressource introuvable à la racine.
      * Permet aux chemins absolus ("/css/style.css") de fonctionner quand la page est dans un
      * sous-dossier comme "public/" (cas Firebase Hosting), comme dans Acode.
@@ -144,15 +155,19 @@ class PreviewServer(private val readResource: (String) -> ByteArray?) {
                 val parts = requestLine.split(' ')
                 if (parts.size < 2) return
                 var range: String? = null
+                var cookie: String? = null
                 while (true) {
                     val line = readHeaderLine(input) ?: break
                     if (line.isEmpty()) break
                     val i = line.indexOf(':')
-                    if (i > 0 && line.substring(0, i).trim().equals("range", ignoreCase = true)) {
-                        range = line.substring(i + 1).trim()
+                    if (i > 0) {
+                        val name = line.substring(0, i).trim()
+                        val value = line.substring(i + 1).trim()
+                        if (name.equals("range", ignoreCase = true)) range = value
+                        else if (name.equals("cookie", ignoreCase = true)) cookie = value
                     }
                 }
-                respond(out, parts[0].uppercase(), parts[1], range)
+                respond(out, parts[0].uppercase(), parts[1], range, cookie)
             } catch (e: Exception) {
                 // client déconnecté ou requête invalide : on ignore
             }
@@ -176,6 +191,14 @@ class PreviewServer(private val readResource: (String) -> ByteArray?) {
         sb.append("Content-Length: ").append(length).append("\r\n")
         sb.append("Accept-Ranges: bytes\r\n")
         sb.append("Cache-Control: no-store\r\n")
+        // corr-037 : durcissement des réponses de l'aperçu.
+        sb.append("X-Content-Type-Options: nosniff\r\n")
+        sb.append("Referrer-Policy: no-referrer\r\n")
+        if (contentType?.startsWith("text/html") == true) {
+            // CSP modérée : casse ni les scripts inline ni les fetch externes
+            // légitimes, mais bloque objets plugin, framing et base-uri.
+            sb.append("Content-Security-Policy: object-src 'none'; frame-ancestors 'none'; base-uri 'none'\r\n")
+        }
         sb.append("Access-Control-Allow-Origin: *\r\n")
         sb.append("Access-Control-Allow-Methods: GET, HEAD, OPTIONS\r\n")
         sb.append("Access-Control-Allow-Headers: *\r\n")
@@ -191,7 +214,7 @@ class PreviewServer(private val readResource: (String) -> ByteArray?) {
         send(out, status, reason, "text/plain; charset=utf-8", bytes, 0, bytes.size, !head)
     }
 
-    private fun respond(out: OutputStream, method: String, target: String, rangeHeader: String?) {
+    private fun respond(out: OutputStream, method: String, target: String, rangeHeader: String?, cookie: String?) {
         val head = method == "HEAD"
         if (method == "OPTIONS") {
             send(out, 200, "OK", null, EMPTY, 0, 0, false)
@@ -202,6 +225,21 @@ class PreviewServer(private val readResource: (String) -> ByteArray?) {
             return
         }
 
+        // corr-035 : jeton requis — cookie « preview=… » (posé par PreviewPane)
+        // ou paramètre « ?t= » sur la requête initiale.
+        val query = target.substringAfter('?', "")
+        val queryToken = Regex("(?:^|[&?])t=([0-9a-f]{24})").find(query)?.groupValues?.get(1)
+        val cookieToken = cookie
+            ?.split(';')
+            ?.map { it.trim() }
+            ?.firstOrNull { it.startsWith("preview=") }
+            ?.substringAfter('=')
+        val jetonOk = queryToken == token || cookieToken == token
+        if (!jetonOk) {
+            sendText(out, 403, "Forbidden", "403 : jeton d'aperçu manquant", head)
+            return
+        }
+
         val rawPath = target.substringBefore('#').substringBefore('?')
         val decoded = try {
             URLDecoder.decode(rawPath.replace("+", "%2B"), "UTF-8")
@@ -209,7 +247,7 @@ class PreviewServer(private val readResource: (String) -> ByteArray?) {
             rawPath
         }
         val path = decoded.trimStart('/')
-        if (path.contains("..") || path.contains('\\')) {
+        if (path.contains("..") || path.contains('\\') || path.contains('\u0000')) {
             sendText(out, 403, "Forbidden", "403", head)
             return
         }
@@ -279,13 +317,16 @@ class PreviewServer(private val readResource: (String) -> ByteArray?) {
             }
         }
 
+        // corr-035 : le cookie garantit que les sous-ressources (img, css, fetch)
+        // passent la vérification sans paramètre de requête.
+        val setCookie = listOf("Set-Cookie" to "preview=$token; Path=/; HttpOnly")
         if (partial) {
             send(
                 out, 206, "Partial Content", ctype, bytes, start, end - start + 1, !head,
-                listOf("Content-Range" to "bytes $start-$end/$total")
+                listOf("Content-Range" to "bytes $start-$end/$total") + setCookie
             )
         } else {
-            send(out, 200, "OK", ctype, bytes, 0, total, !head)
+            send(out, 200, "OK", ctype, bytes, 0, total, !head, setCookie)
         }
     }
 }

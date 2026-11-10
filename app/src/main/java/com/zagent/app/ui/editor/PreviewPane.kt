@@ -159,6 +159,11 @@ fun PreviewPane(
             resumeTimers()
             settings.allowFileAccess = false
             settings.allowContentAccess = false
+            // corr-038 : explicite — aucun accès fichier depuis les URL file://
+            // (aucune URL file n'est chargée) et aucune interface JavaScript.
+            @Suppress("SetJavaScriptEnabled")
+            settings.allowFileAccessFromFileURLs = false
+            settings.allowUniversalAccessFromFileURLs = false
             webViewClient = object : WebViewClient() {
                 override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                     console.clear()
@@ -254,7 +259,15 @@ fun PreviewPane(
                                     wv.loadUrl(path)
                                     rememberUrl(path)
                                 } else if (p > 0) {
-                                    wv.loadUrl("http://127.0.0.1:" + p + "/" + Uri.encode(path, "/"))
+                                    // corr-035 : pose le cookie du jeton AVANT le
+                                    // chargement — toutes les sous-ressources le
+                                    // transmettent ; le « ?t= » sécurise aussi la
+                                    // première requête.
+                                    android.webkit.CookieManager.getInstance().setCookie(
+                                        "http://127.0.0.1:" + p,
+                                        "preview=" + server.token + "; Path=/"
+                                    )
+                                    wv.loadUrl("http://127.0.0.1:" + p + "/" + Uri.encode(path, "/") + "?t=" + server.token)
                                     rememberUrl("http://127.0.0.1:" + p + "/" + path)
                                 } else {
                                     wv.loadDataWithBaseURL(
