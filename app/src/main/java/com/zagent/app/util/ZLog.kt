@@ -36,7 +36,7 @@ object ZLog {
      */
     fun masquer(texte: String?): String {
         if (texte == null) return "null"
-        var out = texte
+        var out: String = texte
         for (s in secrets) {
             if (s.length >= 8) out = out.replace(s, "••••")
         }
