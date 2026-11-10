@@ -54,6 +54,13 @@ interface FileRepositoryApi {
 
     fun readBytes(path: String): ByteArray?
 
+    /**
+     * feat-036 — Informations d'un fichier : chemin, type, taille, dernière
+     * modification, nombre de lignes si textuel. Message « Erreur: … » si
+     * absent ou hors projet. Corps par défaut pour les implémentations de test.
+     */
+    fun fileInfo(path: String): String = "Erreur: fileInfo non supporté par ce dépôt."
+
     fun readFileForEdit(path: String): Result<String>
 
     fun createFile(path: String): String

@@ -487,6 +487,15 @@ class SettingsManager(context: Context) {
         get() = prefs.getBoolean("lecture_seule", false)
         set(value) = prefs.edit().putBoolean("lecture_seule", value).apply()
 
+    /**
+     * feat-032 — Recherche web de l'agent : désactivée par défaut (aucune
+     * requête réseau sortante hors API modèle) ; activable dans les réglages.
+     * Le fournisseur intégré est DuckDuckGo (HTML léger), sans clé requise.
+     */
+    var rechercheWebActive: Boolean
+        get() = prefs.getBoolean("recherche_web_active", false)
+        set(value) = prefs.edit().putBoolean("recherche_web_active", value).apply()
+
     private val prefJson = Json { coerceInputValues = true; ignoreUnknownKeys = true }
 
     /** Historique des dernières recherches globales (MA58), du plus récent au plus ancien. */

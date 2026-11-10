@@ -674,7 +674,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (history.size <= 9) return false
         if (!force && contextTokenEstimate < seuilTokensContexte) return false
         val ancien = history.subList(0, history.size - 8)
-        val recent = history.subList(history.size - 8)
+        val recent = history.subList(history.size - 8, history.size)
         val aResumer = ancien.joinToString("\n\n") { m ->
             m.role + " : " + m.content.orEmpty().substringBefore(CTX_MARKER).take(2000)
         }.take(60_000)
@@ -2418,6 +2418,22 @@ done; } 2>&1 | head -c 50000
             "start_dev_server" -> "Démarrage du serveur de développement…"
             "stop_dev_server" -> "Arrêt du serveur de développement…"
             "ask_user" -> "En attente de ta réponse…"
+            // feat-026..041 — descriptions des nouveaux outils.
+            "find_files" -> "Recherche de fichiers « " + arg("pattern").take(40) + " »…"
+            "file_info" -> "Infos de " + arg("path") + "…"
+            "diff_files" -> "Diff de " + arg("path_a") + " et " + arg("path_b") + "…"
+            "fetch_url" -> "Téléchargement de " + arg("url").take(60) + "…"
+            "search_symbols" -> "Recherche de symboles « " + arg("query").take(40) + " »…"
+            "get_project_info" -> "Analyse du projet…"
+            "move_file" -> "Déplacement de " + arg("source") + "…"
+            "copy_file" -> "Copie de " + arg("source") + "…"
+            "apply_patch" -> "Application du patch…"
+            "git_status" -> "Statut Git…"
+            "git_diff" -> "Diff Git…"
+            "git_commit" -> "Commit Git…"
+            "run_tests" -> "Lancement des tests…"
+            "lint_code" -> "Lint / formatage…"
+            "web_search" -> "Recherche web…"
             else -> "Exécution de $name…"
         }
     }
@@ -2533,6 +2549,223 @@ done; } 2>&1 | head -c 50000
                 else -> "Erreur: action inconnue '$action' (read | write | clear)."
             }
         }
+        // ── feat-027/028 — move_file et copy_file ─────────────────────────
+        if (tc.name == "move_file" || tc.name == "copy_file") {
+            val args = try {
+                Json.parseToJsonElement(tc.arguments).jsonObject
+            } catch (e: Exception) {
+                JsonObject(emptyMap())
+            }
+            val source = args["source"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty()
+            val destination = args["destination"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty()
+            if (source.isEmpty() || destination.isEmpty())
+                return "Erreur: source et destination requises pour ${tc.name}."
+            val contenu = fileRepo.readFileForEdit(source)
+                .getOrElse { return "Erreur: lecture de $source impossible : " + (it.message ?: "?") }
+            val auto = autoModeInput || settingsManager.allowWrite
+            val allowed = if (auto) true
+            else waitForWriteConfirmation(destination, contenu, tc.id, null)
+            if (!allowed) return "Refusé par l'utilisateur: l'opération sur $destination a été annulée."
+            val res = fileRepo.writeFile(destination, contenu)
+            if (!res.startsWith("Succès")) return res
+            withContext(Dispatchers.Main) {
+                modifiedPaths[destination] = true
+                if (destination !in summaryFiles) summaryFiles.add(destination)
+                editor.onExternalWrite(destination, contenu)
+            }
+            if (tc.name == "move_file") {
+                val suppr = fileRepo.deletePath(source)
+                if (!suppr.startsWith("Succès"))
+                    return "Copie créée à $destination mais suppression de la source échouée : $suppr"
+                withContext(Dispatchers.Main) {
+                    forgetPath(source)
+                    summaryFiles.add("$source (déplacé)")
+                    refreshBrowser()
+                }
+                return "Succès : $source déplacé vers $destination."
+            }
+            withContext(Dispatchers.Main) { refreshBrowser() }
+            return "Succès : $source copié vers $destination."
+        }
+        // ── feat-029 — apply_patch (atomique : tout vérifié avant d'écrire) ──
+        if (tc.name == "apply_patch") {
+            val args = try {
+                Json.parseToJsonElement(tc.arguments).jsonObject
+            } catch (e: Exception) {
+                JsonObject(emptyMap())
+            }
+            val patch = args["patch"]?.jsonPrimitive?.contentOrNull ?: ""
+            if (patch.isBlank()) return "Erreur: patch requis pour apply_patch."
+            val hunks = AgentTools.parsePatch(patch)
+            if (hunks.isEmpty())
+                return "Erreur: patch illisible — format attendu : diff unifié (---/+++/@@) ou bloc *** Begin Patch."
+            // Vérification complète AVANT toute écriture (atomique).
+            class Cible(val path: String, val action: String, val nouveau: String, val ancien: String?)
+            val cibles = ArrayList<Cible>()
+            for ((chemin, hs) in hunks.groupBy { it.path }) {
+                val action = hs.first().action
+                val lecture = fileRepo.readFileForEdit(chemin)
+                when (action) {
+                    "add" -> {
+                        if (lecture.isSuccess)
+                            return "Erreur: $chemin existe déjà (Add File). Patch annulé — rien n'a été écrit."
+                        cibles.add(Cible(chemin, "add", hs.joinToString("") { it.hunkNew }, null))
+                    }
+                    "delete" -> {
+                        if (lecture.isFailure)
+                            return "Erreur: $chemin introuvable (Delete File). Patch annulé — rien n'a été écrit."
+                        cibles.add(Cible(chemin, "delete", "", lecture.getOrNull()))
+                    }
+                    else -> {
+                        val contenu = lecture.getOrElse {
+                            return "Erreur: $chemin introuvable (Update File). Patch annulé — rien n'a été écrit."
+                        }
+                        var texte = contenu.replace("\r\n", "\n")
+                        for (h in hs) {
+                            if (h.hunkOld.isNotEmpty() && !texte.contains(h.hunkOld))
+                                return "Erreur: le contexte du patch ne correspond pas dans $chemin (bloc introuvable). Patch annulé — rien n'a été écrit."
+                            texte = if (h.hunkOld.isEmpty()) texte + h.hunkNew
+                            else texte.replaceFirst(h.hunkOld, h.hunkNew)
+                        }
+                        cibles.add(Cible(chemin, "update", texte, contenu))
+                    }
+                }
+            }
+            // Application, porte de confirmation habituelle par fichier.
+            val resultats = ArrayList<String>(cibles.size)
+            for (c in cibles) {
+                when (c.action) {
+                    "delete" -> {
+                        val allowed = autoModeInput || settingsManager.allowDelete ||
+                            waitForDeleteConfirmation(c.path, tc.id)
+                        if (!allowed) return "Refusé par l'utilisateur: suppression de ${c.path} annulée — patch partiellement appliqué."
+                        resultats.add(c.path + " : supprimé")
+                        val r = fileRepo.deletePath(c.path)
+                        if (!r.startsWith("Succès")) return "Erreur lors de la suppression de " + c.path + " : " + r
+                        withContext(Dispatchers.Main) {
+                            forgetPath(c.path)
+                            summaryFiles.add(c.path + " (supprimé)")
+                            refreshBrowser()
+                        }
+                    }
+                    else -> {
+                        val r = applyWrite(fileRepo, tc.id, c.path, c.nouveau, isEdit = c.action == "update")
+                        if (!r.startsWith("Succès")) return r
+                        resultats.add(c.path + " : " + (if (c.action == "add") "créé" else "modifié"))
+                    }
+                }
+            }
+            return "Patch appliqué (" + resultats.size + " fichiers) :\n- " + resultats.joinToString("\n- ")
+        }
+        // ── feat-030 — git_status / git_diff / git_commit ─────────────────
+        if (tc.name == "git_status") {
+            val out = terminal.runCommand("git status --short --branch 2>&1", workingFolderUriString, 15) { }
+            return if (out.isBlank()) "(aucune sortie — ce dossier n'est peut-être pas un dépôt Git.)"
+            else out.take(4000)
+        }
+        if (tc.name == "git_diff") {
+            val args = try {
+                Json.parseToJsonElement(tc.arguments).jsonObject
+            } catch (e: Exception) {
+                JsonObject(emptyMap())
+            }
+            val cible = args["path"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty()
+            val cmd = if (cible.isEmpty()) "git diff HEAD 2>&1"
+            else "git diff HEAD -- " + shellQuote(cible) + " 2>&1"
+            val out = terminal.runCommand(cmd, workingFolderUriString, 20) { }
+            return if (out.isBlank()) "(aucun diff non commité.)" else out.take(8000)
+        }
+        if (tc.name == "git_commit") {
+            val args = try {
+                Json.parseToJsonElement(tc.arguments).jsonObject
+            } catch (e: Exception) {
+                JsonObject(emptyMap())
+            }
+            val message = args["message"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty()
+            if (message.isEmpty()) return "Erreur: message requis pour git_commit."
+            val messageCourt = message.lineSequence().first().take(200)
+            val command = "git commit -m " + shellQuote(messageCourt)
+            val changes = readGitChanges()
+            val allowed = waitForCommandConfirmation(
+                command, tc.id, null, changes,
+                "Un commit est toujours confirmé, même en mode Auto : vérifie les changements ci-dessus."
+            )
+            if (!allowed) return "Refusé par l'utilisateur: le commit a été annulé."
+            return executerCommandeAgent(command, tc.id)
+        }
+        // ── feat-033 — run_tests : détection + résumé des échecs ─────────
+        if (tc.name == "run_tests") {
+            val args = try {
+                Json.parseToJsonElement(tc.arguments).jsonObject
+            } catch (e: Exception) {
+                JsonObject(emptyMap())
+            }
+            val demande = args["command"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty()
+            val commande = demande.ifEmpty { detecterCommandeTests(fileRepo) }
+            if (commande.isEmpty())
+                return "Erreur: aucun gestionnaire de tests détecté (gradlew, package.json, pytest, Makefile). Précise l'argument 'command'."
+            val allowed = autoModeInput || settingsManager.allowExecute ||
+                waitForCommandConfirmation(commande, tc.id)
+            if (!allowed) return "Refusé par l'utilisateur: le lancement des tests a été annulé."
+            return resumerTests(executerCommandeAgent(commande, tc.id), commande)
+        }
+        // ── feat-034 — lint_code : détection + formatage ─────────────────
+        if (tc.name == "lint_code") {
+            val commande = detecterCommandeLint(fileRepo)
+            if (commande.isEmpty())
+                return "Erreur: aucun outil de lint détecté (eslint, prettier, black, gradlew lint)."
+            val allowed = autoModeInput || settingsManager.allowExecute ||
+                waitForCommandConfirmation(commande, tc.id)
+            if (!allowed) return "Refusé par l'utilisateur: le lint a été annulé."
+            return executerCommandeAgent(commande, tc.id).take(6000)
+        }
+        // ── feat-032 — web_search (optionnelle, réglage utilisateur) ─────
+        if (tc.name == "web_search") {
+            if (!settingsManager.rechercheWebActive)
+                return "Recherche web désactivée : l'utilisateur peut l'activer dans Réglages › Permissions & sécurité."
+            val args = try {
+                Json.parseToJsonElement(tc.arguments).jsonObject
+            } catch (e: Exception) {
+                JsonObject(emptyMap())
+            }
+            val query = args["query"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty()
+            if (query.isEmpty()) return "Erreur: query requise pour web_search."
+            val url = "https://html.duckduckgo.com/html/?q=" +
+                java.net.URLEncoder.encode(query, "UTF-8")
+            val brut = AgentTools.fetchUrlTexte(url, 60_000)
+            if (brut.startsWith("Erreur:")) return brut.take(6000)
+            // Extraction des résultats DuckDuckGo HTML (titres + liens + extraits).
+            val liens = Regex(
+                "class=\"result__a\"[^>]*href=\"([^\"]+)\"[^>]*>(.*?)</a>",
+                RegexOption.DOT_MATCHES_ALL
+            )
+            val extraits = Regex(
+                "class=\"result__snippet\"[^>]*>(.*?)</a>",
+                RegexOption.DOT_MATCHES_ALL
+            )
+            fun nettoyage(s: String): String =
+                s.replace(Regex("<[^>]*>"), "").replace("&amp;", "&").replace("&#x27;", "'")
+                    .replace("&quot;", "\"").replace("&lt;", "<").replace("&gt;", ">").trim()
+            val titres = liens.findAll(brut).toList().take(8)
+            if (titres.isEmpty()) return "Aucun résultat parsé pour « $query » (le moteur a peut-être changé de format)."
+            val snips = extraits.findAll(brut).toList()
+            val out = StringBuilder("Résultats web pour « $query » :\n")
+            titres.forEachIndexed { i, m ->
+                var lien = m.groupValues[1]
+                // DuckDuckGo renvoie des liens de redirection : extraire la cible réelle.
+                val uddg = Regex("uddg=([^&]+)").find(lien)
+                if (uddg != null) {
+                    lien = java.net.URLDecoder.decode(uddg.groupValues[1], "UTF-8")
+                } else if (lien.startsWith("//")) {
+                    lien = "https:" + lien
+                }
+                out.append(i + 1).append(". ").append(nettoyage(m.groupValues[2]))
+                    .append("\n   ").append(lien)
+                if (i < snips.size) out.append("\n   ").append(nettoyage(snips[i].groupValues[1]).take(200))
+                out.append("\n")
+            }
+            return out.toString().take(6000)
+        }
         if (tc.name == "run_command") {
             val args = try {
                 Json.parseToJsonElement(tc.arguments).jsonObject
@@ -2565,32 +2798,7 @@ done; } 2>&1 | head -c 50000
                 (settingsManager.allowExecute && !isPush && !isCommit && !isDangerous) ||
                 waitForCommandConfirmation(command, tc.id, note, changes, footer)
             if (!allowed) return "Refusé par l'utilisateur: la commande a été annulée."
-            withContext(Dispatchers.Main) {
-                liveOutput = ""
-                liveStartedAt = System.currentTimeMillis()
-                summaryCommands.add(command.take(100))
-                liveCommandId = tc.id
-                liveCommand = command
-                statusMessage = "Commande : " + command.take(60) + "…"
-            }
-            val t0Cmd = System.currentTimeMillis()
-            try {
-                val out = terminal.runCommand(command, workingFolderUriString, timeout) { out -> liveOutput = out }
-                // MA64/MA65 : la commande est consignée dans l'activité (et dans l'historique des commandes approuvées).
-                logActivity(
-                    "commande", command,
-                    out.lineSequence().firstOrNull().orEmpty().take(160),
-                    if (out.startsWith("Erreur")) ActivityStatus.ERREUR else ActivityStatus.OK,
-                    System.currentTimeMillis() - t0Cmd
-                )
-                return out
-            } finally {
-                withContext(NonCancellable + Dispatchers.Main) {
-                    liveCommand = null
-                    liveCommandId = null
-                    refreshBrowser()
-                }
-            }
+            return executerCommandeAgent(command, tc.id, timeout)
         }
         if (tc.name == "start_dev_server") {
             val args = try {
@@ -2677,7 +2885,9 @@ done; } 2>&1 | head -c 50000
     /** corr-029 — Outils que le mode lecture seule refuse systématiquement. */
     private val OUTILS_ECRITURE = setOf(
         "write_file", "edit_file", "delete_file", "make_dir",
-        "run_command", "start_dev_server"
+        "run_command", "start_dev_server",
+        // feat-027/029/030 : nouveaux outils d'écriture (confirmés eux aussi).
+        "move_file", "copy_file", "apply_patch", "git_commit"
     )
 
     /**
@@ -2748,6 +2958,85 @@ done; } 2>&1 | head -c 50000
                 onCommandConfirmed = null
             }
         }
+    }
+
+    /**
+     * feat-030/033/034 — Exécution d'une commande agent via le terminal :
+     * affichage live, journal d'activité. Extraite de run_command pour être
+     * partagée par git_commit, run_tests et lint_code.
+     */
+    private suspend fun executerCommandeAgent(command: String, toolCallId: String, timeout: Int = Constants.TEMPS_MAX_COMMANDE_S): String {
+        withContext(Dispatchers.Main) {
+            liveOutput = ""
+            liveStartedAt = System.currentTimeMillis()
+            summaryCommands.add(command.take(100))
+            liveCommandId = toolCallId
+            liveCommand = command
+            statusMessage = "Commande : " + command.take(60) + "…"
+        }
+        val t0Cmd = System.currentTimeMillis()
+        try {
+            val out = terminal.runCommand(command, workingFolderUriString, timeout) { out -> liveOutput = out }
+            // MA64/MA65 : la commande est consignée dans l'activité.
+            logActivity(
+                "commande", command,
+                out.lineSequence().firstOrNull().orEmpty().take(160),
+                if (out.startsWith("Erreur")) ActivityStatus.ERREUR else ActivityStatus.OK,
+                System.currentTimeMillis() - t0Cmd
+            )
+            return out
+        } finally {
+            withContext(NonCancellable + Dispatchers.Main) {
+                liveCommand = null
+                liveCommandId = null
+                refreshBrowser()
+            }
+        }
+    }
+
+    /** Quote shell sûr pour un argument injecté dans une commande git. */
+    private fun shellQuote(s: String): String = "'" + s.replace("'", "'\\''") + "'"
+
+    /** feat-033 — Détecte la commande de tests du projet d'après sa racine. */
+    private fun detecterCommandeTests(repo: FileRepository): String {
+        val noms = repo.listEntries(".").map { it.name }.toSet()
+        return when {
+            "gradlew" in noms -> "./gradlew test --console=plain -q"
+            "package.json" in noms -> "npm test"
+            "pytest.ini" in noms || "pyproject.toml" in noms ||
+                noms.any { it.startsWith("test_") } || "tests" in noms -> "python -m pytest -q"
+            "Makefile" in noms -> "make test"
+            else -> ""
+        }
+    }
+
+    /** feat-034 — Détecte l'outil de lint/format du projet d'après sa racine. */
+    private fun detecterCommandeLint(repo: FileRepository): String {
+        val noms = repo.listEntries(".").map { it.name }.toSet()
+        return when {
+            noms.any { it == ".eslintrc" || it == ".eslintrc.js" || it == ".eslintrc.json" ||
+                it == "eslint.config.js" || it == "eslint.config.mjs" } -> "npx eslint . --fix"
+            noms.any { it.startsWith(".prettierrc") || it == "prettier.config.js" } -> "npx prettier --write ."
+            "pyproject.toml" in noms || "setup.cfg" in noms -> "python -m black . -q"
+            "build.gradle.kts" in noms || "build.gradle" in noms -> "./gradlew lint --console=plain -q"
+            else -> ""
+        }
+    }
+
+    /** feat-033 — Résume la sortie d'une exécution de tests (échecs en tête). */
+    private fun resumerTests(out: String, commande: String): String {
+        val echec = out.contains("BUILD FAILED") || out.contains("FAILED") ||
+            out.contains(" test failed") || out.contains(" failing") ||
+            out.contains("AssertionError") || out.contains("Test Failed")
+        val succes = out.contains("BUILD SUCCESSFUL") || out.contains(" passed") ||
+            out.contains("All tests passed") || out.contains("no tests failed")
+        val fin = out.lineSequence().toList().takeLast(25).joinToString("\n")
+        val verdict = when {
+            succes && !echec -> "Résultat global : succès."
+            echec -> "Résultat global : des échecs à corriger."
+            else -> "Résultat global : indéterminé (lit la sortie)."
+        }
+        return "Commande : $commande\n$verdict\n--- fin de sortie ---\n" + fin.take(4000)
     }
 
     fun resolvePendingCommand(allowed: Boolean) {

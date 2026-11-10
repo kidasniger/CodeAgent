@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Delete
@@ -76,6 +77,7 @@ fun PermissionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     var suppression by remember { mutableStateOf(viewModel.settingsManager.allowDelete) }
     var execution by remember { mutableStateOf(viewModel.settingsManager.allowExecute) }
     var lectureSeule by remember { mutableStateOf(viewModel.settingsManager.lectureSeule) }
+    var rechercheWeb by remember { mutableStateOf(viewModel.settingsManager.rechercheWebActive) } // feat-032
 
     LaunchedEffect(Unit) {
         events = viewModel.activityRepoSnapshot()
@@ -85,6 +87,7 @@ fun PermissionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         suppression = viewModel.settingsManager.allowDelete
         execution = viewModel.settingsManager.allowExecute
         lectureSeule = viewModel.settingsManager.lectureSeule
+        rechercheWeb = viewModel.settingsManager.rechercheWebActive // feat-032
         allowedPaths = viewModel.settingsManager.alwaysAllowedPaths.toList().sorted()
     }
 
@@ -149,6 +152,14 @@ fun PermissionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 onToggle = { viewModel.settingsManager.allowExecute = it; execution = it },
                 icon = Icons.Default.Terminal,
                 tint = c.violet
+            )
+            ModeRow(
+                title = "Recherche web", // feat-032
+                subtitle = "L'agent peut chercher sur le web (DuckDuckGo) et lire des pages avec fetch_url pour la documentation.",
+                checked = rechercheWeb,
+                onToggle = { viewModel.settingsManager.rechercheWebActive = it; rechercheWeb = it },
+                icon = Icons.Default.Language,
+                tint = c.cyan
             )
         }
         Spacer(Modifier.height(16.dp))

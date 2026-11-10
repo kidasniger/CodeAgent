@@ -214,6 +214,30 @@ class FileRepository(private val context: Context?, private val rootPath: String
         }
     }
 
+    /**
+     * feat-036 — Informations d'un fichier : type, taille, dernière
+     * modification, nombre de lignes si textuel (< 2 Mo).
+     */
+    override fun fileInfo(path: String): String {
+        if (!validatePath(path)) return "Erreur: Chemin invalide (.. interdit)"
+        val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
+        val f = resolveInside(root, path) ?: return "Erreur: Chemin hors du projet: $path"
+        if (!f.exists()) return "Erreur: Fichier introuvable: $path"
+        val date = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.US)
+            .format(java.util.Date(f.lastModified()))
+        val type = if (f.isDirectory) "dossier" else mimeType(path)
+        val lignes = if (f.isFile && f.length() < 2_000_000L) {
+            runCatching { f.readLines().size }.getOrDefault(0)
+        } else 0
+        return buildString {
+            append("Chemin : ").append(path)
+            append("\nType : ").append(type)
+            append("\nTaille : ").append(f.length()).append(" octets")
+            append("\nModifié : ").append(date)
+            if (lignes > 0) append("\nLignes : ").append(lignes)
+        }
+    }
+
     /** Lecture binaire d'une ressource du projet (aperçu web). Limite : 20 Mo. */
     override fun readBytes(path: String): ByteArray? {
         if (!validatePath(path)) return null
