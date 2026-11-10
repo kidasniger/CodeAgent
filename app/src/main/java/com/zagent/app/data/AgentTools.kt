@@ -175,6 +175,27 @@ object AgentTools {
         add(buildJsonObject {
             put("type", "function")
             put("function", buildJsonObject {
+                put("name", "project_memory")
+                put("description", "Mémoire de projet persistante (fichier .zagent/memoire.md), conservée entre les conversations : lit, enrichit ou vide la liste des faits durables à retenir (stack technique, conventions, préférences de l'utilisateur, décisions prises). Utilise-le quand l'utilisateur dit « retiens » / « souviens-toi », et consulte-le (action=read) au début d'une tâche où ces faits sont utiles au lieu de redemander.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {
+                        put("action", buildJsonObject {
+                            put("type", "string")
+                            put("description", "'read' pour lire la mémoire, 'write' pour ajouter un fait, 'clear' pour la vider")
+                        })
+                        put("fact", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Le fait à enregistrer, une ligne courte — requis pour 'write'")
+                        })
+                    })
+                    put("required", buildJsonArray { add("action") })
+                })
+            })
+        })
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
                 put("name", "start_dev_server")
                 put("description", "Lance un serveur de développement (ex: npm run dev) en arrière-plan, sans bloquer. Il reste actif jusqu'à stop_dev_server. Renvoie l'adresse locale détectée. L'utilisateur ouvre lui-même l'aperçu : ne l'ouvre pas.")
                 put("parameters", buildJsonObject {

@@ -1792,7 +1792,11 @@ done; } 2>&1 | head -c 50000
         val custom = customInstrSource.trim().let {
             if (it.isEmpty()) "" else "\n\nInstructions personnalisées de l'utilisateur :\n" + it.take(4000)
         }
-        val systemPrompt = basePrompt + projectRules + zagentContexte + custom
+        val systemPrompt = basePrompt +
+            "\nUne mémoire de projet persistante (.zagent/memoire.md) est disponible via l'outil project_memory : " +
+            "enregistre-y (action=write) les faits durables appris (stack, conventions, préférences, décisions) et " +
+            "consulte-la (action=read) au lieu de redemander une information déjà connue." +
+            projectRules + zagentContexte + custom
 
         var stepCount = 0
         val maxSteps = maxStepsInput
@@ -2127,6 +2131,7 @@ done; } 2>&1 | head -c 50000
             "delete_file" -> "Suppression de " + arg("path") + "…"
             "search_in_files" -> "Recherche de « " + arg("query").take(40) + " »…"
             "run_command" -> "Commande : " + arg("command").take(60) + "…"
+            "project_memory" -> if (arg("action") == "write") "Enregistrement en mémoire de projet…" else "Lecture de la mémoire de projet…" // feat-008
             "update_todos" -> "Mise à jour des tâches…"
             "start_dev_server" -> "Démarrage du serveur de développement…"
             "stop_dev_server" -> "Arrêt du serveur de développement…"
@@ -2211,6 +2216,40 @@ done; } 2>&1 | head -c 50000
                 }
             }
             return res
+        }
+        // feat-008 — mémoire de projet persistante (.zagent/memoire.md) : l'agent
+        // lit et enregistre des faits durables entre les conversations. Les actions
+        // d'écriture passent par applyWrite (porte de confirmation habituelle).
+        if (tc.name == "project_memory") {
+            val args = try {
+                Json.parseToJsonElement(tc.arguments).jsonObject
+            } catch (e: Exception) {
+                JsonObject(emptyMap())
+            }
+            val action = args["action"]?.jsonPrimitive?.content?.trim().orEmpty()
+            val fait = args["fact"]?.jsonPrimitive?.content?.trim().orEmpty()
+            val chemin = ".zagent/memoire.md"
+            return when (action) {
+                "read" -> {
+                    val contenu = fileRepo.readFile(chemin)
+                    if (contenu.startsWith("Erreur") || contenu.isBlank()) "Mémoire de projet vide (aucun fait enregistré)."
+                    else "Mémoire de projet :\n" + contenu.take(4000)
+                }
+                "write" -> {
+                    if (fait.isEmpty()) "Erreur: 'fact' est requis pour project_memory action=write."
+                    else {
+                        val actuel = fileRepo.readFile(chemin).let { if (it.startsWith("Erreur")) "" else it }
+                        if (actuel.contains(fait)) "Déjà en mémoire : " + fait
+                        else {
+                            val nouveau = (if (actuel.isBlank()) "# Mémoire du projet\n" else actuel.trimEnd() + "\n") +
+                                "- " + fait.replace('\n', ' ').take(300)
+                            applyWrite(fileRepo, tc.id, chemin, nouveau, isEdit = true)
+                        }
+                    }
+                }
+                "clear" -> applyWrite(fileRepo, tc.id, chemin, "# Mémoire du projet\n", isEdit = true)
+                else -> "Erreur: action inconnue '$action' (read | write | clear)."
+            }
         }
         if (tc.name == "run_command") {
             val args = try {
