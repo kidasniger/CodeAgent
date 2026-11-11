@@ -215,7 +215,8 @@ fun ZNavHost(
             TerminalScreen(
                 controller = viewModel.terminal,
                 showExtraKeys = showExtraKeys,
-                onBack = { viewModel.navigateBack() }
+                onBack = { viewModel.navigateBack() },
+                onOpenPath = { path, line -> viewModel.openFilePath(path, line) } // feat-056
             )
         }
 

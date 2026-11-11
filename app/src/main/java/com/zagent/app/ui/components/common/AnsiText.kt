@@ -15,6 +15,9 @@ import androidx.compose.ui.text.style.TextDecoration
 private val ANSI_SEQ = Regex("\u001B\\[[0-9;?]*[ -/]*[@-~]|\u001B\\][^\u0007\u001B]*(?:\u0007|\u001B\\\\)")
 private val URL_RE = Regex("https?://[^\\s)>\\]\"'<]+")
 
+/** feat-056 — référence « chemin avec extension: numéro de ligne » (sorties de compilateur/tests). */
+private val FILE_LINE_RE = Regex("([A-Za-z0-9._/-]+\\.[A-Za-z0-9]{1,6}):(\\d{1,5})[^0-9]")
+
 /** Garde, pour chaque ligne, le texte après le dernier retour chariot (barres de progression). */
 private fun normalizeCr(s: String): String =
     s.replace("\r\n", "\n").split('\n').joinToString("\n") { it.substringAfterLast('\r') }
@@ -126,13 +129,27 @@ fun ansiToAnnotated(raw: String, linkColor: Color, dark: Boolean = true): Annota
         builder.addStyle(SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline), start, end)
         builder.addStringAnnotation("URL", url, start, end)
     }
+    // feat-056 — références « chemin:ligne » de compilateur/tests (ex: src/A.kt:42)
+    // hors URLs : sous-lignées et annotées « URL » sous la forme file:chemin:ligne.
+    val dejaLies = ArrayList<IntRange>()
+    for (m in URL_RE.findAll(plain)) {
+        dejaLies.add(m.range.first..(m.range.first + m.value.trimEnd('.', ',', ';', ':').length - 1))
+    }
+    for (m in FILE_LINE_RE.findAll(plain)) {
+        val start = m.range.first
+        val end = m.range.last + 1
+        if (dejaLies.any { start <= it.last && end >= it.first }) continue
+        builder.addStyle(SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline), start, end)
+        builder.addStringAnnotation("URL", "file:" + m.groupValues[1] + ":" + m.groupValues[2], start, end)
+    }
     return builder.toAnnotatedString()
 }
 
 /**
  * Sortie de commande : couleurs ANSI rendues (palette adaptée au thème), liens
  * cliquables. [dark] sélectionne la palette sombre (défaut, sur fond de code)
- * ou claire (MA84).
+ * ou claire (MA84). [onLinkClick] intercepte les annotations « URL » — dont les
+ * références chemin:ligne détectées (feat-056) — au lieu d'ouvrir le navigateur.
  */
 @Composable
 fun AnsiText(
@@ -141,7 +158,8 @@ fun AnsiText(
     baseColor: Color,
     linkColor: Color,
     modifier: Modifier = Modifier,
-    dark: Boolean = true
+    dark: Boolean = true,
+    onLinkClick: ((String) -> Unit)? = null
 ) {
     val uri = LocalUriHandler.current
     val annotated = remember(text, linkColor, dark) { ansiToAnnotated(text, linkColor, dark) }
@@ -151,7 +169,8 @@ fun AnsiText(
         modifier = modifier,
         onClick = { offset ->
             annotated.getStringAnnotations("URL", offset, offset).firstOrNull()?.let {
-                try { uri.openUri(it.item) } catch (_: Exception) { }
+                if (onLinkClick != null) onLinkClick(it.item)
+                else try { uri.openUri(it.item) } catch (_: Exception) { }
             }
         }
     )

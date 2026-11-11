@@ -580,7 +580,56 @@ object AgentTools {
                 })
             })
         })
+        // ── feat-043 : logs du serveur de dev ───────────────────────────
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "dev_server_logs")
+                put("description", "Lit la sortie du serveur de développement en cours (erreurs, URLs, requêtes). Lecture seule.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {})
+                    put("required", buildJsonArray {})
+                })
+            })
+        })
+        // ── feat-044 : installation de paquets (toujours confirmée) ─────
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "pkg_install")
+                put("description", "Installe (action=install) ou désinstalle (action=uninstall) des paquets du terminal (pkg/apt). Toujours confirmé par l'utilisateur.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {
+                        put("packages", buildJsonObject {
+                            put("type", "array")
+                            put("description", "Noms de paquets simples (ex: \"python\", \"nodejs\")")
+                            put("items", buildJsonObject { put("type", "string") })
+                        })
+                        put("action", buildJsonObject {
+                            put("type", "string")
+                            put("description", "'install' (défaut) ou 'uninstall'")
+                        })
+                    })
+                    put("required", buildJsonArray { add("packages") })
+                })
+            })
+        })
     }
+
+    /**
+     * feat-045 — Liste des outils configurables individuellement
+     * (autoriser / demander / refuser) dans Permissions & sécurité.
+     */
+    val nomsOutils = listOf(
+        "list_dir", "read_file", "search_in_files", "find_files", "search_symbols",
+        "file_info", "diff_files", "fetch_url", "web_search",
+        "write_file", "edit_file", "apply_patch", "make_dir", "move_file", "copy_file",
+        "delete_file", "run_command", "run_tests", "lint_code", "git_status", "git_diff",
+        "git_commit", "pkg_install", "start_dev_server", "stop_dev_server", "dev_server_logs",
+        "project_memory", "update_todos", "ask_user"
+    )
 
     fun executeTool(fileRepo: FileRepository, name: String, argumentsJson: String): String {
         return try {

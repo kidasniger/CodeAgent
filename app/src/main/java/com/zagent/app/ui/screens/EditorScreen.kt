@@ -55,6 +55,7 @@ import com.zagent.app.ui.editor.ConsolePanel
 import com.zagent.app.ui.editor.PreviewPane
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
@@ -314,6 +315,15 @@ fun EditorScreen(
                 onClick = { tab?.let { editor.save(it) } }, size = 36.dp,
                 iconTint = if (tab?.dirty == true) c.green else c.text3
             )
+            // feat-055 — « Exécuter ce fichier » selon l'extension (python, sh, js…).
+            if (viewModel.peutExecuterFichier(tab?.path)) {
+                Spacer(Modifier.width(6.dp))
+                CircleIconButton(
+                    Icons.Default.PlayCircle, "Exécuter ce fichier",
+                    onClick = { viewModel.executerFichierEditeur() }, size = 36.dp,
+                    iconTint = c.green
+                )
+            }
         }
 
         // ── Onglets ─────────────────────────────────────────────────────────

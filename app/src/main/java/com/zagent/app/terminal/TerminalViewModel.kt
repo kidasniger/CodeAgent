@@ -28,6 +28,8 @@ class TerminalViewModel(
     /** Un onglet shell : sa session et son état (terminée ou non). */
     class ShellTab(val session: TerminalSession, val number: Int) {
         var ended by mutableStateOf(false)
+        /** feat-048 — nom personnalisé de l'onglet (null = « Shell N »). */
+        var nom by mutableStateOf<String?>(null)
     }
 
     val tabs = mutableStateListOf<ShellTab>()

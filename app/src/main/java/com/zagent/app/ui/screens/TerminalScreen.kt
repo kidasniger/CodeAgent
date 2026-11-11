@@ -1,7 +1,10 @@
 package com.zagent.app.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -34,12 +38,16 @@ import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -51,6 +59,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.core.content.res.ResourcesCompat
 import com.termux.view.TerminalView
 import com.zagent.app.R
@@ -64,13 +73,16 @@ import com.zagent.app.ui.theme.glassSurface
 fun TerminalScreen(
     controller: TerminalController,
     showExtraKeys: Boolean,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onOpenPath: (String, Int?) -> Unit = { _, _ -> } // feat-056
 ) {
     val c = Zcolors
     val state = controller.state
     val termBg = c.bg.toArgb()
     val termFg = c.text.toArgb()
     var showAgent by rememberSaveable { mutableStateOf(false) }
+    var showHisto by rememberSaveable { mutableStateOf(false) } // feat-047
+    var ongletARenommer by rememberSaveable { mutableStateOf(-1) } // feat-048
 
     // MA84 : fond, texte et palette ANSI alignés sur le thème clair/sombre.
     LaunchedEffect(termBg, termFg, c.isDark, controller.session) {
@@ -111,6 +123,11 @@ fun TerminalScreen(
                 if (!showAgent) {
                     HeaderText("A−") { controller.changeFontSize(-1) }
                     HeaderText("A+") { controller.changeFontSize(1) }
+                    // feat-051 — palette ANSI courante, tap = palette suivante.
+                    HeaderText(controller.themeAnsi) {
+                        val i = controller.themesAnsi.indexOf(controller.themeAnsi)
+                        controller.reglerThemeAnsi(controller.themesAnsi[(i + 1) % controller.themesAnsi.size])
+                    }
                 }
                 IconButton(onClick = { controller.openSession() }) {
                     Icon(Icons.Default.Refresh, "Relancer l'onglet", tint = c.text2)
@@ -158,14 +175,54 @@ fun TerminalScreen(
             }
 
             is TerminalController.State.Ready -> {
-                TabsRow(controller, showAgent, onAgent = { showAgent = it })
+                TabsRow(
+                    controller, showAgent,
+                    onAgent = { showAgent = it },
+                    onRename = { ongletARenommer = it } // feat-048
+                )
                 if (showAgent) {
-                    AgentLogPane(controller, Modifier.weight(1f).fillMaxWidth())
+                    AgentLogPane(controller, Modifier.weight(1f).fillMaxWidth(), onOpenPath) // feat-056/057
                 } else {
                     ShellPane(controller, termBg, Modifier.weight(1f).fillMaxWidth())
-                    if (showExtraKeys) {
-                        ExtraKeys(controller)
+                    if (showHisto) {
+                        HistoriquePane(controller) { showHisto = false } // feat-047
                     }
+                    if (showExtraKeys) {
+                        ExtraKeys(
+                            controller,
+                            onHisto = { showHisto = !showHisto },
+                            histoActif = showHisto
+                        )
+                    }
+                }
+                // feat-048 — dialogue de renommage d'onglet.
+                if (ongletARenommer >= 0) {
+                    val tab = controller.tabs.getOrNull(ongletARenommer)
+                    if (tab != null) {
+                        var nom by remember(ongletARenommer) { mutableStateOf(tab.nom.orEmpty()) }
+                        AlertDialog(
+                            onDismissRequest = { ongletARenommer = -1 },
+                            title = { Text("Renommer l'onglet", color = c.text) },
+                            text = {
+                                TextField(
+                                    value = nom,
+                                    onValueChange = { nom = it },
+                                    placeholder = { Text("Nom (vide = Shell " + tab.number + ")") },
+                                    singleLine = true
+                                )
+                            },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    controller.renommerOnglet(ongletARenommer, nom)
+                                    ongletARenommer = -1
+                                }) { Text("OK", color = c.cyan) }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { ongletARenommer = -1 }) { Text("Annuler", color = c.text2) }
+                            },
+                            containerColor = c.surface2
+                        )
+                    } else ongletARenommer = -1
                 }
             }
         }
@@ -186,8 +243,14 @@ private fun HeaderText(label: String, onClick: () -> Unit) {
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun TabsRow(controller: TerminalController, showAgent: Boolean, onAgent: (Boolean) -> Unit) {
+private fun TabsRow(
+    controller: TerminalController,
+    showAgent: Boolean,
+    onAgent: (Boolean) -> Unit,
+    onRename: (Int) -> Unit
+) {
     val c = Zcolors
     Row(
         Modifier
@@ -203,15 +266,19 @@ private fun TabsRow(controller: TerminalController, showAgent: Boolean, onAgent:
                 Modifier
                     .clip(MaterialTheme.shapes.extraSmall)
                     .background(if (on) c.cyan else c.bg2)
-                    .clickable {
-                        controller.activeTab = i
-                        onAgent(false)
-                    }
+                    // feat-048 — appui long : renommer l'onglet.
+                    .combinedClickable(
+                        onClick = {
+                            controller.activeTab = i
+                            onAgent(false)
+                        },
+                        onLongClick = { onRename(i) }
+                    )
                     .padding(start = 14.dp, end = if (controller.tabs.size > 1) 6.dp else 14.dp, top = 7.dp, bottom = 7.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "Shell " + tab.number,
+                    tab.nom ?: ("Shell " + tab.number),
                     color = if (on) c.bg else c.text2,
                     style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 )
@@ -258,11 +325,19 @@ private fun TabsRow(controller: TerminalController, showAgent: Boolean, onAgent:
 
 /** Onglet « Agent » : commandes lancées par l'IA et leur sortie, en lecture seule. */
 @Composable
-private fun AgentLogPane(controller: TerminalController, modifier: Modifier) {
+private fun AgentLogPane(
+    controller: TerminalController,
+    modifier: Modifier,
+    onOpenPath: (String, Int?) -> Unit = { _, _ -> }
+) {
     val c = Zcolors
     val fullLog = controller.agentLog
-    val log = androidx.compose.runtime.remember(fullLog) {
-        com.zagent.app.ui.components.common.tailForDisplay(fullLog, 16000)
+    // feat-057 — recherche dans la sortie de l'agent.
+    var recherche by rememberSaveable { mutableStateOf("") }
+    val log = androidx.compose.runtime.remember(fullLog, recherche) {
+        val base = com.zagent.app.ui.components.common.tailForDisplay(fullLog, 16000)
+        if (recherche.isBlank()) base
+        else base.lineSequence().filter { it.contains(recherche, ignoreCase = true) }.joinToString("\n")
     }
     val scroll = rememberScrollState()
     LaunchedEffect(log) { scroll.scrollTo(scroll.maxValue) }
@@ -291,6 +366,24 @@ private fun AgentLogPane(controller: TerminalController, modifier: Modifier) {
                 )
             }
         }
+        // feat-057 — champ de recherche filtrant les lignes de sortie.
+        TextField(
+            value = recherche,
+            onValueChange = { recherche = it },
+            placeholder = { Text("Rechercher dans la sortie…", style = TextStyle(fontSize = 12.5.sp)) },
+            singleLine = true,
+            textStyle = TextStyle(fontSize = 13.sp, color = c.text),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = c.surface2,
+                unfocusedContainerColor = c.surface2,
+                focusedIndicatorColor = c.cyan,
+                unfocusedIndicatorColor = c.border2,
+                cursorColor = c.cyan
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 2.dp)
+        )
         Box(
             Modifier
                 .weight(1f)
@@ -299,11 +392,23 @@ private fun AgentLogPane(controller: TerminalController, modifier: Modifier) {
                 .padding(horizontal = 12.dp, vertical = 6.dp)
         ) {
             com.zagent.app.ui.components.common.AnsiText(
-                text = log.ifEmpty { "Aucune commande lancée par l'agent pour le moment." },
+                text = log.ifEmpty {
+                    if (recherche.isBlank()) "Aucune commande lancée par l'agent pour le moment."
+                    else "Aucune ligne ne correspond à « $recherche »."
+                },
                 style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp, lineHeight = 16.sp),
                 baseColor = if (log.isEmpty()) c.text3 else c.text,
                 linkColor = c.cyan,
-                dark = c.isDark
+                dark = c.isDark,
+                // feat-056 — tap sur « chemin:ligne » ouvre l'éditeur à la ligne.
+                onLinkClick = { lien ->
+                    if (lien.startsWith("file:")) {
+                        val corps = lien.removePrefix("file:")
+                        val chemin = corps.substringBeforeLast(':')
+                        val ligne = corps.substringAfterLast(':').toIntOrNull()
+                        if (chemin.isNotEmpty()) onOpenPath(chemin, ligne)
+                    }
+                }
             )
         }
     }
@@ -314,7 +419,24 @@ private fun ShellPane(controller: TerminalController, termBg: Int, modifier: Mod
     val c = Zcolors
     val session = controller.session
     val density = LocalDensity.current
-    Box(modifier) {
+    // feat-050 — accumulation du pincement : un cran A± par palier de zoom.
+    val zoomAccum = remember { mutableStateOf(1f) }
+    Box(
+        modifier
+            // feat-050 — pincer pour changer la taille du texte.
+            .pointerInput(Unit) {
+                detectTransformGestures { _, _, zoom, _ ->
+                    zoomAccum.value *= zoom
+                    if (zoomAccum.value > 1.22f) {
+                        controller.changeFontSize(1)
+                        zoomAccum.value = 1f
+                    } else if (zoomAccum.value < 0.82f) {
+                        controller.changeFontSize(-1)
+                        zoomAccum.value = 1f
+                    }
+                }
+            }
+    ) {
         if (session != null) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
@@ -404,7 +526,7 @@ private fun RowScope.IconKey(icon: ImageVector, description: String, onClick: ()
 }
 
 @Composable
-private fun ExtraKeys(controller: TerminalController) {
+private fun ExtraKeys(controller: TerminalController, onHisto: () -> Unit = {}, histoActif: Boolean = false) {
     val c = Zcolors
     Row(
         Modifier
@@ -433,9 +555,107 @@ private fun ExtraKeys(controller: TerminalController) {
     ) {
         Key("Coller", onClick = { controller.paste() })
         Key("Copier tout", onClick = { controller.copyAll() })
+        // feat-049 — partage de la sortie du terminal.
+        Key("Partager", onClick = { controller.partagerSortie() })
         Key("Projet", onClick = { controller.cdToProject() })
         // MA84 : efface l'écran de l'onglet actif.
         Key("Effacer", onClick = { controller.clearActiveScreen() })
         Key("^C", onClick = { controller.send("\u0003") })
+        // feat-047 — historique des commandes.
+        Key("Histo", active = histoActif, onClick = { onHisto() })
+    }
+}
+
+/**
+ * feat-047 — Panneau de l'historique des commandes exécutées (persistant),
+ * avec recherche ; tap = envoi de la commande à l'onglet actif.
+ */
+@Composable
+private fun HistoriquePane(controller: TerminalController, onFermer: () -> Unit) {
+    val c = Zcolors
+    var q by rememberSaveable { mutableStateOf("") }
+    val liste = remember(controller.historiqueCommandes, q) {
+        controller.historiqueCommandes
+            .filter { q.isBlank() || it.contains(q, ignoreCase = true) }
+            .takeLast(30)
+            .reversed()
+    }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(c.bg2)
+            .padding(horizontal = 8.dp, vertical = 6.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "Historique des commandes (" + controller.historiqueCommandes.size + ")",
+                color = c.text2,
+                style = TextStyle(fontSize = 12.sp),
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                "Vider",
+                color = c.amber,
+                style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold),
+                modifier = Modifier
+                    .clip(MaterialTheme.shapes.small)
+                    .clickable { controller.viderHistorique() }
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            )
+            Text(
+                "Fermer",
+                color = c.cyan,
+                style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold),
+                modifier = Modifier
+                    .clip(MaterialTheme.shapes.small)
+                    .clickable(onClick = onFermer)
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            )
+        }
+        TextField(
+            value = q,
+            onValueChange = { q = it },
+            placeholder = { Text("Rechercher une commande…", style = TextStyle(fontSize = 12.5.sp)) },
+            singleLine = true,
+            textStyle = TextStyle(fontSize = 13.sp, color = c.text),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = c.surface2,
+                unfocusedContainerColor = c.surface2,
+                focusedIndicatorColor = c.cyan,
+                unfocusedIndicatorColor = c.border2,
+                cursorColor = c.cyan
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+        Column(
+            Modifier
+                .heightIn(max = 180.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            if (liste.isEmpty()) {
+                Text(
+                    if (controller.historiqueCommandes.isEmpty()) "Aucune commande exécutée pour l'instant."
+                    else "Aucune commande ne correspond.",
+                    color = c.text3,
+                    style = TextStyle(fontSize = 12.sp),
+                    modifier = Modifier.padding(vertical = 6.dp)
+                )
+            }
+            liste.forEach { cmd ->
+                Text(
+                    cmd,
+                    style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp, lineHeight = 16.sp),
+                    color = c.text,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(MaterialTheme.shapes.extraSmall)
+                        .clickable {
+                            controller.send(cmd + "\n")
+                            onFermer()
+                        }
+                        .padding(horizontal = 6.dp, vertical = 5.dp)
+                )
+            }
+        }
     }
 }

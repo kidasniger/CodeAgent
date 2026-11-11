@@ -65,6 +65,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -2440,6 +2441,14 @@ done; } 2>&1 | head -c 50000
 
     /** Porte d'écriture : Auto / fichier toujours autorisé / confirmation manuelle. */
     private suspend fun executeToolWithGate(fileRepo: FileRepository, tc: AiRepository.ToolCallData): String {
+        // feat-045 — permission par outil : "refuser" bloque tout, "autoriser"
+        // force le mode auto (sauf remparts : push/commit/destructeur), défaut = portes normales.
+        val permissionOutil = settingsManager.permissionOutil(tc.name)
+        outilAutoriseForce = permissionOutil == "autoriser"
+        if (permissionOutil == "refuser") {
+            outilAutoriseForce = false
+            return "Refusé par réglage : l'outil " + tc.name + " est interdit (Permissions & sécurité › Permissions par outil)."
+        }
         // MA64 : interrupteur global « Toujours autoriser la lecture ».
         if (!settingsManager.allowRead && tc.name in READ_TOOLS) {
             return "Refusé par réglage: la lecture n'est pas autorisée (Permissions & sécurité)."
@@ -2497,7 +2506,7 @@ done; } 2>&1 | head -c 50000
             }
             val path = args["path"]?.jsonPrimitive?.content?.trim().orEmpty()
             if (path.isEmpty()) return "Erreur: chemin manquant pour delete_file."
-            val allowed = autoModeInput || settingsManager.allowDelete || waitForDeleteConfirmation(path, tc.id)
+            val allowed = outilAutoriseForce || settingsManager.allowDelete || waitForDeleteConfirmation(path, tc.id)
             if (!allowed) return "Refusé par l'utilisateur: la suppression de $path a été annulée."
             val t0Del = System.currentTimeMillis()
             val res = fileRepo.deletePath(path)
@@ -2766,12 +2775,41 @@ done; } 2>&1 | head -c 50000
             }
             return out.toString().take(6000)
         }
-        if (tc.name == "run_command") {
+        // ── feat-043 — logs du serveur de développement ─────────────────
+        if (tc.name == "dev_server_logs") {
+            val log = terminal.devLog
+            return if (log.isBlank()) "(aucune sortie de serveur — lance start_dev_server d'abord.)"
+            else "Sortie du serveur de développement :\n" + log.take(8000)
+        }
+        // ── feat-044 — pkg_install : toujours confirmé, noms validés ────
+        if (tc.name == "pkg_install") {
             val args = try {
                 Json.parseToJsonElement(tc.arguments).jsonObject
             } catch (e: Exception) {
                 JsonObject(emptyMap())
             }
+            val nomValide = Regex("[a-zA-Z0-9._+-]+")
+            val paquets = (args["packages"] as? JsonArray)
+                ?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull?.trim() }
+                .orEmpty()
+                .filter { it.isNotEmpty() && nomValide.matches(it) }
+            if (paquets.isEmpty())
+                return "Erreur: liste de paquets requise — noms simples sans caractères shell (ex: python, nodejs)."
+            val verbe = if ((args["action"]?.jsonPrimitive?.contentOrNull ?: "install") == "uninstall") "uninstall" else "install"
+            val command = "pkg " + verbe + " -y " + paquets.joinToString(" ")
+            val allowed = waitForCommandConfirmation(
+                command, tc.id, null, null,
+                "L'installation de paquets est toujours confirmée, même en mode Auto."
+            )
+            if (!allowed) return "Refusé par l'utilisateur: l'opération sur les paquets a été annulée."
+            return executerCommandeAgent(command, tc.id)
+        }
+        if (tc.name == "run_command") {
+            val args = try {
+                Json.parseToJsonElement(tc.arguments).jsonObject
+            } catch (e: Exception) {
+                JsonObject(emptyMap())
+            }            
             val command = args["command"]?.jsonPrimitive?.content?.trim().orEmpty()
             if (command.isEmpty()) return "Erreur: commande manquante pour run_command."
             // corr-032 : le plafond applicatif prime sur toute valeur demandée par le modèle.
@@ -2794,8 +2832,7 @@ done; } 2>&1 | head -c 50000
                 isDangerous -> "Cette commande peut détruire des données hors du projet : elle est toujours confirmée, même en mode Auto."
                 else -> null
             }
-            val allowed = (autoModeInput && !isPush && !isCommit && !isDangerous) ||
-                (settingsManager.allowExecute && !isPush && !isCommit && !isDangerous) ||
+            val allowed = (outilAutoriseForce || autoModeInput || settingsManager.allowExecute) && !isPush && !isCommit && !isDangerous ||
                 waitForCommandConfirmation(command, tc.id, note, changes, footer)
             if (!allowed) return "Refusé par l'utilisateur: la commande a été annulée."
             return executerCommandeAgent(command, tc.id, timeout)
@@ -2806,8 +2843,9 @@ done; } 2>&1 | head -c 50000
             } catch (e: Exception) {
                 JsonObject(emptyMap())
             }
-            val command = (args["command"] as? JsonPrimitive)?.content?.trim().orEmpty().ifEmpty { "npm run dev" }
-            val allowed = autoModeInput || waitForCommandConfirmation(
+            val command = (args["command"] as? JsonPrimitive)?.content?.trim().orEmpty()
+                .ifEmpty { detecterCommandeServeur(fileRepo) } // feat-042 — détection automatique
+            val allowed = outilAutoriseForce || autoModeInput || waitForCommandConfirmation(
                 command, tc.id, null, null,
                 "Le serveur reste actif en arrière-plan jusqu'à ce que tu l'arrêtes. Tu ouvres l'aperçu toi-même depuis le chat."
             )
@@ -2889,6 +2927,14 @@ done; } 2>&1 | head -c 50000
         // feat-027/029/030 : nouveaux outils d'écriture (confirmés eux aussi).
         "move_file", "copy_file", "apply_patch", "git_commit"
     )
+
+    /**
+     * feat-045 — Vrai quand l'outil en cours a la permission « autoriser »
+     * individuelle : les portes de confirmation s'ouvrent sans demander
+     * (les remparts push/commit/destructeur restent actifs). Réinitialisé
+     * à chaque appel de [executeToolWithGate].
+     */
+    private var outilAutoriseForce = false
 
     /**
      * Dernier rempart contre les commandes catastrophiques : même en mode Auto, elles
@@ -2997,6 +3043,38 @@ done; } 2>&1 | head -c 50000
     /** Quote shell sûr pour un argument injecté dans une commande git. */
     private fun shellQuote(s: String): String = "'" + s.replace("'", "'\\''") + "'"
 
+    // ── feat-055 : exécuter le fichier ouvert selon son extension ───────────
+    /** Extensions exécutables depuis l'éditeur → modèle de commande ({f} = chemin quoté). */
+    private val commandesExec = mapOf(
+        "py" to "python {f}", "sh" to "bash {f}", "js" to "node {f}",
+        "mjs" to "node {f}", "ts" to "npx tsx {f}", "rb" to "ruby {f}",
+        "php" to "php {f}", "pl" to "perl {f}", "lua" to "lua {f}"
+    )
+
+    /** Vrai si l'extension du fichier ouvert est exécutable (affiche le bouton). */
+    fun peutExecuterFichier(path: String?): Boolean {
+        val ext = path?.substringAfterLast('.', "")?.lowercase().orEmpty()
+        return ext in commandesExec
+    }
+
+    /**
+     * feat-055 — Lance le fichier actif de l'éditeur dans le terminal : bascule
+     * sur l'écran Terminal, exécute la commande adaptée à l'extension et
+     * affiche la sortie dans l'onglet Agent.
+     */
+    fun executerFichierEditeur() {
+        val path = editor.active?.path ?: return
+        val ext = path.substringAfterLast('.').lowercase()
+        val modele = commandesExec[ext] ?: return
+        val commande = modele.replace("{f}", shellQuote(path))
+        navigateTo(AppScreen.TERMINAL)
+        viewModelScope.launch(Dispatchers.IO) {
+            terminal.logAgent("== Exécution de $path ($commande)")
+            val out = terminal.runCommand(commande, workingFolderUriString, Constants.TEMPS_MAX_COMMANDE_S) { }
+            terminal.logAgent(out.take(3000))
+        }
+    }
+
     /** feat-033 — Détecte la commande de tests du projet d'après sa racine. */
     private fun detecterCommandeTests(repo: FileRepository): String {
         val noms = repo.listEntries(".").map { it.name }.toSet()
@@ -3021,6 +3099,27 @@ done; } 2>&1 | head -c 50000
             "build.gradle.kts" in noms || "build.gradle" in noms -> "./gradlew lint --console=plain -q"
             else -> ""
         }
+    }
+
+    /**
+     * feat-042 — Détecte la commande de serveur de développement adaptée au
+     * projet : script npm dev/start, serveur HTTP Python pour le reste.
+     */
+    private fun detecterCommandeServeur(repo: FileRepository): String {
+        val noms = repo.listEntries(".").map { it.name }.toSet()
+        if ("package.json" in noms) {
+            val pj = runCatching { Json.parseToJsonElement(repo.readFile("package.json")).jsonObject }.getOrNull()
+            val scripts = (pj?.get("scripts") as? JsonObject)?.keys
+            return when {
+                scripts != null && "dev" in scripts -> "npm run dev"
+                scripts != null && "start" in scripts -> "npm start"
+                else -> "npx serve ."
+            }
+        }
+        if ("Gemfile" in noms) return "bundle exec rackup -p 8000"
+        if ("composer.json" in noms) return "php -S localhost:8000"
+        // Python, projet statique HTML, ou par défaut : serveur HTTP simple.
+        return "python -m http.server 8000"
     }
 
     /** feat-033 — Résume la sortie d'une exécution de tests (échecs en tête). */
@@ -3083,7 +3182,7 @@ done; } 2>&1 | head -c 50000
         val full = if (exists) fileRepo.readFileForEdit(path).getOrNull() else null
         val oldForDiff: String? = if (!exists) null else (full ?: raw)
 
-        val auto = autoModeInput || settingsManager.allowWrite ||
+        val auto = autoModeInput || settingsManager.allowWrite || outilAutoriseForce ||
             path in settingsManager.alwaysAllowedPaths ||
             (smartModeInput && (!exists || isEdit))
         val allowed = if (auto) {

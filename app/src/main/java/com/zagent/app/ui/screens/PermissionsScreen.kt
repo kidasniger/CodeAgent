@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -161,6 +162,42 @@ fun PermissionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 icon = Icons.Default.Language,
                 tint = c.cyan
             )
+        }
+        Spacer(Modifier.height(16.dp))
+
+        // ── feat-045 — Permissions par outil : autoriser / demander / refuser ──
+        OverlaySection("Permissions par outil")
+        GlassCard {
+            Text(
+                "Réglage fin : chaque outil de l'agent peut être autorisé sans confirmation, laissé en demande, ou interdit.",
+                style = TextStyle(fontFamily = Inter, fontSize = 12.5.sp, lineHeight = 18.sp),
+                color = c.text2,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            var perms by remember { mutableStateOf(viewModel.settingsManager.permissionsOutils) }
+            com.zagent.app.data.AgentTools.nomsOutils.forEach { nom ->
+                val courant = perms[nom].orEmpty()
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    MonoLine(nom, c.text, Modifier.weight(1f))
+                    PuceOutil("Auto", courant == "autoriser", c.green) {
+                        viewModel.settingsManager.reglerPermissionOutil(nom, if (courant == "autoriser") "" else "autoriser")
+                        perms = viewModel.settingsManager.permissionsOutils
+                    }
+                    PuceOutil("Dem.", courant == "" , c.cyan) {
+                        viewModel.settingsManager.reglerPermissionOutil(nom, "")
+                        perms = viewModel.settingsManager.permissionsOutils
+                    }
+                    PuceOutil("Refus", courant == "refuser", c.red) {
+                        viewModel.settingsManager.reglerPermissionOutil(nom, if (courant == "refuser") "" else "refuser")
+                        perms = viewModel.settingsManager.permissionsOutils
+                    }
+                }
+            }
         }
         Spacer(Modifier.height(16.dp))
 
@@ -297,3 +334,20 @@ private fun ModeRow(
         )
     }
 }
+
+/** feat-045 — Petit choix d'état de permission (Auto / Dem. / Refus) par outil. */
+@Composable
+private fun PuceOutil(label: String, activee: Boolean, teinte: Color, onClick: () -> Unit) {
+    val c = Zcolors
+    Text(
+        label,
+        style = TextStyle(fontFamily = Inter, fontSize = 11.sp, fontWeight = FontWeight.SemiBold),
+        color = if (activee) c.bg else c.text2,
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(if (activee) teinte else c.surface3)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 7.dp, vertical = 4.dp)
+    )
+}
+

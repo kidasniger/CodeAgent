@@ -496,6 +496,37 @@ class SettingsManager(context: Context) {
         get() = prefs.getBoolean("recherche_web_active", false)
         set(value) = prefs.edit().putBoolean("recherche_web_active", value).apply()
 
+    /**
+     * feat-045 — Permission par outil : "" (comportement par défaut),
+     * "autoriser" (passe les portes de confirmation), "demander" (défaut)
+     * ou "refuser" (l'outil est interdit). Persisté en JSON via org.json.
+     */
+    fun permissionOutil(nomOutil: String): String =
+        permissionsOutils[nomOutil].orEmpty()
+
+    fun reglerPermissionOutil(nomOutil: String, valeur: String) {
+        val actuel = permissionsOutils.toMutableMap()
+        if (valeur.isBlank()) actuel.remove(nomOutil) else actuel[nomOutil] = valeur
+        permissionsOutils = actuel
+    }
+
+    var permissionsOutils: Map<String, String>
+        get() = runCatching {
+            val o = org.json.JSONObject(prefs.getString("permissions_outils", "{}") ?: "{}")
+            val map = LinkedHashMap<String, String>()
+            val it = o.keys()
+            while (it.hasNext()) {
+                val k = it.next()
+                map[k] = o.optString(k)
+            }
+            map
+        }.getOrDefault(emptyMap())
+        set(value) {
+            val o = org.json.JSONObject()
+            for ((k, v) in value) o.put(k, v)
+            prefs.edit().putString("permissions_outils", o.toString()).apply()
+        }
+
     private val prefJson = Json { coerceInputValues = true; ignoreUnknownKeys = true }
 
     /** Historique des dernières recherches globales (MA58), du plus récent au plus ancien. */

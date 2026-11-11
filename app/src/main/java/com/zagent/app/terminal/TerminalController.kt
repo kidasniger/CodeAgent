@@ -125,6 +125,70 @@ class TerminalController(
 
     var ctrlActive by mutableStateOf(false)
 
+    // ── feat-051 : thèmes ANSI du terminal ──────────────────────────────
+    /** Palettes ANSI proposées pour le fond sombre (le clair garde la palette MA84). */
+    val themesAnsi = listOf("zagent", "nord", "monokai", "gruvbox")
+
+    var themeAnsi by mutableStateOf(prefs.getString("ansi_theme", "zagent") ?: "zagent")
+        private set
+
+    fun reglerThemeAnsi(id: String) {
+        if (id !in themesAnsi) return
+        themeAnsi = id
+        prefs.edit().putString("ansi_theme", id).apply()
+        applyToEmulator()
+    }
+
+    // ── feat-047 : historique persistant des commandes ───────────────────
+    /** Commandes exécutées (agent et exécutions de fichier), plafonnées à 100, persistées. */
+    var historiqueCommandes by mutableStateOf(lireHistoriqueCommandes())
+        private set
+
+    private fun lireHistoriqueCommandes(): List<String> = runCatching {
+        val arr = org.json.JSONArray(prefs.getString("cmd_history", "[]") ?: "[]")
+        (0 until arr.length()).map { arr.getString(it) }
+    }.getOrDefault(emptyList())
+
+    fun ajouterHistorique(commande: String) {
+        val c = commande.trim().take(300)
+        if (c.isEmpty()) return
+        historiqueCommandes = ((historiqueCommandes - c) + c).takeLast(100)
+        prefs.edit().putString("cmd_history", org.json.JSONArray(historiqueCommandes).toString()).apply()
+    }
+
+    fun viderHistorique() {
+        historiqueCommandes = emptyList()
+        prefs.edit().putString("cmd_history", "[]").apply()
+    }
+
+    // ── feat-048 : onglets nommés ───────────────────────────────────────
+    /** Renomme (ou efface, nom vide) l'onglet [index] et persiste par numéro. */
+    fun renommerOnglet(index: Int, nom: String) {
+        val t = tabState.tabs.getOrNull(index) ?: return
+        val n = nom.trim().take(24)
+        t.nom = n.ifEmpty { null }
+        val obj = runCatching { org.json.JSONObject(prefs.getString("tab_names", "{}") ?: "{}") }.getOrDefault(org.json.JSONObject())
+        if (t.nom == null) obj.remove(t.number.toString()) else obj.put(t.number.toString(), t.nom)
+        prefs.edit().putString("tab_names", obj.toString()).apply()
+    }
+
+    private fun restaurerNomOnglet(tab: TerminalViewModel.ShellTab) {
+        val obj = runCatching { org.json.JSONObject(prefs.getString("tab_names", "{}") ?: "{}") }.getOrNull() ?: return
+        tab.nom = obj.optString(tab.number.toString(), "").ifEmpty { null }
+    }
+
+    /** feat-049 — Partage la sortie (agent si présente, sinon onglet actif). */
+    fun partagerSortie() {
+        val texte = agentLog.trim().takeIf { it.isNotEmpty() }
+            ?: session?.emulator?.screen?.transcriptText?.trimEnd().orEmpty()
+        if (texte.isEmpty()) return
+        val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(android.content.Intent.EXTRA_TEXT, texte.takeLast(Constants.TERMINAL_COPIE_MAX))
+        }
+        app.startActivity(android.content.Intent.createChooser(intent, "Partager la sortie du terminal"))
+    }
+
     /** Journal en lecture seule des commandes lancées par l'agent (onglet « Agent » du terminal). */
     var agentLog by mutableStateOf("")
         private set
@@ -446,6 +510,7 @@ class TerminalController(
         if (!isInstalled()) {
             return@withContext "Erreur: le terminal n'est pas installé. Ouvre l'écran Terminal pour l'installer."
         }
+        ajouterHistorique(command) // feat-047
         File(prefixDir, "tmp").mkdirs()
         val dir = cwd?.let { File(it) }?.takeIf { it.isDirectory } ?: homeDir
         val pb = ProcessBuilder(File(prefixDir, "bin/bash").absolutePath, "-c", command)
@@ -745,11 +810,15 @@ class TerminalController(
     /** Ouvre le premier onglet, ou relance l'onglet actif (corr-005 : délégué). */
     fun openSession() {
         tabState.openSession()
+        // feat-048 — un onglet relancé retrouve son nom.
+        tabState.tabs.getOrNull(tabState.activeTab)?.let { restaurerNomOnglet(it) }
     }
 
     /** Nouvel onglet shell dans le dossier du projet actif (corr-005 : délégué). */
     fun addTab() {
         tabState.addTab()
+        // feat-048 — restaure le nom persisté du nouvel onglet.
+        tabState.tabs.lastOrNull()?.let { restaurerNomOnglet(it) }
     }
 
     fun closeTab(index: Int) {
@@ -802,6 +871,31 @@ class TerminalController(
     private var colorDark = true
 
     /** Palette ANSI 16 couleurs du shell, harmonisée avec le thème (MA84) — fond sombre. */
+    /** Palette ANSI 16 couleurs du shell — Nord (feat-051). */
+    private val SHELL_ANSI_NORD = intArrayOf(
+        0xFF3B4252.toInt(), 0xFFBF616A.toInt(), 0xFFA3BE8C.toInt(), 0xFFEBCB8B.toInt(),
+        0xFF81A1C1.toInt(), 0xFFB48EAD.toInt(), 0xFF88C0D0.toInt(), 0xFFE5E9F0.toInt(),
+        0xFF4C566A.toInt(), 0xFFBF616A.toInt(), 0xFFA3BE8C.toInt(), 0xFFEBCB8B.toInt(),
+        0xFF81A1C1.toInt(), 0xFFB48EAD.toInt(), 0xFF8FBCBB.toInt(), 0xFFECEFF4.toInt()
+    )
+
+    /** Palette ANSI 16 couleurs du shell — Monokai (feat-051). */
+    private val SHELL_ANSI_MONOKAI = intArrayOf(
+        0xFF272822.toInt(), 0xFFF92672.toInt(), 0xFFA6E22E.toInt(), 0xFFF4BF75.toInt(),
+        0xFF66D9EF.toInt(), 0xFFAE81FF.toInt(), 0xFFA1EFE4.toInt(), 0xFFF8F8F2.toInt(),
+        0xFF75715E.toInt(), 0xFFF92672.toInt(), 0xFFA6E22E.toInt(), 0xFFF4BF75.toInt(),
+        0xFF66D9EF.toInt(), 0xFFAE81FF.toInt(), 0xFFA1EFE4.toInt(), 0xFFF9F8F5.toInt()
+    )
+
+    /** Palette ANSI 16 couleurs du shell — Gruvbox (feat-051). */
+    private val SHELL_ANSI_GRUVBOX = intArrayOf(
+        0xFF3C3836.toInt(), 0xFFCC241D.toInt(), 0xFF98971A.toInt(), 0xFFD79921.toInt(),
+        0xFF458588.toInt(), 0xFFB16286.toInt(), 0xFF689D6A.toInt(), 0xFFA89984.toInt(),
+        0xFF7C6F64.toInt(), 0xFFFB4934.toInt(), 0xFFB8BB26.toInt(), 0xFFFABD2F.toInt(),
+        0xFF83A598.toInt(), 0xFFD3869B.toInt(), 0xFF8EC07C.toInt(), 0xFFEBDBB2.toInt()
+    )
+
+    /** Palette ANSI 16 couleurs du shell, harmonisée avec le thème (MA84) — fond sombre. */
     private val SHELL_ANSI_DARK = intArrayOf(
         0xFF2A2F3A.toInt(), 0xFFDC2626.toInt(), 0xFF16A34A.toInt(), 0xFFCA8A04.toInt(),
         0xFF2563EB.toInt(), 0xFF9333EA.toInt(), 0xFF0891B2.toInt(), 0xFF9CA3AF.toInt(),
@@ -826,7 +920,14 @@ class TerminalController(
     }
 
     private fun applyToEmulator() {
-        val palette = if (colorDark) SHELL_ANSI_DARK else SHELL_ANSI_LIGHT
+        // feat-051 — palette choisie pour le fond sombre ; le clair garde MA84.
+        val palette = when {
+            !colorDark -> SHELL_ANSI_LIGHT
+            themeAnsi == "nord" -> SHELL_ANSI_NORD
+            themeAnsi == "monokai" -> SHELL_ANSI_MONOKAI
+            themeAnsi == "gruvbox" -> SHELL_ANSI_GRUVBOX
+            else -> SHELL_ANSI_DARK
+        }
         tabs.forEach { t ->
             val e = t.session.emulator ?: return@forEach
             val cols = e.mColors.mCurrentColors
