@@ -13,7 +13,6 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -334,9 +333,9 @@ fun PreviewPane(
                     onClick = {
                         if (currentUrl.startsWith("http")) {
                             clipboard.setText(AnnotatedString(currentUrl))
-                            Toast.makeText(context, "URL copiée", Toast.LENGTH_SHORT).show()
+                            com.zagent.app.ui.components.common.ZEphemeral.show("URL copiée")
                         } else {
-                            Toast.makeText(context, "Adresse indisponible", Toast.LENGTH_SHORT).show()
+                            com.zagent.app.ui.components.common.ZEphemeral.show("Adresse indisponible")
                         }
                     }
                 )

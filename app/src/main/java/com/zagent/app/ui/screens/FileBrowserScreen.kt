@@ -714,7 +714,7 @@ fun FileBrowserScreen(
                         .padding(horizontal = 14.dp, vertical = 8.dp)
                 ) {
                     Text(
-                        "✦ ${viewModel.modifiedPaths.size} fichier${if (viewModel.modifiedPaths.size > 1) "s" else ""} modifié${if (viewModel.modifiedPaths.size > 1) "s" else ""} par l'agent",
+                        "${viewModel.modifiedPaths.size} fichier${if (viewModel.modifiedPaths.size > 1) "s" else ""} modifié${if (viewModel.modifiedPaths.size > 1) "s" else ""} par l'agent",
                         style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
                         color = c.violet
                     )

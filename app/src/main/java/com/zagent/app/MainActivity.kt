@@ -298,7 +298,7 @@ private fun AppRoot(
                 (context as? android.app.Activity)?.finish()
             } else {
                 lastBackPress = now
-                android.widget.Toast.makeText(context, "Appuyez encore pour quitter", android.widget.Toast.LENGTH_SHORT).show()
+                com.zagent.app.ui.components.common.ZEphemeral.show("Encore un appui pour quitter")
             }
         } catch (e: CancellationException) {
             // Geste annulé par l'utilisateur : aucune action.

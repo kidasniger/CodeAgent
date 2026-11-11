@@ -108,7 +108,7 @@ fun HelpScreen(viewModel: MainViewModel, onBack: () -> Unit) {
 
         // ── Gestes ───────────────────────────────────────────────────────────
         OverlaySection("Gestes")
-        GestureRow(Icons.Default.Swipe, "Tiroir Historique", "Menu ☰ dans la barre du chat : conversations passées, glisse une ligne pour l'épingler ou la supprimer.")
+        GestureRow(Icons.Default.Swipe, "Tiroir Historique", "Menu (icône trois traits) dans la barre du chat : conversations passées, glisse une ligne pour l'épingler ou la supprimer.")
         GestureRow(Icons.Default.TouchApp, "Long-press sur un message", "Cite, copie, modifie ou supprime n'importe quel message du fil.")
         GestureRow(Icons.Default.Bolt, "Champ de saisie", "Le champ s'étend jusqu'à 8 lignes ; le bouton devient Stop pendant la génération.")
 

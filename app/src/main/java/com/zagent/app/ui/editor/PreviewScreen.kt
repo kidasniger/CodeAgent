@@ -58,7 +58,6 @@ import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.Zcolors
 import com.zagent.app.ui.viewmodel.MainViewModel
 import androidx.compose.ui.platform.LocalClipboardManager
-import android.widget.Toast
 import androidx.compose.ui.text.AnnotatedString
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -145,7 +144,7 @@ fun PreviewScreen(viewModel: MainViewModel, onClose: () -> Unit) {
             BarIcon(Icons.Default.ContentCopy, "Copier l'URL") {
                 if (currentUrl.startsWith("http")) {
                     clipboard.setText(AnnotatedString(currentUrl))
-                    Toast.makeText(context, "URL copiée", Toast.LENGTH_SHORT).show()
+                    com.zagent.app.ui.components.common.ZEphemeral.show("URL copiée")
                 }
             }
             BarIcon(Icons.Default.QrCode2, "QR code de l'adresse") {

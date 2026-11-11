@@ -6,7 +6,6 @@ import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.Crossfade
@@ -196,7 +195,7 @@ fun ChatInputBar(
 
     fun startRecognition() {
         if (!SpeechRecognizer.isRecognitionAvailable(context)) {
-            Toast.makeText(context, "La dictée vocale n'est pas disponible sur cet appareil.", Toast.LENGTH_SHORT).show()
+            com.zagent.app.ui.components.common.ZEphemeral.show("La dictée vocale n'est pas disponible sur cet appareil.")
             return
         }
         // feat-022 — la base du champ est capturée au départ : les résultats
@@ -218,7 +217,7 @@ fun ChatInputBar(
                         "Autorise le micro pour dicter."
                     else -> "Dictée interrompue, réessaie."
                 }
-                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                com.zagent.app.ui.components.common.ZEphemeral.show(msg)
             }
             override fun onResults(results: Bundle?) {
                 isListening = false
@@ -267,7 +266,7 @@ fun ChatInputBar(
 
     val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) startRecognition()
-        else Toast.makeText(context, "Autorise le micro dans les réglages Android pour dicter.", Toast.LENGTH_SHORT).show()
+        else com.zagent.app.ui.components.common.ZEphemeral.show("Autorise le micro dans les réglages Android pour dicter.")
     }
 
     // ── MA52 / MA53 : détection des commandes slash et des mentions @ ────────
@@ -421,12 +420,10 @@ fun ChatInputBar(
                         // feat-022 — appui long : bascule le mode dictée continue.
                         onLongClick = {
                             dicteeContinue = !dicteeContinue
-                            Toast.makeText(
-                                context,
+                            com.zagent.app.ui.components.common.ZEphemeral.show(
                                 if (dicteeContinue) "Dictée continue activée — la reconnaissance se relance toute seule."
-                                else "Dictée continue désactivée.",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                                else "Dictée continue désactivée."
+                            )
                         }
                     )
                     Spacer(Modifier.width(6.dp))

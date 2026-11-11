@@ -681,7 +681,7 @@ private fun ActionsTab(viewModel: MainViewModel) {
                     .clip(RoundedCornerShape(50))
                     .clickable {
                         clipboard.setText(AnnotatedString(viewModel.sshClePublique))
-                        android.widget.Toast.makeText(context, "Clé publique copiée", android.widget.Toast.LENGTH_SHORT).show()
+                        com.zagent.app.ui.components.common.ZEphemeral.show("Clé publique copiée")
                     }
                     .padding(horizontal = 4.dp, vertical = 4.dp)
             )

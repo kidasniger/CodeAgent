@@ -120,7 +120,7 @@ class TerminalController(
         val now = SystemClock.elapsedRealtime()
         if (now - lastToastAt < 300) return
         lastToastAt = now
-        android.widget.Toast.makeText(app, "$size sp", android.widget.Toast.LENGTH_SHORT).show()
+        com.zagent.app.ui.components.common.ZEphemeral.show("$size sp")
     }
 
     var ctrlActive by mutableStateOf(false)
@@ -876,7 +876,7 @@ class TerminalController(
         val text = session?.emulator?.screen?.transcriptText?.trimEnd() ?: return
         val cm = app.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         cm.setPrimaryClip(ClipData.newPlainText("terminal", text.takeLast(Constants.TERMINAL_COPIE_MAX)))
-        android.widget.Toast.makeText(app, "Terminal copié", android.widget.Toast.LENGTH_SHORT).show()
+        com.zagent.app.ui.components.common.ZEphemeral.show("Terminal copié")
     }
 
     private var colorBg = 0xFF0B0F17.toInt()

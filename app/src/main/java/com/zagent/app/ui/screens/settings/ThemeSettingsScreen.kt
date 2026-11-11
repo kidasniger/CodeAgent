@@ -236,7 +236,7 @@ private fun ThemeModeRow(mode: ThemeMode, selected: Boolean, onClick: () -> Unit
         ThemeMode.SCHEDULED -> "Planifié"
     }
     val subtitle = when (mode) {
-        ThemeMode.SYSTEM -> "Suit le réglage de votre appareil"
+        ThemeMode.SYSTEM -> "Suit le réglage de l'appareil"
         ThemeMode.LIGHT -> "Utilise toujours le thème clair"
         ThemeMode.DARK -> "Utilise toujours le thème sombre"
         ThemeMode.SCHEDULED -> "Bascule automatiquement selon les horaires définis"

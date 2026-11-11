@@ -120,7 +120,6 @@ import com.zagent.app.ui.theme.LocalGlass
 import com.zagent.app.ui.theme.LocalHazeState
 import com.zagent.app.ui.theme.glassSurface
 import com.zagent.app.ui.viewmodel.MainViewModel
-import android.widget.Toast
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -539,7 +538,7 @@ fun EditorScreen(
                     onFontSize = { size ->
                         // MA83 : mémorise la taille et l'annonce (« 14 sp »).
                         viewModel.updateEditorFontSize(size)
-                        Toast.makeText(context, "$size sp", Toast.LENGTH_SHORT).show()
+                        com.zagent.app.ui.components.common.ZEphemeral.show("$size sp")
                     },
                     onSave = { editor.save(tab) }
                 )
