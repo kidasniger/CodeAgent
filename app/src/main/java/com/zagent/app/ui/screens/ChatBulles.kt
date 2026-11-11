@@ -311,7 +311,13 @@ internal fun AgentCard(
     /** feat-004 — régénère après bascule sur le modèle donné. */
     onRegenerateWith: (String) -> Unit = {},
     /** feat-002 — épingle le message dans le panneau des épinglés. */
-    onPin: () -> Unit = {}
+    onPin: () -> Unit = {},
+    /** feat-017 — évaluation persistée du message. */
+    eval: Int = 0,
+    /** feat-017 — note/annule l'évaluation. */
+    onEval: (Int) -> Unit = {},
+    /** feat-023 — lit / arrête la lecture à voix haute (null = entrée cachée). */
+    onSpeak: (() -> Unit)? = null
 ) {
     val c = Zcolors
     var actionsRevealed by remember(messageIndex) { mutableStateOf(false) }
@@ -419,7 +425,10 @@ internal fun AgentCard(
                 onDelete = onDeleteMessage,
                 onRegenerateWith = onRegenerateWith, // feat-004
                 modelesRegeneration = modelesRegeneration, // feat-004
-                onPin = onPin // feat-002
+                onPin = onPin, // feat-002
+                eval = eval, // feat-017
+                onEval = onEval, // feat-017
+                onSpeak = onSpeak // feat-023
             )
         }
     }
@@ -455,13 +464,19 @@ internal fun MessageActionsBar(
     /** feat-004 — modèles alternatifs proposés dans le menu de régénération. */
     modelesRegeneration: List<String> = emptyList(),
     /** feat-002 — épingle le message dans le panneau des épinglés. */
-    onPin: () -> Unit = {}
+    onPin: () -> Unit = {},
+    /** feat-017 — évaluation persistée du message (+1 / -1 / 0). */
+    eval: Int = 0,
+    /** feat-017 — note/annule l'évaluation du message. */
+    onEval: (Int) -> Unit = {},
+    /** feat-023 — lit / arrête la lecture à voix haute du message (null = caché). */
+    onSpeak: (() -> Unit)? = null
 ) {
     val c = Zcolors
     val clipboard = LocalClipboardManager.current
     val ctx = LocalContext.current
     val haptique = rememberZHaptics() // MàJ 91
-    var feedback by rememberSaveable(messageKey) { mutableStateOf(0) }
+    val feedback = eval // feat-017 — l'état persisté remplace le compteur local
     var menuOpen by remember { mutableStateOf(false) }
     // feat-004 — menu de régénération avec choix d'un autre modèle
     var regenMenuOpen by remember { mutableStateOf(false) }
@@ -497,13 +512,13 @@ internal fun MessageActionsBar(
                 }
             }
             ActionIcon(
-                Icons.Default.ThumbUp, "Utile",
+                Icons.Default.ThumbUp, "Utile", // feat-017 — persisté via onEval
                 tint = if (feedback == 1) c.green else c.text3
-            ) { feedback = if (feedback == 1) 0 else 1 }
+            ) { onEval(if (feedback == 1) 0 else 1) }
             ActionIcon(
                 Icons.Default.ThumbDown, "Pas utile",
                 tint = if (feedback == -1) c.red else c.text3
-            ) { feedback = if (feedback == -1) 0 else -1 }
+            ) { onEval(if (feedback == -1) 0 else -1) }
             ActionIcon(Icons.Default.Share, "Partager") {
                 val send = Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"
@@ -525,6 +540,13 @@ internal fun MessageActionsBar(
                     text = { Text("Épingler", color = c.text) },
                     onClick = { menuOpen = false; onPin() } // feat-002
                 )
+                // feat-023 — lecture à voix haute (synthèse vocale Android).
+                if (onSpeak != null) {
+                    DropdownMenuItem(
+                        text = { Text("Lire à voix haute", color = c.text) },
+                        onClick = { menuOpen = false; onSpeak() }
+                    )
+                }
                 DropdownMenuItem(text = { Text("Supprimer", color = c.red) }, onClick = { menuOpen = false; onDelete() })
             }
         }

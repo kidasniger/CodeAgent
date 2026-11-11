@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -147,6 +148,28 @@ fun HistoryDrawer(viewModel: MainViewModel, onClose: () -> Unit) {
                     },
                     height = 44.dp,
                     leading = { Icon(Icons.Default.Add, null, tint = c.onGrad, modifier = Modifier.size(17.dp)) }
+                )
+                Spacer(Modifier.height(10.dp))
+                // feat-019 — importer une conversation exportée en JSON.
+                val importJson = androidx.activity.compose.rememberLauncherForActivityResult(
+                    androidx.activity.result.contract.ActivityResultContracts.GetContent()
+                ) { uri ->
+                    if (uri != null) {
+                        viewModel.importerConversationJson(uri) { message ->
+                            viewModel.refreshConversations()
+                        }
+                        onClose()
+                    }
+                }
+                Text(
+                    "Importer une conversation (.json)",
+                    style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
+                    color = c.cyan,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(MaterialTheme.shapes.small)
+                        .clickable { importJson.launch("application/json") }
+                        .padding(horizontal = 10.dp, vertical = 10.dp)
                 )
                 Spacer(Modifier.height(10.dp))
 

@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.DataObject
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Save
@@ -89,6 +90,17 @@ fun ShareSheet(viewModel: MainViewModel, onClose: () -> Unit) {
         }
     }
 
+    // feat-018 — export JSON réimportable (feuille d'export).
+    val saveJson = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri: Uri? ->
+        if (uri != null) {
+            viewModel.exportConversationJson(uri, includeTools) { ok ->
+                notice = if (ok) "Conversation exportée en JSON" else "Échec de l'export JSON"
+            }
+        }
+    }
+
     GlassModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = sheetState
@@ -151,6 +163,13 @@ fun ShareSheet(viewModel: MainViewModel, onClose: () -> Unit) {
                 subtitle = "Document paginé, lisible partout",
                 tint = c.red,
                 onClick = { savePdf.launch("conversation-zagent.pdf") }
+            )
+            OverlayRow(
+                icon = Icons.Default.DataObject,
+                title = "Exporter en JSON", // feat-018
+                subtitle = "Fichier réimportable dans ZAgent",
+                tint = c.violet,
+                onClick = { saveJson.launch("conversation-zagent.json") }
             )
             OverlayRow(
                 icon = Icons.AutoMirrored.Filled.OpenInNew,

@@ -946,14 +946,20 @@ object AgentTools {
         var dansHunk = false
 
         fun terminerHunk() {
-            if (dansHunk && chemin.isNotEmpty()) {
+            // feat-029 — un hunk Delete n'a aucune ligne +/- : il est émis sur
+            // la seule présence de sa section ; sinon il faut des lignes de hunk.
+            if (chemin.isNotEmpty() && (dansHunk || action == "delete")) {
                 out.add(PatchHunk(action, chemin, old.toString(), new.toString()))
             }
             old.setLength(0); new.setLength(0); dansHunk = false
         }
 
+        val aiderRe = Regex("^\\*\\*\\* (Update|Add|Delete) File: (.+)$")
+        val minusRe = Regex("^--- (?:a/)?(.+)$")
+        val plusRe = Regex("^\\+\\+\\+ (?:b/)?(.+)$")
+
         for (l in lignes) {
-            val aider = Regex("^\\*\\*\\* (Update|Add|Delete) File: (.+)$").find(l)
+            val aider = aiderRe.find(l)
             if (aider != null) {
                 terminerHunk()
                 action = aider.groupValues[1].lowercase()
@@ -961,18 +967,25 @@ object AgentTools {
                 continue
             }
             if (l.startsWith("*** End Patch") || l.startsWith("*** Begin Patch")) continue
-            val diffHeader = Regex("^(?:---|\\+\\++) a/(.+)$").find(l)
-            if (diffHeader != null) {
-                if (l.startsWith("+++")) {
-                    // Nouveau fichier dans un diff unifié : bascule la cible.
-                    if (action != "add") { terminerHunk(); action = "update" }
-                    chemin = diffHeader.groupValues[1].trim()
+            // En-têtes diff unifié — uniquement HORS hunk (une ligne supprimée
+            // commençant par "--- " reste du contenu).
+            if (!dansHunk) {
+                val minus = minusRe.find(l)
+                if (minus != null) {
+                    val cible = minus.groupValues[1].trim()
+                    if (cible != "/dev/null") {
+                        terminerHunk()
+                        action = "update"
+                        chemin = cible
+                    }
                     continue
                 }
-                terminerHunk()
-                action = "update"
-                chemin = diffHeader.groupValues[1].trim()
-                continue
+                val plus = plusRe.find(l)
+                if (plus != null) {
+                    val cible = plus.groupValues[1].trim()
+                    if (cible != "/dev/null") chemin = cible
+                    continue
+                }
             }
             if (l.startsWith("@@")) { terminerHunk(); dansHunk = true; continue }
             if (l.startsWith("diff ") || l.startsWith("index ")) { terminerHunk(); continue }
@@ -987,7 +1000,6 @@ object AgentTools {
             }
         }
         terminerHunk()
-        // Les fichiers Add/File sans lignes '-' : hunkOld vide — correct.
         return out.filter { it.path.isNotEmpty() }
     }
 }

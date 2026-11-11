@@ -527,6 +527,54 @@ class SettingsManager(context: Context) {
             prefs.edit().putString("permissions_outils", o.toString()).apply()
         }
 
+    /**
+     * feat-014 — Outils d'écriture autorisés ou non PAR CONVERSATION.
+     * Absent = autorisé (les portes de confirmation habituelles s'appliquent).
+     */
+    var ecritureParConversation: Map<String, Boolean>
+        get() = runCatching {
+            val o = org.json.JSONObject(prefs.getString("ecriture_conversations", "{}") ?: "{}")
+            val map = LinkedHashMap<String, Boolean>()
+            val it = o.keys()
+            while (it.hasNext()) {
+                val k = it.next()
+                map[k] = o.optBoolean(k, true)
+            }
+            map
+        }.getOrDefault(emptyMap())
+        set(value) {
+            val o = org.json.JSONObject()
+            for ((k, v) in value) o.put(k, v)
+            prefs.edit().putString("ecriture_conversations", o.toString()).apply()
+        }
+
+    /** feat-017 — Évaluations des réponses (pouces), clé « conversationId:time » → ±1. */
+    var evaluations: Map<String, Int>
+        get() = runCatching {
+            val o = org.json.JSONObject(prefs.getString("evaluations_messages", "{}") ?: "{}")
+            val map = LinkedHashMap<String, Int>()
+            val it = o.keys()
+            while (it.hasNext()) {
+                val k = it.next()
+                map[k] = o.optInt(k, 0)
+            }
+            map
+        }.getOrDefault(emptyMap())
+        set(value) {
+            val o = org.json.JSONObject()
+            for ((k, v) in value) o.put(k, v)
+            prefs.edit().putString("evaluations_messages", o.toString()).apply()
+        }
+
+    /**
+     * feat-025 — Bascule automatique vers un modèle de secours en cas de
+     * surcharge (429/1305) ou de clé refusée. Activée par défaut (MàJ 103) ;
+     * désactivable pour rester strictement sur le modèle choisi.
+     */
+    var repliAutoActif: Boolean
+        get() = prefs.getBoolean("repli_auto_actif", true)
+        set(value) = prefs.edit().putBoolean("repli_auto_actif", value).apply()
+
     private val prefJson = Json { coerceInputValues = true; ignoreUnknownKeys = true }
 
     /** Historique des dernières recherches globales (MA58), du plus récent au plus ancien. */

@@ -91,6 +91,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -197,6 +198,36 @@ fun ChatScreen(
     val scope = rememberCoroutineScope()
     var input by rememberSaveable { mutableStateOf("") }
     var editingIndex by rememberSaveable { mutableStateOf(-1) }
+    // feat-023 — moteur de synthèse vocale pour « Lire à voix haute ».
+    val ctxTts = LocalContext.current
+    val tts = remember {
+        android.speech.tts.TextToSpeech(ctxTts) { }
+    }
+    var ttsActif by rememberSaveable { mutableStateOf(false) }
+    DisposableEffect(Unit) {
+        onDispose { runCatching { tts.stop(); tts.shutdown() } }
+    }
+    remember(tts) {
+        tts.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
+            override fun onStart(id: String?) { ttsActif = true }
+            override fun onDone(id: String?) { ttsActif = false }
+            @Deprecated("Deprecated in Java")
+            override fun onError(id: String?) { ttsActif = false }
+        })
+        0
+    }
+    fun lireAVoixHaute(texte: String) {
+        if (ttsActif) {
+            runCatching { tts.stop() }
+            ttsActif = false
+        } else {
+            runCatching {
+                tts.language = java.util.Locale.FRENCH
+                tts.setSpeechRate(1.05f)
+                tts.speak(texte.take(6000), android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, "zagent-tts")
+            }
+        }
+    }
     var applyCode by remember { mutableStateOf<String?>(null) }
 
     // feat-001 — recherche dans la conversation courante : barre, surlignage des
@@ -569,7 +600,10 @@ fun ChatScreen(
                                                 liveStartedAt = viewModel.liveStartedAt,
                                                 onStop = { viewModel.stopLiveCommand() },
                                                 highlight = searchQuery, // feat-001
-                                                onPin = { epinglerRow(row.key, row.content.orEmpty()) } // feat-002
+                                                onPin = { epinglerRow(row.key, row.content.orEmpty()) }, // feat-002
+                                                eval = viewModel.evaluationDe(row.messageIndex), // feat-017
+                                                onEval = { viewModel.evaluer(row.messageIndex, it) }, // feat-017
+                                                onSpeak = { lireAVoixHaute(row.content.orEmpty()) } // feat-023
                                             )
                                         }
                                     }

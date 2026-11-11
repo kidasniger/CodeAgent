@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Icon
@@ -79,6 +80,7 @@ fun PermissionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     var execution by remember { mutableStateOf(viewModel.settingsManager.allowExecute) }
     var lectureSeule by remember { mutableStateOf(viewModel.settingsManager.lectureSeule) }
     var rechercheWeb by remember { mutableStateOf(viewModel.settingsManager.rechercheWebActive) } // feat-032
+    var repliAuto by remember { mutableStateOf(viewModel.settingsManager.repliAutoActif) } // feat-025
 
     LaunchedEffect(Unit) {
         events = viewModel.activityRepoSnapshot()
@@ -161,6 +163,14 @@ fun PermissionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 onToggle = { viewModel.settingsManager.rechercheWebActive = it; rechercheWeb = it },
                 icon = Icons.Default.Language,
                 tint = c.cyan
+            )
+            ModeRow(
+                title = "Modèle de secours automatique", // feat-025
+                subtitle = "En cas de surcharge ou de clé refusée, bascule tout seul vers un modèle disponible (désactive pour rester sur ton modèle).",
+                checked = repliAuto,
+                onToggle = { viewModel.settingsManager.repliAutoActif = it; repliAuto = it },
+                icon = Icons.Default.SwapHoriz,
+                tint = c.amber
             )
         }
         Spacer(Modifier.height(16.dp))

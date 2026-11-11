@@ -2167,7 +2167,8 @@ done; } 2>&1 | head -c 50000
                     // MàJ 103 — repli automatique : surcharge (429/1305), clé refusée
                     // (401) ou réseau → une seule bascule vers le maillon suivant de
                     // la chaîne (même fournisseur d'abord, puis autre fournisseur).
-                    val alt = if (repliEffectue) null
+                    // feat-025 — réglage : le repli automatique peut être désactivé.
+                    val alt = if (repliEffectue || !settingsManager.repliAutoActif) null
                     else ModelCatalog.chaineRepli(modeleUtilise)
                         .firstOrNull { clePourModele(it).isNotBlank() }
                     if (alt != null) {
@@ -2458,6 +2459,11 @@ done; } 2>&1 | head -c 50000
         // que soit le mode de confirmation choisi.
         if (settingsManager.lectureSeule && tc.name in OUTILS_ECRITURE) {
             return "Refusé : le mode lecture seule est actif (Réglages › Permissions & sécurité)."
+        }
+        // feat-014 — interrupteur par conversation : les outils d'écriture
+        // peuvent être désactivés pour la conversation courante.
+        if (!ecritureAutoriseeConversation && tc.name in OUTILS_ECRITURE) {
+            return "Refusé : les outils d'écriture sont désactivés pour cette conversation (menu ⋯ du chat)."
         }
         if (tc.name == "write_file") {
             val parsedArgs = try {
@@ -3043,6 +3049,34 @@ done; } 2>&1 | head -c 50000
 
     /** Quote shell sûr pour un argument injecté dans une commande git. */
     private fun shellQuote(s: String): String = "'" + s.replace("'", "'\\''") + "'"
+
+    // ── feat-014 : écriture autorisée ou non, par conversation ───────────
+    /** Vrai (défaut) si cette conversation autorise les outils d'écriture. */
+    val ecritureAutoriseeConversation: Boolean
+        get() = settingsManager.ecritureParConversation[conversationId] ?: true
+
+    /** feat-014 — Bascule l'autorisation d'écriture de la conversation courante. */
+    fun reglerEcritureConversation(autorisée: Boolean) {
+        val map = settingsManager.ecritureParConversation.toMutableMap()
+        if (autorisée) map.remove(conversationId) else map[conversationId] = false
+        settingsManager.ecritureParConversation = map
+    }
+
+    // ── feat-017 : évaluation des réponses (pouces, persistée) ───────────
+    /** Évaluation d'un message (+1 / -1 / 0) pour l'index donné. */
+    fun evaluationDe(index: Int): Int {
+        val m = chat.edit.value.getOrNull(index) ?: return 0
+        return settingsManager.evaluations[conversationId + ":" + m.time] ?: 0
+    }
+
+    /** Note (ou annule) l'évaluation du message à l'index donné. */
+    fun evaluer(index: Int, valeur: Int) {
+        val m = chat.edit.value.getOrNull(index) ?: return
+        val map = settingsManager.evaluations.toMutableMap()
+        val cle = conversationId + ":" + m.time
+        if (valeur == 0) map.remove(cle) else map[cle] = valeur
+        settingsManager.evaluations = map
+    }
 
     // ── feat-055 : exécuter le fichier ouvert selon son extension ───────────
     /** Extensions exécutables depuis l'éditeur → modèle de commande ({f} = chemin quoté). */
@@ -3794,6 +3828,101 @@ done; } 2>&1 | head -c 50000
                 getApplication<Application>().contentResolver.openOutputStream(uri)?.use { it.write(md.toByteArray(Charsets.UTF_8)) } != null
             }.getOrDefault(false)
             withContext(Dispatchers.Main) { onDone(ok) }
+        }
+    }
+
+    /**
+     * feat-018 — Exporte la conversation en JSON structuré (réimportable via
+     * l'import de conversation) : rôles, contenus, horodatages, appels d'outils.
+     */
+    fun exportConversationJson(uri: android.net.Uri, includeTools: Boolean, onDone: (Boolean) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val payload = buildJsonObject {
+                put("application", "ZAgent")
+                put("schema", 1)
+                put("conversationId", conversationId)
+                put("exportedAt", System.currentTimeMillis())
+                put("messages", buildJsonArray {
+                    for (m in chat.edit.value) {
+                        add(buildJsonObject {
+                            put("role", m.role)
+                            m.content?.let { put("content", it) }
+                            put("time", m.time)
+                            m.reasoning?.let { put("reasoning", it) }
+                            m.modele?.let { put("modele", it) }
+                            if (includeTools && !m.toolCalls.isNullOrEmpty()) {
+                                put("toolCalls", buildJsonArray {
+                                    for (tc in m.toolCalls) {
+                                        add(buildJsonObject {
+                                            put("id", tc.id)
+                                            put("name", tc.name)
+                                            put("arguments", tc.arguments)
+                                        })
+                                    }
+                                })
+                            }
+                        })
+                    }
+                })
+            }
+            val ok = runCatching {
+                getApplication<Application>().contentResolver.openOutputStream(uri)?.use {
+                    it.write(payload.toString().toByteArray(Charsets.UTF_8))
+                } != null
+            }.getOrDefault(false)
+            withContext(Dispatchers.Main) { onDone(ok) }
+        }
+    }
+
+    /**
+     * feat-019 — Importe une conversation exportée en JSON (schema ZAgent) :
+     * crée une NOUVELLE conversation avec les messages importés.
+     */
+    fun importerConversationJson(uri: android.net.Uri, onDone: (String) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val resultat = runCatching {
+                val texte = getApplication<Application>().contentResolver.openInputStream(uri)
+                    ?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                    ?: error("Fichier illisible")
+                val racine = Json.parseToJsonElement(texte).jsonObject
+                val messagesJson = racine["messages"] as? JsonArray ?: error("Aucun tableau « messages »")
+                val importes = messagesJson.mapNotNull { el ->
+                    val o = el as? JsonObject ?: return@mapNotNull null
+                    val role = (o["role"] as? JsonPrimitive)?.contentOrNull ?: return@mapNotNull null
+                    ChatMessage(
+                        role = role,
+                        content = (o["content"] as? JsonPrimitive)?.contentOrNull,
+                        time = (o["time"] as? JsonPrimitive)?.contentOrNull?.toLongOrNull() ?: System.currentTimeMillis(),
+                        reasoning = (o["reasoning"] as? JsonPrimitive)?.contentOrNull,
+                        modele = (o["modele"] as? JsonPrimitive)?.contentOrNull,
+                        toolCalls = ((o["toolCalls"] as? JsonArray)?.takeIf { it.isNotEmpty() })?.map { tc ->
+                            val t = tc.jsonObject
+                            AiRepository.ToolCallData(
+                                (t["id"] as? JsonPrimitive)?.contentOrNull ?: UUID.randomUUID().toString(),
+                                (t["name"] as? JsonPrimitive)?.contentOrNull ?: "?",
+                                (t["arguments"] as? JsonPrimitive)?.contentOrNull ?: "{}"
+                            )
+                        }
+                    )
+                }
+                if (importes.isEmpty()) error("Aucun message exploitable dans le fichier")
+                importes
+            }.getOrElse {
+                withContext(Dispatchers.Main) { onDone("Import échoué : " + (it.message ?: "?").take(120)) }
+                return@launch
+            }
+            // Nouvelle conversation dédiée aux messages importés.
+            withContext(Dispatchers.Main) {
+                persistCurrentConversation(immediate = true)
+                chat.cancelDraftSave()
+                conversationId = UUID.randomUUID().toString()
+                settingsManager.lastConversationId = conversationId
+                chat.edit.value = resultat
+                promptTokens = 0
+                completionTokens = 0
+                persistCurrentConversation(immediate = true)
+                onDone("Import réussi : " + resultat.size + " messages.")
+            }
         }
     }
 

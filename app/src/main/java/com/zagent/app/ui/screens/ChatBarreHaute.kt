@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.PushPin
@@ -213,6 +214,17 @@ internal fun AmbientTopBar(
                             onClick = {
                                 moreMenuOpen = false
                                 onOpenPinned()
+                            }
+                        )
+                        // feat-014 — écriture autorisée ou non, par conversation.
+                        ZMenuItem(
+                            label = if (viewModel.ecritureAutoriseeConversation)
+                                "Interdire les écritures dans cette conversation"
+                            else "Autoriser les écritures dans cette conversation",
+                            icon = Icons.Default.Lock,
+                            onClick = {
+                                moreMenuOpen = false
+                                viewModel.reglerEcritureConversation(!viewModel.ecritureAutoriseeConversation)
                             }
                         )
                         ZMenuSeparator()
