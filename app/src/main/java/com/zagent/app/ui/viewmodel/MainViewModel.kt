@@ -1405,6 +1405,14 @@ done; } 2>&1 | head -c 50000
     val terminal = com.zagent.app.terminal.TerminalController(application, viewModelScope)
 
     init {
+        // err-056 — projet introuvable au démarrage : nettoyage et prévention.
+        workingFolderUriString?.let { p ->
+            if (!java.io.File(p).isDirectory) {
+                workingFolderUriString = null
+                settingsManager.workingFolderUri = null
+                statusMessage = "Le dossier du projet précédent n'existe plus — sélectionne un nouveau projet."
+            }
+        }
         terminal.projectDir = workingFolderUriString
         // MA79 : rouvre les onglets du projet au démarrage.
         workingFolderUriString?.let { p ->
@@ -2503,6 +2511,9 @@ done; } 2>&1 | head -c 50000
                 }
                 "[fichier : " + a.name + "]\n" + sb.toString()
             } ?: "[pièce jointe : " + a.name + " (illisible)]"
+        } catch (e: SecurityException) {
+            // err-055 — accès au contenu révoqué (SAF) : guider l'utilisateur.
+            "[pièce jointe : " + a.name + " (accès révoqué — resélectionne le fichier pour le joindre à nouveau)]"
         } catch (e: Exception) {
             "[pièce jointe : " + a.name + " (lecture impossible)]"
         }

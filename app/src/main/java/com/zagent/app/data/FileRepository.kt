@@ -196,6 +196,16 @@ class FileRepository(private val context: Context?, private val rootPath: String
         if (target.isDirectory) return "Erreur: C'est un dossier, pas un fichier: $path"
 
         return try {
+            // err-050 — détection binaire : un octet nul dans l'en-tête refuse l'ouverture texte.
+            val entete = target.inputStream().use { ins ->
+                val buf = ByteArray(8000)
+                val n = ins.read(buf)
+                if (n > 0) buf.copyOf(n) else ByteArray(0)
+            }
+            if (entete.contains(0.toByte())) {
+                return "Erreur: fichier binaire ($path) — l'ouverture en texte est refusée. " +
+                    "Utilise file_info (taille, type) ou le terminal pour le traiter."
+            }
             target.inputStream().bufferedReader(Charsets.UTF_8).use { reader ->
                 // corr-073 : un BOM UTF-8 éventuel est retiré (il apparaîtrait
                 // sinon comme ﻿ en tête du contenu affiché à l'agent).
@@ -213,8 +223,20 @@ class FileRepository(private val context: Context?, private val rootPath: String
                         break
                     }
                 }
-                sb.toString()
+                var texte = sb.toString()
+                // err-051 — octets invalides (non UTF-8) remplacés : le signaler.
+                if ('\uFFFD' in texte) {
+                    texte += "\n[caractères invalides : l'encodage n'est pas de l'UTF-8 valide]"
+                }
+                texte
             }
+        } catch (e: java.io.FileNotFoundException) {
+            // err-047 — EACCES arrive comme FileNotFoundException « Permission denied ».
+            if (e.message?.contains("Permission denied", true) == true)
+                "Erreur: Accès refusé à $path (droits du fichier)."
+            else "Erreur: Fichier introuvable: $path"
+        } catch (e: SecurityException) {
+            "Erreur: Accès refusé à $path."
         } catch (e: Exception) {
             "Erreur lors de la lecture (fichier binaire ou corrompu ?): ${e.localizedMessage}"
         }
@@ -280,7 +302,7 @@ class FileRepository(private val context: Context?, private val rootPath: String
         if (!validatePath(path)) return "Erreur: Chemin invalide (.. interdit)"
         val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
         val target = resolveInside(root, path) ?: return "Erreur: Chemin invalide: $path"
-        if (target.exists()) return "Erreur: Existe déjà: $path"
+        if (target.exists()) return "Erreur: Existe déjà: $path — choisis un autre nom, ou écrase le contenu avec write_file si c'est bien le même fichier."
         return try {
             target.parentFile?.mkdirs()
             if (target.createNewFile()) "Succès: Fichier créé $path" else "Erreur: Impossible de créer $path"
@@ -309,7 +331,7 @@ class FileRepository(private val context: Context?, private val rootPath: String
         val target = resolveExisting(root, path) ?: return "Erreur: Introuvable: $path"
         val parent = target.parentFile ?: return "Erreur: Dossier parent introuvable"
         val dest = File(parent, newName)
-        if (dest.exists()) return "Erreur: Existe déjà: $newName"
+        if (dest.exists()) return "Erreur: Existe déjà: $newName — choisis un autre nom."
         return try {
             if (target.renameTo(dest)) "Succès: Renommé en $newName" else "Erreur: Renommage impossible"
         } catch (e: Exception) {
@@ -334,7 +356,7 @@ class FileRepository(private val context: Context?, private val rootPath: String
             return "Erreur: Impossible de déplacer un dossier dans lui-même."
         }
         val cible = File(dest, source.name)
-        if (cible.exists()) return "Erreur: Existe déjà: $destDir/${source.name}"
+        if (cible.exists()) return "Erreur: Existe déjà: $destDir/${source.name} — renomme la source ou choisis une autre destination."
         return try {
             if (source.renameTo(cible)) "Succès: Déplacé vers $destDir/${source.name}"
             else {
@@ -563,6 +585,15 @@ class FileRepository(private val context: Context?, private val rootPath: String
 
     private fun writeFileLocked(target: File, path: String, content: String): String {
         if (target.isDirectory) return "Erreur: C'est un dossier: $path"
+        // err-048 — espace disque : échec tôt et clair avant l'écriture.
+        val necessaire = content.toByteArray(Charsets.UTF_8).size.toLong() * 2L + 64_000L
+        target.parentFile?.let { p ->
+            val libre = p.usableSpace
+            if (libre in 1 until necessaire) {
+                return "Erreur: espace disque insuffisant (" + (libre / 1024) + " Ko libres, ~" +
+                    (necessaire / 1024) + " Ko nécessaires) — libère de la place (corbeille, caches) puis réessaie."
+            }
+        }
         val tmp = File(target.parentFile, target.name + ".zagent-tmp")
         return try {
             target.parentFile?.mkdirs()
@@ -579,7 +610,11 @@ class FileRepository(private val context: Context?, private val rootPath: String
             }
         } catch (e: Exception) {
             tmp.delete()
-            "Erreur d'écriture: ${e.localizedMessage}"
+            // err-048 — disque plein pendant l'écriture : message dédié.
+            val msg = e.localizedMessage ?: e.javaClass.simpleName
+            if (msg.contains("No space left", true) || msg.contains("ENOSPC", true))
+                "Erreur d'écriture: disque plein — libère de la place (corbeille, caches) puis réessaie."
+            else "Erreur d'écriture: $msg"
         }
     }
 }

@@ -89,5 +89,19 @@
   "err-043": "Déjà en place (MàJ 103) : chaineRepli du modèle actif, bascule unique quand repliAutoActif, bouton « Changer de modèle » sur surcharge.",
   "err-044": "Session 10 : validerBaseUrl (https obligatoire, http uniquement local 127.0.0.1/localhost/192.168.*, chemin /v1 ou chat/completions, URI parsable avec hôte) — appliqué à saveBaseUrl et testerCleOnboarding.",
   "err-045": "Session 10 : messages dédiés serveur local (localhost/127.0.0.1) sur DNS et E/S — IP du PC, même réseau Wi-Fi, cleartext.",
-  "err-058": "Session 10 : edit_file en échec renvoie un extrait de contexte (7 lignes autour de la première ligne de old_string retrouvée, sinon début du fichier) + nombre de lignes."
+  "err-058": "Session 10 : edit_file en échec renvoie un extrait de contexte (7 lignes autour de la première ligne de old_string retrouvée, sinon début du fichier) + nombre de lignes.",
+  "err-046": "Vérifié : messages « introuvable » cohérents sur tous les chemins (listDir, readFile, fileInfo, éditeur, outils).",
+  "err-047": "Session 10 : readFile distingue FileNotFoundException « Permission denied » → Accès refusé (droits du fichier), SecurityException → Accès refusé ; listEntriesResult avait déjà SecurityException dédié.",
+  "err-048": "Session 10 : writeFileLocked vérifie usableSpace avant écriture (échec tôt, Ko libres/nécessaires) et traduit ENOSPC/« No space left » en message « disque plein ».",
+  "err-049": "Déjà en place : lecture agent tronquée à 20000 caractères avec note explicite ; éditeur limité à 500 Ko avec message dédié (readFileForEdit).",
+  "err-050": "Session 10 : readFile refuse l ouverture texte si un octet nul figure dans les 8000 premiers octets (fichier binaire), avec renvoi vers file_info/terminal.",
+  "err-051": "Session 10 : readFile signale les octets invalides (« encodage non UTF-8 valide ») quand des � apparaissent.",
+  "err-052": "Déjà en place (corr-025/026) : validatePath refuse .. , \\ , NUL et %2e%2e décodé ; resolveInside vérifie la containment canonique (liens symboliques inclus).",
+  "err-053": "Session 10 : messages « Existe déjà » enrichis — renommer (autre nom) ou écraser via write_file.",
+  "err-054": "Déjà en place : écriture atomique tmp+rename (writeFileLocked), tmp supprimé en cas d échec — aucune écriture partielle ne survit.",
+  "err-055": "Session 10 : readUriAttachment distingue SecurityException → « accès révoqué — resélectionne le fichier ».",
+  "err-056": "Session 10 : au démarrage (init MainViewModel), si le dossier projet enregistré n existe plus → réinitialisation du réglage + message « sélectionne un nouveau projet ».",
+  "err-057": "Déjà en place : bandeau éditeur « L agent a modifié ce fichier » (Recharger / Garder le mien), verrou par chemin canonique (corr-098), edit_file relit toujours le fichier frais avant modification.",
+  "err-059": "Non applicable : les recherches (search_in_files, éditeur) sont textuelles sans regex utilisateur ; les motifs glob/gitignore sont échappés à la construction — aucune PatternSyntaxException possible.",
+  "err-060": "Déjà en place : unzipFile traduit ZipException → « Archive corrompue » et bloque Zip Slip ; signature ZIP vérifiée aussi côté bootstrap."
 }
