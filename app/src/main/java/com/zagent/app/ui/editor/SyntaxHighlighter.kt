@@ -2,7 +2,7 @@ package com.zagent.app.ui.editor
 
 import java.util.regex.Pattern
 
-enum class Lang { HTML, CSS, JS, KOTLIN, PYTHON, JSON, MARKDOWN, PLAIN }
+enum class Lang { HTML, CSS, JS, KOTLIN, PYTHON, JSON, MARKDOWN, YAML, SHELL, PLAIN }
 
 enum class Kind { COMMENT, STRING, NUMBER, KEYWORD, TYPE, FUNCTION, TAG, ATTR, PROP, LITERAL, HEADING, EMPH }
 
@@ -21,6 +21,8 @@ object SyntaxHighlighter {
         "py" -> Lang.PYTHON
         "json" -> Lang.JSON
         "md", "markdown" -> Lang.MARKDOWN
+        "yml", "yaml" -> Lang.YAML
+        "sh", "bash", "zsh" -> Lang.SHELL
         else -> Lang.PLAIN
     }
 
@@ -32,6 +34,8 @@ object SyntaxHighlighter {
         Lang.PYTHON -> "Python"
         Lang.JSON -> "JSON"
         Lang.MARKDOWN -> "Markdown"
+        Lang.YAML -> "YAML"
+        Lang.SHELL -> "Shell"
         Lang.PLAIN -> "Texte"
     }
 
@@ -193,6 +197,34 @@ object SyntaxHighlighter {
     private var cacheLang: Lang? = null
     private var cacheSpans: List<Span> = emptyList()
 
+
+    /** feat-068 — YAML : commentaires, clés, chaînes, nombres, booléens. */
+    private val YAML_RULES = RuleSet(
+        listOf(
+            Rule(Kind.COMMENT, """#[^\n]*"""),
+            Rule(Kind.STRING, DQ_SQ),
+            Rule(Kind.KEYWORD, """(?m)^\s*[\w.\-]+(?=:)"""),
+            Rule(Kind.NUMBER, """\b(?:0[xX][0-9a-fA-F]+|\d+(?:\.\d+)?)\b"""),
+            Rule(Kind.LITERAL, """\b(?:true|false|null|yes|no|on|off)\b"""),
+            Rule(Kind.ATTR, """&[A-Za-z0-9_-]+|\*[A-Za-z0-9_-]+""")
+        )
+    )
+
+    /** feat-068 — Shell : commentaires, chaînes, variables, mots-clés, commandes courantes. */
+    private val SHELL_RULES = RuleSet(
+        listOf(
+            Rule(Kind.COMMENT, """#[^\n]*"""),
+            Rule(Kind.STRING, DQ_SQ),
+            Rule(Kind.ATTR, """\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*|\$\d"""),
+            Rule(
+                Kind.KEYWORD,
+                """\b(?:if|then|elif|else|fi|for|while|until|do|done|case|esac|function|in|return|export|local|set|source|alias|exit|break|continue|shift|trap)\b"""
+            ),
+            Rule(Kind.LITERAL, """\b(?:true|false|echo|cd|ls|grep|sed|awk|cat|cp|mv|rm|mkdir|chmod|chown|tar|curl|wget|git|npm|node|python|pip)\b"""),
+            Rule(Kind.NUMBER, """\b\d+\b""")
+        )
+    )
+
     @Synchronized
     fun spans(text: String, lang: Lang): List<Span> {
         if (lang == Lang.PLAIN || text.length > MAX_CHARS) return emptyList()
@@ -207,6 +239,8 @@ object SyntaxHighlighter {
                 Lang.CSS -> scan(text, CSS_RULES, 0, text.length, out)
                 Lang.JSON -> scan(text, JSON_RULES, 0, text.length, out)
                 Lang.MARKDOWN -> scan(text, MD_RULES, 0, text.length, out)
+                Lang.YAML -> scan(text, YAML_RULES, 0, text.length, out)
+                Lang.SHELL -> scan(text, SHELL_RULES, 0, text.length, out)
                 Lang.PLAIN -> Unit
             }
         } catch (e: Exception) {

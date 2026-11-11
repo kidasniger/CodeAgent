@@ -148,6 +148,9 @@ fun EditorScreen(
     var caseSensitive by remember { mutableStateOf(false) }
     // MA82 : option « mot entier » de la recherche.
     var wholeWord by remember { mutableStateOf(false) }
+    var useRegex by remember { mutableStateOf(false) } // feat-059
+    var showAllerLigne by remember { mutableStateOf(false) } // feat-060
+    var numeroLigne by remember { mutableStateOf("") } // feat-060
     var currentIdx by remember { mutableIntStateOf(0) }
     var confirmClose by remember { mutableStateOf<Int?>(null) }
     var showPreview by remember { mutableStateOf(false) }
@@ -333,8 +336,8 @@ fun EditorScreen(
 
         // ── Recherche / remplacement ────────────────────────────────────────
         val text = tab?.value?.text ?: ""
-        val matches = remember(text, query, caseSensitive, wholeWord) {
-            findAll(text, query, caseSensitive, wholeWord)
+        val matches = remember(text, query, caseSensitive, wholeWord, useRegex) {
+            findAll(text, query, caseSensitive, wholeWord, useRegex)
         }
         val safeIdx = if (matches.isEmpty()) 0 else currentIdx.coerceIn(0, matches.lastIndex)
 
@@ -398,6 +401,10 @@ fun EditorScreen(
                     OptionChip("Aa", "Respecter la casse", caseSensitive) { caseSensitive = !caseSensitive }
                     Spacer(Modifier.width(4.dp))
                     OptionChip("ab|", "Mot entier", wholeWord) { wholeWord = !wholeWord }
+                    Spacer(Modifier.width(4.dp))
+                    OptionChip(".*", "Expression régulière", useRegex) { useRegex = !useRegex } // feat-059
+                    Spacer(Modifier.width(4.dp))
+                    OptionChip("#", "Aller à la ligne", showAllerLigne) { showAllerLigne = !showAllerLigne } // feat-060
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     SearchField(
@@ -429,6 +436,44 @@ fun EditorScreen(
                             tab?.applyEdit(TextFieldValue(sb.toString(), TextRange(0)))
                         }
                     ) { Text("Tout", color = if (matches.isNotEmpty()) c.cyan else c.text3, fontSize = 12.sp) }
+                }
+                // feat-060 — aller à la ligne.
+                if (showAllerLigne) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        SearchField(
+                            value = numeroLigne,
+                            onValueChange = { numeroLigne = it.filter { ch -> ch.isDigit() }.take(6) },
+                            placeholder = "Numéro de ligne",
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        TextButton(
+                            enabled = numeroLigne.isNotEmpty() && tab != null,
+                            onClick = {
+                                val n = numeroLigne.toIntOrNull() ?: return@TextButton
+                                val t = tab ?: return@TextButton
+                                val lignes = text.split("\n")
+                                if (lignes.isEmpty() || n < 1 || n > lignes.size) return@TextButton
+                                val offset = lignes.take(n - 1).sumOf { it.length + 1 }
+                                t.setSelection(TextRange(offset))
+                                val target = ((n - 1) * lineHeightPx - lineHeightPx * 6).toInt().coerceAtLeast(0)
+                                scope.launch { vScroll?.animateScrollTo(target) }
+                            }
+                        ) { Text("Aller", color = if (numeroLigne.isNotEmpty()) c.cyan else c.text3, fontSize = 12.sp) }
+                    }
+                }
+            }
+        }
+
+        // feat-066 — sauvegarde automatique 2,5 s après la dernière frappe,
+        // avec indicateur discret dans la barre d'infos de l'éditeur.
+        LaunchedEffect(tab?.path, text) {
+            val t = tab ?: return@LaunchedEffect
+            if (t.dirty) {
+                kotlinx.coroutines.delay(2500)
+                if (t.dirty && editor.active === t) {
+                    editor.save(t)
+                    editor.info = "Sauvegarde automatique effectuée"
                 }
             }
         }

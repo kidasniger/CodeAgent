@@ -57,7 +57,7 @@ class EditorTab(val path: String, initial: String, val crlf: Boolean) {
             return
         }
         val now = System.currentTimeMillis()
-        val fixed = autoIndent(old, new) ?: new
+        val fixed = autoIndent(old, new) ?: surtype(old, new) ?: fermetureAuto(old, new) ?: new
         if (now - lastEditTime > 700 || undoStack.isEmpty()) pushUndo(old)
         lastEditTime = now
         value = fixed
@@ -133,6 +133,43 @@ class EditorTab(val path: String, initial: String, val crlf: Boolean) {
         if (add.isEmpty()) return null
         val t = new.text.substring(0, pos) + add + new.text.substring(pos)
         return TextFieldValue(t, TextRange(pos + add.length))
+    }
+
+    /** Paires fermantes insérées automatiquement (feat-063). */
+    private val pairesFermeture = mapOf('(' to ')', '[' to ']', '{' to '}', '"' to '"', '\'' to '\'')
+
+    /**
+     * feat-063 — Surtype : taper un fermant déjà présent juste après le
+     * curseur « passe au-dessus » au lieu d'ajouter un doublon.
+     */
+    private fun surtype(old: TextFieldValue, new: TextFieldValue): TextFieldValue? {
+        if (new.text.length != old.text.length + 1) return null
+        if (!old.selection.collapsed) return null
+        val pos = new.selection.start
+        if (pos < 1 || pos >= new.text.length) return null
+        val c = new.text[pos - 1]
+        if (c in ")]}\"'".toSet() && new.text[pos] == c) {
+            return TextFieldValue(new.text.removeRange(pos, pos + 1), TextRange(pos))
+        }
+        return null
+    }
+
+    /**
+     * feat-063 — Fermeture automatique : saisir ( [ { " ' insère la paire
+     * avec le curseur entre les deux (uniquement hors sélection).
+     */
+    private fun fermetureAuto(old: TextFieldValue, new: TextFieldValue): TextFieldValue? {
+        if (new.text.length != old.text.length + 1) return null
+        if (!old.selection.collapsed) return null
+        val pos = new.selection.start
+        if (pos < 1 || pos > new.text.length) return null
+        val c = new.text[pos - 1]
+        val fermant = pairesFermeture[c] ?: return null
+        // Pas d'auto-fermeture juste avant un mot (évite « (mot » bizarre).
+        val suivant = new.text.getOrNull(pos)
+        if (suivant != null && (suivant.isLetterOrDigit() || suivant == '_')) return null
+        val t = new.text.substring(0, pos) + fermant + new.text.substring(pos)
+        return TextFieldValue(t, TextRange(pos))
     }
 }
 

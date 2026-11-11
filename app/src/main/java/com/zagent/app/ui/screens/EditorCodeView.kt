@@ -165,11 +165,25 @@ internal fun findAll(
     text: String,
     query: String,
     caseSensitive: Boolean,
-    wholeWord: Boolean = false
+    wholeWord: Boolean = false,
+    useRegex: Boolean = false
 ): List<IntRange> {
     if (query.isEmpty()) return emptyList()
     fun isWordChar(ch: Char) = ch.isLetterOrDigit() || ch == '_'
     val out = ArrayList<IntRange>()
+    // feat-059 — recherche par expression régulière (invalide = aucun résultat).
+    if (useRegex) {
+        val opts = if (caseSensitive) emptySet() else setOf(RegexOption.IGNORE_CASE)
+        val re = runCatching { Regex(query, opts) }.getOrNull() ?: return emptyList()
+        for (m in re.findAll(text)) {
+            if (out.size >= 5000) break
+            val r = m.range
+            val leftOk = !wholeWord || r.first == 0 || !isWordChar(text[r.first - 1])
+            val rightOk = !wholeWord || r.last + 1 >= text.length || !isWordChar(text[r.last + 1])
+            if (leftOk && rightOk) out.add(r)
+        }
+        return out
+    }
     var i = text.indexOf(query, 0, ignoreCase = !caseSensitive)
     while (i >= 0 && out.size < 5000) {
         val end = i + query.length
