@@ -4462,7 +4462,7 @@ done; } 2>&1 | head -c 50000
     var sshOccupe by mutableStateOf(false)
         private set
 
-    /** feat-058 — Liste les clés publiques existantes (~/.ssh/*.pub). */
+    /** feat-058 — Liste les clés publiques existantes du dossier ~/.ssh (extension .pub). */
     fun listerClesSsh() {
         if (sshOccupe) return
         sshOccupe = true
