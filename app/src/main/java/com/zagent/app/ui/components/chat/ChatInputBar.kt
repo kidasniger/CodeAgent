@@ -19,6 +19,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -179,8 +180,11 @@ fun ChatInputBar(
         uri?.let { viewModel.addAttachmentUri(it) }
     }
 
-    // ── MA54 : dictée vocale (SpeechRecognizer, fr-FR) ───────────────────────
+    // ── MA54 : dictée vocale (SpeechRecognizer) ────────────────────────────
     var recognizer by remember { mutableStateOf<SpeechRecognizer?>(null) }
+    // feat-022 — mode continu (appui long sur le micro) : la dictée se relance
+    // toute seule jusqu'à un nouvel appui long ou l'envoi.
+    var dicteeContinue by rememberSaveable { mutableStateOf(false) }
     DisposableEffect(Unit) {
         onDispose {
             recognizer?.stopListening()
@@ -194,6 +198,9 @@ fun ChatInputBar(
             Toast.makeText(context, "La dictée vocale n'est pas disponible sur cet appareil.", Toast.LENGTH_SHORT).show()
             return
         }
+        // feat-022 — la base du champ est capturée au départ : les résultats
+        // partiels réécrivent la fin du champ sans dupliquer la transcription.
+        val baseDictee = currentValue
         val sr = SpeechRecognizer.createSpeechRecognizer(context)
         sr.setRecognitionListener(object : RecognitionListener {
             override fun onReadyForSpeech(params: Bundle?) { isListening = true }
@@ -218,16 +225,40 @@ fun ChatInputBar(
                     ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                     ?.firstOrNull().orEmpty().trim()
                 if (text.isNotEmpty()) {
-                    val base = currentValue
-                    currentOnValueChange(if (base.isBlank()) text else base + " " + text)
+                    val nouveau = if (baseDictee.isBlank()) text else baseDictee + " " + text
+                    currentOnValueChange(nouveau)
+                    // feat-022 — mode continu : relance automatique de l'écoute.
+                    if (dicteeContinue) {
+                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                            if (dicteeContinue) startRecognition()
+                        }, 350)
+                    }
+                } else if (dicteeContinue) {
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        if (dicteeContinue) startRecognition()
+                    }, 350)
                 }
             }
-            override fun onPartialResults(partialResults: Bundle?) {}
+            override fun onPartialResults(partialResults: Bundle?) {
+                // feat-022 — transcription en direct pendant la dictée.
+                val partiel = partialResults
+                    ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    ?.firstOrNull().orEmpty().trim()
+                if (partiel.isNotEmpty()) {
+                    currentOnValueChange(if (baseDictee.isBlank()) partiel else baseDictee + " " + partiel)
+                }
+            }
             override fun onEvent(eventType: Int, params: Bundle?) {}
         })
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "fr-FR")
+            // feat-022 — la langue suit l'interface (fr-FR par défaut, en-US si UI en anglais).
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, if (viewModel.langueUi == "en") "en-US" else "fr-FR")
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+            // feat-022 — ponctuation automatique quand le moteur la gère (API 33+).
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                putExtra(RecognizerIntent.EXTRA_ENABLE_FORMATTING, RecognizerIntent.EXTRA_ENABLE_FORMATTING_AUTOMATIC_PUNCTUATION)
+            }
         }
         recognizer = sr
         sr.startListening(intent)
@@ -377,6 +408,7 @@ fun ChatInputBar(
                 if (value.isBlank() && !isLoading) {
                     MicButton(
                         isListening = isListening,
+                        continu = dicteeContinue, // feat-022
                         onClick = {
                             if (isListening) {
                                 recognizer?.stopListening()
@@ -384,6 +416,16 @@ fun ChatInputBar(
                             } else {
                                 micPermission.launch(Manifest.permission.RECORD_AUDIO)
                             }
+                        },
+                        // feat-022 — appui long : bascule le mode dictée continue.
+                        onLongClick = {
+                            dicteeContinue = !dicteeContinue
+                            Toast.makeText(
+                                context,
+                                if (dicteeContinue) "Dictée continue activée — la reconnaissance se relance toute seule."
+                                else "Dictée continue désactivée.",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                     )
                     Spacer(Modifier.width(6.dp))
@@ -452,14 +494,25 @@ fun ChatInputBar(
 
 /** Bouton micro : cercle discret, onde animée pendant l'écoute (MA54). */
 @Composable
-private fun MicButton(isListening: Boolean, onClick: () -> Unit) {
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+private fun MicButton(isListening: Boolean, continu: Boolean = false, onClick: () -> Unit, onLongClick: () -> Unit = {}) {
     val c = Zcolors
     Box(
         Modifier
             .size(48.dp) // MàJ 96 : zone tactile
             .clip(CircleShape)
-            .background(if (isListening) c.cyanBg else c.surface2)
-            .clickable(onClick = onClick, role = Role.Button),
+            .background(
+                when {
+                    isListening -> c.cyanBg
+                    continu -> c.amberBg // feat-022 — continu = pastille ambrée
+                    else -> c.surface2
+                }
+            )
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick,
+                role = Role.Button
+            ),
         contentAlignment = Alignment.Center
     ) {
         if (isListening) VoiceWave()
