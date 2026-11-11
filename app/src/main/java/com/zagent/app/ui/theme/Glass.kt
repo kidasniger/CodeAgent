@@ -104,11 +104,12 @@ fun Modifier.glassSurface(
     // Le fond de secours est dessiné AVANT hazeBlur : il ne recouvre donc plus
     // le flou Haze comme c'était le cas avec l'ancien ordre des modificateurs.
     var result = this
+        // ui-013 — élévations tirées des tokens Dimens.kt (cohérence des ombres).
         .shadow(
             elevation = when (material) {
-                GlassMaterial.FASTEST -> 2.dp
-                GlassMaterial.BALANCED -> 10.dp
-                GlassMaterial.QUALITY -> 18.dp
+                GlassMaterial.FASTEST -> Zdimens.elevationCarte
+                GlassMaterial.BALANCED -> Zdimens.elevationBarre
+                GlassMaterial.QUALITY -> Zdimens.elevationFlottant
             },
             shape = shape,
             clip = false
