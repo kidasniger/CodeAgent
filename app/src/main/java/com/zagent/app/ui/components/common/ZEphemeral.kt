@@ -51,7 +51,7 @@ object ZEphemeral {
     /** Message affiché (null = rien). Paire (texte, type). */
     val message = mutableStateOf<Pair<String, Type>?>(null)
 
-    private val emisA = mutableStateOf(0L)
+    internal val emisA = mutableStateOf(0L)
 
     fun show(texte: String, type: Type = Type.NEUTRE) {
         message.value = texte.take(140) to type

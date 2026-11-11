@@ -107,7 +107,10 @@ fun AdaptiveChatPane(
                     .weight(0.66f)
                     .fillMaxHeight()
             ) {
-                panneauChat()
+                ChatScreen(
+                    viewModel = viewModel,
+                    onOpenSettings = { viewModel.navigateTo(AppScreen.SETTINGS) }
+                )
             }
         }
     }

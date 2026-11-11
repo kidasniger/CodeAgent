@@ -462,7 +462,7 @@ class FileRepository(private val context: Context?, private val rootPath: String
         // context est nullable (FileRepository) : repli sur le cache système
         // si aucun contexte n'est disponible (le dépôt est alors inopérant,
         // mais la classe ne plante pas — same guard as lines 154/437).
-        val base = context?.filesDir ?: getRootFolder()?.absolutePath ?: "/data/local/tmp"
+        val base = context?.filesDir?.absolutePath ?: getRootFolder()?.absolutePath ?: "/data/local/tmp"
         val d = File(base, "trash").apply { mkdirs() }
         // Purge automatique : les entrées de plus de 7 jours sont supprimées.
         val seuil = System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000
@@ -545,7 +545,7 @@ class FileRepository(private val context: Context?, private val rootPath: String
     }
 
     /** feat-074 — Écriture binaire (import d'archives, images…) avec verrou identique à writeFile. */
-    fun writeBytes(path: String, content: ByteArray): String {
+    override fun writeBytes(path: String, content: ByteArray): String {
         if (!validatePath(path)) return "Erreur: Chemin invalide (.. interdit)"
         val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
         val target = resolveInside(root, path) ?: return "Erreur: Chemin invalide: $path"
