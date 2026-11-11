@@ -4417,6 +4417,50 @@ done; } 2>&1 | head -c 50000
         }
     }
 
+    // ── feat-058 : clés SSH pour git ────────────────────────────────────────
+
+    /** Clé publique SSH en cours d'affichage (carte Git › Actions). */
+    var sshClePublique by mutableStateOf("")
+        private set
+    var sshOccupe by mutableStateOf(false)
+        private set
+
+    /** feat-058 — Liste les clés publiques existantes (~/.ssh/*.pub). */
+    fun listerClesSsh() {
+        if (sshOccupe) return
+        sshOccupe = true
+        viewModelScope.launch(Dispatchers.IO) {
+            val res = terminal.runCommand(
+                "ls ~/.ssh/*.pub 2>/dev/null && echo '@@@' && cat ~/.ssh/*.pub 2>/dev/null || echo 'aucune cle'",
+                workingFolderUriString, 10, silent = true
+            ) { }
+            withContext(Dispatchers.Main) {
+                sshClePublique = if (res.contains("aucune cle") || res.startsWith("Erreur")) "" else res
+                    .substringAfter("@@@\n", "").trim()
+                sshOccupe = false
+            }
+        }
+    }
+
+    /** feat-058 — Génère une paire ed25519 sans phrase de passe (usage mobile). */
+    fun genererCleSsh() {
+        if (sshOccupe) return
+        sshOccupe = true
+        viewModelScope.launch(Dispatchers.IO) {
+            val res = terminal.runCommand(
+                "mkdir -p ~/.ssh && ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N '' -C 'zagent' -q 2>&1; echo '@@@'; cat ~/.ssh/id_ed25519.pub 2>/dev/null",
+                workingFolderUriString, 20, silent = true
+            ) { }
+            withContext(Dispatchers.Main) {
+                val cle = res.substringAfter("@@@\n", "").trim()
+                sshClePublique = cle
+                statusMessage = if (cle.isNotBlank()) "Clé SSH générée — copie la clé publique dans GitHub › Settings › SSH keys."
+                else messageGitSimple(res)
+                sshOccupe = false
+            }
+        }
+    }
+
     // ── MA62 : aperçu plein écran ────────────────────────────────────────────
     var isPreviewScreenOpen by mutableStateOf(false)
     var previewScreenPath by mutableStateOf("")

@@ -46,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -588,7 +589,10 @@ private fun BranchesTab(viewModel: MainViewModel) {
 @Composable
 private fun ActionsTab(viewModel: MainViewModel) {
     val c = Zcolors
-    LaunchedEffect(Unit) { viewModel.refreshGitActions() }
+    LaunchedEffect(Unit) {
+        viewModel.refreshGitActions()
+        viewModel.listerClesSsh()
+    }
     val runs = viewModel.gitActionsRuns
 
     if (viewModel.gitActionsLoading) {
@@ -603,48 +607,95 @@ private fun ActionsTab(viewModel: MainViewModel) {
             "Aucun run récent",
             "Le dépôt n'a pas de workflow GitHub Actions, ou l'origine n'est pas un dépôt GitHub."
         )
-        return
-    }
-    GlassCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp)) {
-        runs.forEach { run ->
-            val (label, couleur) = when (run.libelle) {
-                "succès" -> "Succès" to c.green
-                "échec" -> "Échec" to c.red
-                "en cours" -> "En cours…" to c.cyan
-                "annulé" -> "Annulé" to c.amber
-                else -> run.libelle to c.text2
-            }
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .padding(horizontal = 10.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Default.Bolt, null,
-                    tint = couleur,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(Modifier.width(10.dp))
-                Column(Modifier.weight(1f)) {
-                    MonoLine(run.name, c.text)
-                    MonoLine(run.branch + " · n°" + run.runNumber + " · " + run.createdAt, c.text3)
+    } else {
+        GlassCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp)) {
+            runs.forEach { run ->
+                val (label, couleur) = when (run.libelle) {
+                    "succès" -> "Succès" to c.green
+                    "échec" -> "Échec" to c.red
+                    "en cours" -> "En cours…" to c.cyan
+                    "annulé" -> "Annulé" to c.amber
+                    else -> run.libelle to c.text2
                 }
-                Text(
-                    label,
-                    style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
-                    color = couleur
-                )
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .padding(horizontal = 10.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Bolt, null,
+                        tint = couleur,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        MonoLine(run.name, c.text)
+                        MonoLine(run.branch + " · n°" + run.runNumber + " · " + run.createdAt, c.text3)
+                    }
+                    Text(
+                        label,
+                        style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
+                        color = couleur
+                    )
+                }
             }
         }
     }
-    Spacer(Modifier.height(6.dp))
-    Text(
-        "5 derniers runs du dépôt d'origine. Le statut « succès » garantit que le build a passé.",
-        style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp, lineHeight = 16.sp),
-        color = c.text3
-    )
+    Spacer(Modifier.height(10.dp))
+
+    // ── feat-058 : clés SSH pour git ────────────────────────────────────────
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+    GlassCard {
+        Text(
+            "Clés SSH (feat-058)",
+            style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
+            color = c.text
+        )
+        Spacer(Modifier.height(6.dp))
+        if (viewModel.sshClePublique.isBlank()) {
+            Text(
+                "Aucune clé SSH. Génère une paire ed25519 puis ajoute la clé publique dans GitHub › Settings › SSH keys pour cloner/pousser sans jeton.",
+                style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp, lineHeight = 15.sp),
+                color = c.text2
+            )
+        } else {
+            Text(
+                viewModel.sshClePublique,
+                style = TextStyle(fontFamily = JetBrainsMono, fontSize = 10.5.sp, lineHeight = 14.sp),
+                color = c.text,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(c.surface2)
+                    .padding(8.dp)
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Copier la clé publique",
+                style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
+                color = c.cyan,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .clickable {
+                        clipboard.setText(AnnotatedString(viewModel.sshClePublique))
+                        android.widget.Toast.makeText(context, "Clé publique copiée", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    .padding(horizontal = 4.dp, vertical = 4.dp)
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        GradientButton(
+            text = "Générer une clé ed25519",
+            enabled = !viewModel.sshOccupe,
+            onClick = { viewModel.genererCleSsh() },
+            modifier = Modifier.fillMaxWidth(),
+            height = 42.dp,
+            leading = { Icon(Icons.Default.Add, null, tint = c.onGrad, modifier = Modifier.size(15.dp)) }
+        )
+    }
 }
 
 // ── Analyse de git status --short ────────────────────────────────────────────
