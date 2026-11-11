@@ -290,11 +290,16 @@ class FileRepository(private val context: Context?, private val rootPath: String
         if (target.length() > 500_000L) {
             return Result.failure(IllegalStateException("Fichier trop volumineux pour l'éditeur (> 500 Ko)."))
         }
-        return runCatching {
+        return try {
             // corr-073 : UTF-8 strict, BOM retiré pour l'édition ; les fins de
             // ligne (CRLF/LF) sont préservées telles quelles.
             val text = target.readBytes().toString(Charsets.UTF_8)
-            if (text.startsWith("\uFEFF")) text.substring(1) else text
+            Result.success(if (text.startsWith("\uFEFF")) text.substring(1) else text)
+        } catch (e: OutOfMemoryError) {
+            // err-082 — gros fichier / mémoire faible : échec propre plutôt que crash.
+            Result.failure(IllegalStateException("Fichier trop volumineux pour la mémoire disponible — ouvre-le par morceaux (read_file avec offset/lines)."))
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 

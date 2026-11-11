@@ -102,6 +102,21 @@ class MainActivity : AppCompatActivity() {
         // fond du thème, sans flash blanc en mode sombre.
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        // err-080/081 — StrictMode en debug : signale dans le logcat les E/S
+        // disque/réseau sur le thread principal et les fuites d'objets fermables,
+        // pour réduire les ANR pendant le développement. Aucun effet en release.
+        if (com.zagent.app.BuildConfig.DEBUG) {
+            android.os.StrictMode.setThreadPolicy(
+                android.os.StrictMode.ThreadPolicy.Builder().detectAll().penaltyLog().build()
+            )
+            android.os.StrictMode.setVmPolicy(
+                android.os.StrictMode.VmPolicy.Builder()
+                    .detectLeakedClosableObjects()
+                    .detectLeakedSqlLiteObjects()
+                    .penaltyLog()
+                    .build()
+            )
+        }
         enableEdgeToEdge()
         // MàJ 100 — langue par application : resynchronise appcompat avec le
         // réglage persistant (« Système » = liste vide). Avec le service

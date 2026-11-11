@@ -33,6 +33,25 @@ object CrashHandler {
     /** Dossier des rapports de crash (privé). */
     fun dossier(context: Context): File = File(context.filesDir, "crash").apply { mkdirs() }
 
+    /** err-078 — dernier rapport de crash non encore vu au redémarrage (null si aucun). */
+    fun dernierRapportNonVu(context: Context): File? {
+        val vu = File(context.filesDir, "crash-vu.stamp")
+        val seuil = if (vu.exists()) vu.lastModified() else 0L
+        return dossier(context).listFiles()
+            ?.filter { it.isFile && it.name.startsWith("crash-") }
+            ?.maxByOrNull { it.lastModified() }
+            ?.takeIf { it.lastModified() > seuil }
+    }
+
+    /** err-078 — marque les rapports actuels comme vus (l'utilisateur a été prévenu). */
+    fun marquerVu(context: Context) {
+        runCatching {
+            val vu = File(context.filesDir, "crash-vu.stamp")
+            if (!vu.exists()) vu.createNewFile()
+            vu.setLastModified(System.currentTimeMillis())
+        }
+    }
+
     private fun ecrire(context: Context, erreur: Throwable, nomFil: String) {
         val horodatage = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
         val fichier = File(dossier(context), "crash-$horodatage.txt")

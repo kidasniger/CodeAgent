@@ -176,7 +176,11 @@ fun TerminalScreen(
                     color = c.red,
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
                 )
-                Button(onClick = { controller.install() }) { Text("Réessayer") }
+                // err-074 — « Réparer » : repose les droits et relance la configuration sans retélécharger.
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Button(onClick = { controller.install() }) { Text("Réessayer") }
+                    Button(onClick = { controller.reparer() }) { Text("Réparer") }
+                }
             }
 
             is TerminalController.State.Ready -> {

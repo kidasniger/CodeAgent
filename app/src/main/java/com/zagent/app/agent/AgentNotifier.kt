@@ -68,6 +68,10 @@ object AgentNotifier {
 
     fun alert(ctx: Context, title: String, text: String, conversationId: String? = null) {
         if (appInForeground) return
+        // err-086 — notifications refusées : repli silencieux, l'alerte in-app
+        // (statusMessage du chat) reste affichée dans tous les cas.
+        val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (!nm.areNotificationsEnabled()) return
         try {
             ensureChannels(ctx)
             val n = Notification.Builder(ctx, CH_ALERT)

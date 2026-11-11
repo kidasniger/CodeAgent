@@ -80,7 +80,9 @@ object ApkVerifier {
         val installed = installedSignatureDigests(context)
         if (installed.isEmpty()) return null
         return if (archiveSigs.intersect(installed).isEmpty()) {
-            "Cet APK n'est pas signé avec la même clé que l'application installée."
+            // err-094 — signature différente : expliquer la cause ET la marche à suivre.
+            "Cet APK n'est pas signé avec la même clé que l'application installée : Android refuse la mise à jour. " +
+                "Désinstalle d'abord l'application actuelle (sauvegarde tes projets), puis installe cette version."
         } else {
             null
         }

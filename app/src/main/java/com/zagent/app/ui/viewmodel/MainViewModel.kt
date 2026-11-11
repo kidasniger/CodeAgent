@@ -1413,6 +1413,15 @@ done; } 2>&1 | head -c 50000
                 statusMessage = "Le dossier du projet précédent n'existe plus — sélectionne un nouveau projet."
             }
         }
+        // err-078 — récupération après crash : message au redémarrage (rapport partageable via Aide).
+        com.zagent.app.util.CrashHandler.dernierRapportNonVu(application)?.let {
+            statusMessage = "L'application a redémarré après un crash — Aide › Signaler un problème pour partager le rapport."
+            com.zagent.app.util.CrashHandler.marquerVu(application)
+        }
+        // err-085 — clés absentes après restauration de l'appareil : guider l'utilisateur.
+        if (settingsManager.clesReinitialisees) {
+            statusMessage = "Réglages réinitialisés après restauration — ressaisis tes clés API dans Réglages › Fournisseurs."
+        }
         terminal.projectDir = workingFolderUriString
         // MA79 : rouvre les onglets du projet au démarrage.
         workingFolderUriString?.let { p ->

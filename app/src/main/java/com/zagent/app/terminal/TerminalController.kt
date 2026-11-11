@@ -231,7 +231,9 @@ class TerminalController(
     /** Arrête la commande de l'agent en cours (bouton « Arrêter » du chat). */
     fun stopCurrentCommand() {
         userStopped = true
-        currentProc?.destroyForcibly()
+        // err-067 — tue aussi les processus enfants (npm → node…) : pas d'orphelins.
+        currentProc?.let { killTree(it) }
+        currentProc = null
     }
 
     private fun isInstalled(): Boolean = File(prefixDir, "bin/bash").exists()
@@ -258,6 +260,31 @@ class TerminalController(
                 "Installe la dernière version de l'application (correctif du terminal), " +
                 "puis réessaie ; si l'échec persiste, vide les données de l'appli."
         } else m
+    }
+
+    /** err-065/075/076 — traduit les échecs courants (commande absente, git, ssh) en consignes actionnables. */
+    private fun astuceSortie(sortie: String): String? {
+        val manquante = Regex("bash:\\s*(\\S+):\\s*command not found").find(sortie)?.groupValues?.get(1)
+        if (manquante != null) {
+            return "Astuce: « $manquante » n'est pas installé — lance pkg install $manquante puis réessaie."
+        }
+        return when {
+            "not a git repository" in sortie ->
+                "Astuce: ce dossier n'est pas un dépôt git — initialise-le avec git init avant les commandes git."
+            "Authentication failed" in sortie ->
+                "Astuce: authentification refusée — vérifie le jeton (Réglages › GitHub) ou les identifiants du dépôt distant."
+            "CONFLICT" in sortie ->
+                "Astuce: conflit git — résous les fichiers marqués « <<<<<<< », puis git add et commit."
+            "could not read Username" in sortie ->
+                "Astuce: le dépôt distant demande des identifiants — configure le jeton dans l'URL (https://user:token@host/…)."
+            "Host key verification failed" in sortie ->
+                "Astuce: clé d'hôte SSH inconnue — accepte-la une première fois (ssh -o StrictHostKeyChecking=accept-new) ou ajoute-la à ~/.ssh/known_hosts."
+            "Permissions" in sortie && "too open" in sortie ->
+                "Astuce: ta clé privée SSH est trop accessible — lance chmod 600 ~/.ssh/id_rsa."
+            "Permission denied (publickey" in sortie ->
+                "Astuce: le serveur refuse ta clé publique — ajoute-la au authorized_keys du serveur."
+            else -> null
+        }
     }
 
     fun install() {
@@ -323,6 +350,38 @@ class TerminalController(
             } catch (e: Exception) {
                 stagingDir.deleteRecursively()
                 setState(State.Failed(messageExec(e)))
+            }
+        }
+    }
+
+    /**
+     * err-074 — « Réparer le terminal » : repose les bits d'exécution, réinstalle
+     * le crochet apt et relance la configuration, sans retélécharger le système.
+     * Replis sur install() si le préfixe est absent.
+     */
+    fun reparer() {
+        if (state is State.Working) return
+        if (!isInstalled()) { install(); return }
+        state = State.Working("Réparation du système", null)
+        scope.launch(Dispatchers.IO) {
+            try {
+                java.nio.file.Files.walk(prefixDir.toPath()).use { stream ->
+                    stream.forEach { p ->
+                        val f = p.toFile()
+                        if (f.isFile) {
+                            val parent = f.parentFile?.absolutePath ?: ""
+                            val executable = parent.endsWith("/bin") || "/libexec/" in parent ||
+                                "/apt/methods/" in parent || f.name.endsWith(".sh")
+                            if (executable) runCatching { Os.chmod(f.absolutePath, 0x1C0) }
+                        }
+                    }
+                }
+                installDebPatcher()
+                runSecondStage()
+                ensureMirror()
+                setState(if (isInstalled()) State.Ready else State.Failed("Réparation incomplète — réinstalle avec Réessayer."))
+            } catch (e: Exception) {
+                setState(State.Failed("Réparation impossible : " + (e.message ?: e.javaClass.simpleName)))
             }
         }
     }
@@ -584,6 +643,10 @@ class TerminalController(
         ajouterHistorique(command) // feat-047
         File(prefixDir, "tmp").mkdirs()
         ensureBashExecutable()
+        // err-070 — environnement cohérent avant chaque commande (PATH, HOME, PREFIX).
+        if (!File(prefixDir, "bin").isDirectory) {
+            return@withContext "Erreur: le système du terminal est incomplet (usr/bin absent) — ouvre l'écran Terminal et réinstalle."
+        }
         val dir = cwd?.let { File(it) }?.takeIf { it.isDirectory } ?: homeDir
         val pb = ProcessBuilder(File(prefixDir, "bin/bash").absolutePath, "-c", command)
         pb.directory(dir)
@@ -623,12 +686,13 @@ class TerminalController(
                 while (proc.isAlive) {
                     if (!ctx.isActive) {
                         cancelled = true
-                        proc.destroyForcibly()
+                        // err-067 — arrêt complet de l'arbre de processus.
+                        killTree(proc)
                         break
                     }
                     if (System.currentTimeMillis() - started > timeoutSec * 1000L) {
                         timedOut = true
-                        proc.destroyForcibly()
+                        killTree(proc)
                         break
                     }
                     Thread.sleep(250)
@@ -672,9 +736,17 @@ class TerminalController(
         val out = com.zagent.app.ui.components.common.cleanForModel(sb.toString()).let {
             if (it.length > outLimit) "[début de la sortie tronqué]\n" + it.takeLast(outLimit) else it
         }
+        var outFinal = out
+        // err-069 — caractères invalides dans la sortie : signalés clairement.
+        if ('\uFFFD' in outFinal) {
+            outFinal += "\n[sortie : caractères invalides remplacés (encodage non UTF-8)]"
+        }
+        // err-065/075/076 — consigne actionable quand la cause est reconnaissable.
+        astuceSortie(sb.toString())?.let { outFinal += "\n$it" }
         val secs = "%.1f".format(java.util.Locale.US, (System.currentTimeMillis() - started) / 1000.0)
         val head = when {
-            timedOut -> "Erreur: délai de $timeoutSec s dépassé, commande arrêtée ($secs s)."
+            timedOut -> "Erreur: délai de $timeoutSec s dépassé, commande arrêtée ($secs s). " +
+                "Si la commande a besoin de plus de temps, relance-la avec un délai plus grand."
             cancelled -> "Erreur: commande interrompue ($secs s)."
             userStopped -> "Erreur: commande arrêtée par l'utilisateur ($secs s)."
             code == 0 -> "Code de sortie: 0 ($secs s)"
@@ -684,7 +756,7 @@ class TerminalController(
             agentBase = agentBase + sb.toString() + "[" + head.lineSequence().first() + "]\n"
             agentLog = agentBase
         }
-        "$head\n$out"
+        "$head\n$outFinal"
     }
 
     // ── Serveur de développement (arrière-plan) ─────────────────────────────

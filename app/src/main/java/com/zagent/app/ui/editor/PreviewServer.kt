@@ -214,6 +214,11 @@ class PreviewServer(private val readResource: (String) -> ByteArray?) {
         send(out, status, reason, "text/plain; charset=utf-8", bytes, 0, bytes.size, !head)
     }
 
+    private fun sendHtml(out: OutputStream, status: Int, reason: String, html: String, head: Boolean) {
+        val bytes = html.toByteArray(Charsets.UTF_8)
+        send(out, status, reason, "text/html; charset=utf-8", bytes, 0, bytes.size, !head)
+    }
+
     private fun respond(out: OutputStream, method: String, target: String, rangeHeader: String?, cookie: String?) {
         val head = method == "HEAD"
         if (method == "OPTIONS") {
@@ -269,6 +274,24 @@ class PreviewServer(private val readResource: (String) -> ByteArray?) {
             }
         }
         if (bytes == null) {
+            if (served == "index.html" || served.endsWith("/index.html")) {
+                // err-062 — aperçu vide : page-guide au lieu d'un 404 sec.
+                val cherches = (listOf("racine du projet") + fallbackDirs.map { "« $it »" }).joinToString(", ")
+                val html = "<!doctype html><html lang=\"fr\"><head><meta charset=\"utf-8\">" +
+                    "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
+                    "<title>Aperçu — index.html introuvable</title></head>" +
+                    "<body style=\"font-family:sans-serif;max-width:42rem;margin:3rem auto;padding:0 1rem;line-height:1.6\">" +
+                    "<h1>Aucune page d'accueil</h1>" +
+                    "<p>Le projet n'a pas de <code>index.html</code> (cherché dans $cherches).</p>" +
+                    "<p><strong>Que faire :</strong></p><ul>" +
+                    "<li>Crée un fichier <code>index.html</code> à la racine du projet ;</li>" +
+                    "<li>ou ouvre directement le fichier HTML voulu dans l'éditeur puis active l'onglet Aperçu ;</li>" +
+                    "<li>ou si ton site démarre avec un serveur de développement (<code>npm run dev</code>), " +
+                    "utilise le bouton « Ouvrir l'aperçu » du chat après le lancement.</li></ul>" +
+                    "</body></html>"
+                sendHtml(out, 404, "Not Found", html, head)
+                return
+            }
             sendText(out, 404, "Not Found", "404 : $served", head)
             return
         }

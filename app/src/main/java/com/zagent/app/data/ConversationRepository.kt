@@ -83,6 +83,13 @@ class ConversationRepository(context: Context) : ConversationRepositoryApi {
             val vf = versionFichier()
             val lue = if (vf.exists()) vf.readText().trim().toIntOrNull() ?: 0 else 0
             if (lue < SCHEMA_VERSION) {
+                // err-096 — sauvegarde complète avant migration ; en cas d échec
+                // de migration, les fichiers originaux restent lisibles dans
+                // sauvegarde-pre-migration-<v> pour une restauration manuelle.
+                val sauvegarde = File(dir, "sauvegarde-pre-migration-$lue").apply { mkdirs() }
+                dir.listFiles { f -> f.isFile && f.name.endsWith(".json") && f != vf }?.forEach { f ->
+                    runCatching { f.copyTo(File(sauvegarde, f.name), overwrite = true) }
+                }
                 migrer(lue)
                 vf.writeText(SCHEMA_VERSION.toString())
             }
@@ -95,13 +102,26 @@ class ConversationRepository(context: Context) : ConversationRepositoryApi {
         // Rien à faire ici pour l'instant ; point d'entrée des migrations à venir.
     }
 
+    /** err-095 — isole un fichier de données corrompu (sauvegarde horodatée) avant de repartir à vide. */
+    private fun isolerFichierCorrompu(f: File) {
+        runCatching {
+            if (f.exists()) {
+                f.renameTo(File(dir, f.name + ".corrupt-" + System.currentTimeMillis()))
+            }
+        }
+    }
+
     /** Charge l'index des conversations (trié par épinglage puis date décroissante). */
-    override fun loadIndex(): List<ConversationMeta> = runCatching {
-        if (!indexFile.exists()) return emptyList()
-        json.decodeFromString(ListSerializer(ConversationMeta.serializer()), indexFile.readText())
-    }.getOrNull().orEmpty().sortedWith(
-        compareByDescending<ConversationMeta> { it.pinned }.thenByDescending { it.updatedAt }
-    )
+    override fun loadIndex(): List<ConversationMeta> {
+        val resultat = runCatching {
+            if (!indexFile.exists()) emptyList()
+            else json.decodeFromString(ListSerializer(ConversationMeta.serializer()), indexFile.readText())
+        }.getOrNull()
+        if (resultat == null && indexFile.exists()) isolerFichierCorrompu(indexFile) // err-095
+        return resultat.orEmpty().sortedWith(
+            compareByDescending<ConversationMeta> { it.pinned }.thenByDescending { it.updatedAt }
+        )
+    }
 
     override fun saveIndex(list: List<ConversationMeta>) {
         runCatching {
@@ -118,11 +138,15 @@ class ConversationRepository(context: Context) : ConversationRepositoryApi {
         }
     }
 
-    override fun loadMessages(id: String): List<StoredMessage> = runCatching {
+    override fun loadMessages(id: String): List<StoredMessage> {
         val f = File(dir, "$id.json")
-        if (!f.exists()) return emptyList()
-        json.decodeFromString(ListSerializer(StoredMessage.serializer()), f.readText())
-    }.getOrNull().orEmpty()
+        val resultat = runCatching {
+            if (!f.exists()) emptyList()
+            else json.decodeFromString(ListSerializer(StoredMessage.serializer()), f.readText())
+        }.getOrNull()
+        if (resultat == null && f.exists()) isolerFichierCorrompu(f) // err-095
+        return resultat.orEmpty()
+    }
 
     override fun deleteMessages(id: String) {
         runCatching {
@@ -145,11 +169,15 @@ class ConversationRepository(context: Context) : ConversationRepositoryApi {
         }
     }
 
-    override fun loadTodos(id: String): List<TodoItem> = runCatching {
+    override fun loadTodos(id: String): List<TodoItem> {
         val f = File(dir, "$id.todos.json")
-        if (!f.exists()) return emptyList()
-        json.decodeFromString(ListSerializer(TodoItem.serializer()), f.readText())
-    }.getOrNull().orEmpty()
+        val resultat = runCatching {
+            if (!f.exists()) emptyList()
+            else json.decodeFromString(ListSerializer(TodoItem.serializer()), f.readText())
+        }.getOrNull()
+        if (resultat == null && f.exists()) isolerFichierCorrompu(f) // err-095
+        return resultat.orEmpty()
+    }
 
     /**
      * Recherche plein texte dans les conversations sauvegardées (MA58) :

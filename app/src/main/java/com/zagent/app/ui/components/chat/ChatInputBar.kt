@@ -266,7 +266,18 @@ fun ChatInputBar(
 
     val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) startRecognition()
-        else com.zagent.app.ui.components.common.ZEphemeral.show("Autorise le micro dans les réglages Android pour dicter.")
+        else {
+            // err-087 — message clair ET ouverture directe des réglages système.
+            com.zagent.app.ui.components.common.ZEphemeral.show("Autorise le micro dans les réglages Android pour dicter.")
+            runCatching {
+                context.startActivity(
+                    android.content.Intent(
+                        android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        android.net.Uri.fromParts("package", context.packageName, null)
+                    ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            }
+        }
     }
 
     // ── MA52 / MA53 : détection des commandes slash et des mentions @ ────────

@@ -48,11 +48,15 @@ class SettingsManager(context: Context) {
      * repart sur des préférences vides : l'utilisateur reconfigure, mais
      * l'application démarre.
      */
+    /** err-085 — vrai si le coffre chiffré a été réinitialisé (restauration, Keystore invalidé) : l'utilisateur doit ressaisir ses clés. */
+    var clesReinitialisees: Boolean = false
+        private set
+
     private val prefs = try {
         creerPrefs(context, masterKey)
     } catch (e: Exception) {
         context.deleteSharedPreferences("zagent_secure_prefs")
-        creerPrefs(context, masterKey)
+        creerPrefs(context, masterKey).also { clesReinitialisees = true }
     }
 
     private fun creerPrefs(context: Context, masterKey: MasterKey) =
