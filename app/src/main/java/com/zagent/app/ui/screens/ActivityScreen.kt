@@ -3,6 +3,7 @@ package com.zagent.app.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -76,7 +77,38 @@ fun ActivityScreen(viewModel: MainViewModel, onBack: () -> Unit) {
 
     OverlayScreen(title = "Activité de l'agent", subtitle = events.size.toString() + " événements", onBack = onBack) {
         OverlayTabs(listOf("Tout", "Réussi", "Problème", "Annulé"), filter) { filter = it }
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(10.dp))
+        // feat-099 — export du journal d'activité (JSON partageable).
+        val ctx = LocalContext.current
+        Text(
+            "Exporter le journal (.json)",
+            style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
+            color = c.cyan,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
+                .background(c.surface2)
+                .clickable {
+                    val partage = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                        type = "application/json"
+                        putExtra(
+                            android.content.Intent.EXTRA_TEXT,
+                            events.joinToString(",\n", prefix = "[", postfix = "]") { ev ->
+                                "{" +
+                                    "\"ts\":" + ev.ts + "," +
+                                    "\"kind\":\"" + ev.kind.replace("\"", "'") + "\"," +
+                                    "\"status\":\"" + ev.status + "\"," +
+                                    "\"detail\":\"" + (ev.detail ?: "").replace("\"", "'").replace("\n", " ") + "\"" +
+                                    "}"
+                            }
+                        )
+                        putExtra(android.content.Intent.EXTRA_TITLE, "journal-zagent.json")
+                    }
+                    ctx.startActivity(android.content.Intent.createChooser(partage, "Exporter le journal"))
+                }
+                .padding(horizontal = 14.dp, vertical = 10.dp)
+        )
+        Spacer(Modifier.height(10.dp))
 
         if (filtered.isEmpty()) {
             OverlayEmptyState(

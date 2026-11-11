@@ -658,7 +658,111 @@ class SettingsManager(context: Context) {
         get() = prefs.getString(KEY_RECENTS_FICHIERS, null)?.split("\n")?.filter { it.isNotBlank() } ?: emptyList()
         set(value) = prefs.edit().putString(KEY_RECENTS_FICHIERS, value.joinToString("\n")).apply()
 
+    /**
+     * feat-098 — Budget quotidien de tokens (0 = désactivé). Une fois dépassé,
+     * l'application alerte avant chaque envoi (l'envoi reste possible : simple alerte).
+     */
+    var budgetTokensJour: Int
+        get() = prefs.getInt(KEY_BUDGET_TOKENS, 0).coerceAtLeast(0)
+        set(value) = prefs.edit().putInt(KEY_BUDGET_TOKENS, value).apply()
+
+    // ── feat-091 : export / import des réglages (SANS les clés API) ─────────
+
+    /**
+     * feat-091 — Exporte les réglages non secrets en JSON lisible (modèle,
+     * apparence, agent, sécurité…). Les clés API et le jeton GitHub ne partent
+     * JAMAIS : seule la configuration transite.
+     */
+    fun exporterReglages(): String {
+        val map = linkedMapOf<String, Any?>(
+            "version" to 1,
+            "model" to model,
+            "baseUrl" to baseUrl,
+            "autoMode" to autoMode,
+            "smartMode" to smartMode,
+            "themeMode" to themeMode.name,
+            "oledBlack" to oledBlack,
+            "cornerRadius" to cornerRadius,
+            "dynamicColors" to dynamicSystemColors,
+            "fontFamily" to prefs.getString(KEY_FONT_FAMILY, ""),
+            "fontScale" to prefs.getFloat(KEY_FONT_SCALE, 1f),
+            "densityScale" to prefs.getFloat(KEY_DENSITY_SCALE, 1f),
+            "langueUi" to prefs.getString(KEY_LANGUE, ""),
+            "hapticLevel" to prefs.getString(KEY_HAPTIC_LEVEL, "NORMAL"),
+            "reduceAnimations" to prefs.getBoolean(KEY_REDUCE_ANIMATIONS, false),
+            "maxSteps" to maxSteps,
+            "budgetTokensJour" to budgetTokensJour,
+            "allowRead" to prefs.getBoolean(KEY_ALLOW_READ, false),
+            "allowWrite" to prefs.getBoolean(KEY_ALLOW_WRITE, false),
+            "allowDelete" to prefs.getBoolean(KEY_ALLOW_DELETE, false),
+            "allowExecute" to prefs.getBoolean(KEY_ALLOW_EXECUTE, false)
+        )
+        return org.json.JSONObject(map).toString(2)
+    }
+
+    /**
+     * feat-091 — Importe un JSON d'export. Champs inconnus ignorés ; les clés
+     * API / jeton éventuellement présents dans le fichier sont volontairement
+     * refusés (on n'importe jamais de secret).
+     */
+    fun importerReglages(json: String): Result<Int> {
+        return try {
+            val o = org.json.JSONObject(json)
+            var n = 0
+            if (o.has("model")) { model = o.getString("model"); n++ }
+            if (o.has("autoMode")) { autoMode = o.getBoolean("autoMode"); n++ }
+            if (o.has("smartMode")) { smartMode = o.getBoolean("smartMode"); n++ }
+            if (o.has("themeMode")) {
+                val mode = runCatching { ThemeMode.valueOf(o.getString("themeMode")) }.getOrNull()
+                if (mode != null) { themeMode = mode; n++ }
+            }
+            if (o.has("maxSteps")) { maxSteps = o.getInt("maxSteps"); n++ }
+            if (o.has("budgetTokensJour")) { budgetTokensJour = o.getInt("budgetTokensJour"); n++ }
+            if (o.has("fontScale")) { prefs.edit().putFloat(KEY_FONT_SCALE, o.getDouble("fontScale").toFloat()).apply(); n++ }
+            if (o.has("reduceAnimations")) { prefs.edit().putBoolean(KEY_REDUCE_ANIMATIONS, o.getBoolean("reduceAnimations")).apply(); n++ }
+            if (o.has("allowRead")) { prefs.edit().putBoolean(KEY_ALLOW_READ, o.getBoolean("allowRead")).apply(); n++ }
+            if (o.has("allowWrite")) { prefs.edit().putBoolean(KEY_ALLOW_WRITE, o.getBoolean("allowWrite")).apply(); n++ }
+            if (o.has("allowDelete")) { prefs.edit().putBoolean(KEY_ALLOW_DELETE, o.getBoolean("allowDelete")).apply(); n++ }
+            if (o.has("allowExecute")) { prefs.edit().putBoolean(KEY_ALLOW_EXECUTE, o.getBoolean("allowExecute")).apply(); n++ }
+            Result.success(n)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // ── feat-092 : profils de réglages ──────────────────────────────────────
+
+    /**
+     * feat-092 — Profils nommés (travail, économie de données…) : un instantané
+     * d'un sous-ensemble de réglages, appliquable en un tap.
+     */
+    var profilsReglages: Map<String, String>
+        get() {
+            val brut = prefs.getString(KEY_PROFILS_REGLAGES, null) ?: return emptyMap()
+            return runCatching {
+                val o = org.json.JSONObject(brut)
+                o.keys().asSequence().associateWith { o.getString(it) }
+            }.getOrDefault(emptyMap())
+        }
+        set(value) = prefs.edit()
+            .putString(KEY_PROFILS_REGLAGES, org.json.JSONObject(value).toString())
+            .apply()
+
+    /** feat-092 — Instantané des réglages du profil courant (modèle + agent + budget). */
+    fun instantaneProfil(): String {
+        val map = linkedMapOf<String, Any?>(
+            "model" to model,
+            "autoMode" to autoMode,
+            "smartMode" to smartMode,
+            "maxSteps" to maxSteps,
+            "budgetTokensJour" to budgetTokensJour
+        )
+        return org.json.JSONObject(map).toString()
+    }
+
     companion object {
+        private const val KEY_BUDGET_TOKENS = "budget_tokens_jour"
+        private const val KEY_PROFILS_REGLAGES = "profils_reglages"
         private const val KEY_GITHUB_TOKEN = "github_token"
         private const val KEY_FAVORIS_FICHIERS = "favoris_fichiers"
         private const val KEY_RECENTS_FICHIERS = "recents_fichiers"

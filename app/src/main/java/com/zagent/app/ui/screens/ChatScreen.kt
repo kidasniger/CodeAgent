@@ -281,6 +281,12 @@ fun ChatScreen(
         setInput(viewModel.currentDraft())
     }
 
+    // feat-094 — texte reçu via « Partager vers ZAgent » : chargé une seule fois.
+    if (viewModel.textePartage.isNotBlank()) {
+        val partage = viewModel.consommerTextePartage()
+        if (partage.isNotBlank() && input.isBlank()) setInput(partage)
+    }
+
     // MàJ 99 — derivedStateOf : la valeur « défilé » n'est recalculée que lorsque
     // le booléen change, au lieu de relire firstVisibleItemScrollOffset à chaque
     // frame de scroll dans la composition (recompositions inutiles de la barre).
@@ -669,6 +675,48 @@ fun ChatScreen(
                                 }
                             }
                         }
+                    }
+                }
+
+                // feat-096 — bandeau hors ligne (file d'attente active)
+                if (viewModel.isOffline) {
+                    Row(
+                        Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = 8.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(c.amberBg)
+                            .border(1.dp, c.amber, RoundedCornerShape(50))
+                            .clickable { viewModel.reessayerHorsLigne() }
+                            .padding(horizontal = 14.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Hors ligne — le chat attend le réseau (tap pour réessayer). Éditeur et terminal restent utilisables.",
+                            style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp),
+                            color = c.amber,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                    }
+                }
+
+                // feat-098 — bandeau budget dépassé
+                if (viewModel.budgetDepasse && !viewModel.isOffline) {
+                    Row(
+                        Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = 8.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(c.violetBg)
+                            .border(1.dp, c.violet, RoundedCornerShape(50))
+                            .padding(horizontal = 14.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Budget du jour dépassé — alerte (modifiable dans Réglages).",
+                            style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp),
+                            color = c.violet
+                        )
                     }
                 }
 

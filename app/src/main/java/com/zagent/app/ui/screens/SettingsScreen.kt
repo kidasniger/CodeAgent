@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Visibility
@@ -59,6 +60,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
@@ -102,6 +104,7 @@ import com.zagent.app.ui.viewmodel.MainViewModel
 @Composable
 fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearance: Boolean = false) {
     val c = Zcolors
+    val context = LocalContext.current
     var showAppearanceSettings by rememberSaveable { mutableStateOf(openAppearance) }
 
     // Le retour système dépile d'abord Apparence, sans changer l'onglet principal.
@@ -153,6 +156,10 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
     // feat-082 — jeton GitHub (chiffré dans EncryptedSharedPreferences).
     var jetonGit by rememberSaveable { mutableStateOf(viewModel.gitHubJeton) }
     var jetonVisible by rememberSaveable { mutableStateOf(false) }
+    // feat-091/092/098 — import réglages, profils, budget.
+    var showImportReglages by rememberSaveable { mutableStateOf(false) }
+    var showProfilDialog by rememberSaveable { mutableStateOf(false) }
+    var budgetText by rememberSaveable { mutableStateOf(viewModel.budgetTokensInput.toString()) }
     // Enregistrement différé (400 ms) : EncryptedSharedPreferences chiffre à chaque écriture.
     LaunchedEffect(jetonGit) {
         kotlinx.coroutines.delay(400)
@@ -628,6 +635,154 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
 
             Spacer(Modifier.height(20.dp))
 
+            // ── feat-091/092 : SAUVEGARDE + PROFILS ─────────────────────────
+            SectionLabel("Sauvegarde & profils")
+            Spacer(Modifier.height(8.dp))
+            GlassCard {
+                Text(
+                    "Sauvegarde des réglages",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = c.text
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Exporte la configuration SANS les clés (modèle, apparence, agent, sécurité) pour la partager ou la restaurer.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = c.text2
+                )
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Exporter",
+                        style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
+                        color = c.cyan,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(50))
+                            .background(c.surface2)
+                            .clickable {
+                                val json = viewModel.exporterReglages()
+                                val partage = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(android.content.Intent.EXTRA_TEXT, json)
+                                    putExtra(android.content.Intent.EXTRA_TITLE, "reglages-zagent.json")
+                                }
+                                context.startActivity(
+                                    android.content.Intent.createChooser(partage, "Exporter les réglages")
+                                )
+                            }
+                            .padding(vertical = 10.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    Text(
+                        "Importer",
+                        style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
+                        color = c.violet,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(50))
+                            .background(c.surface2)
+                            .clickable { showImportReglages = true }
+                            .padding(vertical = 10.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+
+                Spacer(Modifier.height(14.dp))
+                Text(
+                    "Profils de réglages",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = c.text
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Enregistre le modèle et les réglages d'agent actuels sous un nom (ex. « travail ») pour les rappeler en un tap.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = c.text2
+                )
+                Spacer(Modifier.height(8.dp))
+                // feat-092 : liste des profils
+                val profils = viewModel.profilsReglages
+                if (profils.isNotEmpty()) {
+                    profils.keys.forEach { nom ->
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { viewModel.appliquerProfil(nom) }
+                                .padding(vertical = 8.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Tune, null, tint = c.violet, modifier = Modifier.size(15.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(nom, style = MaterialTheme.typography.bodyMedium, color = c.text, modifier = Modifier.weight(1f))
+                            Text(
+                                "Appliquer",
+                                style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
+                                color = c.cyan
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Icon(
+                                Icons.Default.Delete, "Supprimer le profil " + nom,
+                                tint = c.text3,
+                                modifier = Modifier
+                                    .size(17.dp)
+                                    .clickable { viewModel.supprimerProfil(nom) }
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(6.dp))
+                }
+                Text(
+                    "Enregistrer le profil actuel…",
+                    style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
+                    color = c.cyan,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable { showProfilDialog = true }
+                        .padding(vertical = 6.dp)
+                )
+
+                Spacer(Modifier.height(14.dp))
+                // feat-098 : budget quotidien
+                Text(
+                    "Budget quotidien (tokens)",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = c.text
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Une alerte apparaît quand l'usage du jour dépasse ce plafond (0 = pas de budget).",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = c.text2
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = budgetText,
+                    onValueChange = { v ->
+                        budgetText = v.filter { it.isDigit() }.take(8)
+                        budgetText.toIntOrNull()?.let { viewModel.setBudgetTokens(it) }
+                    },
+                    placeholder = { Text("0", style = TextStyle(fontFamily = JetBrainsMono, fontSize = 13.sp), color = c.text3) },
+                    textStyle = TextStyle(fontFamily = JetBrainsMono, fontSize = 13.sp, color = c.text),
+                    singleLine = true,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                    ),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = c.cyan,
+                        unfocusedBorderColor = c.border,
+                        cursorColor = c.cyan
+                    ),
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            Spacer(Modifier.height(20.dp))
+
             // ── MISES À JOUR ────────────────────────────────────────────────
             SectionLabel("Mises à jour")
             Spacer(Modifier.height(8.dp))
@@ -676,6 +831,78 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
         }
+    }
+
+    // ── feat-091 : dialogue d'import des réglages ───────────────────────────
+    if (showImportReglages) {
+        var jsonImport by remember { mutableStateOf("") }
+        GlassAlertDialog(
+            onDismissRequest = { showImportReglages = false },
+            title = { Text("Importer des réglages", fontFamily = SpaceGrotesk, color = c.text) },
+            text = {
+                Column {
+                    Text(
+                        "Colle le JSON exporté depuis une autre installation. Les clés API éventuelles sont ignorées.",
+                        fontFamily = Inter, fontSize = 12.sp, color = c.text2
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = jsonImport,
+                        onValueChange = { jsonImport = it },
+                        placeholder = { Text("{ \"version\": 1, … }", fontFamily = JetBrainsMono, color = c.text3, fontSize = 12.sp) },
+                        textStyle = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.5.sp, color = c.text),
+                        minLines = 3,
+                        maxLines = 6
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val res = viewModel.importerReglages(jsonImport)
+                    res.onSuccess { n ->
+                        viewModel.statusMessage = "Réglages importés ($n)."
+                        showImportReglages = false
+                    }
+                }) { Text("Importer", color = c.cyan) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showImportReglages = false }) { Text("Annuler", color = c.text2) }
+            }
+        )
+    }
+
+    // ── feat-092 : dialogue d'enregistrement d'un profil ────────────────────
+    if (showProfilDialog) {
+        var nomProfil by remember { mutableStateOf("") }
+        GlassAlertDialog(
+            onDismissRequest = { showProfilDialog = false },
+            title = { Text("Enregistrer un profil", fontFamily = SpaceGrotesk, color = c.text) },
+            text = {
+                Column {
+                    Text(
+                        "Capture le modèle, le mode auto, le mode intelligent, le budget et les étapes actuels.",
+                        fontFamily = Inter, fontSize = 12.sp, color = c.text2
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = nomProfil,
+                        onValueChange = { nomProfil = it },
+                        placeholder = { Text("travail, économie…", color = c.text3, fontSize = 13.sp) },
+                        textStyle = TextStyle(fontFamily = Inter, fontSize = 13.5.sp, color = c.text),
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.enregistrerProfil(nomProfil)
+                    showProfilDialog = false
+                }) { Text("Enregistrer", color = c.cyan) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showProfilDialog = false }) { Text("Annuler", color = c.text2) }
+            }
+        )
     }
 }
 

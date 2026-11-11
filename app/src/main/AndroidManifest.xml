@@ -22,10 +22,15 @@
         android:localeConfig="@xml/locales_config"
         android:theme="@style/Theme.ZAgent.Starting"
         android:enableOnBackInvokedCallback="true">
+        <!-- feat-095 : support du multi-fenêtre (écran partagé et fenêtre libre
+             sur tablette) — l'interface se relayout via WindowSizeClass ; les
+             valeurs de densité et la classe de largeur sont recalculées à chaque
+             resize (calculateWindowSizeClass dans MainActivity). -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
+            android:resizeableActivity="true"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.ZAgent.Starting">
             <intent-filter>
@@ -38,6 +43,12 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="zagent" />
+            </intent-filter>
+            <!-- feat-094 : « Partager vers ZAgent » — texte reçu d'une autre application. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
             </intent-filter>
             <!-- MA77 : raccourcis d'application (appui long sur l'icône). -->
             <meta-data
@@ -79,6 +90,17 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_share_paths" />
         </provider>
+        <!-- feat-093 : widget d'écran d'accueil (nouvelle conversation / dernier projet). -->
+        <receiver
+            android:name="com.zagent.app.widget.AccueilWidgetProvider"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info" />
+        </receiver>
     </application>
 
 </manifest>

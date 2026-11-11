@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- feat-093 : disposition du widget d'accueil ZAgent. Fond sombre uni,
+     libellé à gauche, deux boutons à droite (nouvelle conversation, dernier projet). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:background="#E6141420"
+    android:paddingStart="14dp"
+    android:paddingEnd="10dp">
+
+    <TextView
+        android:id="@+id/widget_titre"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="ZAgent"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:textStyle="bold" />
+
+    <Button
+        android:id="@+id/widget_nouveau"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Nouveau chat"
+        android:textSize="12sp" />
+
+    <Button
+        android:id="@+id/widget_projet"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="6dp"
+        android:text="Projet"
+        android:textSize="12sp" />
+</LinearLayout>

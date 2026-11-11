@@ -2045,6 +2045,18 @@ done; } 2>&1 | head -c 50000
 
     fun sendMessage(userText: String) {
         if (userText.isBlank()) return
+        // feat-096 — hors ligne : l'éditeur et le terminal restent utilisables
+        // (tout est local) ; le chat passe en file d'attente propre.
+        if (!estEnLigne()) {
+            isOffline = true
+            messageQueue.add(userText)
+            statusMessage = "Hors ligne — message mis en file (" + messageQueue.size +
+                "). Il partira dès le retour du réseau."
+            return
+        }
+        isOffline = false
+        // feat-098 — budget quotidien : alerte (non bloquante) si dépassé.
+        verifierBudget()
         if (isLoading) {
             // feat-016 — l'agent travaille : le message rejoint la file d'attente
             // et part automatiquement à la fin du tour en cours.
@@ -2086,6 +2098,9 @@ done; } 2>&1 | head -c 50000
                 // est assemblé hors du thread principal, puis stocké avec le message.
                 val ctx = buildContextBlock(userText)
                 val stored = if (ctx.isBlank()) userText else userText + CTX_MARKER + ctx
+                // feat-024 — les images jointes partent en parties image_url (vision)
+                // au prochain tour ; lisibles pendant tout le tour d'agent.
+                imagesDuTour = lireImagesJointesEnDataUris()
                 withContext(Dispatchers.Main) {
                     chat.edit.value = chat.edit.value + ChatMessage("user", stored)
                     attachments.clear()
@@ -2116,6 +2131,8 @@ done; } 2>&1 | head -c 50000
                 }
             } finally {
                 AgentService.stop(getApplication())
+                // feat-024 — le tour est fini : les parties image ne sont plus utiles.
+                imagesDuTour = emptyList()
                 withContext(NonCancellable + Dispatchers.Main) {
                     isLoading = false
                 }
@@ -2130,11 +2147,165 @@ done; } 2>&1 | head -c 50000
         }
     }
 
+    /**
+     * feat-024 — Images du tour en cours, encodées en data URI (base64 JPEG)
+     * pour les modèles qui acceptent la vision. Rempli à l'envoi (thread IO),
+     * vidé à la fin du tour. Utilisé par la construction de jsonMessages.
+     */
+    private var imagesDuTour: List<String> = emptyList()
+
+    /** feat-024 — Lit les pièces jointes image (déjà redimensionnées, corr-060) en data URIs. */
+    private fun lireImagesJointesEnDataUris(): List<String> {
+        val out = ArrayList<String>()
+        for (a in attachments.toList()) {
+            if (!a.isImage) continue
+            val uri = a.uri ?: continue
+            try {
+                val resolver = getApplication<Application>().contentResolver
+                val bytes = resolver.openInputStream(uri)?.use { it.readBytes() } ?: continue
+                if (bytes.size > 6_000_000) continue // garde-fou : ~4,5 Mo encodés
+                val mime = if (uri.toString().endsWith(".png")) "image/png" else "image/jpeg"
+                out.add("data:" + mime + ";base64," + android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP))
+            } catch (e: Exception) {
+                ZLog.e("MainViewModel", "lecture image jointe impossible", e)
+            }
+        }
+        return out
+    }
+
+    /**
+     * feat-024 — Vrai si le modèle courant accepte les images (vision).
+     * Un modèle inconnu du catalogue reste en texte seul : repli sûr.
+     */
+    private fun modeleAvecVision(modelId: String): Boolean {
+        val info = ModelCatalog.find(modelId) ?: return false
+        return Capacite.VISION in info.capacites
+    }
+
+    // ── feat-096 : mode hors ligne ──────────────────────────────────────────
+
+    /** Vrai tant que le dernier essai a échoué faute de réseau (bandeau du chat). */
+    var isOffline by mutableStateOf(false)
+        private set
+
+    /** Connectivité : Wi-Fi ou données mobiles actives (feat-096). */
+    fun estEnLigne(): Boolean {
+        return try {
+            val cm = getApplication<Application>().getSystemService(android.content.Context.CONNECTIVITY_SERVICE)
+                as? android.net.ConnectivityManager ?: return true
+            val capacites = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
+            capacites.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        } catch (e: Exception) {
+            true // en cas d'API inattendue, on n'empêche pas l'envoi
+        }
+    }
+
+    /** feat-096 — Réessaie d'envoyer le premier message en file quand le réseau revient. */
+    fun reessayerHorsLigne() {
+        if (estEnLigne() && messageQueue.isNotEmpty() && !isLoading) {
+            isOffline = false
+            val suivant = messageQueue.removeFirstOrNull()
+            if (suivant != null) sendMessage(suivant)
+        } else if (estEnLigne()) {
+            isOffline = false
+            statusMessage = ""
+        }
+    }
+
+    // ── feat-094 : « Partager vers ZAgent » ─────────────────────────────────
+
+    /** Texte reçu d'une autre application, en attente d'être chargé dans le champ. */
+    var textePartage by mutableStateOf("")
+        private set
+
+    /**
+     * feat-094 — Reçoit un texte partagé : démarre une NOUVELLE conversation et
+     * place le texte en brouillon. Aucun envoi automatique ; ChatScreen charge
+     * [textePartage] dans le champ de saisie à la prochaine composition.
+     */
+    fun recevoirTextePartage(texte: String) {
+        textePartage = texte.take(20_000)
+        clearConversation()
+        navigateTo(AppScreen.CHAT)
+    }
+
+    /** feat-094 — Consomme le texte partagé (appelé par ChatScreen une fois chargé). */
+    fun consommerTextePartage(): String {
+        val t = textePartage
+        textePartage = ""
+        return t
+    }
+
+    // ── feat-098 : budget de tokens ─────────────────────────────────────────
+
+    /** Budget du jour dépassé ? (bandeau d'alerte du chat) */
+    var budgetDepasse by mutableStateOf(false)
+        private set
+
+    /** feat-098 — Compare l'usage du jour au budget réglé ; alerte non bloquante. */
+    fun verifierBudget() {
+        val budget = settingsManager.budgetTokensJour
+        budgetDepasse = false
+        if (budget <= 0) return
+        val debutJour = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val aujourdHui = usageRepoSnapshot().filter { it.ts >= debutJour }.sumOf { it.totalTokens }
+        if (aujourdHui >= budget) {
+            budgetDepasse = true
+            statusMessage = "Budget du jour dépassé (" + aujourdHui + " / " + budget +
+                " tokens). Tu peux continuer, mais pense à ajuster le budget dans Réglages."
+        }
+    }
+
+    /** feat-098 — Budget réglé (0 = off), pour l'UI Réglages. */
+    val budgetTokensInput: Int
+        get() = settingsManager.budgetTokensJour
+
+    fun setBudgetTokens(value: Int) {
+        settingsManager.budgetTokensJour = value
+        budgetDepasse = false
+    }
+
+    // ── feat-091/092 : export/import des réglages + profils ─────────────────
+
+    /** feat-091 — JSON des réglages non secrets (partageable). */
+    fun exporterReglages(): String = settingsManager.exporterReglages()
+
+    /** feat-091 — Importe un JSON d'export ; renvoie le nombre de réglages appliqués. */
+    fun importerReglages(json: String): Result<Int> = settingsManager.importerReglages(json)
+
+    /** feat-092 — Profils enregistrés (nom → instantané JSON). */
+    val profilsReglages: Map<String, String>
+        get() = settingsManager.profilsReglages
+
+    /** feat-092 — Enregistre le profil courant sous ce nom. */
+    fun enregistrerProfil(nom: String) {
+        val n = nom.trim().take(24)
+        if (n.isEmpty()) return
+        settingsManager.profilsReglages = profilsReglages + (n to settingsManager.instantaneProfil())
+        statusMessage = "Profil « $n » enregistré."
+    }
+
+    /** feat-092 — Applique un profil enregistré. */
+    fun appliquerProfil(nom: String) {
+        val json = profilsReglages[nom] ?: return
+        importerReglages(json).onSuccess {
+            statusMessage = "Profil « $nom » appliqué (" + it + " réglages)."
+            saveSettings(apiKeyInput, modelInput, baseUrlInput, autoModeInput)
+        }
+    }
+
+    /** feat-092 — Supprime un profil. */
+    fun supprimerProfil(nom: String) {
+        settingsManager.profilsReglages = profilsReglages - nom
+    }
+
     // ── Contexte des pièces jointes et mentions @fichier (MA49/MA53) ─────────
     /** Marqueur séparant le texte visible de l'utilisateur du bloc de contexte joint au message. */
     companion object {
         const val CTX_MARKER = "\n\n--- Pièces jointes au contexte ---\n\n"
-
         /** Outils de lecture seule : refusés si « Toujours autoriser la lecture » est désactivé (MA64). */
         val READ_TOOLS = setOf("read_file", "list_dir", "search_in_files")
 
@@ -2376,11 +2547,30 @@ done; } 2>&1 | head -c 50000
                 })
                 val history = chat.edit.value
                 val compactBefore = history.size - 10
+                // feat-024 — le dernier message user porte les images jointes (vision).
+                val dernierUser = history.indexOfLast { it.role == "user" }
+                val avecImages = imagesDuTour.isNotEmpty() && modeleAvecVision(modeleUtilise)
                 for ((idx, msg) in history.withIndex()) {
                     val sentContent = if (idx < compactBefore && msg.role == "tool") compactToolOutput(msg.content) else msg.content
                     add(buildJsonObject {
                         put("role", msg.role)
-                        if (sentContent != null) put("content", sentContent) else put("content", JsonNull)
+                        if (idx == dernierUser && avecImages && sentContent != null) {
+                            // Format multimodal OpenAI : contenu = tableau de parties.
+                            put("content", buildJsonArray {
+                                add(buildJsonObject {
+                                    put("type", "text")
+                                    put("text", sentContent)
+                                })
+                                for (dataUri in imagesDuTour) {
+                                    add(buildJsonObject {
+                                        put("type", "image_url")
+                                        put("image_url", buildJsonObject { put("url", dataUri) })
+                                    })
+                                }
+                            })
+                        } else {
+                            if (sentContent != null) put("content", sentContent) else put("content", JsonNull)
+                        }
                         if (msg.toolCallId != null) put("tool_call_id", msg.toolCallId)
                         if (msg.name != null) put("name", msg.name)
                         if (msg.toolCalls != null && msg.toolCalls.isNotEmpty()) {
@@ -3725,6 +3915,13 @@ done; } 2>&1 | head -c 50000
 
     /** Épingle / désépingle une conversation (glisser vers la droite, MA56). */
     fun toggleConversationPin(id: String) = chat.toggleConversationPin(id)
+
+    /** feat-020 — Assigne l'étiquette / dossier d'une conversation ("" = sans). */
+    fun setConversationEtiquette(id: String, valeur: String) = chat.setConversationEtiquette(id, valeur)
+
+    /** feat-020 — Étiquettes existantes, pour les puces de filtrage de l'historique. */
+    val etiquettesConversations: List<String>
+        get() = chat.conversationList.map { it.etiquette }.filter { it.isNotBlank() }.distinct().sorted()
 
     // ── MA57 : projets favoris + racine publique ─────────────────────────────
     fun projectsRootPublic(): java.io.File = projectsRoot()

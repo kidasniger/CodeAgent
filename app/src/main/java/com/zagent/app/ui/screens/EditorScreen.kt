@@ -577,6 +577,14 @@ fun EditorScreen(
                     }
                 }
                 Box(Modifier.weight(1f).fillMaxWidth()) {
+                    if (entry.endsWith(".md", ignoreCase = true) || entry.endsWith(".markdown", ignoreCase = true)) {
+                        // feat-069 — aperçu rendu des fichiers Markdown (titres,
+                        // listes, gras, code, tableaux) au lieu du WebView.
+                        MarkdownPreview(
+                            contenu = editor.active?.value?.text.orEmpty(),
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
                     PreviewPane(
                         path = entry,
                         reloadKey = editor.saveCount + reloadTick + viewModel.previewTick + (if (fs) 100000 else 0),
@@ -585,6 +593,7 @@ fun EditorScreen(
                         onTitle = { pageTitle = it },
                         modifier = Modifier.fillMaxSize()
                     )
+                    }
                     if (fs) {
                         // Zone tactile discrète en haut (centre) : fait réapparaître la barre
                         Box(
@@ -772,6 +781,35 @@ fun EditorScreen(
                     }
                 }
             )
+        }
+    }
+}
+
+/** feat-069 — Aperçu rendu d'un fichier Markdown dans le panneau de prévisualisation. */
+@Composable
+private fun MarkdownPreview(contenu: String, modifier: Modifier = Modifier) {
+    val c = Zcolors
+    androidx.compose.foundation.lazy.LazyColumn(
+        modifier = modifier.background(c.bg),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
+    ) {
+        if (contenu.isBlank()) {
+            item {
+                Text(
+                    "Le fichier est vide — écris du Markdown à gauche, l'aperçu se met à jour en direct.",
+                    style = TextStyle(fontFamily = Inter, fontSize = 12.5.sp),
+                    color = c.text3
+                )
+            }
+        } else {
+            item {
+                com.zagent.app.ui.components.chat.MarkdownText(
+                    contenu,
+                    baseColor = c.text,
+                    fontSize = 14.sp,
+                    lineHeight = 21.sp
+                )
+            }
         }
     }
 }

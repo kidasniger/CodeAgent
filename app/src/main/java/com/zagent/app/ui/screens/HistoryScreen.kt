@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -54,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zagent.app.data.ConversationMeta
 import com.zagent.app.ui.components.common.GradientButton
+import com.zagent.app.ui.components.common.GlassAlertDialog
 import com.zagent.app.ui.components.common.OverlaySearchField
 import com.zagent.app.ui.components.common.ZEmptyKind
 import com.zagent.app.ui.components.common.ZEmptyState
@@ -84,15 +86,20 @@ fun HistoryDrawer(viewModel: MainViewModel, onClose: () -> Unit) {
     val scope = rememberCoroutineScope()
     // MA87 : indicateur du tirer-pour-actualiser de l'historique.
     var refreshing by remember { mutableStateOf(false) }
+    // feat-020 : filtre par étiquette / dossier ("" = toutes).
+    var filtreEtiquette by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) { viewModel.refreshConversations() }
 
-    val filtered = remember(all, query) {
+    val filtered = remember(all, query, filtreEtiquette) {
         val q = query.trim().lowercase()
-        if (q.isEmpty()) all
-        else all.filter {
-            it.title.lowercase().contains(q) || it.preview.lowercase().contains(q)
-        }
+        all
+            .filter { filtreEtiquette.isBlank() || it.etiquette == filtreEtiquette }
+            .filter {
+                if (q.isEmpty()) true
+                else it.title.lowercase().contains(q) || it.preview.lowercase().contains(q) ||
+                    it.etiquette.lowercase().contains(q)
+            }
     }
     // corr-069 — pagination du rendu : la fenêtre affichée grandit par pas de
     // 60 lignes via « Afficher plus » ; l'index reste chargé en entier (léger :
@@ -139,6 +146,31 @@ fun HistoryDrawer(viewModel: MainViewModel, onClose: () -> Unit) {
                 }
                 Spacer(Modifier.height(12.dp))
                 OverlaySearchField(query, { query = it }, "Rechercher une conversation…")
+                Spacer(Modifier.height(8.dp))
+                // feat-020 : puces de filtrage par étiquette / dossier
+                val etiquettes = viewModel.etiquettesConversations
+                if (etiquettes.isNotEmpty()) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        EtiquetteChip(
+                            label = "Toutes",
+                            active = filtreEtiquette.isBlank(),
+                            onClick = { filtreEtiquette = "" }
+                        )
+                        etiquettes.forEach { e ->
+                            EtiquetteChip(
+                                label = e,
+                                active = filtreEtiquette == e,
+                                onClick = { filtreEtiquette = if (filtreEtiquette == e) "" else e }
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                }
                 Spacer(Modifier.height(10.dp))
                 GradientButton(
                     text = "Nouvelle conversation",
@@ -267,6 +299,11 @@ private fun groupOf(ts: Long): String {
 private fun HistoryRow(viewModel: MainViewModel, meta: ConversationMeta, onClose: () -> Unit) {
     val c = Zcolors
     val df = remember { SimpleDateFormat("d MMM · HH:mm", Locale.getDefault()) }
+    // feat-020 : dialogue d'étiquette
+    var etiquetteOuverte by remember { mutableStateOf(false) }
+    if (etiquetteOuverte) {
+        EtiquetteDialog(viewModel, meta) { etiquetteOuverte = false }
+    }
 
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
@@ -357,6 +394,20 @@ private fun HistoryRow(viewModel: MainViewModel, meta: ConversationMeta, onClose
                         overflow = TextOverflow.Ellipsis
                     )
                 }
+                // feat-020 : pastille d'étiquette, tap = attribuer / modifier
+                if (meta.etiquette.isNotBlank()) {
+                    Spacer(Modifier.height(3.dp))
+                    Text(
+                        meta.etiquette,
+                        style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 10.sp),
+                        color = c.cyan,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(c.cyanBg)
+                            .clickable { etiquetteOuverte = true }
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                    )
+                }
                 Spacer(Modifier.height(2.dp))
                 Text(
                     df.format(Date(meta.updatedAt)) + " · " + meta.messageCount + " messages",
@@ -366,4 +417,73 @@ private fun HistoryRow(viewModel: MainViewModel, meta: ConversationMeta, onClose
             }
         }
     }
+}
+
+/** feat-020 — Puce de filtre par étiquette / dossier de l'historique. */
+@Composable
+private fun EtiquetteChip(label: String, active: Boolean, onClick: () -> Unit) {
+    val c = Zcolors
+    Text(
+        label,
+        style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 11.5.sp),
+        color = if (active) c.onGrad else c.text2,
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(if (active) c.cyan else c.surface2)
+            .border(1.dp, if (active) c.cyan else c.border, RoundedCornerShape(50))
+            .clickable { onClick() }
+            .padding(horizontal = 12.dp, vertical = 5.dp)
+    )
+}
+
+/** feat-020 — Dialogue d'attribution d'étiquette (dossier) à une conversation. */
+@Composable
+private fun EtiquetteDialog(
+    viewModel: MainViewModel,
+    meta: ConversationMeta,
+    onDismiss: () -> Unit
+) {
+    val c = Zcolors
+    var valeur by remember { mutableStateOf(meta.etiquette) }
+    GlassAlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Dossier / étiquette", fontFamily = SpaceGrotesk, color = c.text) },
+        text = {
+            Column {
+                Text(
+                    "Classe la conversation (ex. « travail », « projet X »). Vide = sans dossier.",
+                    fontFamily = Inter, fontSize = 12.sp, color = c.text2
+                )
+                Spacer(Modifier.height(10.dp))
+                OverlaySearchField(valeur, { valeur = it }, "Étiquette…")
+                Spacer(Modifier.height(8.dp))
+                val existantes = viewModel.etiquettesConversations
+                if (existantes.isNotEmpty()) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        existantes.forEach { e ->
+                            EtiquetteChip(
+                                label = e,
+                                active = valeur == e,
+                                onClick = { valeur = if (valeur == e) "" else e }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                viewModel.setConversationEtiquette(meta.id, valeur)
+                onDismiss()
+            }) { Text("Enregistrer", color = c.cyan) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Annuler", color = c.text2) }
+        }
+    )
 }

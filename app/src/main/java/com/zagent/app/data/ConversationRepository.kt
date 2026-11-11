@@ -19,7 +19,9 @@ data class ConversationMeta(
     val preview: String,
     val updatedAt: Long,
     val messageCount: Int = 0,
-    val pinned: Boolean = false
+    val pinned: Boolean = false,
+    /** feat-020 — étiquette / dossier de classement (chaîne vide = sans dossier). */
+    val etiquette: String = ""
 )
 
 /** Appel d'outil sérialisé (équivalent de AiRepository.ToolCallData, sans dépendance). */

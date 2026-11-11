@@ -107,6 +107,8 @@ class MainActivity : AppCompatActivity() {
         handleShortcutIntent(intent)
         // corr-097 : tap sur une notification → rouvre la conversation visée.
         restoreConversationFromIntent(intent)
+        // feat-094 : « Partager vers ZAgent » (démarrage à froid).
+        handleShareIntent(intent)
         setContent {
             val systemDark = isSystemInDarkTheme()
             var scheduleTick by remember { mutableIntStateOf(0) }
@@ -160,6 +162,21 @@ class MainActivity : AppCompatActivity() {
         handleShortcutIntent(intent)
         // corr-097 : notification reçue pendant que l'appli tourne déjà.
         restoreConversationFromIntent(intent)
+        // feat-094 : partage reçu pendant que l'appli tourne déjà.
+        handleShareIntent(intent)
+    }
+
+    /**
+     * feat-094 — « Partager vers ZAgent » : le texte partagé par une autre
+     * application devient un brouillon dans une NOUVELLE conversation ; à
+     * l'utilisateur d'appuyer sur envoyer (aucun envoi automatique).
+     */
+    private fun handleShareIntent(intent: Intent?) {
+        if (intent?.action != Intent.ACTION_SEND) return
+        if (intent.type != "text/plain") return
+        val texte = intent.getStringExtra(Intent.EXTRA_TEXT)?.trim().orEmpty()
+        if (texte.isBlank()) return
+        viewModel.recevoirTextePartage(texte)
     }
 
     /** corr-097 : rouvre la conversation pointée par une notification. */

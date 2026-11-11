@@ -17,7 +17,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.filled.CallMerge
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Swipe
@@ -65,6 +74,11 @@ fun HelpScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     val tip = remember { tips.random() }
 
     OverlayScreen(title = "Raccourcis & gestes", subtitle = "Tout ce que ZAgent sait faire au doigt", onBack = onBack) {
+        // ── feat-100 : visite guidée interactive ─────────────────────────────
+        OverlaySection("Visite guidée")
+        VisiteGuideeSection()
+        Spacer(Modifier.height(6.dp))
+
         // ── Astuce du jour ───────────────────────────────────────────────────
         Row(
             Modifier
@@ -223,6 +237,99 @@ private fun GestureRow(icon: androidx.compose.ui.graphics.vector.ImageVector, ti
                 text,
                 style = TextStyle(fontFamily = Inter, fontSize = 12.sp, lineHeight = 17.sp),
                 color = c.text2
+            )
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// feat-100 — Visite guidée interactive : étapes successives décrivant les
+// grandes zones de l'application, avec progression et reprise à zéro.
+// ─────────────────────────────────────────────────────────────────────────────
+
+private data class EtapeVisite(val titre: String, val texte: String, val icone: androidx.compose.ui.graphics.vector.ImageVector)
+
+private val etapesVisite = listOf(
+    EtapeVisite("1. Le chat", "L'écran principal : écris ta demande, l'agent lit et modifie ton projet. Tape « @ » pour joindre un fichier au contexte.", Icons.Default.Chat),
+    EtapeVisite("2. L'explorateur", "Deuxième onglet : arborescence du projet. Appui long = sélection multiple ; glisse un fichier sur un dossier pour le déplacer.", Icons.Default.Folder),
+    EtapeVisite("3. L'éditeur", "Troisième onglet : code coloré, recherche regex, sauvegarde auto et aperçu (web ou Markdown avec le bouton aperçu).", Icons.Default.Edit),
+    EtapeVisite("4. Le terminal", "Un vrai shell Linux (Termux) : git, python, node… Les sorties cliquables (chemin:ligne) ouvrent l'éditeur à la bonne ligne.", Icons.Default.Terminal),
+    EtapeVisite("5. Git visuel", "Menu ⋯ › Git : changements avec cases d'indexation, message de commit proposé par l'IA, branches, push/pull, stash et PR.", Icons.Default.CallMerge),
+    EtapeVisite("6. Réglages", "Fournisseurs d'IA, apparence, permissions, jeton GitHub, profils et budget. La visite est terminée — bon code !", Icons.Default.Settings)
+)
+
+/** feat-100 — Bloc « Visite guidée » : une étape à la fois, précédent/suivant, barre de progression. */
+@Composable
+private fun VisiteGuideeSection() {
+    val c = Zcolors
+    var etape by rememberSaveable { mutableIntStateOf(0) }
+    val e = etapesVisite[etape.coerceIn(0, etapesVisite.lastIndex)]
+
+    GlassCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                e.icone, null,
+                tint = c.cyan,
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(c.cyanBg)
+                    .padding(7.dp)
+            )
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    e.titre,
+                    style = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.SemiBold, fontSize = 14.sp),
+                    color = c.text
+                )
+                Text(
+                    "Étape " + (etape + 1) + " / " + etapesVisite.size,
+                    style = TextStyle(fontFamily = JetBrainsMono, fontSize = 10.5.sp),
+                    color = c.text3
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        LinearProgressIndicator(
+            progress = { (etape + 1f) / etapesVisite.size },
+            modifier = Modifier.fillMaxWidth(),
+            color = c.cyan,
+            trackColor = c.surface3
+        )
+        Spacer(Modifier.height(10.dp))
+        Text(
+            e.texte,
+            style = TextStyle(fontFamily = Inter, fontSize = 12.5.sp, lineHeight = 17.sp),
+            color = c.text2
+        )
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                "Précédent",
+                style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
+                color = if (etape > 0) c.text2 else c.text3,
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(50))
+                    .background(c.surface2)
+                    .clickable(enabled = etape > 0) { etape-- }
+                    .padding(vertical = 9.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+            Text(
+                if (etape < etapesVisite.lastIndex) "Suivant" else "Recommencer",
+                style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
+                color = c.onGrad,
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(50))
+                    .background(c.cyan)
+                    .clickable {
+                        etape = if (etape < etapesVisite.lastIndex) etape + 1 else 0
+                    }
+                    .padding(vertical = 9.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
         }
     }

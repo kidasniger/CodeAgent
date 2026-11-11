@@ -116,4 +116,21 @@ class ChatViewModel(
             withContext(Dispatchers.Main) { conversationList = fresh }
         }
     }
+
+    /**
+     * feat-020 — Assigne (ou efface) l'étiquette / dossier d'une conversation.
+     * Chaîne vide ou blanche = retire le classement.
+     */
+    fun setConversationEtiquette(id: String, valeur: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val index = conversationRepo.loadIndex().toMutableList()
+            val i = index.indexOfFirst { it.id == id }
+            if (i >= 0) {
+                index[i] = index[i].copy(etiquette = valeur.trim().take(24))
+                conversationRepo.saveIndex(index)
+            }
+            val fresh = conversationRepo.loadIndex()
+            withContext(Dispatchers.Main) { conversationList = fresh }
+        }
+    }
 }
