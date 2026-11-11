@@ -43,9 +43,12 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
 import com.zagent.app.ui.components.common.GlassAlertDialog
@@ -197,6 +200,125 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
             Text("Réglages", style = MaterialTheme.typography.headlineSmall, color = c.text)
         }
 
+        // ux-081 — état du groupe « Avancé » (partagé avec la recherche).
+        var avanceOuvert by rememberSaveable { mutableStateOf(false) }
+        // ux-077 — recherche de réglages : mots-clés → destinations directes
+        // (sous-écrans du LOT 5 ou réglages de la page principale).
+        var requeteReglage by rememberSaveable { mutableStateOf("") }
+        if (requeteReglage.isNotBlank()) {
+            val destinations = listOf(
+                Triple("Clé API · fournisseur", "fournisseur clé api modèle openai z.ai nvidia jeton", { showModels = true }),
+                Triple("Apparence & thème", "apparence thème clair sombre accent couleurs dynamique oled", { showAppearanceSettings = true }),
+                Triple("Police & taille du texte", "police taille texte sp typographie", { showAppearanceSettings = true }),
+                Triple("Densité", "densité compacte confortable espacement", { showAppearanceSettings = true }),
+                Triple("Effet verre", "verre flou translucide glass frost", { showAppearanceSettings = true }),
+                Triple("Modèles", "modèles catalogue contexte gratuit payant", { showModels = true }),
+                Triple("Usage & coûts", "usage coût tokens budget graphique", { showUsage = true }),
+                Triple("Instructions de l'agent", "instructions système prompt règles", { showInstructions = true }),
+                Triple("Permissions", "permissions micro fichiers notifications", { showPermissions = true }),
+                Triple("Journal d'activité", "activité journal historique actions", { showActivity = true }),
+                Triple("À propos", "à propos version licence liens", { showAbout = true }),
+                Triple("Aide", "aide faq astuce démarrer", { showHelp = true }),
+                Triple("GitHub", "github jeton token push pull dépôt", { avanceOuvert = true }),
+                Triple("Mises à jour", "mise à jour version apk télécharger", { avanceOuvert = true })
+            )
+            val mots = requeteReglage.lowercase().split(' ').filter { it.length >= 3 }
+            val resultats = destinations.filter { (_, mots_cles, _) ->
+                mots.any { mot -> mots_cles.contains(mot) }
+            }.take(6)
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(c.surface2)
+                    .border(1.dp, c.border, RoundedCornerShape(14.dp))
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.Search, null, tint = c.text2, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                OutlinedTextField(
+                    value = requeteReglage,
+                    onValueChange = { requeteReglage = it },
+                    placeholder = { Text("Rechercher un réglage…", style = TextStyle(fontFamily = Inter, fontSize = 13.5.sp), color = c.text3) },
+                    textStyle = TextStyle(fontFamily = Inter, fontSize = 13.5.sp, color = c.text),
+                    singleLine = true,
+                    colors = androidx.compose.material3.TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        cursorColor = c.cyan
+                    ),
+                    modifier = Modifier.weight(1f)
+                )
+                Icon(
+                    Icons.Default.Close, "Effacer la recherche",
+                    tint = c.text2,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .clickable { requeteReglage = "" }
+                        .padding(6.dp)
+                        .size(16.dp)
+                )
+            }
+            if (resultats.isNotEmpty()) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)
+                ) {
+                    resultats.forEach { (titre, _, ouvrir) ->
+                        Box(
+                            Modifier
+                                .clip(RoundedCornerShape(50))
+                                .background(c.cyanBg)
+                                .clickable {
+                                    requeteReglage = ""
+                                    ouvrir()
+                                }
+                                .padding(horizontal = 12.dp, vertical = 7.dp)
+                        ) {
+                            Text(
+                                titre,
+                                style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
+                                color = c.cyan
+                            )
+                        }
+                    }
+                }
+            } else {
+                Text(
+                    "Aucun réglage ne correspond.",
+                    style = TextStyle(fontFamily = Inter, fontSize = 12.5.sp),
+                    color = c.text2,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
+        } else {
+            OutlinedTextField(
+                value = requeteReglage,
+                onValueChange = { requeteReglage = it },
+                placeholder = { Text("Rechercher un réglage…", style = TextStyle(fontFamily = Inter, fontSize = 13.5.sp), color = c.text3) },
+                leadingIcon = { Icon(Icons.Default.Search, null, tint = c.text2, modifier = Modifier.size(18.dp)) },
+                textStyle = TextStyle(fontFamily = Inter, fontSize = 13.5.sp, color = c.text),
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                colors = androidx.compose.material3.TextFieldDefaults.colors(
+                    focusedContainerColor = c.surface2,
+                    unfocusedContainerColor = c.surface2,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    cursorColor = c.cyan
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+        }
+
         Column(
             Modifier
                 .weight(1f)
@@ -249,6 +371,26 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                         "Version, nouveautés, licences",
                         tint = c.violet,
                         onClick = { showAbout = true }
+                    )
+                    // ux-084 — espace utilisé (caches) et nettoyage en un tap.
+                    OverlayRow(
+                        Icons.Default.DeleteOutline, "Vider les caches",
+                        "Libère les fichiers temporaires (exports, aperçus)",
+                        tint = c.red,
+                        onClick = {
+                            val ctx = context.applicationContext
+                            var octets = 0L
+                            runCatching {
+                                ctx.cacheDir.walkTopDown().filter { it.isFile }.forEach {
+                                    octets += it.length(); it.delete()
+                                }
+                                ctx.externalCacheDir?.walkTopDown()?.filter { it.isFile }?.forEach {
+                                    octets += it.length(); it.delete()
+                                }
+                            }
+                            viewModel.statusMessage =
+                                "Caches vidés (" + java.util.Locale.FRANCE.format(octets / 1_000_000f) + " Mo libérés)."
+                        }
                     )
                 }
             }
@@ -591,6 +733,26 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
 
             Spacer(Modifier.height(20.dp))
 
+            // ux-081 — groupe « Avancé » replié par défaut : GitHub, sauvegardes
+            // et mises à jour y restent accessibles en un tap, sans encombrer
+            // la découverte des réglages courants.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { avanceOuvert = !avanceOuvert }
+                    .padding(horizontal = 4.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                SectionLabel("Avancé", modifier = Modifier.weight(1f))
+                Text(
+                    if (avanceOuvert) "Replier" else "Ouvrir",
+                    style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
+                    color = c.cyan
+                )
+            }
+            androidx.compose.animation.AnimatedVisibility(visible = avanceOuvert) {
+                Column {
             // ── feat-082 : GITHUB (jeton pour clone privé, push/pull, PR) ───
             SectionLabel("GitHub")
             Spacer(Modifier.height(8.dp))
@@ -789,6 +951,8 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
             SectionLabel("Mises à jour")
             Spacer(Modifier.height(8.dp))
             com.zagent.app.update.UpdateSettingsCard()
+                } // fin du groupe Avancé (ux-081)
+            }
 
             Spacer(Modifier.height(20.dp))
 

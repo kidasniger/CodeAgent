@@ -3,6 +3,13 @@ package com.zagent.app.ui.screens
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -373,10 +380,34 @@ fun ChatScreen(
     }
     val thinkingSeconds = ((nowTick - viewModel.thinkingStartedAt) / 1000).toInt().coerceAtLeast(0)
 
+    // ux-094 — clavier physique : Ctrl+Entrée envoie le message courant.
+    val envoyerAuClavier: () -> Unit = {
+        val t = input
+        if (t.isNotBlank()) {
+            haptique.envoi()
+            viewModel.onInputSent()
+            input = ""
+            if (editingIndex >= 0) {
+                val idx = editingIndex
+                editingIndex = -1
+                viewModel.editAndResend(idx, t)
+            } else {
+                viewModel.sendMessage(t)
+            }
+        }
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
             .imePadding()
+            .onPreviewKeyEvent { ev ->
+                if (ev.type == KeyEventType.KeyDown && ev.isCtrlPressed &&
+                    (ev.key == Key.Enter || ev.key == Key.NumpadEnter)
+                ) {
+                    envoyerAuClavier()
+                    true
+                } else false
+            }
     ) {
         AmbientTopBar(
             viewModel = viewModel,
@@ -750,12 +781,20 @@ fun ChatScreen(
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    // ux-093 — l'état dynamique de l'agent (progression, erreur)
+                    // est annoncé automatiquement aux lecteurs d'écran.
+                    .semantics { liveRegion = LiveRegionMode.Polite },
                 horizontalArrangement = Arrangement.Center
             ) {
                 TypingPill(
                     viewModel.statusMessage.ifBlank { stringResource(R.string.typing_default) },
-                    onStop = { viewModel.stopAgent() }
+                    // ux-015 — tant que l'agent n'a rien produit, « Stop » annule
+                    // aussi le message tout juste envoyé (il est retiré du fil).
+                    onStop = {
+                        if (viewModel.envoiAnnulable) viewModel.annulerDernierEnvoi()
+                        else viewModel.stopAgent()
+                    }
                 )
             }
         }
@@ -872,19 +911,7 @@ fun ChatScreen(
         ChatInputBar(
             value = input,
             onValueChange = setInput,
-            onSend = {
-                val t = input
-                if (t.isNotBlank()) haptique.envoi() // MàJ 91 — légère vibration à l'envoi
-                viewModel.onInputSent()
-                input = ""
-                if (editingIndex >= 0) {
-                    val idx = editingIndex
-                    editingIndex = -1
-                    viewModel.editAndResend(idx, t)
-                } else {
-                    viewModel.sendMessage(t)
-                }
-            },
+            onSend = envoyerAuClavier,
             enabled = !viewModel.isLoading,
             isLoading = viewModel.isLoading,
             onStop = { viewModel.stopAgent() },
@@ -916,7 +943,8 @@ fun ChatScreen(
     viewModel.pendingCommand?.let { pc ->
         CommandConfirmSheet(
             pending = pc,
-            onResolve = { allowed -> viewModel.resolvePendingCommand(allowed) }
+            onResolve = { allowed -> viewModel.resolvePendingCommand(allowed) },
+            onAllowAllTurn = { viewModel.autoriserToutCeTour() } // ux-019
         )
     }
 

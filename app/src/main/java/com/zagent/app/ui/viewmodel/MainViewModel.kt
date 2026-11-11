@@ -2163,6 +2163,7 @@ done; } 2>&1 | head -c 50000
         }
 
         stepLimitReached = false
+        autoApprouverTour = false // ux-019 — nouveau tour, nouvelles confirmations
         agentUndo.clear()
         todos = emptyList()
         summaryFiles.clear()
@@ -2858,6 +2859,24 @@ done; } 2>&1 | head -c 50000
     }
 
     /** Stop demandé par l'utilisateur pendant la génération : coupe l'appel réseau et la boucle (MA44). */
+    // ── ux-015 — annuler un message tout juste envoyé ────────────────────────
+    /** Annulable tant que l'agent n'a encore rien montré (texte ou outil). */
+    val envoiAnnulable: Boolean
+        get() = isLoading && liveText.isBlank() && summaryFiles.isEmpty() && summaryCommands.isEmpty()
+
+    /** Retire le dernier message envoyé et arrête le tour en cours. */
+    fun annulerDernierEnvoi() {
+        if (!envoiAnnulable) return
+        stopAgent()
+        val liste = chat.edit.value.toMutableList()
+        if (liste.isNotEmpty() && liste.last().role == "user") liste.removeAt(liste.lastIndex)
+        chat.edit.value = liste
+        todos = emptyList()
+        fileDiffCounts.clear()
+        statusMessage = "Message annulé avant la première réponse de l'agent."
+        persistCurrentConversation()
+    }
+
     fun stopAgent() {
         agentJob?.cancel()
         agentJob = null
@@ -3545,6 +3564,21 @@ done; } 2>&1 | head -c 50000
         return sb.toString()
     }
 
+    // ux-019 — « Tout autoriser pour ce tour » : activé par la carte de
+    // confirmation quand plusieurs demandes se suivent ; remis à faux au
+    // prochain envoi (le tour suivant repart sur des confirmations normales).
+    @Volatile
+    var autoApprouverTour: Boolean = false
+
+    /** Autorise la demande en attente ET toutes les suivantes du même tour. */
+    fun autoriserToutCeTour() {
+        autoApprouverTour = true
+        onCommandConfirmed?.invoke(true)
+        onCommandConfirmed = null
+        pendingCommand = null
+        statusMessage = "Confirmations automatiques pour ce tour."
+    }
+
     private suspend fun waitForCommandConfirmation(
         command: String,
         toolCallId: String,
@@ -3552,6 +3586,12 @@ done; } 2>&1 | head -c 50000
         changes: GitChanges? = null,
         footer: String? = null
     ): Boolean {
+        if (autoApprouverTour) {
+            // ux-019 — ce tour est en mode « tout autoriser » : exécution directe.
+            summaryCommands.add(command.take(100))
+            statusMessage = "Exécution en cours… (confirmations auto, ce tour)"
+            return true
+        }
         return suspendCancellableCoroutine { continuation ->
             statusMessage = "En attente de ta confirmation…"
             alertUser("Confirmation requise", "Lancer : " + command.take(100))

@@ -139,6 +139,18 @@ private fun ChangesTab(viewModel: MainViewModel) {
                     .clickable { viewModel.refreshGitChanges() }
             )
         }
+        // ux-070 — compteurs par état : modifiés, ajoutés, supprimés.
+        val nbModifies = files.count { it.stateLabel.startsWith("modifié") || it.stateLabel.startsWith("renommé") }
+        val nbAjoutes = files.count { it.untracked || it.stateLabel.startsWith("ajouté") }
+        val nbSupprimes = files.count { it.stateLabel.startsWith("supprimé") }
+        if (files.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
+                if (nbModifies > 0) StatusBadge("$nbModifies modifié${if (nbModifies > 1) "s" else ""}", c.amber)
+                if (nbAjoutes > 0) StatusBadge("$nbAjoutes ajouté${if (nbAjoutes > 1) "s" else ""}", c.green)
+                if (nbSupprimes > 0) StatusBadge("$nbSupprimes supprimé${if (nbSupprimes > 1) "s" else ""}", c.red)
+            }
+        }
         Spacer(Modifier.height(6.dp))
         if (files.isEmpty()) {
             Text(

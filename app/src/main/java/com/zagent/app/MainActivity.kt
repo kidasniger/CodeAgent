@@ -10,6 +10,10 @@ import androidx.core.os.LocaleListCompat
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.activity.viewModels
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.background
@@ -311,6 +315,14 @@ private fun AppRoot(
         Box(
             Modifier
                 .fillMaxSize()
+                // ux-094 — clavier physique : Ctrl+K ouvre la recherche globale
+                // depuis n'importe quel écran.
+                .onPreviewKeyEvent { ev ->
+                    if (ev.type == KeyEventType.KeyDown && ev.isCtrlPressed && ev.key == Key.K) {
+                        viewModel.isSearchOpen = true
+                        true
+                    } else false
+                }
                 .nestedScroll(navScrollConnection)
                 .pointerInput(Unit) {
                     awaitEachGesture {

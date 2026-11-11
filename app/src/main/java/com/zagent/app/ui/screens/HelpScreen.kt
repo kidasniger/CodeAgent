@@ -157,6 +157,57 @@ fun HelpScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         Spacer(Modifier.height(16.dp))
 
         // ── Mentions @ ───────────────────────────────────────────────────────
+        // ux-098 — « Signaler un problème » : rapport de diagnostic SANS secrets
+        // (version, appareil, dernier rapport de crash, événements d'activité
+        // nettoyés). La clé API n'y figure jamais : seul le journal est joint.
+        OverlaySection("Signaler un problème")
+        val ctxDiagnostic = androidx.compose.ui.platform.LocalContext.current
+        GlassCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp)) {
+            Text(
+                "Génère un rapport de diagnostic (version, appareil, dernier crash, activité récente) et partage-le. Aucune clé API ni contenu de conversation n'y figure.",
+                style = TextStyle(fontFamily = Inter, fontSize = 12.sp),
+                color = c.text2
+            )
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "Signaler un problème",
+                style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
+                color = c.cyan,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(50))
+                    .background(c.surface2)
+                    .clickable {
+                        val app = ctxDiagnostic.applicationContext
+                        val crashDossier = java.io.File(app.filesDir, "crash")
+                        val dernierCrash = crashDossier.listFiles()
+                            ?.maxByOrNull { it.lastModified() }
+                            ?.takeIf { it.length() < 20_000 }
+                            ?.readText()
+                        val activite = runCatching { viewModel.activityRepoSnapshot().take(20) }.getOrDefault(emptyList())
+                        val rapport = buildString {
+                            appendLine("— Rapport de diagnostic ZAgent (sans secrets) —")
+                            appendLine("Version : " + com.zagent.app.BuildConfig.VERSION_NAME)
+                            appendLine("Android : " + android.os.Build.VERSION.RELEASE + " (SDK " + android.os.Build.VERSION.SDK_INT + ")")
+                            appendLine("Appareil : " + android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL)
+                            appendLine("Événements récents : " + activite.size)
+                            activite.forEach { ev -> appendLine("  · " + ev.kind + " / " + ev.status + (ev.detail?.let { " — " + it.take(80) } ?: "")) }
+                            if (dernierCrash != null) {
+                                appendLine()
+                                appendLine("Dernier rapport de crash :")
+                                appendLine(dernierCrash.take(4000))
+                            }
+                        }
+                        val partage = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(android.content.Intent.EXTRA_SUBJECT, "Rapport de diagnostic ZAgent")
+                            putExtra(android.content.Intent.EXTRA_TEXT, rapport)
+                        }
+                        ctxDiagnostic.startActivity(android.content.Intent.createChooser(partage, "Signaler un problème"))
+                    }
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+            )
+        }
         OverlaySection("Joindre des fichiers avec @")
         GlassCard {
             Text(

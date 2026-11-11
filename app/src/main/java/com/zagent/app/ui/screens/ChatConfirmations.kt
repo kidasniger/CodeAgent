@@ -119,7 +119,9 @@ internal fun ApplyCodeDialog(code: String, onApply: (String) -> Unit, onDismiss:
 @Composable
 internal fun CommandConfirmSheet(
     pending: MainViewModel.PendingCommand,
-    onResolve: (Boolean) -> Unit
+    onResolve: (Boolean) -> Unit,
+    /** ux-019 — autorise la demande en cours et toutes les suivantes du tour. */
+    onAllowAllTurn: () -> Unit = {}
 ) {
     val c = Zcolors
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -227,6 +229,19 @@ internal fun CommandConfirmSheet(
                     height = 50.dp
                 )
             }
+            // ux-019 — quand plusieurs confirmations se suivent dans le même
+            // tour, un seul tap passe le reste du tour en exécution automatique.
+            Text(
+                "Tout autoriser pour ce tour",
+                style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
+                color = c.cyan,
+                modifier = Modifier
+                    .padding(top = 12.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(50))
+                    .clickable { onAllowAllTurn() }
+                    .padding(horizontal = 12.dp, vertical = 9.dp)
+            )
         }
     }
 }
