@@ -3020,7 +3020,14 @@ done; } 2>&1 | head -c 50000
         // feat-045 — permission par outil : "refuser" bloque tout, "autoriser"
         // force le mode auto (sauf remparts : push/commit/destructeur), défaut = portes normales.
         val permissionOutil = settingsManager.permissionOutil(tc.name)
-        outilAutoriseForce = permissionOutil == "autoriser"
+        // ux-020 — la permission « dans ce projet » prime sur le réglage global.
+        val nomProjet = workingFolderUriString?.let { java.io.File(it).name } ?: ""
+        val permissionProjet = if (nomProjet.isBlank()) "" else settingsManager.permissionOutilProjet(nomProjet, tc.name)
+        outilAutoriseForce = permissionProjet == "autoriser" || permissionOutil == "autoriser"
+        if (permissionProjet == "refuser") {
+            outilAutoriseForce = false
+            return "Refusé par réglage du projet : l'outil " + tc.name + " est interdit dans « " + nomProjet + " » (Permissions & sécurité)."
+        }
         if (permissionOutil == "refuser") {
             outilAutoriseForce = false
             return "Refusé par réglage : l'outil " + tc.name + " est interdit (Permissions & sécurité › Permissions par outil)."

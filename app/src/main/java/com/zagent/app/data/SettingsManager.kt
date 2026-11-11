@@ -520,6 +520,34 @@ class SettingsManager(context: Context) {
     fun permissionOutil(nomOutil: String): String =
         permissionsOutils[nomOutil].orEmpty()
 
+    // ux-020 — permissions par outil MEMORISEES PAR PROJET : « Toujours
+    // autoriser cet outil dans ce projet ». Stockage imbriqué JSON :
+    // { nomProjet: { nomOutil: "autoriser" | "refuser" } }.
+    fun permissionOutilProjet(nomProjet: String, nomOutil: String): String =
+        permissionsOutilsParProjet[nomProjet]?.get(nomOutil).orEmpty()
+
+    fun reglerPermissionOutilProjet(nomProjet: String, nomOutil: String, valeur: String) {
+        val actuel = permissionsOutilsParProjet.toMutableMap()
+        val pourProjet = (actuel[nomProjet] ?: emptyMap()).toMutableMap()
+        if (valeur.isBlank()) pourProjet.remove(nomOutil) else pourProjet[nomOutil] = valeur
+        if (pourProjet.isEmpty()) actuel.remove(nomProjet) else actuel[nomProjet] = pourProjet
+        permissionsOutilsParProjet = actuel
+    }
+
+    var permissionsOutilsParProjet: Map<String, Map<String, String>>
+        get() = runCatching {
+            val o = org.json.JSONObject(prefs.getString("permissions_outils_projet", "{}") ?: "{}")
+            val map = LinkedHashMap<String, Map<String, String>>()
+            o.keys().forEach { projet ->
+                val po = o.optJSONObject(projet) ?: return@forEach
+                val inner = LinkedHashMap<String, String>()
+                po.keys().forEach { outil -> inner[outil] = po.optString(outil) }
+                map[projet] = inner
+            }
+            map
+        }.getOrDefault(emptyMap())
+        set(value) = prefs.edit().putString("permissions_outils_projet", org.json.JSONObject(value.mapValues { row -> org.json.JSONObject(row.value) }).toString()).apply()
+
     fun reglerPermissionOutil(nomOutil: String, valeur: String) {
         val actuel = permissionsOutils.toMutableMap()
         if (valeur.isBlank()) actuel.remove(nomOutil) else actuel[nomOutil] = valeur

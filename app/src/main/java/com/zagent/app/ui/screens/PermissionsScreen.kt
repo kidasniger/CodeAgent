@@ -185,6 +185,20 @@ fun PermissionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             var perms by remember { mutableStateOf(viewModel.settingsManager.permissionsOutils) }
+            // ux-020 — variante par projet : « toujours autoriser » peut être
+            // restreint au dossier ouvert, sans toucher au réglage global.
+            val nomProjetCourant = viewModel.workingFolderUriString?.let { java.io.File(it).name }.orEmpty()
+            var permsProjet by remember(nomProjetCourant) {
+                mutableStateOf(viewModel.settingsManager.permissionsOutilsParProjet[nomProjetCourant] ?: emptyMap())
+            }
+            if (nomProjetCourant.isNotBlank()) {
+                Text(
+                    "Projet ouvert : $nomProjetCourant — les puces « Projet » ne concernent que ce dossier.",
+                    style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp),
+                    color = c.text2,
+                    modifier = Modifier.padding(bottom = 6.dp)
+                )
+            }
             com.zagent.app.data.AgentTools.nomsOutils.forEach { nom ->
                 val courant = perms[nom].orEmpty()
                 Row(
@@ -205,6 +219,16 @@ fun PermissionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     PuceOutil("Refus", courant == "refuser", c.red) {
                         viewModel.settingsManager.reglerPermissionOutil(nom, if (courant == "refuser") "" else "refuser")
                         perms = viewModel.settingsManager.permissionsOutils
+                    }
+                    // ux-020 — autorisation restreinte à ce projet (si un dossier est ouvert).
+                    if (nomProjetCourant.isNotBlank()) {
+                        val proj = permsProjet[nom].orEmpty()
+                        PuceOutil("Projet", proj == "autoriser", c.violet) {
+                            viewModel.settingsManager.reglerPermissionOutilProjet(
+                                nomProjetCourant, nom, if (proj == "autoriser") "" else "autoriser"
+                            )
+                            permsProjet = viewModel.settingsManager.permissionsOutilsParProjet[nomProjetCourant] ?: emptyMap()
+                        }
                     }
                 }
             }
