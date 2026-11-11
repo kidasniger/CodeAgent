@@ -6,8 +6,11 @@ import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
+import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
+import javax.net.ssl.SSLException
+import kotlin.random.Random
 
 /**
  * corr-018 — Client IA unique de l'application (protocole chat/completions).
@@ -48,6 +51,38 @@ class AiRepository : AiRepositoryApi {
     override fun cancelActive() {
         activeCall.getAndSet(null)?.cancel()
     }
+
+    // ── err-042 — journal réseau consultable (sans clés) ────────────────
+
+    /** Les 60 derniers événements réseau (horodatage, hôte, code/cause) — jamais de clé ni d'en-tête d'autorisation. */
+    val journalReseau = ArrayDeque<String>()
+
+    private fun journalReseauAjouter(hote: String, evenement: String) {
+        journalReseau.addLast(
+            java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.FRANCE).format(java.util.Date()) +
+                " — " + hote + " — " + evenement
+        )
+        while (journalReseau.size > 60) journalReseau.removeFirst()
+    }
+
+    /** Hôte d'une URL (pour le journal et les messages) — sans port ni chemin. */
+    private fun hoteDe(url: String): String =
+        runCatching { java.net.URI(url).host ?: url }.getOrDefault(url)
+
+    /** err-022/023 — nom humain du fournisseur d'après l'URL (messages 401/403/404). */
+    private fun nomFournisseur(url: String): String {
+        val u = url.lowercase()
+        return when {
+            "z.ai" in u -> "z.ai (GLM)"
+            "nvidia" in u -> "NVIDIA NIM"
+            "openrouter" in u -> "OpenRouter"
+            "groq" in u -> "Groq"
+            "127.0.0.1" in u || "localhost" in u -> "serveur local (Ollama / LM Studio)"
+            else -> hoteDe(url)
+        }
+    }
+
+    private val estServeurLocal: (String) -> Boolean = { u -> "127.0.0.1" in u || "localhost" in u }
 
     sealed class ApiResponse {
         data class Success(
@@ -116,6 +151,8 @@ class AiRepository : AiRepositoryApi {
         var usagePrompt: Int? = null
         var usageCompletion: Int? = null
         val source = body.source()
+        var sseFini = false
+        var finishReason: String? = null
         while (true) {
             val line = source.readUtf8Line() ?: break
             if (!line.startsWith("data:")) {
@@ -125,7 +162,10 @@ class AiRepository : AiRepositoryApi {
             sawSse = true
             val data = line.removePrefix("data:").trim()
             if (data.isEmpty()) continue
-            if (data == "[DONE]") break
+            if (data == "[DONE]") {
+                sseFini = true
+                break
+            }
             val obj = try {
                 Json.parseToJsonElement(data).jsonObject
             } catch (e: Exception) {
@@ -136,6 +176,10 @@ class AiRepository : AiRepositoryApi {
                 (u["completion_tokens"] as? JsonPrimitive)?.intOrNull?.let { usageCompletion = it }
             }
             val first = (obj["choices"] as? JsonArray)?.firstOrNull() as? JsonObject ?: continue
+            // err-038 — finish_reason pour distinguer une réponse tronquée (length) d'un arrêt normal.
+            (first["finish_reason"] as? JsonPrimitive)?.contentOrNull?.let {
+                if (!it.isNullOrBlank()) finishReason = it
+            }
             val delta = first["delta"] as? JsonObject ?: continue
             val piece = (delta["content"] as? JsonPrimitive)?.contentOrNull
             if (!piece.isNullOrEmpty()) {
@@ -161,6 +205,24 @@ class AiRepository : AiRepositoryApi {
         val calls = tools.entries.mapNotNull { (idx, a) ->
             if (a.name.isEmpty()) null
             else ToolCallData(a.id.ifEmpty { "call_$idx" }, a.name, a.args.toString().ifBlank { "{}" })
+        }
+        // err-038 — réponse vide (rien du tout, ou max_tokens atteint sans contenu).
+        if (content.isBlank() && calls.isEmpty()) {
+            return ApiResponse.Error(
+                if (finishReason == "length")
+                    "Le modèle a atteint la limite de sortie (max_tokens) sans produire de réponse : " +
+                        "augmente max_tokens dans Réglages › Génération, ou reformule la demande."
+                else
+                    "Le modèle a renvoyé une réponse vide. Réessaie, ou change de modèle dans Réglages."
+            )
+        }
+        // err-033 — flux coupé en pleine réponse : le contenu partiel est conservé et signalé.
+        if (sawSse && !sseFini && (content.isNotEmpty() || calls.isNotEmpty())) {
+            content.append("\n\n[flux interrompu avant la fin de la réponse — le message est peut-être incomplet]")
+        }
+        // err-038 — finish_reason = length avec du contenu : troncature signalée.
+        if (finishReason == "length") {
+            content.append("\n[réponse tronquée : limite max_tokens atteinte]")
         }
         return ApiResponse.Success(
             content.toString().ifEmpty { null }, calls.ifEmpty { null }, usagePrompt, usageCompletion,
@@ -248,8 +310,29 @@ class AiRepository : AiRepositoryApi {
                     } else {
                         val responseString = response.body.string()
                         val code = response.code
+                        journalReseauAjouter(hoteDe(url), "HTTP $code")
                         if (code == 401) {
-                            return ApiResponse.Error("Ta clé API a été refusée (401). Vérifie-la dans les Réglages.")
+                            // err-022 — le nom du fournisseur est nommément désigné.
+                            return ApiResponse.Error(
+                                "Clé refusée par " + nomFournisseur(url) + " (401). " +
+                                    "Vérifie ou renouvelle la clé de ce fournisseur dans Réglages › Fournisseurs."
+                            )
+                        }
+                        if (code == 403) {
+                            // err-023 — accès au modèle refusé : cause et suites possibles.
+                            return ApiResponse.Error(
+                                "Accès refusé par " + nomFournisseur(url) + " (403) : ta clé n'a pas les droits pour ce modèle " +
+                                    "(modèle privé, région restreinte ou plan insuffisant). Choisis un autre modèle, " +
+                                    "ou vérifie ton abonnement/le site du fournisseur."
+                            )
+                        }
+                        if (code == 404) {
+                            // err-024 — modèle introuvable ou retiré : alternative proposée.
+                            return ApiResponse.Error(
+                                "Modèle « " + model + " » introuvable ou retiré chez " + nomFournisseur(url) + " (404). " +
+                                    "Choisis un autre modèle dans le sélecteur de modèles ; " +
+                                    "le modèle par défaut du fournisseur reste la valeur sûre."
+                            )
                         }
                         // err-040 — quota / crédit épuisé : message clair, pas de
                         // nouvel essai automatique (le résultat ne changera pas).
@@ -279,19 +362,42 @@ class AiRepository : AiRepositoryApi {
                         if (code == 429 || code == 500 || code == 502 || code == 503 || code == 529 || is1305) {
                             attempt++
                             if (attempt >= maxAttempts) {
-                                val msg = if (is1305) {
-                                    "Le modèle est momentanément surchargé (1305). Essaie l'autre modèle ou réessaie dans un instant."
-                                } else {
-                                    "Le serveur est surchargé (HTTP $code). Réessaie dans un instant."
+                                val msg = when {
+                                    is1305 ->
+                                        "Le modèle est momentanément surchargé (1305). " +
+                                            "Essaie un autre modèle (bouton « Changer de modèle ») ou réessaie dans un instant."
+                                    code == 529 ->
+                                        // err-028 — surcharge du modèle : proposer explicitement un autre modèle.
+                                        "Le modèle est surchargé (529). " +
+                                            "Essaie un autre modèle (bouton « Changer de modèle ») ou réessaie dans un instant."
+                                    else ->
+                                        "Le serveur est surchargé (HTTP $code). Réessaie dans un instant."
                                 }
                                 return ApiResponse.Error(msg, is1305)
                             }
-                            onRetryUpdate("Serveur surchargé, nouvel essai dans ${delaySeconds}s (tentative $attempt/$maxAttempts)...")
-                            delay(delaySeconds * 1000L)
-                            delaySeconds += 5L
+                            // err-026 — respecte Retry-After (en secondes) quand le serveur l'envoie.
+                            // err-027 — backoff exponentiel plafonné + jitter anti-tempête.
+                            val retryAfter = response.headers["Retry-After"]?.trim()
+                                ?.takeIf { it.matches(Regex("\\d+")) }?.toLongOrNull() ?: 0L
+                            val backoff = (delaySeconds * 2L).coerceAtMost(60L)
+                            delaySeconds = if (retryAfter > 0) retryAfter.coerceAtMost(120L) else backoff
+                            val jitter = if (delaySeconds > 2) Random.nextLong(0, delaySeconds / 2) else 0L
+                            onRetryUpdate("Serveur surchargé, nouvel essai dans ${delaySeconds + jitter}s (tentative $attempt/$maxAttempts)...")
+                            delay((delaySeconds + jitter) * 1000L)
                             continue
                         } else if (code == 400) {
-                            return ApiResponse.Error("La requête a été refusée (400). Le modèle ou un message est peut-être invalide : ouvre une nouvelle conversation.")
+                            // err-039 — contexte dépassé : consigne claire plutôt qu'un 400 générique.
+                            val contexteDepasse = responseString.contains("context_length_exceeded", true) ||
+                                responseString.contains("maximum context length", true) ||
+                                responseString.contains("context window", true) ||
+                                responseString.contains("too many tokens", true)
+                            return ApiResponse.Error(
+                                if (contexteDepasse)
+                                    "Contexte dépassé (400) : la conversation est trop longue pour ce modèle. " +
+                                        "Ouvre une nouvelle conversation ou vide l'historique (menu ⋯ du chat)."
+                                else
+                                    "La requête a été refusée (400). Le modèle ou un message est peut-être invalide : ouvre une nouvelle conversation."
+                            )
                         } else {
                             // err-041 : détail du fournisseur repris s'il existe (truncature prudente).
                             val detail = messageFournisseur?.take(160)
@@ -305,11 +411,36 @@ class AiRepository : AiRepositoryApi {
                 } finally {
                     activeCall.compareAndSet(call, null)
                 }
+            } catch (e: UnknownHostException) {
+                // err-031 — DNS : message adapté ; err-045 — cas particulier du serveur local.
+                journalReseauAjouter(hoteDe(url), "DNS introuvable")
+                return ApiResponse.Error(
+                    if (estServeurLocal(url))
+                        "Serveur local injoignable ($url) : vérifie qu'il tourne sur ton ordinateur, " +
+                            "que le téléphone est sur le même réseau Wi-Fi, et utilise l'IP du PC " +
+                            "(ex : http://192.168.1.20:11434/v1/chat/completions) plutôt que localhost."
+                    else
+                        "Impossible de résoudre l'adresse du serveur (DNS) : vérifie ta connexion Internet " +
+                            "ou l'URL du fournisseur dans Réglages."
+                )
+            } catch (e: SSLException) {
+                // err-030 — certificat / horloge : message adapté.
+                journalReseauAjouter(hoteDe(url), "Erreur TLS : " + (e.message?.take(120) ?: "inconnue"))
+                return ApiResponse.Error(
+                    "Problème de certificat TLS : vérifie la date et l'heure du téléphone (Réglages système) puis réessaie ; " +
+                        "pour un serveur auto-hébergé (Ollama…), son certificat est peut-être invalide ou non approuvé."
+                )
             } catch (e: IOException) {
                 attempt++
+                journalReseauAjouter(hoteDe(url), "E/S réseau (essai $attempt/$maxAttempts) : " + (e.javaClass.simpleName))
                 if (attempt >= maxAttempts) {
                     val human = if (e is java.net.SocketTimeoutException) {
-                        "Délai dépassé : le serveur n'a pas répondu à temps. Vérifie ta connexion réseau puis réessaie."
+                        // err-025 — le délai réel est nommé (180 s) ; les nouvelles tentatives sont automatiques.
+                        "Délai dépassé (" + Constants.RESEAU_TIMEOUT_S + " s sans réponse du serveur). " +
+                            "Vérifie ta connexion réseau puis réessaie."
+                    } else if (estServeurLocal(url)) {
+                        "Serveur local injoignable ($url) : vérifie que le serveur tourne, que le téléphone est sur le même réseau, " +
+                            "et que l'URL pointe l'IP du PC (pas localhost)."
                     } else {
                         "Impossible de joindre le serveur (erreur réseau). Vérifie ta connexion Internet puis réessaie."
                     }

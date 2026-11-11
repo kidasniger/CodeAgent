@@ -192,6 +192,13 @@ fun HelpScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                             appendLine("Appareil : " + android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL)
                             appendLine("Événements récents : " + activite.size)
                             activite.forEach { ev -> appendLine("  · " + ev.kind + " / " + ev.status + (ev.detail?.let { " — " + it.take(80) } ?: "")) }
+                            // err-042 — journal réseau consultable (sans clés) dans le rapport.
+                            val journal = runCatching { viewModel.journalReseauIA().take(15) }.getOrDefault(emptyList())
+                            if (journal.isNotEmpty()) {
+                                appendLine()
+                                appendLine("Journal réseau (sans clés) :")
+                                journal.forEach { appendLine("  · " + it) }
+                            }
                             if (dernierCrash != null) {
                                 appendLine()
                                 appendLine("Dernier rapport de crash :")

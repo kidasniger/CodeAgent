@@ -631,9 +631,56 @@ object AgentTools {
         "project_memory", "update_todos", "ask_user"
     )
 
+    /**
+     * err-034 — répare un JSON d'arguments tronqué ou malformé : fences markdown,
+     * texte avant l'accolade, virgule finale, accolades/crochets non fermés,
+     * chaîne coupée en plein milieu. Retourne toujours un objet (éventuellement vide).
+     */
+    fun argumentsLenients(brut: String): JsonObject {
+        var s = brut.trim()
+        if (s.isEmpty()) return JsonObject(emptyMap())
+        if (s.startsWith("```")) {
+            s = s.removePrefix("```json").removePrefix("```JSON").removePrefix("```")
+            val fin = s.lastIndexOf("```")
+            if (fin >= 0) s = s.substring(0, fin)
+            s = s.trim()
+        }
+        val debut = s.indexOf('{')
+        if (debut > 0) s = s.substring(debut)
+        try {
+            return (Json.parseToJsonElement(s) as? JsonObject) ?: JsonObject(emptyMap())
+        } catch (e: Exception) {
+            // réparation : rééquilibre ce qui manque en ignorant le contenu des chaînes
+        }
+        var enChaine = false
+        var echappe = false
+        val pile = ArrayDeque<Char>()
+        for (c in s) {
+            if (echappe) { echappe = false; continue }
+            if (c == '\\' && enChaine) { echappe = true; continue }
+            if (c == '"') { enChaine = !enChaine; continue }
+            if (enChaine) continue
+            if (c == '{' || c == '[') pile.addLast(c)
+            if (c == '}' || c == ']') {
+                if (pile.isNotEmpty() &&
+                    ((pile.last() == '{' && c == '}') || (pile.last() == '[' && c == ']'))
+                ) pile.removeLast()
+            }
+        }
+        var t = s.trimEnd().removeSuffix(",").trimEnd()
+        if (enChaine) t += "\""
+        while (pile.isNotEmpty()) t += if (pile.removeLast() == '{') "}" else "]"
+        return try {
+            (Json.parseToJsonElement(t) as? JsonObject) ?: JsonObject(emptyMap())
+        } catch (e: Exception) {
+            JsonObject(emptyMap())
+        }
+    }
+
     fun executeTool(fileRepo: FileRepository, name: String, argumentsJson: String): String {
         return try {
-            val jsonObject = Json.parseToJsonElement(argumentsJson).jsonObject
+            // err-034 — tolère les arguments JSON partiels ou malformés.
+            val jsonObject = argumentsLenients(argumentsJson)
             when (name) {
                 "list_dir" -> {
                     val path = jsonObject["path"]?.jsonPrimitive?.content ?: "."
@@ -809,7 +856,12 @@ object AgentTools {
                         if (top.isNotEmpty()) append("Extensions fréquentes : ").append(top)
                     }
                 }
-                else -> "Erreur: Outil inconnu $name"
+                else -> {
+                    // err-036 — réponse standard pour un outil inconnu : la liste des
+                    // outils disponibles est renvoyée pour que le modèle se corrige.
+                    "Erreur: l'outil « $name » n'existe pas. Outils disponibles : " +
+                        nomsOutils.joinToString(", ") + " — utilise l'un de ceux-ci."
+                }
             }
         } catch (e: Exception) {
             "Erreur d'exécution de l'outil $name: ${e.localizedMessage}"

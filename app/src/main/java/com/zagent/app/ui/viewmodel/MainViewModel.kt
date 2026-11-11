@@ -939,7 +939,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      * sinon une erreur explicite (jamais la clé elle-même).
      */
     suspend fun testerCleOnboarding(url: String, cle: String): Result<List<String>> =
-        runCatching { aiRepository.listerModeles(url, cle) }
+        runCatching {
+            // err-044 — refuse une URL invalide avant l'appel réseau.
+            validerBaseUrl(url)?.let { throw IllegalArgumentException(it) }
+            aiRepository.listerModeles(url, cle)
+        }
+
+    /** err-042 — journal réseau (sans clés) exposé au rapport de diagnostic (HelpScreen). */
+    fun journalReseauIA(): List<String> = aiRepository.journalReseau.toList()
 
     // ── Git visuel ──────────────────────────────────────────────────────────
     // corr-008 : état d'UI regroupé dans une seule data class (UiState.kt).
@@ -2618,6 +2625,21 @@ done; } 2>&1 | head -c 50000
         // historique avant l'envoi (plafonne le coût, évite les dépassements).
         runCatching { compacterContexte(force = false) }
 
+        // err-021 — réseau absent : arrêt avant tout appel voué à l'échec.
+        if (!reseauDisponible()) {
+            withContext(Dispatchers.Main) {
+                isLoading = false
+                isNetworkError = true
+                statusMessage = "Aucune connexion réseau : vérifie le Wi-Fi ou les données mobiles puis renvoie le message."
+            }
+            alertUser("L'agent s'est arrêté", "Aucune connexion réseau détectée.")
+            return
+        }
+
+        // err-037 — détection de boucle : appels d'outils identiques consécutifs.
+        var derniereSignatureOutil: String? = null
+        var compteurBoucleOutil = 0
+
         while (stepCount < maxSteps) {
             stepCount++
 
@@ -2795,6 +2817,27 @@ done; } 2>&1 | head -c 50000
                         }
 
                         for (tc in toolCalls) {
+                            // err-037 — 3 appels identiques consécutifs → arrêt de la boucle.
+                            val sig = tc.name + "\u0000" + tc.arguments
+                            if (sig == derniereSignatureOutil) compteurBoucleOutil++ else {
+                                derniereSignatureOutil = sig
+                                compteurBoucleOutil = 1
+                            }
+                            if (compteurBoucleOutil >= 3) {
+                                val msgBoucle = "Erreur: boucle d'outils détectée — 3 appels identiques consécutifs à " +
+                                    tc.name + ". Arrête cette approche et propose une autre méthode."
+                                withContext(Dispatchers.Main) {
+                                    chat.edit.value = chat.edit.value + ChatMessage(
+                                        role = "tool", content = msgBoucle, toolCallId = tc.id,
+                                        name = tc.name, toolLog = tc.name
+                                    )
+                                    isLoading = false
+                                    statusMessage = "Boucle d'outils détectée — l'agent s'est arrêté."
+                                }
+                                alertUser("L'agent s'est arrêté", "Appels d'outils identiques répétés (boucle détectée).")
+                                finished = true
+                                break
+                            }
                             val label = describeTool(tc.name, tc.arguments)
                             withContext(Dispatchers.Main) {
                                 statusMessage = label
@@ -2843,6 +2886,15 @@ done; } 2>&1 | head -c 50000
     private fun alertUser(title: String, text: String) {
         AgentNotifier.alert(getApplication(), title, text, conversationId)
     }
+
+    /** err-021 — réseau actif (capacité INTERNET) selon ConnectivityManager ; true par défaut en cas d'échec de détection. */
+    private fun reseauDisponible(): Boolean = runCatching {
+        val cm = getApplication<Application>().getSystemService(android.content.Context.CONNECTIVITY_SERVICE)
+            as android.net.ConnectivityManager
+        val net = cm.activeNetwork ?: return@runCatching false
+        val caps = cm.getNetworkCapabilities(net) ?: return@runCatching false
+        caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }.getOrDefault(true)
 
     /** Renvoie à l'agent une commande en erreur pour qu'il la corrige. */
     fun fixCommandWithAi(command: String, result: String) {
@@ -3048,7 +3100,7 @@ done; } 2>&1 | head -c 50000
         }
         if (tc.name == "write_file") {
             val parsedArgs = try {
-                Json.parseToJsonElement(tc.arguments).jsonObject
+                com.zagent.app.data.AgentTools.argumentsLenients(tc.arguments)
             } catch (e: Exception) {
                 JsonObject(emptyMap())
             }
@@ -3058,7 +3110,7 @@ done; } 2>&1 | head -c 50000
         }
         if (tc.name == "edit_file") {
             val args = try {
-                Json.parseToJsonElement(tc.arguments).jsonObject
+                com.zagent.app.data.AgentTools.argumentsLenients(tc.arguments)
             } catch (e: Exception) {
                 JsonObject(emptyMap())
             }
@@ -3080,7 +3132,23 @@ done; } 2>&1 | head -c 50000
                 count++
                 idx = text.indexOf(oldS, idx + oldS.length)
             }
-            if (count == 0) return "Erreur: old_string introuvable dans $path. Relis le fichier avec read_file et recopie le texte exactement."
+            if (count == 0) {
+                // err-058 — extrait de contexte pour aider l'agent à recaler l'édition.
+                val lignesFichier = text.lines()
+                val cible = oldS.lineSequence().firstOrNull()?.take(14)?.trim()
+                val idxLigne = cible?.takeIf { it.length >= 6 }
+                    ?.let { c -> lignesFichier.indexOfFirst { it.contains(c) } } ?: -1
+                val extrait = if (idxLigne >= 0) {
+                    val a = (idxLigne - 3).coerceAtLeast(0)
+                    val b = (idxLigne + 4).coerceAtMost(lignesFichier.size)
+                    "Extrait autour de la zone visée (lignes " + (a + 1) + "-" + b + ") :\n" +
+                        lignesFichier.subList(a, b).joinToString("\n") { "  | $it" }
+                } else {
+                    "Début du fichier :\n" + lignesFichier.take(12).joinToString("\n") { "  | $it" }
+                }
+                return "Erreur: old_string introuvable dans $path (" + lignesFichier.size + " lignes). " +
+                    "Relis le fichier avec read_file et recopie le texte exactement.\n" + extrait
+            }
             if (count > 1) return "Erreur: old_string apparaît $count fois dans $path. Ajoute du contexte autour pour le rendre unique."
             val updated = text.substring(0, first) + newS + text.substring(first + oldS.length)
             val out = if (crlf) updated.replace("\n", "\r\n") else updated
@@ -3088,7 +3156,7 @@ done; } 2>&1 | head -c 50000
         }
         if (tc.name == "delete_file") {
             val args = try {
-                Json.parseToJsonElement(tc.arguments).jsonObject
+                com.zagent.app.data.AgentTools.argumentsLenients(tc.arguments)
             } catch (e: Exception) {
                 JsonObject(emptyMap())
             }
@@ -3117,7 +3185,7 @@ done; } 2>&1 | head -c 50000
         // d'écriture passent par applyWrite (porte de confirmation habituelle).
         if (tc.name == "project_memory") {
             val args = try {
-                Json.parseToJsonElement(tc.arguments).jsonObject
+                com.zagent.app.data.AgentTools.argumentsLenients(tc.arguments)
             } catch (e: Exception) {
                 JsonObject(emptyMap())
             }
@@ -3149,7 +3217,7 @@ done; } 2>&1 | head -c 50000
         // ── feat-027/028 — move_file et copy_file ─────────────────────────
         if (tc.name == "move_file" || tc.name == "copy_file") {
             val args = try {
-                Json.parseToJsonElement(tc.arguments).jsonObject
+                com.zagent.app.data.AgentTools.argumentsLenients(tc.arguments)
             } catch (e: Exception) {
                 JsonObject(emptyMap())
             }
@@ -3187,7 +3255,7 @@ done; } 2>&1 | head -c 50000
         // ── feat-029 — apply_patch (atomique : tout vérifié avant d'écrire) ──
         if (tc.name == "apply_patch") {
             val args = try {
-                Json.parseToJsonElement(tc.arguments).jsonObject
+                com.zagent.app.data.AgentTools.argumentsLenients(tc.arguments)
             } catch (e: Exception) {
                 JsonObject(emptyMap())
             }
@@ -3262,7 +3330,7 @@ done; } 2>&1 | head -c 50000
         }
         if (tc.name == "git_diff") {
             val args = try {
-                Json.parseToJsonElement(tc.arguments).jsonObject
+                com.zagent.app.data.AgentTools.argumentsLenients(tc.arguments)
             } catch (e: Exception) {
                 JsonObject(emptyMap())
             }
@@ -3274,7 +3342,7 @@ done; } 2>&1 | head -c 50000
         }
         if (tc.name == "git_commit") {
             val args = try {
-                Json.parseToJsonElement(tc.arguments).jsonObject
+                com.zagent.app.data.AgentTools.argumentsLenients(tc.arguments)
             } catch (e: Exception) {
                 JsonObject(emptyMap())
             }
@@ -3293,7 +3361,7 @@ done; } 2>&1 | head -c 50000
         // ── feat-033 — run_tests : détection + résumé des échecs ─────────
         if (tc.name == "run_tests") {
             val args = try {
-                Json.parseToJsonElement(tc.arguments).jsonObject
+                com.zagent.app.data.AgentTools.argumentsLenients(tc.arguments)
             } catch (e: Exception) {
                 JsonObject(emptyMap())
             }
@@ -3321,7 +3389,7 @@ done; } 2>&1 | head -c 50000
             if (!settingsManager.rechercheWebActive)
                 return "Recherche web désactivée : l'utilisateur peut l'activer dans Réglages › Permissions & sécurité."
             val args = try {
-                Json.parseToJsonElement(tc.arguments).jsonObject
+                com.zagent.app.data.AgentTools.argumentsLenients(tc.arguments)
             } catch (e: Exception) {
                 JsonObject(emptyMap())
             }
@@ -3372,7 +3440,7 @@ done; } 2>&1 | head -c 50000
         // ── feat-044 — pkg_install : toujours confirmé, noms validés ────
         if (tc.name == "pkg_install") {
             val args = try {
-                Json.parseToJsonElement(tc.arguments).jsonObject
+                com.zagent.app.data.AgentTools.argumentsLenients(tc.arguments)
             } catch (e: Exception) {
                 JsonObject(emptyMap())
             }
@@ -3394,7 +3462,7 @@ done; } 2>&1 | head -c 50000
         }
         if (tc.name == "run_command") {
             val args = try {
-                Json.parseToJsonElement(tc.arguments).jsonObject
+                com.zagent.app.data.AgentTools.argumentsLenients(tc.arguments)
             } catch (e: Exception) {
                 JsonObject(emptyMap())
             }            
@@ -3427,7 +3495,7 @@ done; } 2>&1 | head -c 50000
         }
         if (tc.name == "start_dev_server") {
             val args = try {
-                Json.parseToJsonElement(tc.arguments).jsonObject
+                com.zagent.app.data.AgentTools.argumentsLenients(tc.arguments)
             } catch (e: Exception) {
                 JsonObject(emptyMap())
             }
@@ -4097,10 +4165,30 @@ done; } 2>&1 | head -c 50000
 
     fun saveBaseUrl(url: String) {
         val v = url.trim()
-        if (v.isNotEmpty()) {
-            baseUrlInput = v
-            settingsManager.baseUrl = v
+        if (v.isEmpty()) return
+        // err-044 — validation précise avant enregistrement (l'URL invalide est refusée).
+        val erreur = validerBaseUrl(v)
+        if (erreur != null) {
+            statusMessage = erreur
+            return
         }
+        baseUrlInput = v
+        settingsManager.baseUrl = v
+    }
+
+    /** err-044 — schéma (https ; http uniquement local) + chemin attendu (/v1 ou chat/completions) ; null = valide. */
+    fun validerBaseUrl(url: String): String? {
+        val v = url.trim()
+        if (v.isEmpty()) return null
+        val httpLocal = v.startsWith("http://") &&
+            (v.contains("127.0.0.1") || v.contains("localhost") || v.contains("192.168."))
+        if (!v.startsWith("https://") && !httpLocal)
+            return "URL invalide : utilise https:// (http:// accepté uniquement pour un serveur local : 127.0.0.1, localhost, 192.168.*)."
+        if (!v.contains("chat/completions") && !v.contains("/v1"))
+            return "URL douteuse : elle doit pointer vers l'endpoint chat/completions (ex : https://hote/v1/chat/completions)."
+        val uri = runCatching { java.net.URI(v) }.getOrNull() ?: return "URL malformée : vérifie la syntaxe."
+        if (uri.host.isNullOrBlank()) return "URL malformée : hôte manquant."
+        return null
     }
 
     // ── MA60 : usage & coûts ─────────────────────────────────────────────────
