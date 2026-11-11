@@ -6,6 +6,9 @@ import android.widget.Toast
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.Key
+// err-001 : nativeKeyCode est l'extension sur android.view.KeyEvent (Key.NumpadEnter
+// n'existe pas dans ce BOM Compose) — Ctrl+Entrée accepte aussi le Entrée du pavé numérique.
+import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -404,7 +407,7 @@ fun ChatScreen(
             .imePadding()
             .onPreviewKeyEvent { ev ->
                 if (ev.type == KeyEventType.KeyDown && ev.isCtrlPressed &&
-                    (ev.key == Key.Enter || ev.key == Key.NumpadEnter)
+                    (ev.key == Key.Enter || ev.nativeKeyCode == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER)
                 ) {
                     envoyerAuClavier()
                     true

@@ -7,11 +7,23 @@ OLD="com.termux"
 NEW="com.zagent"
 status=0
 
+# err-020 : outils requis presents — sinon message clair et echec propre.
+for tool in dpkg-deb sed grep find xargs chmod mktemp; do
+  command -v "$tool" >/dev/null 2>&1 || {
+    echo "zagent: outil manquant : $tool — le paquet ne sera pas adapte" >&2
+    exit 1
+  }
+done
+
+n_ok=0
+n_echec=0
+
 fail() {
   echo "zagent: $1" >&2
   shift
   [ -n "$1" ] && printf '%s\n' "$1" | head -n 8 >&2
   status=1
+  n_echec=$((n_echec + 1))
 }
 
 while IFS= read -r deb; do
@@ -54,10 +66,16 @@ while IFS= read -r deb; do
   if err="$(dpkg-deb -Zgzip -z3 -b "$work" "$deb.patched" 2>&1)" || \
      err="$(dpkg-deb -b "$work" "$deb.patched" 2>&1)"; then
     mv -f "$deb.patched" "$deb"
+    n_ok=$((n_ok + 1))
   else
     fail "echec de la reconstruction de $(basename "$deb")" "$err"
     rm -f "$deb.patched"
+    # err-020 : on garde le .deb original intact — apt l'installera non adapte
+    # plutot que de perdre le paquet entier.
   fi
   rm -rf "$work"
 done
+
+# err-020 : resume lisible en fin de traitement.
+echo "zagent: paquets adapses : $n_ok ok, $n_echec echec(s)" >&2
 exit $status

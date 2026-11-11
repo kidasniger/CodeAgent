@@ -78,8 +78,9 @@ jobs:
           BASE_VERSION: ${{ inputs.version || '1.0' }}
         run: |
           set -euo pipefail
+          # err-005 : message explicite — format attendu + exemples.
           if [[ ! "$BASE_VERSION" =~ ^[0-9]+(\.[0-9]+){1,2}([.-][0-9A-Za-z.-]+)?$ ]]; then
-            echo "::error::Version invalide : $BASE_VERSION"
+            echo "::error::Version invalide : « $BASE_VERSION » — format attendu majeur.mineur[.patch][suffixe] ; exemples valides : 1.0, 1.2.3, 1.0-beta.1 (err-005)"
             exit 1
           fi
 
@@ -125,6 +126,15 @@ jobs:
             echo "::error::Le keystore décodé est vide"
             exit 1
           }
+          # err-004 : valide le keystore et nomme la cause (corrompu / mauvais mot de passe).
+          if ! keytool -list -keystore "$RUNNER_TEMP/release.keystore" -storepass "$KS_PASS" >/dev/null 2>&1; then
+            if keytool -list -keystore "$RUNNER_TEMP/release.keystore" -storepass android >/dev/null 2>&1; then
+              echo "::error::Keystore rejeté : KEYSTORE_PASSWORD ne correspond pas au mot de passe du keystore (err-004)"
+            else
+              echo "::error::Keystore corrompu ou illisible : recrée-le puis remplace le secret KEYSTORE_BASE64 (err-004)"
+            fi
+            exit 1
+          fi
 
           {
             echo "KEYSTORE_PATH=$RUNNER_TEMP/release.keystore"
@@ -173,14 +183,46 @@ jobs:
           path: osv-report.json
           if-no-files-found: ignore
 
+      # err-006 : en cas d'échec, exporte l'arbre de dépendances et dependencyInsight
+      # (conflits / classes en double) pour l'analyse hors ligne.
+      - name: Diagnostic dépendances (échec)
+        if: failure()
+        continue-on-error: true
+        run: |
+          ./gradlew :app:dependencies --configuration debugRuntimeClasspath > deps.log 2>&1 || true
+          ./gradlew :app:dependencyInsight --configuration debugRuntimeClasspath > deps-insight.log 2>&1 || true
+
+      - name: Rapport dépendances (artefact)
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: dependency-report
+          path: |
+            deps.log
+            deps-insight.log
+          if-no-files-found: ignore
+
+      # err-002 : annotations lisibles — fichier/ligne/colonne extraits de
+      # « e: file://…:L:C message » pour apparaître directement sur le commit.
       - name: Rapport erreurs compilation
         if: failure()
         run: |
           if [ -f build.log ]; then
-            grep -E "^e: |error: " build.log | head -30 | while IFS= read -r l; do
+            grep -E "^e: file" build.log | head -30 | while IFS= read -r l; do
+              REST="${l#e: file://}"
+              F="${REST%%.kt*}.kt"
+              LINE="$(echo "$REST" | cut -d: -f2)"
+              COL="$(echo "$REST" | cut -d: -f3)"
+              MSG="$(echo "$REST" | cut -d' ' -f2-)"
+              [[ "$LINE" =~ ^[0-9]+$ ]] || LINE=1
+              [[ "$COL" =~ ^[0-9]+$ ]] || COL=1
+              [[ -n "$F" && "$F" != ".kt" ]] || F="build.log"
+              echo "::error file=$F,line=$LINE,endLine=$LINE,col=$COL,title=Compilation Kotlin::${MSG:0:400}"
+            done
+            grep -E "^error: " build.log | head -20 | while IFS= read -r l; do
               echo "::error::${l:0:500}"
             done
-            grep -qE "^e: |error: " build.log || tail -12 build.log | while IFS= read -r l; do
+            grep -qE "^e: file|^error: " build.log || tail -12 build.log | while IFS= read -r l; do
               echo "::error::${l:0:400}"
             done
           fi
@@ -235,15 +277,29 @@ jobs:
           KS_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
           set -euo pipefail
-          [[ -n "${KS_B64:-}" ]] || { echo "::error::Secret KEYSTORE_BASE64 manquant"; exit 1; }
-          [[ -n "${KS_PASS:-}" ]] || { echo "::error::Secret KEYSTORE_PASSWORD manquant"; exit 1; }
-          [[ -n "${KS_ALIAS:-}" ]] || { echo "::error::Secret KEY_ALIAS manquant"; exit 1; }
+          # err-003 : quand un secret manque, explique comment le créer (commandes exactes).
+          if [[ -z "${KS_B64:-}" || -z "${KS_PASS:-}" || -z "${KS_ALIAS:-}" ]]; then
+            echo "::error::Secrets de signature manquants (KEYSTORE_BASE64 / KEYSTORE_PASSWORD / KEY_ALIAS) — les créer ainsi (err-003) :"
+            echo "::error::1) keytool -genkeypair -v -keystore release.keystore -storepass <mdp> -keypass <mdp> -alias <alias> -keyalg RSA -keysize 2048 -validity 10000"
+            echo "::error::2) base64 -w0 release.keystore > release.b64"
+            echo "::error::3) gh secret set KEYSTORE_BASE64 < release.b64 ; gh secret set KEYSTORE_PASSWORD ; gh secret set KEY_ALIAS"
+            exit 1
+          fi
 
           printf '%s' "$KS_B64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
           test -s "$RUNNER_TEMP/release.keystore" || {
             echo "::error::Le keystore décodé est vide"
             exit 1
           }
+          # err-004 : valide le keystore et nomme la cause (corrompu / mauvais mot de passe).
+          if ! keytool -list -keystore "$RUNNER_TEMP/release.keystore" -storepass "$KS_PASS" >/dev/null 2>&1; then
+            if keytool -list -keystore "$RUNNER_TEMP/release.keystore" -storepass android >/dev/null 2>&1; then
+              echo "::error::Keystore rejeté : KEYSTORE_PASSWORD ne correspond pas au mot de passe du keystore (err-004)"
+            else
+              echo "::error::Keystore corrompu ou illisible : recrée-le puis remplace le secret KEYSTORE_BASE64 (err-004)"
+            fi
+            exit 1
+          fi
 
           {
             echo "KEYSTORE_PATH=$RUNNER_TEMP/release.keystore"

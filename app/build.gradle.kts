@@ -81,6 +81,13 @@ android {
     compose = true
     buildConfig = true
   }
+  // err-007 : évite les conflits META-INF (licences dupliquées AL2.0/LGPL2.1 des
+  // dépendances Compose / Coroutines) qui produisent des erreurs « duplicate entry ».
+  packaging {
+    resources {
+      excludes += "/META-INF/{AL2.0,LGPL2.1}"
+    }
+  }
   // maj-045 — métriques du compilateur Compose : opt-in via
   // `./gradlew assembleDebug -Pcompose.metrics=true`. Rapports écrits dans
   // build/reports/compose (classements *-comps.csv, *-classes.csv) pour
