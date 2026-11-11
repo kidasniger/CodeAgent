@@ -42,6 +42,7 @@ import com.zagent.app.data.ProjectSearch
 import com.zagent.app.data.Constants
 import com.zagent.app.data.SettingsManager
 import com.zagent.app.data.GitHubApi
+import com.zagent.app.BuildConfig
 import com.zagent.app.util.ImageResize
 import com.zagent.app.di.AppContainer
 import com.zagent.app.ui.editor.ConsoleState
@@ -142,11 +143,47 @@ internal fun nettoyerPlaceholders(message: String): String {
 }
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
+    init {
+        // err-077 — journalise tout crash fatal non intercepté (files/crash/).
+        com.zagent.app.util.CrashHandler.installer(application)
+        // err-081 — StrictMode en debug : détecte les accès disque/réseau UI
+        // (AUCUN effet en release ; l'ANR réel reste du ressort du système, err-080).
+        if (BuildConfig.DEBUG) {
+            android.os.StrictMode.setThreadPolicy(
+                android.os.StrictMode.ThreadPolicy.Builder()
+                    .detectAll()
+                    .penaltyLog()
+                    .build()
+            )
+            android.os.StrictMode.setVmPolicy(
+                android.os.StrictMode.VmPolicy.Builder()
+                    .detectLeakedClosableObjects()
+                    .penaltyLog()
+                    .build()
+            )
+        }
+    }
+
+    // err-082 — mémoire basse : exposé pour que l'activité vide ses caches
+    // (MainViewModel n'est pas un ComponentCallbacks ; voir MainActivity).
+    @Volatile
+    var memoireBasse: Boolean = false
+        private set
+
+    fun noterMemoireBasse() {
+        memoireBasse = true
+    }
     // corr-006 : les dépôts de données sont instanciés dans le conteneur
     // d'injection (testable, remplaçable) plutôt que directement ici.
     private val container = AppContainer(application)
     val settingsManager: SettingsManager get() = container.settingsManager
     private val aiRepository: AiRepository = container.aiRepository
+
+    init {
+        // err-032 — proxy HTTP optionnel appliqué au client IA au démarrage
+        // (seule la requête IA est concernée ; le terminal reste direct).
+        aiRepository.configurerProxy(container.settingsManager.proxyActif())
+    }
     private val conversationRepo: ConversationRepository get() = container.conversationRepo
     private val usageRepo: UsageRepository get() = container.usageRepo
     private val activityRepo: ActivityRepository get() = container.activityRepo

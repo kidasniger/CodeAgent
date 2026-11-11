@@ -40,13 +40,29 @@ class SettingsManager(context: Context) {
         .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
         .build()
 
-    private val prefs = EncryptedSharedPreferences.create(
-        context,
-        "zagent_secure_prefs",
-        masterKey,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
+    /**
+     * err-084 — Si le fichier de préférences chiffrées est corrompu (clé
+     * Keystore invalidée par une restauration, stockage altéré), la création
+     * d'EncryptedSharedPreferences lève et l'application crasherait au
+     * démarrage en boucle. On supprime alors le fichier illisible et on
+     * repart sur des préférences vides : l'utilisateur reconfigure, mais
+     * l'application démarre.
+     */
+    private val prefs = try {
+        creerPrefs(context, masterKey)
+    } catch (e: Exception) {
+        context.deleteSharedPreferences("zagent_secure_prefs")
+        creerPrefs(context, masterKey)
+    }
+
+    private fun creerPrefs(context: Context, masterKey: MasterKey) =
+        EncryptedSharedPreferences.create(
+            context,
+            "zagent_secure_prefs",
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
 
     init {
         migrateThemeKey()
@@ -666,6 +682,26 @@ class SettingsManager(context: Context) {
         get() = prefs.getInt(KEY_BUDGET_TOKENS, 0).coerceAtLeast(0)
         set(value) = prefs.edit().putInt(KEY_BUDGET_TOKENS, value).apply()
 
+    // ── err-032 : proxy HTTP (réseaux d'entreprise / VPN) ───────────────────
+
+    /** Hôte du proxy HTTP (" " ou vide = pas de proxy). */
+    var proxyHost: String
+        get() = prefs.getString(KEY_PROXY_HOST, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_PROXY_HOST, value.trim()).apply()
+
+    /** Port du proxy HTTP (0 = pas de proxy). */
+    var proxyPort: Int
+        get() = prefs.getInt(KEY_PROXY_PORT, 0).coerceIn(0, 65535)
+        set(value) = prefs.edit().putInt(KEY_PROXY_PORT, value).apply()
+
+    /** Proxy configuré et valide, ou null (err-032). */
+    fun proxyActif(): java.net.Proxy? {
+        val h = proxyHost
+        val p = proxyPort
+        if (h.isBlank() || p <= 0) return null
+        return java.net.Proxy(java.net.Proxy.Type.HTTP, java.net.InetSocketAddress(h, p))
+    }
+
     // ── feat-091 : export / import des réglages (SANS les clés API) ─────────
 
     /**
@@ -762,6 +798,8 @@ class SettingsManager(context: Context) {
 
     companion object {
         private const val KEY_BUDGET_TOKENS = "budget_tokens_jour"
+        private const val KEY_PROXY_HOST = "proxy_host"
+        private const val KEY_PROXY_PORT = "proxy_port"
         private const val KEY_PROFILS_REGLAGES = "profils_reglages"
         private const val KEY_GITHUB_TOKEN = "github_token"
         private const val KEY_FAVORIS_FICHIERS = "favoris_fichiers"

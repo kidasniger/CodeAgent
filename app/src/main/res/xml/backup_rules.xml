@@ -6,4 +6,8 @@
     <exclude domain="file" path="conversations"/>
     <exclude domain="file" path="usage"/>
     <exclude domain="file" path="activity"/>
+    <!-- err-085 : les caches (APK téléchargés, exports zip, crash logs)
+         ne sont ni utiles ni sensibles à sauvegarder. -->
+    <exclude domain="external" path="cache"/>
+    <exclude domain="file" path="crash"/>
 </full-backup-content>

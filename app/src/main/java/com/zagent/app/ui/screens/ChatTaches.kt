@@ -25,6 +25,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ExpandLess
@@ -33,11 +34,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
@@ -100,6 +103,11 @@ internal fun TodoPanel(todos: List<TodoItem>, isLoading: Boolean) {
                 color = c.text,
                 modifier = Modifier.weight(1f)
             )
+            // ui-086 — petite animation de succès quand TOUTES les tâches sont finies
+            // (check + pulsation, en Compose pur, sans bibliothèque).
+            if (done == todos.size) {
+                SuccessPulse(modifier = Modifier.size(18.dp))
+            }
             Icon(
                 if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                 contentDescription = null,
@@ -289,4 +297,35 @@ internal fun TaskSummary(
             }
         }
     }
+}
+
+/** ui-086 — Animation de succès (check vert avec pulsation d'apparition), Compose pur. */
+@Composable
+internal fun SuccessPulse(modifier: Modifier = Modifier) {
+    val c = Zcolors
+    val apparition = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(Unit) {
+        // Zoom élastique : 0 → 1.25 → 1, puis léger halètement de fin.
+        apparition.animateTo(
+            1f,
+            animationSpec = androidx.compose.animation.core.keyframes {
+                durationMillis = 420
+                0f at 0
+                1.25f at 160 using androidx.compose.animation.core.FastOutSlowInEasing
+                1f at 300
+                1.08f at 360
+                1f at 420
+            }
+        )
+    }
+    androidx.compose.material3.Icon(
+        Icons.Default.CheckCircle,
+        contentDescription = "Toutes les tâches sont terminées",
+        tint = c.green,
+        modifier = modifier.graphicsLayer {
+            scaleX = apparition.value
+            scaleY = apparition.value
+            alpha = apparition.value.coerceIn(0f, 1f)
+        }
+    )
 }

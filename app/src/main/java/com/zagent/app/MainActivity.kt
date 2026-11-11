@@ -76,6 +76,14 @@ class MainActivity : AppCompatActivity() {
         AgentNotifier.appInForeground = true
     }
 
+    // err-082 — mémoire basse : prévient le ViewModel pour qu'il allège son état.
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
+            viewModel.noterMemoireBasse()
+        }
+    }
+
     override fun onStop() {
         AgentNotifier.appInForeground = false
         super.onStop()
@@ -329,6 +337,11 @@ private fun AppRoot(
         )
 
         UpdateHost()
+
+        // ui-091 — messages éphémères stylés avec le thème (une seule instance).
+        com.zagent.app.ui.components.common.ZEphemeralHost(
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
 
         // ── Overlays du LOT 5 (MA56 → MA70), feuilles au-dessus du NavHost ───
         if (viewModel.isProjectPickerOpen) {

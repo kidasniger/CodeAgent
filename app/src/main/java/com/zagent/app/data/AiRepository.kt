@@ -20,11 +20,26 @@ import java.util.concurrent.atomic.AtomicReference
  * vit dans Constants.
  */
 class AiRepository : AiRepositoryApi {
-    private val client = OkHttpClient.Builder()
+    @Volatile
+    private var client: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(Constants.RESEAU_TIMEOUT_S.toLong(), TimeUnit.SECONDS)
         .readTimeout(Constants.RESEAU_TIMEOUT_S.toLong(), TimeUnit.SECONDS)
         .writeTimeout(Constants.RESEAU_TIMEOUT_S.toLong(), TimeUnit.SECONDS)
         .build()
+
+    /**
+     * err-032 — Applique un proxy HTTP optionnel (réseaux d'entreprise) à tous
+     * les futurs appels. Appelé au démarrage et quand le réglage change.
+     * Null = retour au proxy système d'OkHttp (aucun proxy explicite).
+     */
+    fun configurerProxy(proxy: java.net.Proxy?) {
+        client = OkHttpClient.Builder()
+            .connectTimeout(Constants.RESEAU_TIMEOUT_S.toLong(), TimeUnit.SECONDS)
+            .readTimeout(Constants.RESEAU_TIMEOUT_S.toLong(), TimeUnit.SECONDS)
+            .writeTimeout(Constants.RESEAU_TIMEOUT_S.toLong(), TimeUnit.SECONDS)
+            .proxy(proxy)
+            .build()
+    }
 
     /** Appel réseau en cours : permet de l'interrompre quand la conversation est vidée. */
     private val activeCall = AtomicReference<Call?>(null)
@@ -236,6 +251,23 @@ class AiRepository : AiRepositoryApi {
                         if (code == 401) {
                             return ApiResponse.Error("Ta clé API a été refusée (401). Vérifie-la dans les Réglages.")
                         }
+                        // err-040 — quota / crédit épuisé : message clair, pas de
+                        // nouvel essai automatique (le résultat ne changera pas).
+                        if (code == 402 || responseString.contains("insufficient_quota", true)
+                            || responseString.contains("quota exceeded", true)
+                            || responseString.contains("exceeded your current quota", true)
+                        ) {
+                            return ApiResponse.Error(
+                                "Quota épuisé (402) : le compte du fournisseur n'a plus de crédit. " +
+                                    "Recharge le compte ou bascule sur un autre modèle/fournisseur."
+                            )
+                        }
+                        // err-041 — le message d'erreur du fournisseur, quand il est
+                        // exploitable, est recopié pour aider au diagnostic.
+                        val messageFournisseur = runCatching {
+                            Json.parseToJsonElement(responseString).jsonObject["error"]?.jsonObject
+                                ?.get("message")?.jsonPrimitive?.content
+                        }.getOrNull()
 
                         val is1305 = try {
                             val err = Json.parseToJsonElement(responseString).jsonObject["error"]?.jsonObject
@@ -261,7 +293,12 @@ class AiRepository : AiRepositoryApi {
                         } else if (code == 400) {
                             return ApiResponse.Error("La requête a été refusée (400). Le modèle ou un message est peut-être invalide : ouvre une nouvelle conversation.")
                         } else {
-                            return ApiResponse.Error("Le serveur a répondu une erreur inattendue (HTTP $code). Réessaie dans un instant.")
+                            // err-041 : détail du fournisseur repris s'il existe (truncature prudente).
+                            val detail = messageFournisseur?.take(160)
+                            return ApiResponse.Error(
+                                if (detail.isNullOrBlank()) "Le serveur a répondu une erreur inattendue (HTTP $code). Réessaie dans un instant."
+                                else "Erreur du fournisseur (HTTP $code) : $detail"
+                            )
                         }
                     }
                     }

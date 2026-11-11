@@ -1,0 +1,65 @@
+package com.zagent.app.util
+
+import android.content.Context
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+/**
+ * err-077 — Gestionnaire de crash : intercepte toute exception fatale non
+ * traitée, l'écrit dans un journal local (files/crash/…), puis laisse le
+ * système tuer le processus comme d'habitude. Le dernier rapport est proposé
+ * à l'utilisateur au redémarrage (Rapport de diagnostic, err-079).
+ *
+ * Installé une seule fois au démarrage de l'application ; en debug, le
+ * comportement par défaut (stacktrace logcat) est conservé via [previous].
+ */
+object CrashHandler {
+
+    @Volatile
+    private var installed = false
+
+    fun installer(context: Context) {
+        if (installed) return
+        installed = true
+        val previous = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, erreur ->
+            runCatching { ecrire(context, erreur) }
+            previous?.uncaughtException(thread, erreur)
+        }
+    }
+
+    /** Dossier des rapports de crash (privé). */
+    fun dossier(context: Context): File = File(context.filesDir, "crash").apply { mkdirs() }
+
+    private fun ecrire(context: Context, erreur: Throwable) {
+        val horodatage = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
+        val fichier = File(dossier(context), "crash-$horodatage.txt")
+        fichier.writeText(
+            buildString {
+                appendLine("Crash : " + erreur.javaClass.name)
+                appendLine("Message : " + (erreur.message ?: "-"))
+                appendLine("Thread : " + thread.name)
+                appendLine()
+                appendLine(erreur.stackTraceToString())
+                erreur.cause?.let {
+                    appendLine()
+                    appendLine("Cause :")
+                    appendLine(it.stackTraceToString())
+                }
+            }
+        )
+        // Garde les 5 derniers rapports seulement.
+        dossier(context).listFiles()
+            ?.sortedByDescending { it.name }
+            ?.drop(5)
+            ?.forEach { it.delete() }
+    }
+
+    /** Dernier rapport de crash non encore lu, s'il existe (err-079). */
+    fun dernierRapport(context: Context): String? {
+        val f = dossier(context).listFiles()?.maxByOrNull { it.name } ?: return null
+        return runCatching { f.readText() }.getOrNull()?.take(4000)
+    }
+}

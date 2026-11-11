@@ -161,6 +161,10 @@ fun FloatingTabBar(
                 // barre de navigation système (geste ou 3 boutons), exactement
                 // comme ChatInputBar le fait déjà avec navigationBarsPadding().
                 .navigationBarsPadding()
+                // ux-090 — la barre d'onglets est le DERNIER élément dans l'ordre
+                // de focus : le contenu (fil, éditeur…) reste prioritaire pour
+                // le lecteur d'écran et la navigation au clavier.
+                .semantics { traversalIndex = 100f }
                 .padding(horizontal = 12.dp, vertical = 10.dp)
         ) {
             // Conteneur en verre (même rendu qu'auparavant).

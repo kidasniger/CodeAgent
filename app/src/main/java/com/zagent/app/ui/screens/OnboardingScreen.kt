@@ -51,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -279,6 +280,26 @@ fun OnboardingScreen(
                                     cursorColor = c.cyan
                                 ),
                                 modifier = Modifier.fillMaxWidth()
+                            )
+                            // ux-002 — lien direct « obtenir une clé » pour les
+                            // nouveaux venus (ouvre le navigateur, rien n'est envoyé).
+                            Spacer(Modifier.height(8.dp))
+                            val lienCle = when (fournisseurChoisi) {
+                                "nvidia" -> "https://build.nvidia.com/"
+                                else -> "https://console.z.ai/"
+                            }
+                            val uriHandlerCle = LocalUriHandler.current
+                            Text(
+                                when (fournisseurChoisi) {
+                                    "nvidia" -> "Obtenir une clé sur build.nvidia.com (gratuit) →"
+                                    else -> "Obtenir une clé sur console.z.ai →"
+                                },
+                                style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
+                                color = c.cyan,
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .clickable { uriHandlerCle.openUri(lienCle) }
+                                    .padding(horizontal = 4.dp, vertical = 4.dp)
                             )
                             if (fournisseurChoisi == "autre") {
                                 Spacer(Modifier.height(10.dp))

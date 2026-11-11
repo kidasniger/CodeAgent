@@ -180,6 +180,8 @@ private fun ProjectRow(
     val df = remember { SimpleDateFormat("d MMM yyyy · HH:mm", Locale.getDefault()) }
     val isActive = current != null && current.endsWith("/" + name)
     val fileCount = remember(name) { countFiles(dir) }
+    // ux-084 — espace disque utilisé par le projet (exploration bornée).
+    val taille = remember(name) { formatTaille(dirSize(dir)) }
 
     Row(
         Modifier
@@ -216,7 +218,7 @@ private fun ProjectRow(
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                fileCount.toString() + " fichiers · modifié le " + df.format(Date(dir.lastModified())),
+                fileCount.toString() + " fichiers · " + taille + " · modifié le " + df.format(Date(dir.lastModified())),
                 style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp),
                 color = c.text2,
                 maxLines = 1,
@@ -256,4 +258,37 @@ private fun countFiles(dir: File): Int {
         }
     }
     return n
+}
+
+/** ux-084 — Taille cumulée d'un dossier de projet (exploration bornée à 2000 entrées). */
+private fun dirSize(dir: File): Long {
+    if (!dir.isDirectory) return 0L
+    var total = 0L
+    var guard = 0
+    val stack = ArrayDeque(listOf(dir))
+    while (stack.isNotEmpty() && guard < 2000) {
+        guard++
+        val d = stack.removeFirst()
+        val children = d.listFiles() ?: continue
+        for (f in children) {
+            if (f.isDirectory) {
+                if (f.name != "node_modules" && f.name != ".git") stack.add(f)
+            } else total += f.length()
+        }
+    }
+    return total
+}
+
+/** ux-084 — Formatage court d'une taille en octets (Ko / Mo / Go). */
+private fun formatTaille(octets: Long): String {
+    if (octets <= 0L) return "0 o"
+    val ko = octets / 1024.0
+    val mo = ko / 1024.0
+    val go = mo / 1024.0
+    return when {
+        go >= 1.0 -> String.format(java.util.Locale.FRANCE, "%.1f Go", go)
+        mo >= 1.0 -> String.format(java.util.Locale.FRANCE, "%.1f Mo", mo)
+        ko >= 1.0 -> String.format(java.util.Locale.FRANCE, "%.0f Ko", ko)
+        else -> octets.toString() + " o"
+    }
 }

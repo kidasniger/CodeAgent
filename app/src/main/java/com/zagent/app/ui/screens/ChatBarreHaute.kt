@@ -50,6 +50,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -376,7 +379,10 @@ internal fun InlineErrorCard(viewModel: MainViewModel, onOpenSettings: () -> Uni
                     Text(
                         viewModel.statusMessage,
                         style = MaterialTheme.typography.bodySmall,
-                        color = c.text2
+                        color = c.text2,
+                        // ux-093 — le lecteur d'écran annonce dynamiquement les
+                        // changements de statut de l'agent (erreurs, progression).
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
                     )
                 }
                 Spacer(Modifier.height(10.dp))

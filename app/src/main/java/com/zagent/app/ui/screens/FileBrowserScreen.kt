@@ -1,6 +1,5 @@
 package com.zagent.app.ui.screens
 
-import android.widget.Toast
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -113,6 +112,7 @@ import com.zagent.app.data.FileRepository
 import com.zagent.app.ui.components.common.CircleIconButton
 import com.zagent.app.ui.components.common.GlassAlertDialog
 import com.zagent.app.ui.components.common.GlassCard
+import com.zagent.app.ui.components.common.ZEphemeral
 import com.zagent.app.ui.components.common.StatusBadge
 import com.zagent.app.ui.components.common.ZBreadcrumb
 import com.zagent.app.ui.components.common.ZEmptyKind
@@ -438,11 +438,10 @@ fun FileBrowserScreen(
                         .clip(RoundedCornerShape(50))
                         .clickable {
                             clipboard.setText(AnnotatedString(selected.joinToString("\n")))
-                            Toast.makeText(
-                                context,
-                                if (selected.size == 1) "Chemin copié" else "${selected.size} chemins copiés",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                            // ui-091 — message éphémère stylé au lieu du Toast système.
+                            ZEphemeral.show(
+                                if (selected.size == 1) "Chemin copié" else "${selected.size} chemins copiés"
+                            )
                         }
                         .padding(horizontal = 10.dp, vertical = 6.dp)
                 )
@@ -680,7 +679,7 @@ fun FileBrowserScreen(
                                         "delete" -> deleteTarget = e
                                         "copypath" -> {
                                             clipboard.setText(AnnotatedString(e.path))
-                                            Toast.makeText(context, "Chemin copié", Toast.LENGTH_SHORT).show()
+                                            ZEphemeral.show("Chemin copié") // ui-091
                                         }
                                     }
                                 }

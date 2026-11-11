@@ -1,7 +1,6 @@
 package com.zagent.app.ui.screens
 
 import android.content.Intent
-import android.widget.Toast
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -212,7 +211,7 @@ internal fun UserBubble(
                     text = { Text("Sélectionner", color = c.text) },
                     onClick = {
                         menuOpen = false
-                        Toast.makeText(ctx, "Maintiens ton doigt sur le texte pour le sélectionner", Toast.LENGTH_SHORT).show()
+                        com.zagent.app.ui.components.common.ZEphemeral.show("Maintiens ton doigt sur le texte pour le sélectionner") // ui-091
                     }
                 )
                 DropdownMenuItem(
@@ -364,7 +363,14 @@ internal fun AgentCard(
         )
 
         if (!content.isNullOrBlank()) {
-            splitContent(content).forEachIndexed { i, seg ->
+            // ui-042 — « Voir plus » : au-delà de 2500 caractères, le message est
+            // replié (aperçu des 2500 premiers) avec un bouton d'extension. Le
+            // contenu reste intégralement en mémoire et copiable.
+            val longSeuil = 2500
+            var voirPlus by remember(messageIndex, content.length) { mutableStateOf(content.length <= longSeuil) }
+            val contenuAffiche = if (voirPlus || content.length <= longSeuil) content
+            else content.take(longSeuil) + "\n\n[…]"
+            splitContent(contenuAffiche).forEachIndexed { i, seg ->
                 if (seg.isCode) {
                     CodeBlockFor(seg, onApply = onApplyCode)
                 } else if (seg.text.isNotBlank()) {
@@ -377,6 +383,19 @@ internal fun AgentCard(
                     )
                 }
                 if (i < (tools.size + 1)) Spacer(Modifier.height(10.dp))
+            }
+            // ui-042 — bouton « Voir plus / Réduire » sous les messages longs
+            // (masqué pendant le streaming pour ne pas couper la réponse en direct).
+            if (content.length > longSeuil && !isStreaming) {
+                Text(
+                    if (voirPlus) "Réduire" else "Voir plus (" + content.length + " caractères)",
+                    style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
+                    color = c.cyan,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .clickable { voirPlus = !voirPlus }
+                        .padding(horizontal = 8.dp, vertical = 5.dp)
+                )
             }
             if (isStreaming) StreamingCursor()
         }
@@ -533,7 +552,7 @@ internal fun MessageActionsBar(
                     text = { Text("Sélectionner", color = c.text) },
                     onClick = {
                         menuOpen = false
-                        Toast.makeText(ctx, "Maintiens ton doigt sur le texte pour le sélectionner", Toast.LENGTH_SHORT).show()
+                        com.zagent.app.ui.components.common.ZEphemeral.show("Maintiens ton doigt sur le texte pour le sélectionner") // ui-091
                     }
                 )
                 DropdownMenuItem(
