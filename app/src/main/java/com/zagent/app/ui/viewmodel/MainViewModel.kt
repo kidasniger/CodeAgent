@@ -44,6 +44,7 @@ import com.zagent.app.data.SettingsManager
 import com.zagent.app.data.GitHubApi
 import com.zagent.app.BuildConfig
 import com.zagent.app.util.ImageResize
+import com.zagent.app.util.ZLog
 import com.zagent.app.di.AppContainer
 import com.zagent.app.ui.editor.ConsoleState
 import com.zagent.app.ui.editor.EditorController

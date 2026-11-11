@@ -25,7 +25,7 @@ object CrashHandler {
         installed = true
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, erreur ->
-            runCatching { ecrire(context, erreur) }
+            runCatching { ecrire(context, erreur, Thread.currentThread().name) }
             previous?.uncaughtException(thread, erreur)
         }
     }
@@ -33,14 +33,14 @@ object CrashHandler {
     /** Dossier des rapports de crash (privé). */
     fun dossier(context: Context): File = File(context.filesDir, "crash").apply { mkdirs() }
 
-    private fun ecrire(context: Context, erreur: Throwable) {
+    private fun ecrire(context: Context, erreur: Throwable, nomFil: String) {
         val horodatage = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
         val fichier = File(dossier(context), "crash-$horodatage.txt")
         fichier.writeText(
             buildString {
                 appendLine("Crash : " + erreur.javaClass.name)
                 appendLine("Message : " + (erreur.message ?: "-"))
-                appendLine("Thread : " + thread.name)
+                appendLine("Thread : " + nomFil)
                 appendLine()
                 appendLine(erreur.stackTraceToString())
                 erreur.cause?.let {

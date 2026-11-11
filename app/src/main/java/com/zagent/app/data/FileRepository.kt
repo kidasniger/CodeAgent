@@ -459,7 +459,11 @@ class FileRepository(private val context: Context?, private val rootPath: String
 
     /** Dossier corbeille, dans les fichiers privés de l'application. */
     private fun trashDir(): File {
-        val d = File(context.filesDir, "trash").apply { mkdirs() }
+        // context est nullable (FileRepository) : repli sur le cache système
+        // si aucun contexte n'est disponible (le dépôt est alors inopérant,
+        // mais la classe ne plante pas — same guard as lines 154/437).
+        val base = context?.filesDir ?: getRootFolder()?.absolutePath ?: "/data/local/tmp"
+        val d = File(base, "trash").apply { mkdirs() }
         // Purge automatique : les entrées de plus de 7 jours sont supprimées.
         val seuil = System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000
         d.listFiles()?.forEach { f ->
