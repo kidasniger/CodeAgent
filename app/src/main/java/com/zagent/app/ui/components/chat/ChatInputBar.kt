@@ -63,6 +63,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -257,7 +258,7 @@ fun ChatInputBar(
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             // feat-022 — ponctuation automatique quand le moteur la gère (API 33+).
             if (android.os.Build.VERSION.SDK_INT >= 33) {
-                putExtra(RecognizerIntent.EXTRA_ENABLE_FORMATTING, RecognizerIntent.EXTRA_ENABLE_FORMATTING_AUTOMATIC_PUNCTUATION)
+                putExtra(RecognizerIntent.EXTRA_ENABLE_FORMATTING, "android.speech.extras.EXTRA_ENABLE_FORMATTING_AUTOMATIC_PUNCTUATION")
             }
         }
         recognizer = sr
