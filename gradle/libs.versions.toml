@@ -56,7 +56,7 @@ googleid = "1.1.1"
 securityCrypto = "1.1.0"
 documentfile = "1.0.1"
 # MàJ 104 : serialization 1.10.0 (dernière stable, stdlib requise 2.3.0 ; plugin aligné sur Kotlin via version.ref)
-kotlinxSerializationJson = "1.10.0"
+kotlinxSerializationJson = "1.12.0"
 # MàJ 108 : WorkManager 2.12.0 (dernière stable ; work-runtime-ktx devient un pont vers work-runtime KMP ; minCompileSdk 35 / AGP 8.6.0)
 workRuntimeKtx = "2.12.0"
 # MàJ 109 : Termux v0.118.3 (dernière stable ; v0.119.0-beta.x exclues ; interfaces terminal-view/emulator identiques à v0.118.0)
