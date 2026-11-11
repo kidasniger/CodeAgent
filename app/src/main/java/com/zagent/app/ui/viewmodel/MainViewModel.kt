@@ -933,6 +933,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setGitHubJeton(value: String) {
         settingsManager.jetonGitHub = value.trim()
     }
+    /**
+     * ux-003 — Teste la clé saisie à l'onboarding : appelle l'endpoint /models
+     * du fournisseur. Retourne la liste des modèles si la clé est valide,
+     * sinon une erreur explicite (jamais la clé elle-même).
+     */
+    suspend fun testerCleOnboarding(url: String, cle: String): Result<List<String>> =
+        runCatching { aiRepository.listerModeles(url, cle) }
 
     // ── Git visuel ──────────────────────────────────────────────────────────
     // corr-008 : état d'UI regroupé dans une seule data class (UiState.kt).
@@ -1207,6 +1214,41 @@ done; } 2>&1 | head -c 50000
     /** Dossier qui contient tous les projets : ~/projects */
     private fun projectsRoot(): java.io.File =
         java.io.File(getApplication<Application>().filesDir, "home/projects")
+
+    /**
+     * ux-006 — Crée un projet d'exemple prérempli au premier lancement :
+     * README, page HTML autonome et script Python. Sélectionné aussitôt, il
+     * donne quelque chose à éditer, prévisualiser et committer sans importer
+     * de dossier. Retourne le nom du projet créé (ou existant).
+     */
+    fun creerProjetExemple(): String {
+        val nom = uniqueProjectName("exemple-bienvenue")
+        val d = File(projectsRoot(), nom)
+        if (!d.exists()) {
+            d.mkdirs()
+            File(d, "README.md").writeText(
+                "# Bienvenue dans ZAgent\n\n" +
+                    "Ceci est un projet d'exemple. Tu peux :\n" +
+                    "- éditer `index.html` puis l'ouvrir dans l'Aperçu ;\n" +
+                    "- demander à l'agent de le modifier ;\n" +
+                    "- enregistrer tes changements avec Git (« Enregistrer mes changements »).\n"
+            )
+            File(d, "index.html").writeText(
+                "<!DOCTYPE html>\n<html lang=\"fr\">\n<head>\n" +
+                    "  <meta charset=\"utf-8\">\n  <title>Exemple ZAgent</title>\n" +
+                    "  <style>body{font-family:sans-serif;max-width:36rem;margin:3rem auto;padding:0 1rem}" +
+                    "h1{color:#0aa}</style>\n</head>\n<body>\n" +
+                    "  <h1>Ça marche !</h1>\n  <p>Modifie ce fichier et regarde l'aperçu.</p>\n" +
+                    "</body>\n</html>\n"
+            )
+            File(d, "bonjour.py").writeText(
+                "# Petit script à exécuter dans le terminal\n" +
+                    "print(\"Bonjour depuis le projet d'exemple !\")\n"
+            )
+        }
+        selectProject(nom)
+        return nom
+    }
 
     fun listProjects(): List<String> =
         (projectsRoot().listFiles() ?: emptyArray())

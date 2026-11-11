@@ -32,6 +32,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Palette
@@ -41,6 +42,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -87,7 +90,11 @@ fun OnboardingScreen(
     onFinished: () -> Unit,
     initialThemeMode: ThemeMode = ThemeMode.SYSTEM,
     onThemeSelected: (ThemeMode) -> Unit = {},
-    onGlassTrial: (Boolean) -> Unit = {}
+    onGlassTrial: (Boolean) -> Unit = {},
+    /** ux-003 — teste la clé (endpoint /models) ; Result avec la liste ou l'erreur. */
+    testerCle: suspend (url: String, cle: String) -> Result<List<String>> = { _, _ -> Result.success(emptyList()) },
+    /** ux-006 — crée le projet d'exemple et le sélectionne ; retourne son nom. */
+    creerExemple: (() -> String)? = null
 ) {
     val c = Zcolors
     var page by remember { mutableStateOf(0) }
@@ -319,6 +326,48 @@ fun OnboardingScreen(
                                     modifier = Modifier.fillMaxWidth()
                                 )
                             }
+                            // ux-003 — « Tester la clé » : résultat clair sans
+                            // quitter l'écran (jamais la clé dans le message).
+                            Spacer(Modifier.height(12.dp))
+                            var testEnCours by remember { mutableStateOf(false) }
+                            var testResultat by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
+                            val porteeTest = rememberCoroutineScope()
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    if (testEnCours) "Test en cours…" else "Tester la clé",
+                                    style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
+                                    color = c.cyan,
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .clickable(enabled = !testEnCours && apiKeyDraft.isNotBlank()) {
+                                            porteeTest.launch {
+                                                testEnCours = true
+                                                testResultat = null
+                                                val urlTest = when (fournisseurChoisi) {
+                                                    "nvidia" -> "https://integrate.api.nvidia.com/v1"
+                                                    "autre" -> urlPerso.trim()
+                                                    else -> "https://api.z.ai/api/paas/v4"
+                                                }
+                                                val res = testerCle(urlTest, apiKeyDraft.trim())
+                                                testEnCours = false
+                                                testResultat = res.fold(
+                                                    onSuccess = { n -> true to "Clé valide — ${n.size} modèle(s) accessibles" },
+                                                    onFailure = { e -> false to (e.message ?: "Connexion impossible").take(120) }
+                                                )
+                                            }
+                                        }
+                                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                testResultat?.let { (ok, msg) ->
+                                    Text(
+                                        if (ok) "✓ $msg" else "✗ $msg",
+                                        style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp),
+                                        color = if (ok) c.green else c.red,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
                         }
                         Spacer(Modifier.height(16.dp))
                         Text(
@@ -375,6 +424,35 @@ fun OnboardingScreen(
                                 style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 14.sp),
                                 color = c.text
                             )
+                        }
+                        if (creerExemple != null) {
+                            Spacer(Modifier.height(10.dp))
+                            // ux-006 — projet d'exemple prérempli, prêt à éditer.
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(c.surface2)
+                                    .border(1.dp, c.border2, RoundedCornerShape(16.dp))
+                                    .clickable { creerExemple.invoke() }
+                                    .padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.Add, null, tint = c.green, modifier = Modifier.size(20.dp))
+                                Spacer(Modifier.width(12.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        "Créer un projet d'exemple",
+                                        style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 14.sp),
+                                        color = c.text
+                                    )
+                                    Text(
+                                        "README, page HTML et script Python, prêts à modifier",
+                                        style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp),
+                                        color = c.text2
+                                    )
+                                }
+                            }
                         }
                         Spacer(Modifier.height(18.dp))
                         Row(

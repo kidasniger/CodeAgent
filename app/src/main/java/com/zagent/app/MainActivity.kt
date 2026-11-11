@@ -271,7 +271,9 @@ private fun AppRoot(
             onFinished = { viewModel.completeOnboarding() },
             initialThemeMode = viewModel.themeMode,
             onThemeSelected = { mode -> viewModel.updateThemeMode(mode) },
-            onGlassTrial = { enabled -> viewModel.setGlassTrialEnabled(enabled) }
+            onGlassTrial = { enabled -> viewModel.setGlassTrialEnabled(enabled) },
+            testerCle = { url, cle -> viewModel.testerCleOnboarding(url, cle) },
+            creerExemple = { viewModel.creerProjetExemple() }
         )
         return
     }
