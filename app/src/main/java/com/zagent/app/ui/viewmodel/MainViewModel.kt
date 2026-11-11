@@ -927,11 +927,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // ── feat-082 : jeton GitHub (chiffré, jamais loggé) ─────────────────────
     /** Jeton GitHub enregistré (lecture pour l'UI des Réglages). */
     val gitHubJeton: String
-        get() = settings.jetonGitHub
+        get() = settingsManager.jetonGitHub
 
     /** Enregistre le jeton GitHub (Réglages › GitHub). Chaîne vide = retire le jeton. */
     fun setGitHubJeton(value: String) {
-        settings.jetonGitHub = value.trim()
+        settingsManager.jetonGitHub = value.trim()
     }
 
     // ── Git visuel ──────────────────────────────────────────────────────────
