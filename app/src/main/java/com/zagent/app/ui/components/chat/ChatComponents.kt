@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.runtime.Immutable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -192,6 +193,14 @@ fun ToolGroupSummary(count: Int, expanded: Boolean, onToggle: () -> Unit, modifi
 // Markdown : spans en ligne (gras, italique, barré, code, liens, chemins) — MA31/MA46
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * maj-045 — Arbre de spans immuable : `@Immutable` compense l'instabilité
+ * naturelle de `List<>` pour le compilateur Compose (l'arbre est reconstruit
+ * à chaque parse, jamais muté après coup). Sans lui, MarkdownText et
+ * AnnotatedText sont « skippables » uniquement si tous les List params sont
+ * stables, ce qui fausse la comparaison d'instances à chaque recomposition.
+ */
+@Immutable
 sealed class MdSpan {
     data class Plain(val text: String) : MdSpan()
     data class Code(val text: String) : MdSpan()
@@ -360,6 +369,8 @@ private fun annotatedFromSpans(
 // Markdown : blocs (titres, listes, citations, tableaux, séparateurs) — MA31
 // ─────────────────────────────────────────────────────────────────────────────
 
+// maj-045 — `@Immutable` : voir la note sur MdSpan (List instable au compilateur).
+@Immutable
 sealed class MdBlock {
     data class Heading(val level: Int, val spans: List<MdSpan>) : MdBlock()
     data class Paragraph(val spans: List<MdSpan>) : MdBlock()

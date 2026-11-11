@@ -67,6 +67,18 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/update_file_paths" />
         </provider>
+        <!-- maj-076 : provider dédié au partage « Ouvrir avec / Partager » des
+             fichiers du projet (dossier privé home/). Séparé du provider de
+             mise à jour pour réduire le périmètre de chacun. -->
+        <provider
+            android:name="com.zagent.app.data.FileShareProvider"
+            android:authorities="${applicationId}.fileshareprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_share_paths" />
+        </provider>
     </application>
 
 </manifest>

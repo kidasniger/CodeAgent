@@ -25,8 +25,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,6 +43,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.update.ReleaseSummary
 import com.zagent.app.update.UpdateManager
 import com.zagent.app.update.UpdateState
 import com.zagent.app.ui.components.common.GlassCard
@@ -62,6 +69,13 @@ fun AboutScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     val c = Zcolors
     val context = LocalContext.current
     val updateState by UpdateManager.state.collectAsStateWithLifecycle() // MàJ 101 : ne collecte que si l'écran est visible
+
+    // maj-073 — dernières versions publiées, chargées une fois à l'ouverture
+    // (appel réseau bloquant relégué sur IO ; liste vide = section masquée).
+    var releases by remember { mutableStateOf<List<ReleaseSummary>?>(null) }
+    LaunchedEffect(Unit) {
+        releases = withContext(Dispatchers.IO) { UpdateManager.fetchRecentReleases(5) }
+    }
 
     OverlayScreen(title = "À propos", subtitle = "ZAgent — agent de code sur téléphone", onBack = onBack) {
         // ── Carte identité ───────────────────────────────────────────────────
@@ -184,6 +198,53 @@ fun AboutScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             )
         }
         Spacer(Modifier.height(16.dp))
+
+        // ── maj-073 : dernières versions publiées sur GitHub ─────────────────
+        if (!releases.isNullOrEmpty()) {
+            OverlaySection("Dernières versions publiées")
+            GlassCard {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    releases.orEmpty().forEach { r ->
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    r.tag,
+                                    style = TextStyle(fontFamily = JetBrainsMono, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
+                                    color = c.cyan
+                                )
+                                if (r.prerelease) {
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        "bêta",
+                                        style = TextStyle(fontFamily = Inter, fontSize = 10.sp),
+                                        color = c.amber,
+                                        modifier = Modifier
+                                            .background(c.amber.copy(alpha = 0.12f), RoundedCornerShape(6.dp))
+                                            .padding(horizontal = 6.dp, vertical = 1.dp)
+                                    )
+                                }
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    r.date,
+                                    style = TextStyle(fontFamily = Inter, fontSize = 10.5.sp),
+                                    color = c.text3
+                                )
+                            }
+                            if (r.notes.isNotBlank() && r.notes != r.tag) {
+                                MarkdownText(
+                                    r.notes,
+                                    baseColor = c.text2,
+                                    fontSize = 11.5.sp,
+                                    lineHeight = 16.sp,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+        }
 
         // ── Licences ─────────────────────────────────────────────────────────
         OverlaySection("Licences open source")

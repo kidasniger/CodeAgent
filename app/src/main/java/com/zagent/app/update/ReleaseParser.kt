@@ -117,4 +117,37 @@ object ReleaseParser {
             .filter { it.isNotEmpty() }
         return if (lines.isEmpty()) "• Corrections et améliorations." else lines.joinToString("\n") { "• $it" }
     }
+
+    /**
+     * maj-073 — Notes brutes pour l'écran Nouveautés : garde le markdown simple
+     * (titres, puces) au lieu de l'aplatir comme [cleanNotes], car il est rendu
+     * par MarkdownText.
+     */
+    fun notesBrutes(raw: String): String =
+        raw.trim().ifEmpty { "Corrections et améliorations." }
+
+    /**
+     * maj-073 — Analyse une réponse « /releases » (liste) en résumés légers pour
+     * la section Nouveautés. Les drafts sont ignorées ; date limitée à la partie
+     * jour (YYYY-MM-DD). Renvoie au plus [limit] entrées.
+     */
+    fun parseSummaries(jsonText: String, limit: Int = 5): List<ReleaseSummary> {
+        val arr = try {
+            json.parseToJsonElement(jsonText) as? JsonArray
+        } catch (_: Exception) {
+            return emptyList()
+        } ?: return emptyList()
+        return arr.take(limit).mapNotNull { el ->
+            val o = el as? JsonObject ?: return@mapNotNull null
+            val tag = o.string("tag_name").trim()
+            if (tag.isEmpty() || o.string("draft") == "true") return@mapNotNull null
+            ReleaseSummary(
+                tag = tag,
+                name = o.string("name").ifBlank { tag },
+                date = o.string("published_at").take(10),
+                notes = notesBrutes(o.string("body")),
+                prerelease = o.string("prerelease") == "true"
+            )
+        }
+    }
 }

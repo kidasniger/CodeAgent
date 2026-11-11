@@ -42,8 +42,23 @@ data class ModelInfo(
     /** Modèle spécialisé (modération, extraction…) : pas destiné à la conversation. */
     val specialized: Boolean = false,
     /** Ce que le modèle sait faire (MàJ 102) ; par défaut : texte seul. */
-    val capacites: Set<Capacite> = setOf(Capacite.TEXTE)
+    val capacites: Set<Capacite> = setOf(Capacite.TEXTE),
+    /** maj-083 — température conseillée du modèle (null = défaut du fournisseur). */
+    val temperature: Float? = null,
+    /** maj-083 — top_p conseillé (null = défaut du fournisseur). */
+    val topP: Float? = null,
+    /** maj-083 — plafond de tokens de sortie conseillé (null = défaut du fournisseur). */
+    val maxTokens: Int? = null
 ) {
+    /**
+     * maj-083 — Paramètres de génération conseillés pour ce modèle.
+     * Renvoie null si aucun des trois champs n'est renseigné : le corps de la
+     * requête reste alors exactement comme avant (aucun changement de comportement).
+     */
+    fun generationParams(): GenerationParams? {
+        if (temperature == null && topP == null && maxTokens == null) return null
+        return GenerationParams(temperature, topP, maxTokens)
+    }
     /** Identifiant du fournisseur d'origine, dérivé de l'URL (MàJ 101). */
     val fournisseurId: String
         get() = when (baseUrl) {
@@ -54,6 +69,20 @@ data class ModelInfo(
     /** Vrai si le modèle peut répondre en texte et code (candidat conversation/agent). */
     val conversationnel: Boolean
         get() = !specialized && (Capacite.TEXTE in capacites || Capacite.CODE in capacites)
+}
+
+/**
+ * maj-083 — Paramètres de génération envoyés au fournisseur dans le corps de la
+ * requête chat/completions. Tous les champs sont optionnels : seuls ceux non
+ * null sont ajoutés au JSON (le fournisseur applique ses défauts pour les autres).
+ */
+data class GenerationParams(
+    val temperature: Float? = null,
+    val topP: Float? = null,
+    val maxTokens: Int? = null
+) {
+    /** Vrai si au moins un paramètre est renseigné. */
+    val hasAny: Boolean get() = temperature != null || topP != null || maxTokens != null
 }
 
 /**
@@ -211,6 +240,12 @@ object ModelCatalog {
         val id = modelId.trim()
         return all.firstOrNull { it.id == id }
     }
+
+    /**
+     * maj-083 — Paramètres de génération conseillés pour [modelId] (null si le
+     * modèle est inconnu ou n'en définit aucun).
+     */
+    fun generationParamsPour(modelId: String): GenerationParams? = find(modelId)?.generationParams()
 
     /**
      * MàJ 101 — fournisseur enregistré qui héberge [modelId] : la clé de CE

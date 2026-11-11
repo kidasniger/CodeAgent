@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -155,6 +156,11 @@ fun FloatingTabBar(
                 .offset { IntOffset(0, offsetY) }
                 .graphicsLayer { this.alpha = alpha }
                 .fillMaxWidth()
+                // maj-031 — préparation targetSdk 35 : edge-to-edge y sera
+                // obligatoire. La barre flottante doit se poser AU-DESSUS de la
+                // barre de navigation système (geste ou 3 boutons), exactement
+                // comme ChatInputBar le fait déjà avec navigationBarsPadding().
+                .navigationBarsPadding()
                 .padding(horizontal = 12.dp, vertical = 10.dp)
         ) {
             // Conteneur en verre (même rendu qu'auparavant).

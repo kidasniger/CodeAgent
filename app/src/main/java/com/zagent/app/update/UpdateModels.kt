@@ -14,6 +14,18 @@ data class ReleaseInfo(
     val sha256Url: String?
 )
 
+/**
+ * maj-073 — Résumé d'une release publiée, pour la section « Nouveautés » de
+ * l'écran À propos. Version légère de [ReleaseInfo] sans asset d'APK.
+ */
+data class ReleaseSummary(
+    val tag: String,
+    val name: String,
+    val date: String,
+    val notes: String,
+    val prerelease: Boolean
+)
+
 sealed class ParseResult {
     class Success(val info: ReleaseInfo) : ParseResult()
     class Failure(val message: String) : ParseResult()

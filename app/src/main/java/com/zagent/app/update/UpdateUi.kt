@@ -58,6 +58,7 @@ import com.zagent.app.ui.components.common.GradientButton
 import com.zagent.app.ui.components.common.GradientProgress
 import com.zagent.app.ui.components.common.IconBadge
 import com.zagent.app.ui.components.common.SecondaryButton
+import com.zagent.app.ui.components.chat.MarkdownText
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.SpaceGrotesk
@@ -163,10 +164,13 @@ private fun AvailableDialog(s: UpdateState.Available) {
                 )
             }
             CardDivider()
-            Text(
+            // maj-070 : notes de version rendues en markdown simple (titres,
+            // puces, gras, code) au lieu d'un bloc de texte brut.
+            MarkdownText(
                 s.info.notes,
-                style = TextStyle(fontFamily = Inter, fontSize = 13.5.sp, lineHeight = 20.sp),
-                color = c.text2,
+                baseColor = c.text2,
+                fontSize = 13.sp,
+                lineHeight = 19.sp,
                 modifier = Modifier
                     .heightIn(max = 220.dp)
                     .verticalScroll(rememberScrollState())

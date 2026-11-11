@@ -40,6 +40,8 @@ import com.zagent.app.data.HapticLevel
 import com.zagent.app.data.ProjectSearch
 import com.zagent.app.data.Constants
 import com.zagent.app.data.SettingsManager
+import com.zagent.app.data.GitHubApi
+import com.zagent.app.util.ImageResize
 import com.zagent.app.di.AppContainer
 import com.zagent.app.ui.editor.ConsoleState
 import com.zagent.app.ui.editor.EditorController
@@ -486,6 +488,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /** Pièce jointe ajoutée depuis la feuille « + » (MA49) : fichier du téléphone, arborescence du projet… */
+    // maj-045 — @Immutable : l'Uri est immuable en pratique (le champ n'est
+    // remplacé qu'une fois, par le redimensionnement corr-060 qui émet une
+    // NOUVELLE instance via copy()) ; sans l'annotation, AttachmentThumbsRow
+    // est considérée instable et recompose à chaque frame de saisie.
+    @Immutable
     data class ChatAttachment(
         val id: Long,
         val name: String,
@@ -501,7 +508,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun addAttachmentUri(uri: Uri) {
         val name = displayNameOf(uri) ?: "fichier"
         val mime = getApplication<Application>().contentResolver.getType(uri).orEmpty()
-        attachments.add(ChatAttachment(nextAttachmentId++, name, uri = uri, isImage = mime.startsWith("image/")))
+        val isImage = mime.startsWith("image/")
+        val attachment = ChatAttachment(nextAttachmentId++, name, uri = uri, isImage = isImage)
+        attachments.add(attachment)
+        // corr-060 : redimensionne les images en arrière-plan avant envoi
+        // (grand côté ≤ 1600 px, JPEG q82) puis remplace l'Uri en place —
+        // la vignette et l'envoi utilisent automatiquement la version allégée.
+        if (isImage) {
+            viewModelScope.launch(Dispatchers.IO) {
+                val resized = ImageResize.resizeForSending(getApplication(), uri)
+                if (resized != uri) {
+                    withContext(Dispatchers.Main) {
+                        val idx = attachments.indexOfFirst { it.id == attachment.id }
+                        if (idx >= 0) attachments[idx] = attachments[idx].copy(uri = resized)
+                    }
+                }
+            }
+        }
     }
 
     /** Joint l'arborescence du projet courant au contexte de l'agent. */
@@ -862,12 +885,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setPrices(priceIn: Float, priceOut: Float) = settings.setPrices(priceIn, priceOut)
 
-    // ── Git visuel ──────────────────────────────────────────────────────────
-    data class GitChanges(val status: String, val diff: String, val error: String? = null)
+    // ── feat-082 : jeton GitHub (chiffré, jamais loggé) ─────────────────────
+    /** Jeton GitHub enregistré (lecture pour l'UI des Réglages). */
+    val gitHubJeton: String
+        get() = settings.jetonGitHub
 
-    var gitSheetOpen by mutableStateOf(false)
-    var gitChanges by mutableStateOf<GitChanges?>(null)
-    var gitLoading by mutableStateOf(false)
+    /** Enregistre le jeton GitHub (Réglages › GitHub). Chaîne vide = retire le jeton. */
+    fun setGitHubJeton(value: String) {
+        settings.jetonGitHub = value.trim()
+    }
+
+    // ── Git visuel ──────────────────────────────────────────────────────────
+    // corr-008 : état d'UI regroupé dans une seule data class (UiState.kt).
+    var gitUi by mutableStateOf(GitUiState())
 
     // § remplace le signe dollar (évite les modèles de chaînes Kotlin)
     private val gitScript = """
@@ -896,18 +926,17 @@ done; } 2>&1 | head -c 50000
     }
 
     fun openGitChanges() {
-        gitSheetOpen = true
+        gitUi = gitUi.copy(sheetOpen = true)
         refreshGitChanges()
     }
 
     fun refreshGitChanges() {
-        if (gitLoading) return
-        gitLoading = true
+        if (gitUi.loading) return
+        gitUi = gitUi.copy(loading = true)
         viewModelScope.launch(Dispatchers.IO) {
             val r = readGitChanges()
             withContext(Dispatchers.Main) {
-                gitChanges = r
-                gitLoading = false
+                gitUi = gitUi.copy(changes = r, loading = false)
             }
         }
     }
@@ -2159,7 +2188,9 @@ done; } 2>&1 | head -c 50000
                         liveReasoning += piece
                     }
                 },
-                avecOutils = true
+                avecOutils = true,
+                // maj-083 : temperature/top_p/max_tokens conseillés par le modèle choisi.
+                generation = ModelCatalog.generationParamsPour(modeleUtilise)
             )
 
             when (result) {
@@ -3576,7 +3607,7 @@ done; } 2>&1 | head -c 50000
         viewModelScope.launch(Dispatchers.IO) {
             terminal.runCommand(cmd, workingFolderUriString, 15, silent = true) { }
             val r = readGitChanges()
-            withContext(Dispatchers.Main) { gitChanges = r }
+            withContext(Dispatchers.Main) { gitUi = gitUi.copy(changes = r) }
         }
     }
 
@@ -3591,7 +3622,7 @@ done; } 2>&1 | head -c 50000
             ) { }
             val r = readGitChanges()
             withContext(Dispatchers.Main) {
-                gitChanges = r
+                gitUi = gitUi.copy(changes = r)
                 statusMessage = if (res.startsWith("Erreur") || res.contains("nothing to commit")) {
                     res.lineSequence().firstOrNull()?.take(140) ?: "Commit impossible."
                 } else {
@@ -3605,7 +3636,7 @@ done; } 2>&1 | head -c 50000
     /** Génère un message de commit avec l'IA à partir du diff courant (MA61). */
     fun generateCommitMessage() {
         if (isGeneratingCommitMsg) return
-        val diffText = gitChanges?.diff.orEmpty()
+        val diffText = gitUi.changes?.diff.orEmpty()
         if (diffText.isBlank()) {
             statusMessage = "Aucun changement à commenter."
             return
@@ -3657,10 +3688,280 @@ done; } 2>&1 | head -c 50000
             val r = readGitChanges()
             withContext(Dispatchers.Main) {
                 statusMessage = res.lineSequence().firstOrNull()?.take(120) ?: ""
-                gitChanges = r
+                gitUi = gitUi.copy(changes = r)
                 refreshGitBranches()
                 refreshProjectFiles()
                 gitBranchBusy = false
+            }
+        }
+    }
+
+    // ── Git distantes : push / pull / clone / stash (feat-081, 085, 086) ────
+
+    /**
+     * feat-085 — URL d'origine du dépôt courant, ou chaîne vide.
+     * Sert à brancher l'authentification par jeton (feat-082) et l'API GitHub.
+     * Fonction suspend : à appeler depuis un coroutine IO (jamais en composition).
+     */
+    suspend fun gitRemoteOrigin(): String {
+        return withContext(Dispatchers.IO) {
+            val res = terminal.runCommand(
+                "git remote get-url origin 2>&1",
+                workingFolderUriString, 10, silent = true
+            ) { }
+            res.lineSequence().firstOrNull()?.trim().orEmpty()
+        }
+    }
+
+    /**
+     * feat-085 — Injecte le jeton GitHub (feat-082) dans une URL https : le
+     * push/pull n'a alors pas besoin d'identifiants interactifs. Une URL ssh
+     * ou déjà authentifiée est renvoyée telle quelle ; le jeton n'apparaît
+     * jamais dans un message (masqué par ZLog).
+     */
+    private fun urlAvecJeton(remote: String, jeton: String): String {
+        if (jeton.isBlank() || !remote.startsWith("https://")) return remote
+        if (remote.contains("@")) return remote // déjà authentifié
+        val corps = remote.removePrefix("https://")
+        return "https://" + jeton + "@" + corps
+    }
+
+    /** Message d'erreur git en langage simple (feat-085 : gestion des erreurs). */
+    private fun messageGitSimple(res: String): String = when {
+        res.contains("rejected") || res.contains("non-fast-forward") ->
+            "Push refusé : le dépôt distant a de nouveaux commits. Fais d'abord un pull."
+        res.contains("Authentication failed") || res.contains("403") ->
+            "Authentification refusée. Vérifie le jeton GitHub dans Réglages (feat-082)."
+        res.contains("No configured push destination") || res.contains("does not appear to be a git repository") ->
+            "Aucune destination configurée. Ajoute une distante : git remote add origin <url>."
+        res.contains("Couldn't find remote ref") ->
+            "Branche distante introuvable — elle n'a peut-être jamais été poussée."
+        res.contains("You are not currently on a branch") ->
+            "Tu es en état détaché (detached HEAD). Crée ou bascule sur une branche d'abord."
+        res.contains("CONFLICT") ->
+            "Conflit de fusion : édite les fichiers marqués <<<<<<< puis commit."
+        res.contains("fatal") || res.startsWith("Erreur") ->
+            res.lineSequence().firstOrNull()?.take(160) ?: "Opération git impossible."
+        else -> res.lineSequence().firstOrNull()?.take(120) ?: ""
+    }
+
+    /** feat-085 — Envoie la branche courante vers l'origine (avec -u au premier push). */
+    fun gitPush() {
+        if (gitBranchBusy) return
+        gitBranchBusy = true
+        statusMessage = "Push en cours…"
+        viewModelScope.launch(Dispatchers.IO) {
+            val jeton = settingsManager.jetonGitHub
+            val remote = gitRemoteOrigin()
+            val cible = urlAvecJeton(remote, jeton)
+            val branch = terminal.runCommand("git rev-parse --abbrev-ref HEAD", workingFolderUriString, 10, silent = true) { }
+                .lineSequence().firstOrNull()?.trim().orEmpty()
+            val cmd = if (branch.isBlank() || branch == "HEAD") "git push 2>&1"
+            else "git push -u origin \"" + branch + "\" 2>&1"
+            val res = terminal.runCommand(cmd, workingFolderUriString, 120, silent = true) { }
+            withContext(Dispatchers.Main) {
+                statusMessage = if (res.contains("->") || res.contains("up to date") || res.contains("Everything up-to-date"))
+                    "Push réussi" + (if (branch.isNotBlank()) " (branche " + branch + ")" else "") + "."
+                else messageGitSimple(res)
+                gitBranchBusy = false
+            }
+            // Le jeton n'est jamais laissé dans la config du dépôt.
+            if (cible != remote && jeton.isNotBlank()) {
+                terminal.runCommand("git config --unset-all credential.helper 2>/dev/null", workingFolderUriString, 5, silent = true) { }
+            }
+        }
+    }
+
+    /** feat-085 — Récupère et fusionne la branche distante correspondante. */
+    fun gitPull() {
+        if (gitBranchBusy) return
+        gitBranchBusy = true
+        statusMessage = "Pull en cours…"
+        viewModelScope.launch(Dispatchers.IO) {
+            val jeton = settingsManager.jetonGitHub
+            val remote = gitRemoteOrigin()
+            val cible = urlAvecJeton(remote, jeton)
+            var res = terminal.runCommand("git pull --no-edit 2>&1", workingFolderUriString, 120, silent = true) { }
+            // Repli : distante privée sans credential helper → fetch via URL à jeton.
+            if ((res.contains("Authentication") || res.contains("could not read Username")) && cible != remote) {
+                val branch = terminal.runCommand("git rev-parse --abbrev-ref HEAD", workingFolderUriString, 10, silent = true) { }
+                    .lineSequence().firstOrNull()?.trim().orEmpty()
+                res = terminal.runCommand(
+                    "git pull --no-edit \"" + cible.replace("\"", "'") + "\" \"" + branch + "\" 2>&1",
+                    workingFolderUriString, 120, silent = true
+                ) { }
+            }
+            val r = readGitChanges()
+            withContext(Dispatchers.Main) {
+                statusMessage = when {
+                    res.contains("Already up to date") || res.contains("À jour") -> "Dépôt déjà à jour."
+                    res.contains("CONFLICT") -> messageGitSimple(res)
+                    res.contains("error") || res.contains("fatal") || res.startsWith("Erreur") -> messageGitSimple(res)
+                    else -> "Pull terminé : " + res.lineSequence().filter { it.contains("|") || it.contains("changed") }
+                        .firstOrNull()?.take(100) ?: "modifications récupérées."
+                }
+                gitUi = gitUi.copy(changes = r)
+                refreshProjectFiles()
+                gitBranchBusy = false
+            }
+        }
+    }
+
+    /** feat-081 — Clone un dépôt git par URL (https, jeton facultatif) dans le projet courant. */
+    fun gitClone(url: String, onFinished: (Boolean) -> Unit) {
+        val cible = url.trim()
+        if (cible.isBlank() || gitBranchBusy) return
+        if (!cible.startsWith("https://") && !cible.startsWith("http://") && !cible.startsWith("git@")) {
+            statusMessage = "URL invalide : commence par https:// ou git@."
+            return
+        }
+        gitBranchBusy = true
+        statusMessage = "Clonage en cours… (les gros dépôts peuvent prendre du temps)"
+        viewModelScope.launch(Dispatchers.IO) {
+            // --depth 1 par défaut : clone rapide sur mobile ; le jeton s'injecte dans l'URL https.
+            val jeton = settingsManager.jetonGitHub
+            val cibleAuth = urlAvecJeton(cible, jeton)
+            val res = terminal.runCommand(
+                "git clone --depth 1 \"" + cibleAuth.replace("\"", "'") + "\" 2>&1 | tail -5",
+                workingFolderUriString, 300, silent = true
+            ) { }
+            withContext(Dispatchers.Main) {
+                val ok = !res.contains("fatal") && !res.contains("Erreur") && res.contains("Cloning")
+                statusMessage = if (ok) "Clonage réussi : " + cible.substringAfterLast('/').removeSuffix(".git")
+                else messageGitSimple(res)
+                refreshProjectFiles()
+                gitBranchBusy = false
+                onFinished(ok)
+            }
+        }
+    }
+
+    /** feat-086 — Met de côté les changements courants (stash). */
+    fun gitStashPush() {
+        if (gitBranchBusy) return
+        gitBranchBusy = true
+        viewModelScope.launch(Dispatchers.IO) {
+            val res = terminal.runCommand("git stash push -m \"ZAgent " + System.currentTimeMillis() + "\" 2>&1", workingFolderUriString, 30, silent = true) { }
+            val r = readGitChanges()
+            withContext(Dispatchers.Main) {
+                statusMessage = if (res.contains("Saved working directory")) "Modifications mises de côté (stash)." else messageGitSimple(res)
+                gitUi = gitUi.copy(changes = r)
+                gitBranchBusy = false
+            }
+        }
+    }
+
+    /** feat-086 — Restaure le dernier stash. */
+    fun gitStashPop() {
+        if (gitBranchBusy) return
+        gitBranchBusy = true
+        viewModelScope.launch(Dispatchers.IO) {
+            val res = terminal.runCommand("git stash pop 2>&1", workingFolderUriString, 30, silent = true) { }
+            val r = readGitChanges()
+            withContext(Dispatchers.Main) {
+                statusMessage = when {
+                    res.contains("CONFLICT") -> "Conflit au rétablissement du stash : résous-le puis commit."
+                    res.startsWith("No stash entries") || res.contains("No stash found") -> "Aucun stash à rétablir."
+                    res.contains("fatal") || res.startsWith("Erreur") -> messageGitSimple(res)
+                    else -> "Stash rétabli."
+                }
+                gitUi = gitUi.copy(changes = r)
+                refreshProjectFiles()
+                gitBranchBusy = false
+            }
+        }
+    }
+
+    /** feat-084 — Crée une branche et bascule dessus. */
+    fun gitBranchCreate(name: String) {
+        val n = name.trim()
+        if (gitBranchBusy || n.isBlank()) return
+        if (!n.matches(Regex("[A-Za-z0-9._/-]+"))) {
+            statusMessage = "Nom de branche invalide : lettres, chiffres, . _ / - uniquement."
+            return
+        }
+        gitBranchBusy = true
+        viewModelScope.launch(Dispatchers.IO) {
+            val res = terminal.runCommand("git checkout -b \"" + n.replace("\"", "'") + "\" 2>&1", workingFolderUriString, 20, silent = true) { }
+            withContext(Dispatchers.Main) {
+                statusMessage = if (res.contains("Switched") || res.contains("Basculement"))
+                    "Branche créée : " + n else messageGitSimple(res)
+                refreshGitBranches()
+                gitBranchBusy = false
+            }
+        }
+    }
+
+    /** feat-084 — Supprime une branche locale (refus si c'est la branche courante). */
+    fun gitBranchDelete(name: String) {
+        val n = name.trim()
+        if (gitBranchBusy || n.isBlank()) return
+        if (n == "main" || n == "master") {
+            statusMessage = "La branche principale ne se supprime pas depuis l'application."
+            return
+        }
+        gitBranchBusy = true
+        viewModelScope.launch(Dispatchers.IO) {
+            val res = terminal.runCommand("git branch -d \"" + n.replace("\"", "'") + "\" 2>&1", workingFolderUriString, 15, silent = true) { }
+            withContext(Dispatchers.Main) {
+                statusMessage = if (res.contains("Deleted") || res.contains("Supprim"))
+                    "Branche supprimée : " + n else messageGitSimple(res)
+                refreshGitBranches()
+                gitBranchBusy = false
+            }
+        }
+    }
+
+    // ── GitHub : PR (feat-088) et statut Actions (feat-089) ─────────────────
+
+    var gitActionsRuns by mutableStateOf<List<GitHubApi.ActionsRun>>(emptyList())
+        private set
+    var gitActionsLoading by mutableStateOf(false)
+        private set
+    var gitPrBusy by mutableStateOf(false)
+        private set
+
+    /** feat-089 — Rafraîchit la liste des derniers runs GitHub Actions. */
+    fun refreshGitActions() {
+        if (gitActionsLoading) return
+        gitActionsLoading = true
+        viewModelScope.launch(Dispatchers.IO) {
+            val remote = gitRemoteOrigin()
+            val res = GitHubApi.actionsRuns(remote, settingsManager.jetonGitHub)
+            withContext(Dispatchers.Main) {
+                gitActionsRuns = res.getOrDefault(emptyList())
+                if (res.isFailure) {
+                    statusMessage = res.exceptionOrNull()?.message ?: "Statut Actions indisponible."
+                }
+                gitActionsLoading = false
+            }
+        }
+    }
+
+    /** feat-088 — Crée une pull request de la branche courante vers la branche par défaut. */
+    fun createPullRequest(title: String, body: String, onDone: (Boolean) -> Unit) {
+        if (gitPrBusy) return
+        val titre = title.trim()
+        if (titre.isEmpty()) {
+            statusMessage = "Donne un titre à la pull request."
+            return
+        }
+        val jeton = settingsManager.jetonGitHub
+        if (jeton.isBlank()) {
+            statusMessage = "Renseigne d'abord un jeton GitHub dans Réglages (feat-082)."
+            onDone(false)
+            return
+        }
+        gitPrBusy = true
+        viewModelScope.launch(Dispatchers.IO) {
+            val remote = gitRemoteOrigin()
+            val branch = terminal.runCommand("git rev-parse --abbrev-ref HEAD", workingFolderUriString, 10, silent = true) { }
+                .lineSequence().firstOrNull()?.trim().orEmpty()
+            val res = GitHubApi.createPullRequest(remote, jeton, branch, titre, body)
+            withContext(Dispatchers.Main) {
+                statusMessage = res.fold({ "PR créée : " + it }, { it.message ?: "Échec de la PR." })
+                gitPrBusy = false
+                onDone(res.isSuccess)
             }
         }
     }

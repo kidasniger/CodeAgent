@@ -30,7 +30,9 @@ interface AiRepositoryApi {
         onDelta: (String) -> Unit,
         onReasoningDelta: (String) -> Unit,
         /** MàJ 104 — false pour un échange pur (mode Duo) : aucun outil transmis. */
-        avecOutils: Boolean
+        avecOutils: Boolean,
+        /** maj-083 — temperature / top_p / max_tokens conseillés par le modèle (null = défauts). */
+        generation: GenerationParams? = null
     ): AiRepository.ApiResponse
 }
 

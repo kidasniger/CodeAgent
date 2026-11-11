@@ -180,6 +180,17 @@ class MainActivity : AppCompatActivity() {
             action == MainViewModel.ACTION_SHORTCUT_OPEN_MODELS
         ) {
             viewModel.handleAppShortcut(action)
+            return
+        }
+        // maj-040 — deep links zagent://git et zagent://models : mêmes cibles que
+        // les raccourcis d'application (Git n'est pas une route de navigation mais
+        // un état du ViewModel ; Modèles est une feuille accrochée aux Réglages).
+        // Le manifeste déclare déjà le schéma zagent en VIEW/BROWSABLE.
+        if (action == Intent.ACTION_VIEW) {
+            when (intent.dataString) {
+                "zagent://git" -> viewModel.handleAppShortcut(MainViewModel.ACTION_SHORTCUT_OPEN_GIT)
+                "zagent://models" -> viewModel.handleAppShortcut(MainViewModel.ACTION_SHORTCUT_OPEN_MODELS)
+            }
         }
     }
 }

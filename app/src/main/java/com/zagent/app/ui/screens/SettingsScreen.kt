@@ -150,6 +150,15 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
     var autoMode by rememberSaveable { mutableStateOf(viewModel.autoModeInput) }
     var model by rememberSaveable { mutableStateOf(viewModel.modelInput) }
 
+    // feat-082 — jeton GitHub (chiffré dans EncryptedSharedPreferences).
+    var jetonGit by rememberSaveable { mutableStateOf(viewModel.gitHubJeton) }
+    var jetonVisible by rememberSaveable { mutableStateOf(false) }
+    // Enregistrement différé (400 ms) : EncryptedSharedPreferences chiffre à chaque écriture.
+    LaunchedEffect(jetonGit) {
+        kotlinx.coroutines.delay(400)
+        viewModel.setGitHubJeton(jetonGit)
+    }
+
     // MàJ 101 — les clés vivent dans les cartes Fournisseurs (une par API,
     // enregistrées dès la frappe avec un court délai). Ne restent ici que le
     // modèle global et le mode Auto : EncryptedSharedPreferences chiffre à
@@ -569,6 +578,52 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                         )
                     }
                 }
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            // ── feat-082 : GITHUB (jeton pour clone privé, push/pull, PR) ───
+            SectionLabel("GitHub")
+            Spacer(Modifier.height(8.dp))
+            GlassCard {
+                Text(
+                    "Jeton d'accès personnel",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = c.text
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Utilisé pour cloner un dépôt privé, push/pull et créer des pull requests. Stocké chiffré, jamais envoyé aux modèles.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = c.text2
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = jetonGit,
+                    onValueChange = { jetonGit = it },
+                    placeholder = { Text("github_pat_… ou ghp_…", style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp), color = c.text3) },
+                    textStyle = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.5.sp, color = c.text),
+                    singleLine = true,
+                    visualTransformation = if (jetonVisible) androidx.compose.ui.text.input.VisualTransformation.None
+                        else androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    trailingIcon = {
+                        Icon(
+                            if (jetonVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                            contentDescription = if (jetonVisible) "Masquer le jeton" else "Afficher le jeton",
+                            tint = c.text2,
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .clickable { jetonVisible = !jetonVisible }
+                        )
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = c.cyan,
+                        unfocusedBorderColor = c.border,
+                        cursorColor = c.cyan
+                    ),
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
 
             Spacer(Modifier.height(20.dp))

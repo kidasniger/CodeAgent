@@ -880,18 +880,18 @@ fun ChatScreen(
         )
     }
 
-    // Changements Git (ouvert par l'utilisateur)
-    if (viewModel.gitSheetOpen) {
-        val g = viewModel.gitChanges
+    // Changements Git (ouvert par l'utilisateur) — corr-008 : état regroupé
+    if (viewModel.gitUi.sheetOpen) {
+        val g = viewModel.gitUi.changes
         GitChangesSheet(
             status = g?.status.orEmpty(),
             diff = g?.diff.orEmpty(),
             error = g?.error,
-            loading = viewModel.gitLoading,
+            loading = viewModel.gitUi.loading,
             onRefresh = { viewModel.refreshGitChanges() },
-            onClose = { viewModel.gitSheetOpen = false },
+            onClose = { viewModel.gitUi = viewModel.gitUi.copy(sheetOpen = false) },
             onOpenFull = {
-                viewModel.gitSheetOpen = false
+                viewModel.gitUi = viewModel.gitUi.copy(sheetOpen = false)
                 viewModel.isGitScreenOpen = true
             }
         )

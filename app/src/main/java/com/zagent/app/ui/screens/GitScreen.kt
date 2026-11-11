@@ -18,15 +18,24 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CallMerge
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Commit
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import com.zagent.app.ui.components.common.GlassCard
 import com.zagent.app.ui.components.chat.GitDiffView
 import com.zagent.app.ui.components.common.GradientButton
+import com.zagent.app.ui.components.common.SecondaryButton
 import com.zagent.app.ui.components.common.OverlayEmptyState
 import com.zagent.app.ui.components.common.OverlayScreen
 import com.zagent.app.ui.components.common.OverlayTabs
@@ -77,12 +87,13 @@ fun GitScreen(viewModel: MainViewModel, onClose: () -> Unit) {
     }
 
     OverlayScreen(title = "Git", subtitle = viewModel.folderLabel, onBack = onClose) {
-        OverlayTabs(listOf("Changements", "Historique", "Branches"), tab) { tab = it }
+        OverlayTabs(listOf("Changements", "Historique", "Branches", "Actions"), tab) { tab = it }
         Spacer(Modifier.height(14.dp))
         when (tab) {
             0 -> ChangesTab(viewModel)
             1 -> HistoryTab(viewModel)
-            else -> BranchesTab(viewModel)
+            2 -> BranchesTab(viewModel)
+            else -> ActionsTab(viewModel)
         }
     }
 }
@@ -92,7 +103,7 @@ fun GitScreen(viewModel: MainViewModel, onClose: () -> Unit) {
 @Composable
 private fun ChangesTab(viewModel: MainViewModel) {
     val c = Zcolors
-    val changes = viewModel.gitChanges
+    val changes = viewModel.gitUi.changes
     var commitMsg by remember { mutableStateOf(viewModel.gitCommitMessage) }
 
     if (changes == null) {
@@ -103,6 +114,8 @@ private fun ChangesTab(viewModel: MainViewModel) {
     }
     if (changes.error != null) {
         OverlayEmptyState(Icons.Default.CallMerge, "Pas de dépôt Git", changes.error ?: "")
+        Spacer(Modifier.height(10.dp))
+        CloneCard(viewModel)
         return
     }
 
@@ -214,6 +227,58 @@ private fun ChangesTab(viewModel: MainViewModel) {
     }
     Spacer(Modifier.height(12.dp))
 
+    // ── feat-085/086 : pull, push, stash + feat-088 : PR ─────────────────────
+    var showPrDialog by remember { mutableStateOf(false) }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        SecondaryButton(
+            "Pull",
+            onClick = { viewModel.gitPull() },
+            enabled = !viewModel.gitBranchBusy,
+            modifier = Modifier.weight(1f),
+            height = 42.dp,
+            leading = { Icon(Icons.Default.CloudDownload, null, tint = c.cyan, modifier = Modifier.size(15.dp)) }
+        )
+        SecondaryButton(
+            "Push",
+            onClick = { viewModel.gitPush() },
+            enabled = !viewModel.gitBranchBusy,
+            modifier = Modifier.weight(1f),
+            height = 42.dp,
+            leading = { Icon(Icons.Default.CloudUpload, null, tint = c.violet, modifier = Modifier.size(15.dp)) }
+        )
+        SecondaryButton(
+            "Stash",
+            onClick = { viewModel.gitStashPush() },
+            enabled = !viewModel.gitBranchBusy && files.isNotEmpty(),
+            modifier = Modifier.weight(1f),
+            height = 42.dp,
+            leading = { Icon(Icons.Default.ContentCopy, null, tint = c.amber, modifier = Modifier.size(15.dp)) }
+        )
+    }
+    Spacer(Modifier.height(8.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        SecondaryButton(
+            "Rétablir le stash",
+            onClick = { viewModel.gitStashPop() },
+            enabled = !viewModel.gitBranchBusy,
+            modifier = Modifier.weight(1f),
+            height = 42.dp,
+            leading = { Icon(Icons.AutoMirrored.Filled.Undo, null, tint = c.text2, modifier = Modifier.size(15.dp)) }
+        )
+        SecondaryButton(
+            "Créer une PR",
+            onClick = { showPrDialog = true },
+            enabled = !viewModel.gitPrBusy,
+            modifier = Modifier.weight(1f),
+            height = 42.dp,
+            leading = { Icon(Icons.Default.CallMerge, null, tint = c.green, modifier = Modifier.size(15.dp)) }
+        )
+    }
+    if (showPrDialog) {
+        PrDialog(viewModel, onDismiss = { showPrDialog = false })
+    }
+    Spacer(Modifier.height(12.dp))
+
     Text(
         "Diff complet",
         style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
@@ -225,6 +290,124 @@ private fun ChangesTab(viewModel: MainViewModel) {
         diff = changes.diff,
         error = null,
         maxHeight = 340.dp
+    )
+}
+
+// ── feat-081 : carte de clonage (dépôt absent) ───────────────────────────────
+
+/** Carte « Cloner un dépôt » affichée quand le projet n'est pas un dépôt Git. */
+@Composable
+private fun CloneCard(viewModel: MainViewModel) {
+    val c = Zcolors
+    var url by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    GlassCard {
+        Text(
+            "Cloner un dépôt (feat-081)",
+            style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
+            color = c.text
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "Colle une URL https://github.com/… ; un jeton peut être enregistré dans Réglages pour un dépôt privé.",
+            style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp, lineHeight = 15.sp),
+            color = c.text2
+        )
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = url,
+            onValueChange = { url = it },
+            placeholder = { Text("https://github.com/propriétaire/dépôt", style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp), color = c.text3) },
+            textStyle = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.5.sp, color = c.text),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(8.dp))
+        GradientButton(
+            text = "Cloner ici",
+            enabled = url.isNotBlank() && !busy,
+            onClick = {
+                busy = true
+                viewModel.gitClone(url) { ok -> busy = false }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            height = 42.dp,
+            leading = { Icon(Icons.Default.CloudDownload, null, tint = c.onGrad, modifier = Modifier.size(15.dp)) }
+        )
+    }
+}
+
+// ── feat-088 : dialogue de création de pull request ──────────────────────────
+
+/** Dialogue PR : titre + description, branche courante → branche par défaut du dépôt. */
+@Composable
+private fun PrDialog(viewModel: MainViewModel, onDismiss: () -> Unit) {
+    val c = Zcolors
+    var titre by remember { mutableStateOf(viewModel.gitCommitMessage.ifBlank { "" }) }
+    var description by remember { mutableStateOf("") }
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = c.surface,
+        title = {
+            Text(
+                "Créer une pull request",
+                style = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.SemiBold, fontSize = 18.sp),
+                color = c.text
+            )
+        },
+        text = {
+            Column {
+                Text(
+                    "Depuis la branche courante vers la branche par défaut du dépôt. Nécessite un jeton GitHub (Réglages).",
+                    style = TextStyle(fontFamily = Inter, fontSize = 12.sp, lineHeight = 16.sp),
+                    color = c.text2
+                )
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = titre,
+                    onValueChange = { titre = it },
+                    placeholder = { Text("Titre", color = c.text3, style = TextStyle(fontFamily = Inter, fontSize = 13.sp)) },
+                    textStyle = TextStyle(fontFamily = Inter, fontSize = 13.5.sp, color = c.text),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    placeholder = { Text("Description (facultative)", color = c.text3, style = TextStyle(fontFamily = Inter, fontSize = 13.sp)) },
+                    textStyle = TextStyle(fontFamily = Inter, fontSize = 13.sp, color = c.text),
+                    minLines = 2,
+                    maxLines = 4,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Text(
+                "Créer",
+                style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 14.sp),
+                color = if (titre.isNotBlank() && !viewModel.gitPrBusy) c.cyan else c.text3,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable(enabled = titre.isNotBlank() && !viewModel.gitPrBusy) {
+                        viewModel.createPullRequest(titre, description) { onDismiss() }
+                    }
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            )
+        },
+        dismissButton = {
+            Text(
+                "Annuler",
+                style = TextStyle(fontFamily = Inter, fontSize = 14.sp),
+                color = c.text2,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable { onDismiss() }
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            )
+        }
     )
 }
 
@@ -303,6 +486,8 @@ private fun BranchesTab(viewModel: MainViewModel) {
         OverlayEmptyState(Icons.Default.CallMerge, "Aucune branche", "Le projet n'est pas un dépôt Git ou n'a pas encore de branche.")
         return
     }
+    // feat-084 : création de branche
+    var nouvelleBranche by remember { mutableStateOf("") }
     GlassCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp)) {
         branches.forEach { b ->
             Row(
@@ -325,7 +510,56 @@ private fun BranchesTab(viewModel: MainViewModel) {
                 MonoLine(b.name, if (b.current) c.cyan else c.text, Modifier.weight(1f))
                 if (b.current) {
                     Icon(Icons.Default.Check, "Branche actuelle", tint = c.cyan, modifier = Modifier.size(16.dp))
+                } else {
+                    // feat-084 : suppression de branche (long appui = trop discret,
+                    // icône visible au bout de la ligne ; la principale est refusée côté VM).
+                    Icon(
+                        Icons.Default.Delete, "Supprimer la branche " + b.name,
+                        tint = c.text3,
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clickable(enabled = !viewModel.gitBranchBusy) {
+                                viewModel.gitBranchDelete(b.name)
+                            }
+                    )
                 }
+            }
+        }
+    }
+    Spacer(Modifier.height(10.dp))
+    // feat-084 : créer une branche et basculer dessus
+    GlassCard {
+        Text(
+            "Nouvelle branche",
+            style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
+            color = c.text
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                value = nouvelleBranche,
+                onValueChange = { nouvelleBranche = it },
+                placeholder = { Text("ma-fonctionnalite", style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp), color = c.text3) },
+                textStyle = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.5.sp, color = c.text),
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = c.cyan,
+                    unfocusedBorderColor = c.border
+                ),
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(Modifier.width(8.dp))
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(c.cyanBg)
+                    .clickable(enabled = nouvelleBranche.isNotBlank() && !viewModel.gitBranchBusy) {
+                        viewModel.gitBranchCreate(nouvelleBranche)
+                        nouvelleBranche = ""
+                    }
+                    .padding(10.dp)
+            ) {
+                Icon(Icons.Default.Add, "Créer la branche", tint = c.cyan, modifier = Modifier.size(18.dp))
             }
         }
     }
@@ -343,7 +577,71 @@ private fun BranchesTab(viewModel: MainViewModel) {
     }
     Spacer(Modifier.height(6.dp))
     Text(
-        "Touche une branche pour basculer dessus (les changements non commités doivent être compatibles).",
+        "Touche une branche pour basculer dessus (les changements non commités doivent être compatibles). L'icône poubelle supprime une branche locale.",
+        style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp, lineHeight = 16.sp),
+        color = c.text3
+    )
+}
+
+// ── feat-089 : onglet Actions (statut GitHub Actions) ────────────────────────
+
+@Composable
+private fun ActionsTab(viewModel: MainViewModel) {
+    val c = Zcolors
+    LaunchedEffect(Unit) { viewModel.refreshGitActions() }
+    val runs = viewModel.gitActionsRuns
+
+    if (viewModel.gitActionsLoading) {
+        Row(Modifier.fillMaxWidth().padding(18.dp), horizontalArrangement = Arrangement.Center) {
+            CircularProgressIndicator(modifier = Modifier.size(22.dp), color = c.cyan, strokeWidth = 2.dp)
+        }
+        return
+    }
+    if (runs.isEmpty()) {
+        OverlayEmptyState(
+            Icons.Default.Bolt,
+            "Aucun run récent",
+            "Le dépôt n'a pas de workflow GitHub Actions, ou l'origine n'est pas un dépôt GitHub."
+        )
+        return
+    }
+    GlassCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp)) {
+        runs.forEach { run ->
+            val (label, couleur) = when (run.libelle) {
+                "succès" -> "Succès" to c.green
+                "échec" -> "Échec" to c.red
+                "en cours" -> "En cours…" to c.cyan
+                "annulé" -> "Annulé" to c.amber
+                else -> run.libelle to c.text2
+            }
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .padding(horizontal = 10.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.Bolt, null,
+                    tint = couleur,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    MonoLine(run.name, c.text)
+                    MonoLine(run.branch + " · n°" + run.runNumber + " · " + run.createdAt, c.text3)
+                }
+                Text(
+                    label,
+                    style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
+                    color = couleur
+                )
+            }
+        }
+    }
+    Spacer(Modifier.height(6.dp))
+    Text(
+        "5 derniers runs du dépôt d'origine. Le statut « succès » garantit que le build a passé.",
         style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp, lineHeight = 16.sp),
         color = c.text3
     )

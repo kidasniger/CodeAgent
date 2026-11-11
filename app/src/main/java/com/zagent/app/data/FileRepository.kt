@@ -145,7 +145,7 @@ class FileRepository(private val context: Context?, private val rootPath: String
         }.sortedWith(compareByDescending<Entry> { it.isDir }.thenBy { it.name.lowercase() })
     }
 
-    /** URI de partage d'un fichier du projet (via FileProvider). */
+    /** URI de partage d'un fichier du projet (via FileProvider dédié, maj-076). */
     override fun fileUri(path: String): Uri? {
         if (!validatePath(path)) return null
         val root = getRootFolder() ?: return null
@@ -153,7 +153,7 @@ class FileRepository(private val context: Context?, private val rootPath: String
         if (file.isDirectory) return null
         if (context == null) return null
         return try {
-            FileProvider.getUriForFile(context, "${context.packageName}.updateprovider", file)
+            FileProvider.getUriForFile(context, "${context.packageName}.fileshareprovider", file)
         } catch (e: Exception) {
             null
         }

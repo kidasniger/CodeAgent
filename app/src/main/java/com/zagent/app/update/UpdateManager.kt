@@ -171,6 +171,19 @@ object UpdateManager {
         }
     }
 
+    /**
+     * maj-073 — Liste les dernières releases publiées pour la section
+     * « Nouveautés » de l'écran À propos. Appel bloquant : l'appelant le fait
+     * tourner sur Dispatchers.IO. Liste vide en cas d'erreur réseau (section
+     * simplement masquée, pas d'état d'erreur dédié).
+     */
+    fun fetchRecentReleases(limit: Int = 5): List<ReleaseSummary> {
+        if (!initialized) return emptyList()
+        val base = "https://api.github.com/repos/${UpdateConfig.GITHUB_OWNER}/${UpdateConfig.GITHUB_REPO}"
+        val text = httpGetText("$base/releases?per_page=$limit") ?: return emptyList()
+        return ReleaseParser.parseSummaries(text, limit)
+    }
+
     /** Si l'empreinte n'est pas fournie par l'API, lit le fichier .sha256 publié avec la release. */
     private fun resolveSha(info: ReleaseInfo): ParseResult {
         val shaUrl = info.sha256Url

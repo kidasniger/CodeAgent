@@ -135,3 +135,23 @@ gauche). Éditeur à gauche, conversation à droite.
   fonction existante n'a été retirée, elles sont réorganisées.
 - Le même ZMenu est utilisé par la barre d'onglets (MA73) et peut être repris
   tel quel dans l'éditeur et l'explorateur de fichiers.
+
+## maj-040 — Deep links Git et Modèles
+
+Deux nouveaux liens internes complètent le schéma `zagent://` :
+
+- `zagent://git` — ouvre l'écran Git (état `isGitScreenOpen` du ViewModel).
+- `zagent://models` — ouvre les Réglages avec la feuille Modèles en attente
+  (`pendingOpenModels`), comme le raccourci d'application équivalent.
+
+Ces deux cibles ne sont pas des routes du `ZNavHost` (Git est un état du
+ViewModel, Modèles est une feuille du LOT 5 accrochée aux Réglages) : ils sont
+traités au niveau de `MainActivity.handleShortcutIntent` (VIEW + dataString),
+qui réutilise `MainViewModel.handleAppShortcut`. Le manifeste déclarait déjà le
+schéma `zagent` en `VIEW/BROWSABLE`, aucune modification du manifeste n'a été
+nécessaire. Liens à tester :
+
+```
+adb shell am start -a android.intent.action.VIEW -d "zagent://git"
+adb shell am start -a android.intent.action.VIEW -d "zagent://models"
+```

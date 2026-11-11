@@ -29,15 +29,19 @@ data class FileBrowserUiState(
     val loading: Boolean = false
 )
 
+/** Changements du dépôt Git : sortie de `git status`, diff consolidé, erreur éventuelle. */
+data class GitChanges(val status: String, val diff: String, val error: String? = null)
+
 /**
- * État d'UI de l'écran Git — définition pour l'adoption progressive ;
- * les champs gitSheetOpen/gitChanges/gitLoading de MainViewModel migrent
- * vers cette classe dans un second temps (corr-100 : revue des corrections).
+ * État d'UI de l'écran Git (corr-008) : adoption effective — MainViewModel ne
+ * expose plus que [MainViewModel.gitUi] ; les anciens champs dispersés
+ * (gitSheetOpen, gitChanges, gitLoading) ont été regroupés ici.
  */
 data class GitUiState(
+    /** Feuille / écran Git ouvert. */
     val sheetOpen: Boolean = false,
+    /** Chargement en cours (lecture de status + diff). */
     val loading: Boolean = false,
-    val status: String? = null,
-    val diff: String? = null,
-    val error: String? = null
+    /** Dernier résultat consolidé, null tant que rien n'a été lu. */
+    val changes: GitChanges? = null
 )

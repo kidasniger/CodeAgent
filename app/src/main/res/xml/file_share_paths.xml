@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- maj-076 : provider dédié au partage de fichiers du projet (home/,
+     géré par FileRepository « Ouvrir avec / Partager »). Séparé du provider
+     de mise à jour pour que update_file_paths.xml ne serve qu'aux APK
+     téléchargés. Ne pas y ajouter la racine du stockage. -->
+<paths>
+    <files-path name="projects" path="home/" />
+</paths>

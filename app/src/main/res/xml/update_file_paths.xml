@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- MA76 : ce provider sert à la fois les APK téléchargés (updates/, cache)
-     et le partage de fichiers du projet (home/, FileRepository « Ouvrir avec /
-     Partager »). Le scope est volontairement limité à ces deux dossiers.
-     Ne pas y ajouter la racine du stockage. -->
+<!-- maj-076 : ce provider ne sert plus qu'à l'installation des APK
+     téléchargés par UpdateManager (cache/updates/). Le partage des fichiers
+     du projet est passé sur un provider dédié (@xml/file_share_paths,
+     authority .fileshareprovider) : le scope ici est réduit au seul dossier
+     des APK. Ne pas y ajouter la racine du stockage ni les fichiers projet. -->
 <paths>
     <cache-path name="updates" path="updates/" />
-    <files-path name="projects" path="home/" />
 </paths>

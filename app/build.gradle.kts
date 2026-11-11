@@ -75,6 +75,16 @@ android {
     compose = true
     buildConfig = true
   }
+  // maj-045 — métriques du compilateur Compose : opt-in via
+  // `./gradlew assembleDebug -Pcompose.metrics=true`. Rapports écrits dans
+  // build/reports/compose (classements *-comps.csv, *-classes.csv) pour
+  // auditer la stabilité des composables. Voir docs/COMPOSE-METRICS.md.
+  composeCompiler {
+    if (project.findProperty("compose.metrics") == "true") {
+      reportsDestination = layout.buildDirectory.dir("reports/compose")
+      metricsDestination = layout.buildDirectory.dir("reports/compose")
+    }
+  }
   // MA74 : le geste retour prédictif est activé via android:enableOnBackInvokedCallback
   // dans AndroidManifest.xml. Effet complet (animation système) à partir d'Android 13
   // (API 33) ; sur API 26–32 PredictiveBackHandler repose sur le dispatcher classique,

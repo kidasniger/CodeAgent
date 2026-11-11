@@ -639,7 +639,17 @@ class SettingsManager(context: Context) {
         get() = prefs.getFloat(KEY_PRICE_OUT, 0f)
         set(value) = prefs.edit().putFloat(KEY_PRICE_OUT, value.coerceAtLeast(0f)).apply()
 
+    /**
+     * feat-082 — Jeton GitHub (fine-grained PAT) stocké chiffré, utilisé par
+     * le clonage, push/pull sur dépôt privé et la création de PR (GitHubApi).
+     * Jamais loggé (ZLog.masquer couvre github_pat_… / pat_…).
+     */
+    var jetonGitHub: String
+        get() = prefs.getString(KEY_GITHUB_TOKEN, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_GITHUB_TOKEN, value.trim()).apply()
+
     companion object {
+        private const val KEY_GITHUB_TOKEN = "github_token"
         private const val KEY_MAX_STEPS = "max_steps"
         private const val KEY_PRICE_IN = "price_in_per_m"
         private const val KEY_PRICE_OUT = "price_out_per_m"
