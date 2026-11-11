@@ -389,7 +389,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                                 }
                             }
                             viewModel.statusMessage =
-                                "Caches vidés (" + java.util.Locale.FRANCE.format(octets / 1_000_000f) + " Mo libérés)."
+                                "Caches vidés (" + java.lang.String.format(java.util.Locale.FRANCE, "%.1f", octets / 1_000_000f) + " Mo libérés)."
                         }
                     )
                 }

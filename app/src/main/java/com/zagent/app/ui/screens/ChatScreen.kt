@@ -5,7 +5,6 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.NumpadEnter
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -405,7 +404,7 @@ fun ChatScreen(
             .imePadding()
             .onPreviewKeyEvent { ev ->
                 if (ev.type == KeyEventType.KeyDown && ev.isCtrlPressed &&
-                    (ev.key == Key.Enter || ev.key == Key.NumpadEnter)
+                    (ev.key == Key.Enter || ev.key.nativeKeyCode == 10)
                 ) {
                     envoyerAuClavier()
                     true
