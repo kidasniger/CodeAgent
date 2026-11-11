@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -123,7 +124,10 @@ fun HistoryDrawer(viewModel: MainViewModel, onClose: () -> Unit) {
             Column(
                 Modifier
                     .fillMaxHeight()
-                    .width(320.dp)
+                    // ui-074 — jamais plus large que 320 dp, mais se réduit sur
+                    // les petits écrans (320 dp de largeur d'écran testés).
+                    .widthIn(max = 320.dp)
+                    .fillMaxWidth(0.85f)
                     .background(c.bg2)
                     .border(1.dp, c.border, RoundedCornerShape(topEnd = 26.dp, bottomEnd = 26.dp))
                     .statusBarsPadding()

@@ -1,6 +1,7 @@
 package com.zagent.app.ui.layout
 
 import android.content.res.Configuration
+import kotlin.math.abs
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
@@ -21,6 +22,8 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.window.layout.FoldingFeature
+import androidx.window.layout.WindowInfoTracker
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -104,10 +107,7 @@ fun AdaptiveChatPane(
                     .weight(0.66f)
                     .fillMaxHeight()
             ) {
-                ChatScreen(
-                    viewModel = viewModel,
-                    onOpenSettings = { viewModel.navigateTo(AppScreen.SETTINGS) }
-                )
+                panneauChat()
             }
         }
     }
@@ -287,8 +287,31 @@ fun SplitEditorChat(
     var focusPane by rememberSaveable { mutableStateOf(-1) }
     var rowWidthPx by remember { mutableStateOf(1f) }
 
+    // ui-071 — posture du pliable : « table à dessin » (pliable à moitié
+    // ouvert) empile les deux panneaux le long de la charnière ; « livre »
+    // (à plat, grand écran) garde le côte à côte existant.
+    var tableDessin by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(context) {
+        WindowInfoTracker.getOrCreate(context).windowLayoutInfo(context).collect { info ->
+            tableDessin = info.displayFeatures.any { it is FoldingFeature && it.state == FoldingFeature.State.HALF_OPENED }
+        }
+    }
+    val panneauEditeur: @Composable () -> Unit = {
+        EditorScreen(viewModel = viewModel, onBack = { viewModel.navigateBack() })
+    }
+    val panneauChat: @Composable () -> Unit = {
+        ChatScreen(viewModel = viewModel, onOpenSettings = { viewModel.navigateTo(AppScreen.SETTINGS) })
+    }
+
     Box(Modifier.fillMaxSize()) {
-        Row(
+        if (tableDessin && focusPane == -1) {
+            // ui-071 — mode table à dessin : empilement le long de la charnière.
+            Column(Modifier.fillMaxSize()) {
+                Box(Modifier.fillMaxWidth().weight(0.55f)) { panneauEditeur() }
+                HorizontalDivider(color = c.border, thickness = 1.dp)
+                Box(Modifier.fillMaxWidth().weight(0.45f)) { panneauChat() }
+            }
+        } else Row(
             Modifier
                 .fillMaxSize()
                 .onSizeChanged { rowWidthPx = it.width.coerceAtLeast(1).toFloat() }
@@ -302,7 +325,7 @@ fun SplitEditorChat(
                     }
                 )
             ) {
-                EditorScreen(viewModel = viewModel, onBack = { viewModel.navigateBack() })
+                panneauEditeur()
             }
 
             // ── Poignée centrale : boutons plein écran + glissement ──────────
@@ -320,25 +343,37 @@ fun SplitEditorChat(
                         onClick = { focusPane = 0 }
                     )
                     Spacer(Modifier.height(10.dp))
+                    // ui-073 — poignée élargie et contrastée ; à la fin du
+                    // glissement, aimantation à l'équilibre 50/50 quand on
+                    // lâche à moins de 6 % de la position centrale.
                     Box(
                         Modifier
-                            .width(26.dp)
-                            .height(64.dp)
+                            .width(32.dp)
+                            .height(76.dp)
                             .clip(RoundedCornerShape(50))
-                            .background(c.surface3)
+                            .background(if (fraction > 0.44f && fraction < 0.56f) c.cyan.copy(alpha = 0.28f) else c.surface3)
                             .draggable(
                                 orientation = Orientation.Horizontal,
                                 state = rememberDraggableState { delta ->
                                     fraction = (fraction + delta / rowWidthPx).coerceIn(0.28f, 0.72f)
+                                },
+                                onDragStopped = {
+                                    if (abs(fraction - 0.5f) < 0.06f) {
+                                        fraction = 0.5f   // aimantation 50/50
+                                    }
                                 }
                             ),
                         contentAlignment = Alignment.Center
                     ) {
                         Box(
                             Modifier
-                                .width(4.dp)
-                                .height(34.dp)
-                                .background(c.text3.copy(alpha = 0.55f), RoundedCornerShape(50))
+                                .width(5.dp)
+                                .height(44.dp)
+                                .background(
+                                    if (fraction > 0.44f && fraction < 0.56f) c.cyan
+                                    else c.text2,
+                                    RoundedCornerShape(50)
+                                )
                         )
                     }
                     Spacer(Modifier.height(10.dp))
