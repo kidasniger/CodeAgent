@@ -404,7 +404,7 @@ fun ChatScreen(
             .imePadding()
             .onPreviewKeyEvent { ev ->
                 if (ev.type == KeyEventType.KeyDown && ev.isCtrlPressed &&
-                    (ev.key == Key.Enter || ev.key.nativeKeyCode == 10)
+                    (ev.key == Key.Enter || ev.key == Key.NumpadEnter)
                 ) {
                     envoyerAuClavier()
                     true
