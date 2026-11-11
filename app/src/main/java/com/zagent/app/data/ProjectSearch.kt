@@ -1,5 +1,108 @@
 package com.zagent.app.data
 
+/**
+ * feat-080 — Filtre .gitignore simplifié mais fidèle aux usages courants :
+ * commentaires `#`, négations `!`, `*`, `?`, `**`, ancres `/` et règles de
+ * dossier (motif terminé par `/`). Les .gitignore sont lus à la racine ET dans
+ * chaque sous-dossier parcouru (règle git : un .gitignore s'applique à son
+ * dossier et à ses descendants).
+ */
+class GitignoreMatcher {
+    private data class Rule(val negation: Boolean, val dirOnly: Boolean, val regex: Regex)
+
+    /** Règles par dossier d'ancrage (chemin relatif, "" = racine). */
+    private val parDossier = HashMap<String, List<Rule>>()
+
+    /** Charge les .gitignore trouvés depuis la racine (lecture une seule fois). */
+    fun charger(repo: FileRepository) {
+        parDossier.clear()
+        parDossier[""] = parser(repo.readFile(".gitignore"))
+    }
+
+    private fun parser(contenu: String): List<Rule> {
+        val out = ArrayList<Rule>()
+        for (ligne in contenu.lines()) {
+            val brute = ligne.trim()
+            if (brute.isEmpty() || brute.startsWith("#")) continue
+            var motif = brute
+            val negation = motif.startsWith("!")
+            if (negation) motif = motif.substring(1)
+            val dirOnly = motif.endsWith("/")
+            if (dirOnly) motif = motif.trimEnd('/')
+            // Une ligne sans « / » interne s'applique à tous les niveaux.
+            val sansChemin = !motif.contains('/')
+            var regex = builderGlob(motif)
+            if (sansChemin) regex = "(?:.*/)?${regex}"
+            else if (!motif.startsWith("/")) regex = "(?:.*/)?${regex}"
+            else regex = regex.removePrefix("/")
+            out.add(Rule(negation, dirOnly, Regex(regex)))
+        }
+        return out
+    }
+
+    /** Convertit un motif gitignore (déjà débarrassé de !/final) en regex. */
+    private fun builderGlob(motif: String): String {
+        val sb = StringBuilder()
+        var i = 0
+        while (i < motif.length) {
+            val ch = motif[i]
+            when {
+                ch == '*' && i + 1 < motif.length && motif[i + 1] == '*' -> {
+                    sb.append(".*"); i += 2
+                    if (i < motif.length && motif[i] == '/') i++
+                }
+                ch == '*' -> sb.append("[^/]*")
+                ch == '?' -> sb.append("[^/]")
+                ch == '.' || ch == '(' || ch == ')' || ch == '+' || ch == '{' ||
+                    ch == '}' || ch == '[' || ch == ']' || ch == '^' || ch == '$' ||
+                    ch == '|' || ch == '\\' -> {
+                    sb.append('\\').append(ch)
+                }
+                else -> sb.append(ch)
+            }
+            i++
+        }
+        return sb.toString()
+    }
+
+    /** Charge un .gitignore de sous-dossier (appelé par le parcours à la volée). */
+    fun chargerDossier(repo: FileRepository, dossier: String) {
+        if (parDossier.containsKey(dossier)) return
+        val contenu = repo.readFile(if (dossier == ".") ".gitignore" else "$dossier/.gitignore")
+        if (!contenu.startsWith("Erreur") && contenu.isNotBlank()) {
+            parDossier[dossier] = parser(contenu)
+        } else {
+            parDossier[dossier] = emptyList()
+        }
+    }
+
+    /**
+     * Vrai si le chemin (fichier ou dossier, relatif au projet) est ignoré.
+     * La dernière règle qui matche gagne (sémantique git).
+     */
+    fun estIgnore(chemin: String, estDossier: Boolean): Boolean {
+        var ignore = false
+        // Règles racine puis règles des dossiers ancêtres (le plus proche gagne par ordre d'application).
+        val dossier = chemin.substringBeforeLast('/', "").ifEmpty { "" }
+        val ancetres = ArrayList<String>()
+        var acc = ""
+        for (part in dossier.split('/').filter { it.isNotEmpty() }) {
+            acc = if (acc.isEmpty()) part else "$acc/$part"
+            ancetres.add(acc)
+        }
+        val ordre = listOf("") + ancetres
+        for (ancre in ordre) {
+            for (rule in parDossier[ancre].orEmpty()) {
+                if (rule.dirOnly && !estDossier) continue
+                val relatif = if (ancre.isEmpty()) chemin
+                else chemin.removePrefix("$ancre/").ifEmpty { chemin }
+                if (rule.regex.matches(relatif)) ignore = !rule.negation
+            }
+        }
+        return ignore
+    }
+}
+
 /** Recherche de texte dans les fichiers du projet (outil search_in_files) + autocomplétion « @ » (MA53). */
 object ProjectSearch {
 
@@ -10,6 +113,10 @@ object ProjectSearch {
     private const val MAX_RESULTS = 100
     private const val MAX_FILES = 400
     private const val MAX_FILE_BYTES = 500_000L
+
+    /** feat-080 — Charge le .gitignore racine (retourne un matcher, jamais null). */
+    fun gitignore(repo: FileRepository): GitignoreMatcher =
+        GitignoreMatcher().also { it.charger(repo) }
 
     /**
      * corr-058 — [annule] est sondé à chaque entrée de dossier et chaque fichier :
@@ -27,17 +134,21 @@ object ProjectSearch {
         val results = ArrayList<String>()
         var scanned = 0
         var truncated = false
+        // feat-080 : la recherche respecte le .gitignore du projet.
+        val gi = gitignore(repo)
 
         fun walk(dir: String, depth: Int) {
             if (annule()) { truncated = true; return }
             if (truncated || depth > 8) return
+            gi.chargerDossier(repo, dir)
             for (e in repo.listEntries(dir)) {
                 if (truncated) return
                 if (e.isDir) {
-                    if (e.name !in ignoredDirs) walk(e.path, depth + 1)
+                    if (e.name !in ignoredDirs && !gi.estIgnore(e.path, true)) walk(e.path, depth + 1)
                     continue
                 }
                 if (annule()) { truncated = true; return }
+                if (gi.estIgnore(e.path, false)) continue
                 if (!repo.isTextFile(e.path) || e.size > MAX_FILE_BYTES) continue
                 if (scanned >= MAX_FILES) { truncated = true; return }
                 scanned++
@@ -62,16 +173,19 @@ object ProjectSearch {
     /**
      * Liste les fichiers du projet (chemins relatifs) pour l'autocomplétion des mentions « @ » (MA53).
      * Dossiers ignorés identiques à la recherche de texte ; profondeur limitée à 6 niveaux.
+     * feat-080 : respecte aussi le .gitignore (racine + sous-dossiers).
      */
     fun listProjectFiles(repo: FileRepository, maxFiles: Int = MAX_FILES): List<String> {
         val out = ArrayList<String>()
+        val gi = gitignore(repo)
         fun walk(dir: String, depth: Int) {
             if (out.size >= maxFiles || depth > 6) return
+            gi.chargerDossier(repo, dir)
             for (e in repo.listEntries(dir)) {
                 if (out.size >= maxFiles) return
                 if (e.isDir) {
-                    if (e.name !in ignoredDirs) walk(e.path, depth + 1)
-                } else {
+                    if (e.name !in ignoredDirs && !gi.estIgnore(e.path, true)) walk(e.path, depth + 1)
+                } else if (!gi.estIgnore(e.path, false)) {
                     out.add(e.path)
                 }
             }
@@ -120,17 +234,21 @@ object ProjectSearch {
         val results = ArrayList<CodeHit>()
         var scanned = 0
         var truncated = false
+        // feat-080 : l'écran Recherche respecte aussi le .gitignore.
+        val gi = gitignore(repo)
 
         fun walk(dir: String, depth: Int) {
             if (annule()) { truncated = true; return }
             if (truncated || depth > 8) return
+            gi.chargerDossier(repo, dir)
             for (e in repo.listEntries(dir)) {
                 if (truncated) return
                 if (e.isDir) {
-                    if (e.name !in ignoredDirs) walk(e.path, depth + 1)
+                    if (e.name !in ignoredDirs && !gi.estIgnore(e.path, true)) walk(e.path, depth + 1)
                     continue
                 }
                 if (annule()) { truncated = true; return }
+                if (gi.estIgnore(e.path, false)) continue
                 if (!repo.isTextFile(e.path) || e.size > MAX_FILE_BYTES) continue
                 if (scanned >= MAX_FILES) { truncated = true; return }
                 scanned++

@@ -10,6 +10,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,11 +43,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -56,7 +61,11 @@ import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -75,13 +84,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -162,6 +178,25 @@ private fun formatSize(bytes: Long): String {
 private fun formatDate(ts: Long): String =
     if (ts <= 0L) "" else SimpleDateFormat("d MMM yyyy", Locale.FRANCE).format(Date(ts))
 
+// ─────────────────────────────────────────────────────────────────────────────
+// feat-072 — Glisser-déposer : appui long sur une ligne puis glisser vers un
+// dossier pour déplacer le fichier. La cible survolée est mise en évidence.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** État du glisser en cours (un seul à la fois, propre à l'écran). */
+class FileDragState {
+    var draggingPath by mutableStateOf<String?>(null)
+    var position by mutableStateOf(Offset.Zero)
+    var hoverDir by mutableStateOf<String?>(null)
+
+    val actif: Boolean get() = draggingPath != null
+
+    fun reset() {
+        draggingPath = null
+        hoverDir = null
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun FileBrowserScreen(
@@ -171,12 +206,25 @@ fun FileBrowserScreen(
     val c = Zcolors
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
+    val scope = rememberCoroutineScope()
     var query by rememberSaveable { mutableStateOf("") }
     var createKind by rememberSaveable { mutableStateOf<String?>(null) }
     var createPrefix by rememberSaveable { mutableStateOf("") }
     var menuNew by remember { mutableStateOf(false) }
     var renameTarget by remember { mutableStateOf<FileRepository.Entry?>(null) }
     var deleteTarget by remember { mutableStateOf<FileRepository.Entry?>(null) }
+
+    // ── feat-071/073/074/075/079 : déplacer, zipper, importer, exporter, corbeille ──
+    var moveDialogOpen by remember { mutableStateOf(false) }
+    var zipDialogOpen by remember { mutableStateOf(false) }
+    var trashSheetOpen by remember { mutableStateOf(false) }
+    val importZipLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri -> if (uri != null) viewModel.importProjectZip(uri) }
+
+    // ── feat-072 : glisser-déposer vers un dossier ──
+    val drag = remember { FileDragState() }
+    val dropBounds = remember { androidx.compose.runtime.mutableStateMapOf<String, Rect>() }
 
     // ── MA85 : tri, vue grille, sélection multiple ──
     var sortMode by rememberSaveable { mutableStateOf(SortMode.NAME_ASC) }
@@ -204,6 +252,7 @@ fun FileBrowserScreen(
         }
     }
 
+    Box(Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -280,6 +329,37 @@ fun FileBrowserScreen(
                             label = "Nouveau dossier",
                             icon = Icons.Default.CreateNewFolder,
                             onClick = { menuNew = false; createPrefix = ""; createKind = "folder" }
+                        )
+                        // feat-078 : nouveaux fichiers depuis un modèle
+                        ZMenuSeparator()
+                        FichierModele("index.html — page web", "index.html", TemplatesFichiers.HTML) { p, contenu ->
+                            menuNew = false; viewModel.createBrowserFileAvecModele(p, contenu)
+                        }
+                        FichierModele("main.py — script Python", "main.py", TemplatesFichiers.PYTHON) { p, contenu ->
+                            menuNew = false; viewModel.createBrowserFileAvecModele(p, contenu)
+                        }
+                        FichierModele("Main.kt — point d'entrée Kotlin", "Main.kt", TemplatesFichiers.KOTLIN) { p, contenu ->
+                            menuNew = false; viewModel.createBrowserFileAvecModele(p, contenu)
+                        }
+                        FichierModele("README.md — documentation", "README.md", TemplatesFichiers.README) { p, contenu ->
+                            menuNew = false; viewModel.createBrowserFileAvecModele(p, contenu)
+                        }
+                        // feat-074/075 : import et export du projet
+                        ZMenuSeparator()
+                        ZMenuItem(
+                            label = "Importer une archive (.zip)",
+                            icon = Icons.Default.Unarchive,
+                            onClick = { menuNew = false; importZipLauncher.launch("application/zip") }
+                        )
+                        ZMenuItem(
+                            label = "Exporter le projet (.zip)",
+                            icon = Icons.Default.Archive,
+                            onClick = { menuNew = false; viewModel.exportProjectZip() }
+                        )
+                        ZMenuItem(
+                            label = "Corbeille",
+                            icon = Icons.Default.DeleteSweep,
+                            onClick = { menuNew = false; trashSheetOpen = true }
                         )
                     }
                 }
@@ -367,6 +447,28 @@ fun FileBrowserScreen(
                         .padding(horizontal = 10.dp, vertical = 6.dp)
                 )
                 Spacer(Modifier.width(6.dp))
+                // feat-071 : déplacer la sélection vers un dossier
+                Text(
+                    "Déplacer",
+                    style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
+                    color = c.violet,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .clickable { moveDialogOpen = true }
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                // feat-071/073 : zipper la sélection
+                Text(
+                    "Zipper",
+                    style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
+                    color = c.amber,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .clickable { zipDialogOpen = true }
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                )
+                Spacer(Modifier.width(6.dp))
                 Text(
                     "Supprimer",
                     style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
@@ -423,6 +525,62 @@ fun FileBrowserScreen(
         }
 
         Spacer(Modifier.height(12.dp))
+
+        // ── feat-076 : favoris et fichiers récents ──
+        if (viewModel.browserFavorites.isNotEmpty() || viewModel.browserRecents.isNotEmpty()) {
+            Column(Modifier.padding(horizontal = 16.dp)) {
+                if (viewModel.browserFavorites.isNotEmpty()) {
+                    Text(
+                        "Favoris",
+                        style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 11.5.sp),
+                        color = c.text3
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(androidx.compose.foundation.rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        viewModel.browserFavorites.forEach { path ->
+                            ChipFavoriRecent(
+                                path = path,
+                                couleur = c.amber,
+                                icone = Icons.Default.Star,
+                                onOpen = { viewModel.openBrowserFile(path) },
+                                onRemove = { viewModel.toggleFavorite(path) }
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(6.dp))
+                }
+                if (viewModel.browserRecents.isNotEmpty()) {
+                    Text(
+                        "Récents",
+                        style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 11.5.sp),
+                        color = c.text3
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(androidx.compose.foundation.rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        viewModel.browserRecents.forEach { path ->
+                            ChipFavoriRecent(
+                                path = path,
+                                couleur = c.cyan,
+                                icone = Icons.Default.InsertDriveFile,
+                                onOpen = { viewModel.openBrowserFile(path) },
+                                onRemove = null
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+        }
 
         // ── Contenu : arbre (liste) ou grille du dossier courant ──
         if (gridMode) {
@@ -509,6 +667,8 @@ fun FileBrowserScreen(
                                     viewModel = viewModel,
                                     selected = selected.contains(row.entry.path),
                                     selectionMode = selectionMode,
+                                    drag = drag,
+                                    dropBounds = dropBounds,
                                     onOpen = { openEntry(it) },
                                     onLongClick = { toggleSelection(it.path) }
                                 ) { action, e ->
@@ -585,13 +745,144 @@ fun FileBrowserScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    selected.toList().forEach { viewModel.deleteBrowserPath(it) }
+                    // feat-079 : suppression annulable — la sélection part en corbeille.
+                    selected.toList().forEach { viewModel.trashBrowserPath(it) }
                     selected.clear()
                     confirmDeleteSelected = false
                 }) { Text("Supprimer", color = c.red) }
             },
             dismissButton = {
                 TextButton(onClick = { confirmDeleteSelected = false }) { Text("Annuler", color = c.text2) }
+            }
+        )
+    }
+
+    // ── feat-071 : dialogue « Déplacer vers… » (liste des dossiers du projet) ──
+    if (moveDialogOpen) {
+        val dossiers = remember(viewModel.browserChildren) {
+            val list = mutableListOf(".")
+            viewModel.browserChildren.forEach { (dir, entries) ->
+                entries.filter { it.isDir }.forEach { list.add(it.path) }
+                if (dir != "." && !list.contains(dir)) list.add(dir)
+            }
+            list.distinct().sorted()
+        }
+        GlassAlertDialog(
+            onDismissRequest = { moveDialogOpen = false },
+            title = { Text("Déplacer ${selected.size} élément(s) vers…", fontFamily = SpaceGrotesk, color = c.text) },
+            text = {
+                Column(Modifier.height(300.dp).verticalScroll(rememberScrollState())) {
+                    if (dossiers.isEmpty()) {
+                        Text("Aucun dossier connu — déplie d'abord l'arborescence.", color = c.text2, fontFamily = Inter, fontSize = 12.sp)
+                    }
+                    dossiers.forEach { d ->
+                        Text(
+                            if (d == ".") "Racine du projet" else d,
+                            fontFamily = JetBrainsMono, fontSize = 13.sp, color = c.cyan,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    viewModel.moveSelected(selected.toList(), d)
+                                    selected.clear()
+                                    moveDialogOpen = false
+                                }
+                                .padding(vertical = 10.dp, horizontal = 4.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { moveDialogOpen = false }) { Text("Annuler", color = c.text2) }
+            }
+        )
+    }
+
+    // ── feat-071/073 : dialogue de nom d'archive ──
+    if (zipDialogOpen) {
+        var nomZip by remember { mutableStateOf("archive") }
+        GlassAlertDialog(
+            onDismissRequest = { zipDialogOpen = false },
+            title = { Text("Créer une archive", fontFamily = SpaceGrotesk, color = c.text) },
+            text = {
+                Column {
+                    Text(
+                        selected.joinToString("\n") { it },
+                        fontFamily = JetBrainsMono, fontSize = 11.5.sp, color = c.text2,
+                        maxLines = 4
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = nomZip,
+                        onValueChange = { nomZip = it },
+                        textStyle = TextStyle(fontFamily = JetBrainsMono, color = c.text),
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.zipSelected(selected.toList(), nomZip.trim())
+                    selected.clear()
+                    zipDialogOpen = false
+                }) { Text("Zipper", color = c.cyan) }
+            },
+            dismissButton = {
+                TextButton(onClick = { zipDialogOpen = false }) { Text("Annuler", color = c.text2) }
+            }
+        )
+    }
+
+    // ── feat-079 : feuille corbeille (restauration sous 7 jours) ──
+    if (trashSheetOpen) {
+        var entries by remember { mutableStateOf<List<FileRepository.TrashEntry>?>(null) }
+        LaunchedEffect(Unit) { entries = viewModel.loadTrashEntries() }
+        GlassAlertDialog(
+            onDismissRequest = { trashSheetOpen = false },
+            title = { Text("Corbeille du projet", fontFamily = SpaceGrotesk, color = c.text) },
+            text = {
+                Column(Modifier.height(320.dp).verticalScroll(rememberScrollState())) {
+                    Text(
+                        "Les éléments sont conservés 7 jours, puis supprimés automatiquement.",
+                        fontFamily = Inter, fontSize = 11.5.sp, color = c.text3
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    when {
+                        entries == null -> Text("Chargement…", color = c.text2, fontFamily = Inter, fontSize = 12.sp)
+                        entries.orEmpty().isEmpty() -> Text("La corbeille est vide.", color = c.text2, fontFamily = Inter, fontSize = 12.sp)
+                        else -> entries.orEmpty().forEach { entry ->
+                            Row(
+                                Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(entry.name, fontFamily = JetBrainsMono, fontSize = 13.sp, color = c.text)
+                                    Text(
+                                        formatSize(entry.bytes) + " · " + formatDate(entry.trashedAt),
+                                        fontFamily = Inter, fontSize = 10.5.sp, color = c.text3
+                                    )
+                                }
+                                Icon(
+                                    Icons.Default.RestoreFromTrash, "Restaurer " + entry.name,
+                                    tint = c.cyan,
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .clickable { viewModel.restoreTrashEntry(entry.id) }
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.emptyTrash()
+                    trashSheetOpen = false
+                }) { Text("Vider", color = c.red) }
+            },
+            dismissButton = {
+                TextButton(onClick = { trashSheetOpen = false }) { Text("Fermer", color = c.text2) }
             }
         )
     }
@@ -689,7 +980,8 @@ fun FileBrowserScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.deleteBrowserPath(e.path)
+                    // feat-079 : la corbeille remplace la suppression définitive.
+                    viewModel.trashBrowserPath(e.path)
                     deleteTarget = null
                 }) { Text("Supprimer", color = c.red) }
             },
@@ -698,6 +990,25 @@ fun FileBrowserScreen(
             }
         )
     }
+
+    // ── feat-072 : fantôme du fichier glissé + dépôt sur un dossier ──
+    if (drag.actif) {
+        Box(
+            Modifier
+                .offset { IntOffset((drag.position.x - 40).roundToInt(), (drag.position.y - 20).roundToInt()) }
+                .clip(RoundedCornerShape(50))
+                .background(c.cyanBg)
+                .border(1.dp, c.cyan, RoundedCornerShape(50))
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+        ) {
+            Text(
+                "→ " + (drag.hoverDir?.let { if (it == ".") "racine" else it.substringAfterLast('/') } ?: "déplacer"),
+                style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
+                color = c.cyan
+            )
+        }
+    }
+    } // fin Box feat-072
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -770,6 +1081,8 @@ private fun BrowserRow(
     viewModel: MainViewModel,
     selected: Boolean,
     selectionMode: Boolean,
+    drag: FileDragState,
+    dropBounds: androidx.compose.runtime.snapshots.SnapshotStateMap<String, Rect>,
     onOpen: (FileRepository.Entry) -> Unit,
     onLongClick: (FileRepository.Entry) -> Unit,
     onAction: (String, FileRepository.Entry) -> Unit
@@ -778,11 +1091,23 @@ private fun BrowserRow(
     val e = row.entry
     val isModified = viewModel.modifiedPaths.containsKey(e.path)
     val expanded = viewModel.expandedDirs.containsKey(e.path)
+    // feat-072 : dossier survolé pendant un glisser
+    val estCible = drag.actif && e.isDir && e.path != drag.draggingPath &&
+        !e.path.startsWith(drag.draggingPath.orEmpty() + "/")
+    val survole = estCible && drag.hoverDir == e.path
+    var rowCoords by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
+
+    // feat-072 : enregistre la zone de dépôt des dossiers visibles.
+    if (e.isDir && !drag.actif) {
+        androidx.compose.runtime.DisposableEffect(e.path, expanded) {
+            onDispose { dropBounds.remove(e.path) }
+        }
+    }
 
     // MA85 : le glisser latéral révèle Copier le chemin / Renommer / Supprimer.
     // Désactivé pendant la sélection multiple.
     SwipeActionsRow(
-        enabled = !selectionMode,
+        enabled = !selectionMode && !drag.actif,
         onCopyPath = { onAction("copypath", e) },
         onRename = { onAction("rename", e) },
         onDelete = { onAction("delete", e) }
@@ -791,13 +1116,48 @@ private fun BrowserRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .animateContentSize()
+                .onGloballyPositioned { coords ->
+                    rowCoords = coords
+                    if (e.isDir) dropBounds[e.path] = coords.boundsInWindow()
+                }
                 .background(
                     when {
+                        survole -> c.greenBg
                         selected -> c.cyanBg
                         isModified -> c.violetBg.copy(alpha = 0.35f)
                         else -> c.surface
                     }
                 )
+                .pointerInput(e.path, selectionMode) {
+                    // feat-072 : appui long puis glisser → déplacer vers le dossier survolé.
+                    if (selectionMode) return@pointerInput
+                    detectDragGesturesAfterLongPress(
+                        onDragStart = { start ->
+                            if (dropBounds.isNotEmpty()) {
+                                drag.draggingPath = e.path
+                                drag.position = (rowCoords?.positionInWindow() ?: Offset.Zero) + start
+                                drag.hoverDir = null
+                            }
+                        },
+                        onDrag = { change, amount ->
+                            change.consume()
+                            drag.position += amount
+                            val cible = dropBounds.entries
+                                .filter { it.key != drag.draggingPath && !drag.draggingPath.orEmpty().startsWith(it.key + "/") }
+                                .firstOrNull { it.value.contains(drag.position) }?.key
+                            drag.hoverDir = cible
+                        },
+                        onDragEnd = {
+                            val source = drag.draggingPath
+                            val cible = drag.hoverDir
+                            if (source != null && cible != null && cible != source) {
+                                viewModel.moveSelected(listOf(source), cible)
+                            }
+                            drag.reset()
+                        },
+                        onDragCancel = { drag.reset() }
+                    )
+                }
                 .combinedClickable(
                     onClick = { onOpen(e) },
                     onLongClick = { onLongClick(e) }
@@ -869,7 +1229,7 @@ private fun BrowserRow(
                     modifier = Modifier.size(18.dp)
                 )
             }
-            RowMenu(e) { action -> onAction(action, e) }
+            RowMenu(e, viewModel) { action -> onAction(action, e) }
         }
     }
 }
@@ -1106,9 +1466,14 @@ private fun FileIconBadge(entry: FileRepository.Entry) {
 }
 
 @Composable
-private fun RowMenu(e: FileRepository.Entry, onAction: (String) -> Unit) {
+private fun RowMenu(
+    e: FileRepository.Entry,
+    viewModel: MainViewModel,
+    onAction: (String) -> Unit
+) {
     val c = Zcolors
     var open by remember { mutableStateOf(false) }
+    val estFavori = e.path in viewModel.browserFavorites
     Box {
         Box(
             Modifier
@@ -1141,6 +1506,25 @@ private fun RowMenu(e: FileRepository.Entry, onAction: (String) -> Unit) {
                 icon = Icons.Default.ContentCopy,
                 onClick = { open = false; onAction("copypath") }
             )
+            // feat-076 : épingler le fichier dans les favoris
+            ZMenuItem(
+                label = if (estFavori) "Retirer des favoris" else "Épingler dans les favoris",
+                icon = if (estFavori) Icons.Default.StarBorder else Icons.Default.Star,
+                onClick = { open = false; viewModel.toggleFavorite(e.path) }
+            )
+            // feat-073 : zipper / dézipper
+            ZMenuItem(
+                label = "Zipper",
+                icon = Icons.Default.Archive,
+                onClick = { open = false; viewModel.zipSelected(listOf(e.path), e.name) }
+            )
+            if (e.name.endsWith(".zip", ignoreCase = true)) {
+                ZMenuItem(
+                    label = "Extraire ici",
+                    icon = Icons.Default.Unarchive,
+                    onClick = { open = false; viewModel.unzipBrowserFile(e.path, ".") }
+                )
+            }
             ZMenuItem(
                 label = "Renommer",
                 icon = Icons.Default.Edit,
@@ -1148,10 +1532,146 @@ private fun RowMenu(e: FileRepository.Entry, onAction: (String) -> Unit) {
             )
             ZMenuSeparator()
             ZMenuItem(
-                label = "Supprimer",
+                label = "Supprimer (corbeille)",
                 icon = Icons.Default.Delete,
                 destructive = true,
                 onClick = { open = false; onAction("delete") }
+            )
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// feat-078 — Modèles de nouveaux fichiers (HTML, Python, Kotlin, README).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Contenus de départ pour « Nouveau fichier depuis un modèle » (feat-078). */
+object TemplatesFichiers {
+    val HTML = """<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Bonjour</h1>
+  <script src="script.js"></script>
+</body>
+</html>
+"""
+
+    val PYTHON = """#!/usr/bin/env python3
+\"\"\"Script principal.\"\"\"
+
+
+def main() -> None:
+    print("Bonjour")
+
+
+if __name__ == "__main__":
+    main()
+"""
+
+    val KOTLIN = """fun main() {
+    println("Bonjour")
+}
+"""
+
+    val README = """# Projet
+
+Description courte du projet.
+
+## Démarrage
+
+1. Étape une
+2. Étape deux
+
+## Structure
+
+- `src/` — code source
+"""
+}
+
+/** Entrée de menu qui demande le chemin du fichier à créer depuis un modèle (feat-078). */
+@Composable
+private fun FichierModele(
+    label: String,
+    nomDefaut: String,
+    contenu: String,
+    onCreer: (String, String) -> Unit
+) {
+    val c = Zcolors
+    var demande by remember { mutableStateOf(false) }
+    ZMenuItem(
+        label = label,
+        icon = Icons.Default.InsertDriveFile,
+        onClick = { demande = true }
+    )
+    if (demande) {
+        var nom by remember { mutableStateOf(nomDefaut) }
+        GlassAlertDialog(
+            onDismissRequest = { demande = false },
+            title = { Text("Nouveau fichier depuis modèle", fontFamily = SpaceGrotesk, color = c.text) },
+            text = {
+                OutlinedTextField(
+                    value = nom,
+                    onValueChange = { nom = it },
+                    textStyle = TextStyle(fontFamily = JetBrainsMono, color = c.text),
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onCreer(nom.trim(), contenu)
+                    demande = false
+                }) { Text("Créer", color = c.cyan) }
+            },
+            dismissButton = {
+                TextButton(onClick = { demande = false }) { Text("Annuler", color = c.text2) }
+            }
+        )
+    }
+}
+
+/** Puce « favori » ou « récent » de l'explorateur (feat-076) : ouvre au tap, retire au × si épinglé. */
+@Composable
+private fun ChipFavoriRecent(
+    path: String,
+    couleur: androidx.compose.ui.graphics.Color,
+    icone: ImageVector,
+    onOpen: () -> Unit,
+    onRemove: (() -> Unit)?
+) {
+    val c = Zcolors
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(c.surface2)
+            .border(1.dp, c.border2, RoundedCornerShape(50))
+            .clickable { onOpen() }
+            .padding(start = 8.dp, end = if (onRemove != null) 4.dp else 10.dp, top = 4.dp, bottom = 4.dp)
+    ) {
+        Icon(icone, null, tint = couleur, modifier = Modifier.size(12.dp))
+        Spacer(Modifier.width(5.dp))
+        Text(
+            path.substringAfterLast('/'),
+            style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp),
+            color = c.text,
+            maxLines = 1
+        )
+        if (onRemove != null) {
+            Spacer(Modifier.width(4.dp))
+            Icon(
+                Icons.Default.Close, "Retirer " + path + " des favoris",
+                tint = c.text3,
+                modifier = Modifier
+                    .size(22.dp)
+                    .clip(CircleShape)
+                    .clickable { onRemove() }
+                    .padding(4.dp)
             )
         }
     }

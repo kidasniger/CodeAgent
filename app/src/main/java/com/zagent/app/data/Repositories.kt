@@ -74,6 +74,13 @@ interface FileRepositoryApi {
     fun makeDir(path: String): String
 
     fun writeFile(path: String, content: String): String
+
+    /**
+     * feat-074 — Écriture binaire. Corps par défaut : échec explicite pour les
+     * implémentations de test qui ne le couvrent pas.
+     */
+    fun writeBytes(path: String, content: ByteArray): String =
+        "Erreur: écriture binaire non supportée par cette implémentation."
 }
 
 /** Contrat du stockage local des conversations (index + messages). */

@@ -170,6 +170,12 @@ class FileRepository(private val context: Context?, private val rootPath: String
         )
     }
 
+    /** feat-070 — Images affichables dans la visionneuse intégrée (svg : non, via appli externe). */
+    fun isImagePath(path: String): Boolean {
+        val extension = path.substringAfterLast('.', "").lowercase()
+        return extension in setOf("png", "jpg", "jpeg", "webp", "gif", "bmp")
+    }
+
     override fun mimeType(path: String): String {
         if (isTextFile(path)) return "text/plain"
         val extension = path.substringAfterLast('.', "").lowercase()
@@ -311,6 +317,212 @@ class FileRepository(private val context: Context?, private val rootPath: String
         }
     }
 
+    // ── feat-071/072/073 : déplacer, zipper, dézipper ─────────────────────────
+
+    /**
+     * feat-071 — Déplace un fichier ou un dossier vers [destDir] (dossier du
+     * projet). Refuse de déplacer un dossier dans lui-même ou un de ses enfants.
+     */
+    fun movePath(path: String, destDir: String): String {
+        if (!validatePath(path) || !validatePath(destDir)) return "Erreur: Chemin invalide (.. interdit)"
+        val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
+        val source = resolveExisting(root, path) ?: return "Erreur: Introuvable: $path"
+        val dest = resolveInside(root, destDir) ?: return "Erreur: Dossier de destination invalide: $destDir"
+        if (!dest.isDirectory) return "Erreur: La destination n'est pas un dossier: $destDir"
+        if (source.canonicalPath == dest.canonicalPath) return "Erreur: Source et destination identiques."
+        if (dest.canonicalPath.startsWith(source.canonicalPath + "/")) {
+            return "Erreur: Impossible de déplacer un dossier dans lui-même."
+        }
+        val cible = File(dest, source.name)
+        if (cible.exists()) return "Erreur: Existe déjà: $destDir/${source.name}"
+        return try {
+            if (source.renameTo(cible)) "Succès: Déplacé vers $destDir/${source.name}"
+            else {
+                // Repli multi-volumes : copie récursive puis suppression.
+                if (source.isDirectory) {
+                    source.copyRecursively(cible) && source.deleteRecursively()
+                } else {
+                    source.copyTo(cible).delete()
+                }.let { ok -> if (ok) "Succès: Déplacé vers $destDir/${source.name}" else "Erreur: Déplacement impossible" }
+            }
+        } catch (e: Exception) {
+            "Erreur: ${e.localizedMessage}"
+        }
+    }
+
+    /**
+     * feat-071/073 — Compresse les chemins donnés (fichiers ou dossiers) dans
+     * une archive .zip à la racine du projet. Retour « Succès: … » / « Erreur: … ».
+     */
+    fun zipPaths(paths: List<String>, zipName: String): String {
+        if (paths.isEmpty()) return "Erreur: Aucun fichier sélectionné."
+        val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
+        val nom = if (zipName.endsWith(".zip")) zipName else "$zipName.zip"
+        if (!nom.matches(Regex("[A-Za-z0-9._ ()-]+")) || nom.contains("..")) return "Erreur: Nom d'archive invalide."
+        val dest = resolveInside(root, nom) ?: return "Erreur: Chemin d'archive invalide."
+        if (dest.exists()) return "Erreur: Existe déjà: $nom"
+        return try {
+            java.util.zip.ZipOutputStream(dest.outputStream().buffered()).use { zip ->
+                for (p in paths) {
+                    val f = resolveExisting(root, p) ?: continue
+                    val base = f.parentFile?.canonicalPath ?: root.canonicalPath
+                    f.walkTopDown().forEach { item ->
+                        val rel = item.canonicalPath.removePrefix(base).trimStart('/')
+                            .ifEmpty { item.name }
+                        if (item.isDirectory) {
+                            zip.putNextEntry(java.util.zip.ZipEntry("$rel/"))
+                            zip.closeEntry()
+                        } else {
+                            zip.putNextEntry(java.util.zip.ZipEntry(rel))
+                            item.inputStream().use { it.copyTo(zip) }
+                            zip.closeEntry()
+                        }
+                    }
+                }
+            }
+            "Succès: Archive créée $nom"
+        } catch (e: Exception) {
+            dest.delete()
+            "Erreur: Compression impossible (${e.localizedMessage})"
+        }
+    }
+
+    /**
+     * feat-073 — Extrait une archive .zip du projet dans [destDir] (défaut : racine).
+     * Protection Zip Slip : chaque entrée doit rester à l'intérieur de la destination.
+     */
+    fun unzipFile(zipPath: String, destDir: String = "."): String {
+        if (!validatePath(zipPath) || !validatePath(destDir)) return "Erreur: Chemin invalide (.. interdit)"
+        val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
+        val zip = resolveExisting(root, zipPath) ?: return "Erreur: Archive introuvable: $zipPath"
+        val dest = resolveInside(root, destDir) ?: return "Erreur: Destination invalide: $destDir"
+        return try {
+            var count = 0
+            java.util.zip.ZipInputStream(zip.inputStream().buffered()).use { stream ->
+                while (true) {
+                    val entry = stream.nextEntry ?: break
+                    val out = File(dest, entry.name)
+                    // Zip Slip : le chemin canonique doit rester dans la destination.
+                    if (!out.canonicalPath.startsWith(dest.canonicalPath + File.separator) &&
+                        out.canonicalPath != dest.canonicalPath
+                    ) {
+                        return "Erreur: Archive suspecte (Zip Slip) : ${entry.name}"
+                    }
+                    if (entry.isDirectory) {
+                        out.mkdirs()
+                    } else {
+                        out.parentFile?.mkdirs()
+                        out.outputStream().use { stream.copyTo(it) }
+                        count++
+                    }
+                    stream.closeEntry()
+                }
+            }
+            "Succès: $count fichier(s) extraits vers $destDir"
+        } catch (e: java.util.zip.ZipException) {
+            "Erreur: Archive corrompue (${e.localizedMessage})"
+        } catch (e: Exception) {
+            "Erreur: Extraction impossible (${e.localizedMessage})"
+        }
+    }
+
+    // ── feat-075 : export du projet en zip ────────────────────────────────────
+
+    /**
+     * feat-075 — Exporte le projet entier dans un zip du cache de l'application
+     * (partageable via FileProvider). Renvoie null si aucun projet ou erreur.
+     */
+    fun exportProjectZip(): File? {
+        val root = getRootFolder() ?: return null
+        if (context == null) return null
+        return try {
+            val out = File(context.cacheDir, "exports/${root.name.ifEmpty { "projet" }}.zip")
+            out.parentFile?.mkdirs()
+            if (out.exists()) out.delete()
+            java.util.zip.ZipOutputStream(out.outputStream().buffered()).use { zip ->
+                root.walkTopDown().forEach { item ->
+                    if (item.isFile) {
+                        val rel = item.relativeTo(root).invariantSeparatorsPath
+                        zip.putNextEntry(java.util.zip.ZipEntry(rel))
+                        item.inputStream().use { it.copyTo(zip) }
+                        zip.closeEntry()
+                    }
+                }
+            }
+            out
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    // ── feat-079 : corbeille (7 jours, suppression récupérable) ──────────────
+
+    /** Dossier corbeille, dans les fichiers privés de l'application. */
+    private fun trashDir(): File {
+        val d = File(context.filesDir, "trash").apply { mkdirs() }
+        // Purge automatique : les entrées de plus de 7 jours sont supprimées.
+        val seuil = System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000
+        d.listFiles()?.forEach { f ->
+            val ts = f.name.substringBefore("__").toLongOrNull() ?: 0L
+            if (ts in 1 until seuil) f.deleteRecursively()
+        }
+        return d
+    }
+
+    /**
+     * feat-079 — Déplace le chemin vers la corbeille au lieu de le supprimer.
+     * L'entrée est préfixée par un horodatage pour restaurer le nom d'origine.
+     */
+    fun trashPath(path: String): String {
+        if (!validatePath(path)) return "Erreur: Chemin invalide"
+        if (path == "." || path.isEmpty() || path == "/") return "Erreur: Impossible de mettre la racine à la corbeille."
+        val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
+        val target = resolveExisting(root, path) ?: return "Erreur: Introuvable: $path"
+        return try {
+            val stamp = System.currentTimeMillis()
+            val entry = File(trashDir(), "${stamp}__${target.name}")
+            if (target.renameTo(entry)) "Succès: Mis à la corbeille (${target.name})"
+            else deletePath(path) // repli : suppression directe si le FS refuse
+        } catch (e: Exception) {
+            "Erreur: ${e.localizedMessage}"
+        }
+    }
+
+    /** feat-079 — Entrées de la corbeille : (id horodaté, nom d'origine, taille, date). */
+    data class TrashEntry(val id: String, val name: String, val bytes: Long, val trashedAt: Long)
+
+    fun trashEntries(): List<TrashEntry> {
+        val d = trashDir()
+        return d.listFiles()?.mapNotNull { f ->
+            val stamp = f.name.substringBefore("__").toLongOrNull() ?: return@mapNotNull null
+            val name = f.name.substringAfter("__")
+            TrashEntry(f.name, name, f.walkTopDown().filter { it.isFile }.sumOf { it.length() }, stamp)
+        }?.sortedByDescending { it.trashedAt } ?: emptyList()
+    }
+
+    /** feat-079 — Restaure une entrée de corbeille à la racine du projet. */
+    fun restoreFromTrash(entryId: String): String {
+        val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
+        val entry = File(trashDir(), entryId)
+        if (!entry.exists()) return "Erreur: Entrée de corbeille introuvable."
+        val name = entryId.substringAfter("__")
+        val dest = resolveInside(root, name) ?: return "Erreur: Nom de restauration invalide."
+        if (dest.exists()) return "Erreur: Un fichier nommé $name existe déjà à la racine."
+        return try {
+            if (entry.renameTo(dest)) "Succès: Restauré $name" else "Erreur: Restauration impossible"
+        } catch (e: Exception) {
+            "Erreur: ${e.localizedMessage}"
+        }
+    }
+
+    /** feat-079 — Vide la corbeille définitivement. */
+    fun emptyTrash(): String {
+        val d = trashDir()
+        var n = 0
+        d.listFiles()?.forEach { f -> if (f.deleteRecursively()) n++ }
+        return "Succès: Corbeille vidée ($n entrée(s))."
+    }
+
     override fun makeDir(path: String): String {
         if (!validatePath(path)) return "Erreur: Chemin invalide (.. interdit)"
         val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
@@ -326,6 +538,23 @@ class FileRepository(private val context: Context?, private val rootPath: String
         if (target.isDirectory) return "Erreur: C'est un dossier: $path"
         // corr-098 : une seule écriture à la fois par chemin canonique.
         synchronized(lockFor(target.canonicalPath)) { return writeFileLocked(target, path, content) }
+    }
+
+    /** feat-074 — Écriture binaire (import d'archives, images…) avec verrou identique à writeFile. */
+    fun writeBytes(path: String, content: ByteArray): String {
+        if (!validatePath(path)) return "Erreur: Chemin invalide (.. interdit)"
+        val root = getRootFolder() ?: return "Erreur: Aucun dossier de travail sélectionné."
+        val target = resolveInside(root, path) ?: return "Erreur: Chemin invalide: $path"
+        if (target.isDirectory) return "Erreur: C'est un dossier: $path"
+        return synchronized(lockFor(target.canonicalPath)) {
+            try {
+                target.parentFile?.mkdirs()
+                target.writeBytes(content)
+                "Succès: Fichier écrit $path"
+            } catch (e: Exception) {
+                "Erreur d'écriture: ${e.localizedMessage}"
+            }
+        }
     }
 
     private fun writeFileLocked(target: File, path: String, content: String): String {

@@ -10,6 +10,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateSetOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -1468,6 +1469,36 @@ done; } 2>&1 | head -c 50000
         }
     }
 
+    /**
+     * feat-078 — Crée un fichier pré-rempli depuis un modèle
+     * (HTML, Kotlin, Python, README) puis l'ouvre dans l'éditeur.
+     */
+    fun createBrowserFileAvecModele(path: String, contenu: String) {
+        if (path.isBlank() || path.contains("..")) {
+            browserError = "Nom invalide."
+            return
+        }
+        browserError = null
+        viewModelScope.launch(Dispatchers.IO) {
+            val repo = getFileRepo()
+            val cree = repo.createFile(path)
+            if (!cree.startsWith("Succès")) {
+                withContext(Dispatchers.Main) { browserError = cree }
+                return@launch
+            }
+            val ecrit = repo.writeFile(path, contenu)
+            withContext(Dispatchers.Main) {
+                if (ecrit.startsWith("Succès")) {
+                    expandParents(path)
+                    refreshBrowser()
+                    editor.open(path) { navigateTo(AppScreen.EDITOR) }
+                } else {
+                    browserError = ecrit
+                }
+            }
+        }
+    }
+
     fun deleteBrowserPath(path: String) {
         if (editor.hasDirtyUnder(path)) {
             browserError = "Enregistre ou ferme les onglets modifiés avant de supprimer."
@@ -1511,6 +1542,196 @@ done; } 2>&1 | head -c 50000
         }
     }
 
+    // ── feat-071/072/073 : déplacer / zipper / dézipper ──────────────────────
+
+    /** feat-071 — Déplace les chemins sélectionnés vers [destDir]. */
+    fun moveSelected(paths: List<String>, destDir: String) {
+        browserError = null
+        viewModelScope.launch(Dispatchers.IO) {
+            val repo = getFileRepo()
+            var dernier = ""
+            for (p in paths) {
+                dernier = repo.movePath(p, destDir)
+                if (!dernier.startsWith("Succès")) break
+            }
+            withContext(Dispatchers.Main) {
+                if (dernier.startsWith("Succès")) refreshBrowser() else browserError = dernier
+            }
+        }
+    }
+
+    /** feat-071/073 — Compresse la sélection dans une archive zip à la racine. */
+    fun zipSelected(paths: List<String>, name: String) {
+        browserError = null
+        viewModelScope.launch(Dispatchers.IO) {
+            val res = getFileRepo().zipPaths(paths, name.ifBlank { "archive" })
+            withContext(Dispatchers.Main) {
+                if (res.startsWith("Succès")) refreshBrowser() else browserError = res
+            }
+        }
+    }
+
+    /** feat-073 — Extrait une archive zip dans le dossier demandé (défaut : racine). */
+    fun unzipBrowserFile(path: String, destDir: String = ".") {
+        browserError = null
+        viewModelScope.launch(Dispatchers.IO) {
+            val res = getFileRepo().unzipFile(path, destDir)
+            withContext(Dispatchers.Main) {
+                if (res.startsWith("Succès")) refreshBrowser() else browserError = res
+            }
+        }
+    }
+
+    // ── feat-074 : import d'un zip ou d'un dossier (SAF) ─────────────────────
+
+    /** feat-074 — Importe une archive .zip choisie via le sélecteur SAF : copie à la racine puis extraction. */
+    fun importProjectZip(uri: Uri) {
+        browserError = null
+        statusMessage = "Import de l'archive en cours…"
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val repo = getFileRepo()
+                val nom = displayNameOf(uri) ?: "archive.zip"
+                val cible = "import_" + nom.removeSuffix(".zip").ifBlank { "archive" } + ".zip"
+                val bytes = getApplication<Application>().contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                if (bytes == null || bytes.size > 100_000_000L) {
+                    withContext(Dispatchers.Main) {
+                        browserError = if (bytes == null) "Archive illisible." else "Archive trop grande (> 100 Mo)."
+                        statusMessage = ""
+                    }
+                    return@launch
+                }
+                // Écriture binaire (writeBytes) : le zip doit rester intact avant extraction.
+                val written = repo.writeBytes(cible, bytes)
+                if (!written.startsWith("Succès")) {
+                    withContext(Dispatchers.Main) {
+                        browserError = written
+                        statusMessage = ""
+                    }
+                    return@launch
+                }
+                val extrait = repo.unzipFile(cible, ".")
+                repo.deletePath(cible)
+                withContext(Dispatchers.Main) {
+                    statusMessage = extrait
+                    refreshBrowser()
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    browserError = "Import impossible : ${e.localizedMessage ?: "erreur inconnue"}"
+                    statusMessage = ""
+                }
+            }
+        }
+    }
+
+    // ── feat-075 : export du projet en zip partageable ───────────────────────
+
+    /** feat-075 — Zippe le projet et ouvre la feuille de partage Android. */
+    fun exportProjectZip() {
+        statusMessage = "Export en cours…"
+        viewModelScope.launch(Dispatchers.IO) {
+            val fichier = getFileRepo().exportProjectZip()
+            withContext(Dispatchers.Main) {
+                statusMessage = ""
+                if (fichier == null) {
+                    browserError = "Export impossible : aucun projet ouvert ou erreur d'écriture."
+                    return@withContext
+                }
+                try {
+                    val uri = androidx.core.content.FileProvider.getUriForFile(
+                        getApplication(), getApplication<Application>().packageName + ".fileshareprovider", fichier
+                    )
+                    val share = Intent(Intent.ACTION_SEND).apply {
+                        type = "application/zip"
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    val chooser = Intent.createChooser(share, "Exporter le projet").apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    getApplication<Application>().startActivity(chooser)
+                } catch (e: Exception) {
+                    browserError = "Partage impossible : ${e.localizedMessage ?: "erreur inconnue"}"
+                }
+            }
+        }
+    }
+
+    // ── feat-076 : favoris et fichiers récents ───────────────────────────────
+
+    /** Fichiers épinglés (chemins), persistés chiffré. */
+    val browserFavorites: MutableSet<String> by lazy {
+        val saved = settingsManager.favorisFichiers
+        mutableStateSetOf<String>().also { it.addAll(saved) }
+    }
+
+    /** Derniers fichiers ouverts (chemins), max 8, persisté chiffré. */
+    val browserRecents: MutableList<String> by lazy {
+        val saved = settingsManager.recentsFichiers
+        mutableStateListOf<String>().also { it.addAll(saved) }
+    }
+
+    /** feat-076 — Épingle / désépingle un fichier. */
+    fun toggleFavorite(path: String) {
+        if (path in browserFavorites) browserFavorites.remove(path) else browserFavorites.add(path)
+        settingsManager.favorisFichiers = browserFavorites.toSet()
+    }
+
+    /** feat-076 — Note un fichier comme récemment ouvert (déduplique, borne à 8). */
+    private fun marquerRecent(path: String) {
+        browserRecents.remove(path)
+        browserRecents.add(0, path)
+        while (browserRecents.size > 8) browserRecents.removeAt(browserRecents.lastIndex)
+        settingsManager.recentsFichiers = browserRecents.toList()
+    }
+
+    // ── feat-079 : corbeille ─────────────────────────────────────────────────
+
+    /** Supprime en passant par la corbeille (restaurable 7 jours). */
+    fun trashBrowserPath(path: String) {
+        if (editor.hasDirtyUnder(path)) {
+            browserError = "Enregistre ou ferme les onglets modifiés avant de supprimer."
+            return
+        }
+        browserError = null
+        viewModelScope.launch(Dispatchers.IO) {
+            val res = getFileRepo().trashPath(path)
+            withContext(Dispatchers.Main) {
+                if (res.startsWith("Succès")) {
+                    forgetPath(path)
+                    refreshBrowser()
+                } else {
+                    browserError = res
+                }
+            }
+        }
+    }
+
+    /** Liste les entrées de corbeille (appel IO par l'UI avant d'ouvrir la feuille). */
+    suspend fun loadTrashEntries(): List<FileRepository.TrashEntry> =
+        withContext(Dispatchers.IO) { getFileRepo().trashEntries() }
+
+    /** feat-079 — Restaure une entrée de corbeille à la racine. */
+    fun restoreTrashEntry(entryId: String) {
+        browserError = null
+        viewModelScope.launch(Dispatchers.IO) {
+            val res = getFileRepo().restoreFromTrash(entryId)
+            withContext(Dispatchers.Main) {
+                statusMessage = res
+                if (res.startsWith("Succès")) refreshBrowser()
+            }
+        }
+    }
+
+    /** feat-079 — Vide la corbeille. */
+    fun emptyTrash() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val res = getFileRepo().emptyTrash()
+            withContext(Dispatchers.Main) { statusMessage = res }
+        }
+    }
+
     fun openBrowserFile(path: String) {
         if (browserFileLoading) return
         browserFileLoading = true
@@ -1522,7 +1743,17 @@ done; } 2>&1 | head -c 50000
                 if (repository.isTextFile(path)) {
                     withContext(Dispatchers.Main) {
                         browserFileLoading = false
+                        marquerRecent(path)
                         editor.open(path) { navigateTo(AppScreen.EDITOR) }
+                    }
+                } else if (repository.isImagePath(path)) {
+                    // feat-070 — png/jpg/webp/gif : visionneuse intégrée au lieu
+                    // d'un renvoi systématique vers une application externe.
+                    withContext(Dispatchers.Main) {
+                        browserFileLoading = false
+                        marquerRecent(path)
+                        imagePreviewPath = path
+                        isImagePreviewOpen = true
                     }
                 } else {
                     val uri = repository.fileUri(path)
@@ -1530,6 +1761,7 @@ done; } 2>&1 | head -c 50000
                     val mimeType = repository.mimeType(path)
                     withContext(Dispatchers.Main) {
                         try {
+                            marquerRecent(path)
                             val viewIntent = Intent(Intent.ACTION_VIEW).apply {
                                 setDataAndType(uri, mimeType)
                                 clipData = ClipData.newRawUri(path.substringAfterLast('/'), uri)
@@ -1553,6 +1785,28 @@ done; } 2>&1 | head -c 50000
                 }
             }
         }
+    }
+
+    // ── feat-070 : visionneuse d'images intégrée ─────────────────────────────
+    var isImagePreviewOpen by mutableStateOf(false)
+    var imagePreviewPath by mutableStateOf("")
+
+    fun closeImagePreview() {
+        isImagePreviewOpen = false
+        imagePreviewPath = ""
+    }
+
+    /**
+     * feat-070 — Résout un chemin relatif en [File] réel si le projet est un
+     * dossier direct (et non une arborescence SAF). Null sinon : la visionneuse
+     * affiche alors un message d'erreur.
+     */
+    fun imageFileFor(path: String): File? {
+        if (path.isBlank() || path.contains("..") || path.startsWith("/")) return null
+        val repo = getFileRepo()
+        val uri = repo.fileUri(path) ?: return null
+        if (uri.scheme != "file") return null
+        return File(uri.path ?: return null)
     }
 
     fun closeBrowserFilePreview() {

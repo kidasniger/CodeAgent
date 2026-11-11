@@ -648,8 +648,20 @@ class SettingsManager(context: Context) {
         get() = prefs.getString(KEY_GITHUB_TOKEN, "") ?: ""
         set(value) = prefs.edit().putString(KEY_GITHUB_TOKEN, value.trim()).apply()
 
+    /** feat-076 — Fichiers épinglés (favoris) de l'explorateur. */
+    var favorisFichiers: Set<String>
+        get() = prefs.getStringSet(KEY_FAVORIS_FICHIERS, emptySet()) ?: emptySet()
+        set(value) = prefs.edit().putStringSet(KEY_FAVORIS_FICHIERS, value).apply()
+
+    /** feat-076 — Derniers fichiers ouverts (max 8, LRU dans le ViewModel). */
+    var recentsFichiers: List<String>
+        get() = prefs.getString(KEY_RECENTS_FICHIERS, null)?.split("\n")?.filter { it.isNotBlank() } ?: emptyList()
+        set(value) = prefs.edit().putString(KEY_RECENTS_FICHIERS, value.joinToString("\n")).apply()
+
     companion object {
         private const val KEY_GITHUB_TOKEN = "github_token"
+        private const val KEY_FAVORIS_FICHIERS = "favoris_fichiers"
+        private const val KEY_RECENTS_FICHIERS = "recents_fichiers"
         private const val KEY_MAX_STEPS = "max_steps"
         private const val KEY_PRICE_IN = "price_in_per_m"
         private const val KEY_PRICE_OUT = "price_out_per_m"

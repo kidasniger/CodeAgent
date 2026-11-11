@@ -332,6 +332,10 @@ private fun AppRoot(
         if (viewModel.isPreviewScreenOpen) {
             com.zagent.app.ui.editor.PreviewScreen(viewModel, onClose = { viewModel.isPreviewScreenOpen = false })
         }
+        if (viewModel.isImagePreviewOpen) {
+            // feat-070 : visionneuse d'images intégrée (png, jpg, webp, gif).
+            com.zagent.app.ui.editor.ImagePreviewScreen(viewModel, onClose = { viewModel.closeImagePreview() })
+        }
         if (viewModel.isShareSheetOpen) {
             ShareSheet(viewModel, onClose = { viewModel.isShareSheetOpen = false })
         }
