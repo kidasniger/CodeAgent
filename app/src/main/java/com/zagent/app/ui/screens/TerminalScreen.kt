@@ -62,6 +62,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.core.content.res.ResourcesCompat
 import com.termux.view.TerminalView
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import com.zagent.app.R
 import com.zagent.app.terminal.TerminalController
 import com.zagent.app.ui.theme.Zcolors
@@ -82,6 +84,8 @@ fun TerminalScreen(
     val termFg = c.text.toArgb()
     var showAgent by rememberSaveable { mutableStateOf(false) }
     var showHisto by rememberSaveable { mutableStateOf(false) } // feat-047
+    var showPaquets by rememberSaveable { mutableStateOf(false) } // feat-052
+    var showBashrc by rememberSaveable { mutableStateOf(false) } // feat-054
     var ongletARenommer by rememberSaveable { mutableStateOf(-1) } // feat-048
 
     // MA84 : fond, texte et palette ANSI alignés sur le thème clair/sombre.
@@ -177,22 +181,29 @@ fun TerminalScreen(
             is TerminalController.State.Ready -> {
                 TabsRow(
                     controller, showAgent,
-                    onAgent = { showAgent = it },
-                    onRename = { ongletARenommer = it } // feat-048
+                    onAgent = { showAgent = it; if (it) { showPaquets = false; showBashrc = false } },
+                    onRename = { ongletARenommer = it }, // feat-048
+                    showPaquets = showPaquets,
+                    showBashrc = showBashrc,
+                    onPaquets = { showPaquets = !showPaquets; if (showPaquets) { showAgent = false; showBashrc = false; showHisto = false } },
+                    onBashrc = { showBashrc = !showBashrc; if (showBashrc) { showAgent = false; showPaquets = false; showHisto = false } }
                 )
-                if (showAgent) {
-                    AgentLogPane(controller, Modifier.weight(1f).fillMaxWidth(), onOpenPath) // feat-056/057
-                } else {
-                    ShellPane(controller, termBg, Modifier.weight(1f).fillMaxWidth())
-                    if (showHisto) {
-                        HistoriquePane(controller) { showHisto = false } // feat-047
-                    }
-                    if (showExtraKeys) {
-                        ExtraKeys(
-                            controller,
-                            onHisto = { showHisto = !showHisto },
-                            histoActif = showHisto
-                        )
+                when {
+                    showAgent -> AgentLogPane(controller, Modifier.weight(1f).fillMaxWidth(), onOpenPath) // feat-056/057
+                    showPaquets -> PaquetsPane(controller, Modifier.weight(1f).fillMaxWidth()) // feat-052
+                    showBashrc -> BashrcPane(controller, Modifier.weight(1f).fillMaxWidth()) // feat-054
+                    else -> {
+                        ShellPane(controller, termBg, Modifier.weight(1f).fillMaxWidth())
+                        if (showHisto) {
+                            HistoriquePane(controller) { showHisto = false } // feat-047
+                        }
+                        if (showExtraKeys) {
+                            ExtraKeys(
+                                controller,
+                                onHisto = { showHisto = !showHisto; if (showHisto) { showPaquets = false; showBashrc = false } },
+                                histoActif = showHisto
+                            )
+                        }
                     }
                 }
                 // feat-048 — dialogue de renommage d'onglet.
@@ -249,7 +260,11 @@ private fun TabsRow(
     controller: TerminalController,
     showAgent: Boolean,
     onAgent: (Boolean) -> Unit,
-    onRename: (Int) -> Unit
+    onRename: (Int) -> Unit,
+    showPaquets: Boolean = false,
+    showBashrc: Boolean = false,
+    onPaquets: () -> Unit = {},
+    onBashrc: () -> Unit = {}
 ) {
     val c = Zcolors
     Row(
@@ -317,6 +332,34 @@ private fun TabsRow(
             Text(
                 "Agent",
                 color = if (showAgent) c.bg else c.text2,
+                style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            )
+        }
+        // feat-052 — gestion des paquets.
+        Box(
+            Modifier
+                .clip(MaterialTheme.shapes.extraSmall)
+                .background(if (showPaquets) c.cyan else c.bg2)
+                .clickable { onPaquets() }
+                .padding(horizontal = 14.dp, vertical = 7.dp)
+        ) {
+            Text(
+                "Paquets",
+                color = if (showPaquets) c.bg else c.text2,
+                style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            )
+        }
+        // feat-054 — .bashrc et alias.
+        Box(
+            Modifier
+                .clip(MaterialTheme.shapes.extraSmall)
+                .background(if (showBashrc) c.cyan else c.bg2)
+                .clickable { onBashrc() }
+                .padding(horizontal = 14.dp, vertical = 7.dp)
+        ) {
+            Text(
+                "Bashrc",
+                color = if (showBashrc) c.bg else c.text2,
                 style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
             )
         }
@@ -659,3 +702,244 @@ private fun HistoriquePane(controller: TerminalController, onFermer: () -> Unit)
         }
     }
 }
+/**
+ * feat-052 — Gestion des paquets du terminal : liste installée, recherche,
+ * installation et suppression via pkg (exécution dans le shell embarqué).
+ */
+@Composable
+private fun PaquetsPane(controller: TerminalController, modifier: Modifier) {
+    val c = Zcolors
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var paquets by remember { mutableStateOf<List<String>>(emptyList()) }
+    var chargement by remember { mutableStateOf(true) }
+    var q by rememberSaveable { mutableStateOf("") }
+    var nouveau by rememberSaveable { mutableStateOf("") }
+    var operation by remember { mutableStateOf<String?>(null) }
+
+    fun charger() {
+        chargement = true
+        scope.launch(Dispatchers.IO) {
+            val out = controller.runCommand("pkg list-installed 2>/dev/null | cut -d/ -f1", null, 60) { }
+            val liste = out.lines().map { it.trim() }
+                .filter { it.isNotEmpty() && !it.startsWith("Erreur") && !it.contains(" ") }
+                .sorted()
+            kotlinx.coroutines.withContext(Dispatchers.Main) {
+                paquets = liste
+                chargement = false
+            }
+        }
+    }
+    fun agir(commande: String) {
+        operation = commande
+        scope.launch(Dispatchers.IO) {
+            controller.runCommand(commande, null, 300) { }
+            kotlinx.coroutines.withContext(Dispatchers.Main) { operation = null }
+            charger()
+        }
+    }
+    LaunchedEffect(Unit) { charger() }
+
+    Column(modifier.verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                if (chargement) "Chargement des paquets installés…"
+                else "Paquets installés (" + paquets.size + ")",
+                color = c.text2,
+                style = TextStyle(fontSize = 12.sp),
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TextField(
+                value = nouveau,
+                onValueChange = { nouveau = it },
+                placeholder = { Text("Nom du paquet à installer…", style = TextStyle(fontSize = 12.5.sp)) },
+                singleLine = true,
+                textStyle = TextStyle(fontSize = 13.sp, color = c.text),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = c.surface2,
+                    unfocusedContainerColor = c.surface2,
+                    focusedIndicatorColor = c.cyan,
+                    unfocusedIndicatorColor = c.border2,
+                    cursorColor = c.cyan
+                ),
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                "Installer",
+                color = if (nouveau.isBlank() || operation != null) c.text3 else c.green,
+                style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold),
+                modifier = Modifier
+                    .clip(MaterialTheme.shapes.small)
+                    .clickable(enabled = nouveau.isNotBlank() && operation == null) {
+                        val nom = nouveau.trim()
+                        if (Regex("[a-zA-Z0-9._+-]+").matches(nom)) {
+                            agir("pkg install -y " + nom)
+                            nouveau = ""
+                        }
+                    }
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        TextField(
+            value = q,
+            onValueChange = { q = it },
+            placeholder = { Text("Rechercher un paquet installé…", style = TextStyle(fontSize = 12.5.sp)) },
+            singleLine = true,
+            textStyle = TextStyle(fontSize = 13.sp, color = c.text),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = c.surface2,
+                unfocusedContainerColor = c.surface2,
+                focusedIndicatorColor = c.cyan,
+                unfocusedIndicatorColor = c.border2,
+                cursorColor = c.cyan
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+        if (operation != null) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "En cours : " + operation + " — la sortie s'affiche dans l'onglet Agent.",
+                color = c.amber,
+                style = TextStyle(fontSize = 12.sp)
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        if (!chargement) {
+            val filtres = paquets.filter { q.isBlank() || it.contains(q, ignoreCase = true) }
+            if (filtres.isEmpty()) {
+                Text(
+                    if (paquets.isEmpty()) "Aucun paquet installé (ou terminal non installé)."
+                    else "Aucun paquet ne correspond.",
+                    color = c.text3,
+                    style = TextStyle(fontSize = 12.sp),
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+            filtres.forEach { nom ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        nom,
+                        style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.5.sp),
+                        color = c.text,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        "Supprimer",
+                        color = c.red,
+                        style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold),
+                        modifier = Modifier
+                            .clip(MaterialTheme.shapes.small)
+                            .clickable(enabled = operation == null) { agir("pkg uninstall -y " + nom) }
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * feat-054 — ~/.bashrc éditable avec modèles d'alias : le fichier est sourcé
+ * par chaque nouveau shell interactif du terminal.
+ */
+@Composable
+private fun BashrcPane(controller: TerminalController, modifier: Modifier) {
+    val c = Zcolors
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var texte by rememberSaveable { mutableStateOf<String?>(null) } // null = chargement
+    var message by rememberSaveable { mutableStateOf("") }
+
+    // feat-054 — modèles d'alias prêts à insérer.
+    val modeles = listOf(
+        "alias ll='ls -la'",
+        "alias gs='git status -sb'",
+        "alias gd='git diff'",
+        "alias ..='cd ..'",
+        "alias cls='clear'",
+        "alias py='python'"
+    )
+
+    LaunchedEffect(Unit) {
+        if (texte == null) {
+            val contenu = kotlinx.coroutines.withContext(Dispatchers.IO) { controller.lireBashrc() }
+            texte = contenu
+        }
+    }
+
+    Column(modifier.verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "~/.bashrc — sourcé par chaque nouveau shell",
+                color = c.text2,
+                style = TextStyle(fontSize = 12.sp),
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(
+            Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            modeles.forEach { m ->
+                Text(
+                    m,
+                    style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.5.sp),
+                    color = c.cyan,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(c.surface2)
+                        .clickable {
+                            texte = (texte.orEmpty().trimEnd() + "\n" + m).trimStart()
+                        }
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        TextField(
+            value = texte.orEmpty(),
+            onValueChange = { texte = it; message = "" },
+            placeholder = { Text("Alias et fonctions bash…", style = TextStyle(fontSize = 12.5.sp)) },
+            textStyle = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.5.sp, color = c.text),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = c.surface2,
+                unfocusedContainerColor = c.surface2,
+                focusedIndicatorColor = c.cyan,
+                unfocusedIndicatorColor = c.border2,
+                cursorColor = c.cyan
+            ),
+            minLines = 5,
+            maxLines = 14,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "Enregistrer",
+                color = c.green,
+                style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold),
+                modifier = Modifier
+                    .clip(MaterialTheme.shapes.small)
+                    .clickable {
+                        val contenu = texte.orEmpty()
+                        val ok = if (contenu.isBlank()) controller.ecrireBashrc("") else controller.ecrireBashrc(contenu + if (contenu.endsWith("\n")) "" else "\n")
+                        message = if (ok) "Enregistré — actif dans les nouveaux shells." else "Échec d'enregistrement."
+                    }
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            )
+            Spacer(Modifier.width(12.dp))
+            if (message.isNotEmpty()) {
+                Text(message, color = if (message.startsWith("Enreg")) c.green else c.red, style = TextStyle(fontSize = 12.sp))
+            }
+        }
+    }
+}
+

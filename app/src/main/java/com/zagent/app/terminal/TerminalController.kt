@@ -189,6 +189,19 @@ class TerminalController(
         app.startActivity(android.content.Intent.createChooser(intent, "Partager la sortie du terminal"))
     }
 
+    // ── feat-054 : .bashrc modifiable avec modèles d'alias ──────────────
+    /** Lit ~/.bashrc (vide s'il n'existe pas encore). */
+    fun lireBashrc(): String =
+        runCatching { File(homeDir, ".bashrc").takeIf { it.exists() }?.readText().orEmpty() }
+            .getOrDefault("")
+
+    /** Écrit ~/.bashrc ; il sera sourcé par les prochains shells interactifs. */
+    fun ecrireBashrc(contenu: String): Boolean = runCatching {
+        val f = File(homeDir, ".bashrc")
+        f.parentFile?.mkdirs()
+        f.writeText(contenu)
+    }.isSuccess
+
     /** Journal en lecture seule des commandes lancées par l'agent (onglet « Agent » du terminal). */
     var agentLog by mutableStateOf("")
         private set
