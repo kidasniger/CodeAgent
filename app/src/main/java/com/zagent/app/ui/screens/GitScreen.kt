@@ -52,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.ui.components.common.StatusBadge
 import com.zagent.app.ui.components.common.GlassCard
 import com.zagent.app.ui.components.chat.GitDiffView
 import com.zagent.app.ui.components.common.GradientButton
