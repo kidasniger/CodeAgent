@@ -14,7 +14,13 @@ android {
     minSdk = 26
     // MA27/MA30 : passage de 28 à 34 (notifications runtime, type de service FGS,
     // receivers exportés explicites — aucun registerReceiver dynamique dans le code).
-    targetSdk = 34
+    // err-018 / bug terminal (error=13) : retour à 28 — Android 10+ interdit exec()
+    // des binaires du dossier privé (restriction W^X) dès que targetSdk ≥ 29 : bash,
+    // git, node… échouent tous. Un terminal embarqué de type Termux impose de cibler
+    // 28 (Termux lui-même cible 28). Les adaptations MA27/MA30 restent en code :
+    // déclarations manifest explicites, POST_NOTIFICATIONS — sans effet négatif
+    // quel que soit targetSdk.
+    targetSdk = 28
     versionCode = (project.findProperty("versionCode") as String?)?.toIntOrNull() ?: 1
     versionName = (project.findProperty("versionName") as String?) ?: "1.0"
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -89,8 +95,13 @@ android {
   // dans AndroidManifest.xml. Effet complet (animation système) à partir d'Android 13
   // (API 33) ; sur API 26–32 PredictiveBackHandler repose sur le dispatcher classique,
   // donc le comportement de retour reste identique.
-  // MA44 : ExpiredTargetSdkVersion retirée — targetSdk 34 est courant.
-  lint { abortOnError = false }
+  // MA44 : ExpiredTargetSdkVersion — désactivation explicite conservée : le terminal
+  // embarqué impose targetSdk 28 (cf. defaultConfig), lint ne doit pas faire échouer
+  // le build pour autant.
+  lint {
+    abortOnError = false
+    disable += "ExpiredTargetSdkVersion"
+  }
   testOptions { unitTests { isIncludeAndroidResources = true } }
   dependenciesInfo {
     includeInApk = false

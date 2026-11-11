@@ -238,6 +238,28 @@ class TerminalController(
 
     // ── Installation ────────────────────────────────────────────────────────
 
+    /** err-018 : (re)pose le bit d'exécution de bash s'il manque après une restauration. */
+    private fun ensureBashExecutable() {
+        val bash = File(prefixDir, "bin/bash")
+        if (bash.exists() && !bash.canExecute()) {
+            runCatching { Os.chmod(bash.absolutePath, 0x1C0) } // 0700
+        }
+    }
+
+    /**
+     * err-018 : traduit un échec de lancement du système en message clair.
+     * error=13 (Permission denied) vient de la restriction W^X d'Android (exec
+     * interdit dans le dossier privé quand targetSdk ≥ 29) ou d'un bit +x absent.
+     */
+    private fun messageExec(e: Exception): String {
+        val m = e.message ?: return e.javaClass.simpleName
+        return if ("error=13" in m || "Permission denied" in m) {
+            "bash n'a pas pu être exécuté (permission refusée, error=13). " +
+                "Installe la dernière version de l'application (correctif du terminal), " +
+                "puis réessaie ; si l'échec persiste, vide les données de l'appli."
+        } else m
+    }
+
     fun install() {
         if (state is State.Working) return
         val arch = when (Build.SUPPORTED_ABIS.firstOrNull()) {
@@ -251,15 +273,47 @@ class TerminalController(
             state = State.Failed("L'identifiant de l'appli doit être $NEW_PKG (actuellement ${app.packageName})")
             return
         }
+        // err-018 : diagnostic précoce — Android 10+ refuse exec() des binaires du
+        // dossier privé quand l'application cible SDK ≥ 29 (restriction W^X).
+        // Un APK ancien échouerait toujours en error=13 : on l'annonce clairement.
+        if (Build.VERSION.SDK_INT >= 29 && app.applicationInfo.targetSdkVersion >= 29) {
+            state = State.Failed(
+                "Cet APK cible un SDK ≥ 29 : Android bloque l'exécution du système (error=13). " +
+                    "Installe la version corrigée de l'application (cible SDK 28)."
+            )
+            return
+        }
         state = State.Working("Recherche du système", null)
         scope.launch(Dispatchers.IO) {
             try {
+                // err-018 : diagnostic d'espace disque — échec tôt et explicite
+                // (l'archive décompressée pèse plusieurs centaines de Mo).
+                try {
+                    val st = android.os.StatFs(baseDir.absolutePath)
+                    val free = st.availableBytes
+                    if (free < 500L * 1024 * 1024) {
+                        throw IllegalStateException(
+                            "Espace insuffisant : ${free / (1024L * 1024L)} Mo libres, ~500 Mo nécessaires pour le système"
+                        )
+                    }
+                } catch (e: IllegalStateException) {
+                    throw e
+                } catch (e: Exception) {
+                    // StatFs indisponible : on tente quand même.
+                }
                 val (url, expectedSha) = resolveBootstrapUrl(arch)
                 val zip = File(baseDir, "bootstrap-$arch.zip")
-                download(url, zip, expectedSha)
+                // err-018 : une tentative de reprise sur le téléchargement (réseau capricieux).
+                try {
+                    download(url, zip, expectedSha)
+                } catch (e: Exception) {
+                    setState(State.Working("Nouvelle tentative de téléchargement", null))
+                    download(url, zip, expectedSha)
+                }
                 setState(State.Working("Extraction", null))
                 extract(zip)
                 zip.delete()
+                ensureBashExecutable()
                 setState(State.Working("Configuration", null))
                 installDebPatcher()
                 runSecondStage()
@@ -268,7 +322,7 @@ class TerminalController(
                 setState(State.Ready)
             } catch (e: Exception) {
                 stagingDir.deleteRecursively()
-                setState(State.Failed(e.message ?: e.javaClass.simpleName))
+                setState(State.Failed(messageExec(e)))
             }
         }
     }
@@ -497,7 +551,11 @@ class TerminalController(
             val i = e.indexOf('=')
             pb.environment()[e.substring(0, i)] = e.substring(i + 1)
         }
-        val p = pb.start()
+        val p = try {
+            pb.start()
+        } catch (e: Exception) {
+            error(messageExec(e))
+        }
         p.inputStream.readBytes()
         if (!p.waitFor(120, TimeUnit.SECONDS)) {
             p.destroyForcibly()
@@ -525,6 +583,7 @@ class TerminalController(
         }
         ajouterHistorique(command) // feat-047
         File(prefixDir, "tmp").mkdirs()
+        ensureBashExecutable()
         val dir = cwd?.let { File(it) }?.takeIf { it.isDirectory } ?: homeDir
         val pb = ProcessBuilder(File(prefixDir, "bin/bash").absolutePath, "-c", command)
         pb.directory(dir)
@@ -550,7 +609,7 @@ class TerminalController(
                 agentBase += "[impossible de lancer la commande]\n"
                 agentLog = agentBase
             }
-            return@withContext "Erreur: impossible de lancer la commande (${e.message})"
+            return@withContext "Erreur: impossible de lancer la commande (${messageExec(e)})"
         }
 
         currentProc = proc
@@ -714,8 +773,10 @@ class TerminalController(
             return "Erreur: un serveur de développement tourne déjà (" + (devCommand ?: "") + ")" +
                 (devUrl?.let { " sur $it" } ?: "") + ". Appelle stop_dev_server avant d'en lancer un autre."
         }
+        var startError: String? = null
         val proc: Process = withContext(Dispatchers.IO) {
             File(prefixDir, "tmp").mkdirs()
+            ensureBashExecutable()
             val dir = cwd?.let { File(it) }?.takeIf { it.isDirectory } ?: homeDir
             val pb = ProcessBuilder(File(prefixDir, "bin/bash").absolutePath, "-c", command)
             pb.directory(dir)
@@ -726,8 +787,8 @@ class TerminalController(
                 val i = e.indexOf('=')
                 pb.environment()[e.substring(0, i)] = e.substring(i + 1)
             }
-            try { pb.start() } catch (e: Exception) { null }
-        } ?: return "Erreur: impossible de lancer la commande."
+            try { pb.start() } catch (e: Exception) { startError = messageExec(e); null }
+        } ?: return "Erreur: impossible de lancer la commande." + (startError?.let { " ($it)" } ?: "")
 
         devProc = proc
         devUrl = null
@@ -842,6 +903,7 @@ class TerminalController(
         ensureMirror()
         // Réinstalle le crochet apt à chaque ouverture : prend en compte un script mis à jour.
         try { installDebPatcher() } catch (e: Exception) { }
+        ensureBashExecutable()
         homeDir.mkdirs()
         File(prefixDir, "tmp").mkdirs()
         val startDir = projectDir?.let { File(it) }?.takeIf { it.isDirectory } ?: homeDir
