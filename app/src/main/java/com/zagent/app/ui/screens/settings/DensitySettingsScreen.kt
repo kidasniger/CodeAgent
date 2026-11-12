@@ -24,7 +24,7 @@ import com.zagent.app.ui.viewmodel.MainViewModel
 fun DensitySettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     var density by remember(viewModel.densityScale) { mutableFloatStateOf(viewModel.densityScale) }
     val presets = listOf(
-        0.90f to "Compacte",
+        0.85f to "Compacte",
         1.00f to "Équilibrée",
         1.10f to "Aérée"
     )
@@ -57,7 +57,7 @@ fun DensitySettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                         density = it
                         viewModel.updateDensityScale(it)
                     },
-                    valueRange = 0.88f..1.12f
+                    valueRange = 0.80f..1.12f
                 )
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("Dense", style = MaterialTheme.typography.labelSmall)

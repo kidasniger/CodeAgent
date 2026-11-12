@@ -300,7 +300,8 @@ fun ChatInputBar(
         Modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 88.dp)
+            // dens-003 — réserve basse allégée : la liste (156 dp) reste calée.
+            .padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 76.dp)
     ) {
         // ── feat-010 : compteur de tokens du contexte + saisie, au-dessus du champ ──
         val ctxTokens = viewModel.contextTokenEstimate
@@ -348,7 +349,8 @@ fun ChatInputBar(
                 .background(c.surface2.copy(alpha = if (LocalGlass.current.enabled) 0.10f else 1f))
                 .glassSurface(LocalHazeState.current, LocalGlass.current, c.isDark, RoundedCornerShape(28.dp), context)
                 .border(1.dp, c.border2.copy(alpha = 0.5f), RoundedCornerShape(28.dp))
-                .padding(horizontal = 16.dp, vertical = 14.dp)
+                // dens-003 — champ moins haut : 10 dp vertical au lieu de 14.
+                .padding(horizontal = 16.dp, vertical = 10.dp)
         ) {
             // ── MA49 : vignettes des pièces jointes, au-dessus du champ ─────
             if (viewModel.attachments.isNotEmpty()) {

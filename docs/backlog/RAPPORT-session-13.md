@@ -50,3 +50,19 @@ figées, textes tronqués sans ellipsis.
 ## État
 
 9/9 tâches resp- terminées, backlog porté à 609 clés (600 initiales + 9 resp).
+
+## Complément — Chat compact (demande utilisateur)
+
+« L'écran chat n'est pas assez compact » — audit mesuré puis densification :
+
+| # | Ce qui rendait le chat aéré | Correctif |
+|---|------------------------------|-----------|
+| dens-001 | 20 dp entre tous les messages (uniforme) | écart modulé par item + réserve basse recalée |
+| dens-002 | bulles 14×10, pilules de dates lourdes | bulle 12×8, date 2/4 dp, écarts 5/13/14/6 dp selon le contexte |
+| dens-003 | champ de saisie 14 dp vertical + réserve 88 dp | 10 dp vertical + réserve 76 dp |
+| dens-004 | réglage Densité plafonné à 88 % | plage étendue à 80 %, preset « Compacte » 0.85 |
+
+Résultat : un bloc de réponses agent (plusieurs bulles successives) s'affiche
+comme un groupe serré ; les changements de rôle respirent ; la conversation
+affiche ~25-30 % de messages en plus dans la même fenêtre. Tout reste modulé
+par le réglage Densité (80-112 %) et l'échelle de police indépendante.

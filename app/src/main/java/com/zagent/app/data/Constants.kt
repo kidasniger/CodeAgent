@@ -49,8 +49,8 @@ object Constants {
     const val FONT_SCALE_MIN = 0.85f
     const val FONT_SCALE_MAX = 1.30f
 
-    /** Échelle de densité : 88 % à 112 %. */
-    const val DENSITE_MIN = 0.88f
+    /** Échelle de densité : 80 % à 112 % (dens-004 — plage étendue côté dense). */
+    const val DENSITE_MIN = 0.80f
     const val DENSITE_MAX = 1.12f
 
     /** Taille de police éditeur/terminal (MA83) : 10 à 22 sp. */

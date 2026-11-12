@@ -102,7 +102,8 @@ internal fun DatePill(label: String, modifier: Modifier = Modifier) {
     Box(
         modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
+            // dens-002 — pilule de date plus discrète.
+            .padding(vertical = 2.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -112,7 +113,7 @@ internal fun DatePill(label: String, modifier: Modifier = Modifier) {
             modifier = Modifier
                 .glassSurface(LocalHazeState.current, LocalGlass.current, c.isDark, RoundedCornerShape(50.dp), LocalContext.current)
                 .background(c.surface2.copy(alpha = if (LocalGlass.current.enabled) 0.12f else 1f), RoundedCornerShape(50.dp))
-                .padding(horizontal = 14.dp, vertical = 6.dp)
+                .padding(horizontal = 14.dp, vertical = 4.dp)
         )
     }
 }
@@ -150,7 +151,8 @@ internal fun UserBubble(
                 .clip(RoundedCornerShape(20.dp))
                 .background(c.surface2)
                 .combinedClickable(onClick = {}, onLongClick = { haptique.menu(); menuOpen = true })
-                .padding(horizontal = 14.dp, vertical = 10.dp)
+                // dens-002 — bulle utilisateur resserrée (12×8 au lieu de 14×10).
+                .padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
             Column {
                 Text(

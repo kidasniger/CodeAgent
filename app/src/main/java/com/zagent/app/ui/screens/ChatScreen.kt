@@ -569,18 +569,33 @@ fun ChatScreen(
                         LazyColumn(
                             state = listState,
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 176.dp),
-                            verticalArrangement = Arrangement.spacedBy(20.dp)
+                            // dens-001 — liste compacte : réserve basse calée sur la
+                            // barre de saisie allégée (dens-003) ; l'écart entre
+                            // messages est modulé par item (dens-002) au lieu d'un
+                            // espacement uniforme de 20 dp.
+                            contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 156.dp)
                         ) {
                             chatRows.forEachIndexed { index, row ->
+                                // dens-002 — écart modulé : serré entre messages du
+                                // même rôle (blocs agent/outils successifs), aéré
+                                // entre rôles, respiration avant une pilule de date.
+                                val prevRow = chatRows.getOrNull(index - 1)
+                                val gap = when {
+                                    row is ChatRow.Date -> 14.dp
+                                    prevRow is ChatRow.Date -> 6.dp
+                                    row is ChatRow.Agent && prevRow is ChatRow.Agent -> 5.dp
+                                    row is ChatRow.User && prevRow is ChatRow.User -> 5.dp
+                                    prevRow == null -> 0.dp
+                                    else -> 13.dp
+                                }
                                 when (row) {
                                     is ChatRow.Date -> stickyHeader(key = row.key, contentType = "date") {
-                                        DatePill(row.label, Modifier.alpha(dateAlpha))
+                                        DatePill(row.label, Modifier.alpha(dateAlpha).padding(top = gap))
                                     }
                                     is ChatRow.User -> item(key = row.key, contentType = "user") {
                                         EntreeMessage(
                                             activee = estNouvelElement(row.key),
-                                            modifier = Modifier.animateItem()
+                                            modifier = Modifier.padding(top = gap).animateItem()
                                         ) {
                                             UserBubble(
                                                 text = row.text,
@@ -617,7 +632,7 @@ fun ChatScreen(
                                         val isLastAgent = index == chatRows.lastIndex && displayLive.isBlank()
                                         EntreeMessage(
                                             activee = estNouvelElement(row.key),
-                                            modifier = Modifier.animateItem()
+                                            modifier = Modifier.padding(top = gap).animateItem()
                                         ) {
                                             AgentCard(
                                                 content = row.content,
@@ -652,7 +667,7 @@ fun ChatScreen(
                                     is ChatRow.OrphanTool -> item(key = row.key, contentType = "orphan") {
                                         EntreeMessage(
                                             activee = estNouvelElement(row.key),
-                                            modifier = Modifier.animateItem()
+                                            modifier = Modifier.padding(top = gap).animateItem()
                                         ) {
                                             OrphanToolLine(row.text)
                                         }
@@ -660,7 +675,7 @@ fun ChatScreen(
                                     is ChatRow.Ask -> item(key = row.key, contentType = "ask") {
                                         EntreeMessage(
                                             activee = estNouvelElement(row.key),
-                                            modifier = Modifier.animateItem()
+                                            modifier = Modifier.padding(top = gap).animateItem()
                                         ) {
                                             AskCard(
                                                 questions = row.questions,
@@ -676,6 +691,7 @@ fun ChatScreen(
                             if (displayLive.isNotBlank()) {
                                 item(key = "live_text", contentType = "agent") {
                                     AgentCard(
+                                        modifier = Modifier.padding(top = 13.dp),
                                         content = displayLive,
                                         tools = emptyList(),
                                         isStreaming = true,
@@ -690,7 +706,7 @@ fun ChatScreen(
                             val lastRow = chatRows.lastOrNull()
                             if (displayLive.isBlank() && lastRow is ChatRow.Agent) {
                                 item(key = "usage_tail", contentType = "meta") {
-                                    Column(Modifier.padding(horizontal = 16.dp)) {
+                                    Column(Modifier.padding(top = 10.dp).padding(horizontal = 16.dp)) {
                                         UsageLine(
                                             totalTokens = viewModel.totalTokens,
                                             estimated = viewModel.tokensEstimated,
@@ -707,7 +723,10 @@ fun ChatScreen(
                             // MA47 : erreur humaine dans le fil, sous le dernier message
                             if (!viewModel.isLoading && (viewModel.hasBlockingError || viewModel.stepLimitReached || viewModel.statusMessage.isNotBlank())) {
                                 item(key = "error_inline", contentType = "meta") {
-                                    InlineErrorCard(viewModel = viewModel, onOpenSettings = onOpenSettings)
+                                    // dens-002 — respiration sous la ligne d'usage.
+                                    Column(Modifier.padding(top = 12.dp)) {
+                                        InlineErrorCard(viewModel = viewModel, onOpenSettings = onOpenSettings)
+                                    }
                                 }
                             }
                         }

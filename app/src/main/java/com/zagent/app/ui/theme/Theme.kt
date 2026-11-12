@@ -371,7 +371,7 @@ fun ZAgentTheme(
     val typography = scaledTypography(selectedFont, fontTitres, fontScale.coerceIn(0.85f, 1.30f))
     val currentDensity = LocalDensity.current
     val scaledDensity = Density(
-        density = currentDensity.density * densityScale.coerceIn(0.88f, 1.12f),
+        density = currentDensity.density * densityScale.coerceIn(0.80f, 1.12f),
         fontScale = currentDensity.fontScale
     )
     CompositionLocalProvider(

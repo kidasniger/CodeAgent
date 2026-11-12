@@ -331,10 +331,10 @@ class SettingsManager(context: Context) {
         get() = prefs.getFloat(KEY_FONT_SCALE, 1f).coerceIn(Constants.FONT_SCALE_MIN, Constants.FONT_SCALE_MAX)
         set(value) = prefs.edit().putFloat(KEY_FONT_SCALE, value.coerceIn(Constants.FONT_SCALE_MIN, Constants.FONT_SCALE_MAX)).apply()
 
-    /** Échelle de densité appliquée aux dimensions dp de l'interface. */
+    /** Échelle de densité appliquée aux dimensions dp de l'interface (dens-004 : 80 % à 112 %). */
     var densityScale: Float
-        get() = prefs.getFloat(KEY_DENSITY_SCALE, 1f).coerceIn(0.88f, 1.12f)
-        set(value) = prefs.edit().putFloat(KEY_DENSITY_SCALE, value.coerceIn(0.88f, 1.12f)).apply()
+        get() = prefs.getFloat(KEY_DENSITY_SCALE, 1f).coerceIn(Constants.DENSITE_MIN, Constants.DENSITE_MAX)
+        set(value) = prefs.edit().putFloat(KEY_DENSITY_SCALE, value.coerceIn(Constants.DENSITE_MIN, Constants.DENSITE_MAX)).apply()
 
     /**
      * MàJ 100 — langue de l'interface choisie dans Réglages › Apparence :

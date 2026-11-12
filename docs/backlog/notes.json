@@ -149,5 +149,9 @@
  "resp-006": "Session 13 — PreviewScreen : console JS bornée à hauteurBorneDp(180 dp, 0.42) ; l'aperçu web n'est plus écrasé en paysage.",
  "resp-007": "Session 13 — connecteurs de timeline (ActivityScreen 74 dp, JournalErreursScreen 66 dp) : Row en IntrinsicSize.Min + weight(1f), la ligne de liaison s'étire avec le contenu réel (échelle de police 2.0 incluse) au lieu d'une hauteur figée.",
  "resp-008": "Session 13 — ellipsis TextOverflow ajouté aux 17 textes maxLines=1 sans overflow (Settings ×4, EditorScreen ×3, EditorTabBar, EditorWidgets, ChatConfirmations ×2, ImagePreview, PreviewScreen ×2, FileBrowser ×4) : fin des coupures nettes sans « … ».",
- "resp-009": "Session 13 — PrDialog (GitScreen) : contenu scrollable pour la description longue ; + audit complet des 33 écrans (scroll, insets, hauteurs, ellipsis) — OverlayScreen/SettingsPageScaffold/Terminal/Editor déjà conformes."
+ "resp-009": "Session 13 — PrDialog (GitScreen) : contenu scrollable pour la description longue ; + audit complet des 33 écrans (scroll, insets, hauteurs, ellipsis) — OverlayScreen/SettingsPageScaffold/Terminal/Editor déjà conformes.",
+ "dens-001": "Session 13 — liste de messages : espacement uniforme 20 dp supprimé ; réserve basse recalée sur la barre allégée (156 dp) et haut 8 dp.",
+ "dens-002": "Session 13 — écarts modulés par item : 5 dp entre messages consécutifs du même rôle (blocs agent/outils), 13 dp entre rôles, 14 dp avant une pilule de date, 6 dp après ; bulle utilisateur 12×8 (au lieu de 14×10), pilule de date discrète (2/4 dp), respiration sous usage et erreur inline.",
+ "dens-003": "Session 13 — barre de saisie plus compacte : champ 10 dp vertical (au lieu de 14) et réserve basse 76 dp (au lieu de 88) ; ~16 dp récupérés sur chaque écran de chat.",
+ "dens-004": "Session 13 — réglage Densité étendu côté compact : plage 80–112 % (Constantes, SettingsManager, Theme, slider), preset « Compacte » à 0.85 ; les nouveaux espacements restent multipliés par la densité (tout évolue ensemble)."
 }
