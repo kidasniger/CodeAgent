@@ -83,4 +83,71 @@
     <string name="shortcut_models_long">Ouvrir les modèles</string>
     <string name="notif_channel_run">Agent en cours</string>
     <string name="notif_channel_alert">Alertes de l\'agent</string>
+
+    <!-- ═══ err-099 · audit des messages d'erreur — catalogue fr (langue par défaut) ═══════
+         Revue complète des messages d'échec de l'app, centralisés ici en français
+         et en anglais (values-en). Placeholders : %1$s texte variable, %1$d nombre.
+         Wave 1 du câblage : écran Journal d'erreurs ; le reste des surfaces suit. -->
+
+    <!-- Réseau & IA (err-021..045,058) -->
+    <string name="err_reseau_absent">Aucune connexion réseau : vérifie le Wi-Fi ou les données mobiles puis renvoie le message.</string>
+    <string name="err_serveur_injoignable">Impossible de joindre le serveur (erreur réseau). Vérifie ta connexion Internet puis réessaie.</string>
+    <string name="err_dns">Impossible de résoudre l\'adresse du serveur (DNS) : vérifie ta connexion Internet ou l\'adresse du serveur.</string>
+    <string name="err_tls">Échec de la connexion sécurisée (TLS) : le certificat du serveur est invalide ou bloqué.</string>
+    <string name="err_local_injoignable">Serveur local injoignable (%1$s) : vérifie qu\'il tourne et que le téléphone est sur le même réseau.</string>
+    <string name="err_http_fournisseur">Erreur du fournisseur (HTTP %1$d) : %2$s</string>
+    <string name="err_401_cle_refusee">Clé API refusée (401) : vérifie la clé dans Réglages › Fournisseurs.</string>
+    <string name="err_403_acces_interdit">Accès interdit (403) : ce compte n\'a pas accès à ce modèle.</string>
+    <string name="err_404_route">Ressource introuvable (404) : modèle ou adresse de serveur invalide.</string>
+    <string name="err_surchauge_reessai">Serveur surchargé, nouvel essai dans %1$ds (tentative %2$d/%3$d)…</string>
+    <string name="err_reseau_reessai">Erreur réseau, nouvel essai dans %1$ds…</string>
+    <string name="err_flux_interrompu">Flux interrompu en pleine réponse — le contenu reçu est conservé et signalé.</string>
+    <string name="err_reponse_vide">Réponse vide du modèle — réessaie ou reformule la demande.</string>
+    <string name="err_contexte_depasse">Contexte dépassé : la conversation est trop longue — compacte l\'historique ou démarre une nouvelle conversation.</string>
+    <string name="err_max_tokens">Le modèle a atteint sa limite de tokens — réponse tronquée.</string>
+    <string name="err_echec_apres_tentatives">Échec de la requête après plusieurs tentatives.</string>
+    <string name="err_url_invalide">Adresse de serveur invalide : utilise un URL http(s):// complet.</string>
+    <string name="err_boucle_outils">Boucle d\'outils détectée — l\'agent s\'est arrêté.</string>
+    <string name="err_arguments_outils">Arguments d\'outil invalides : %1$s</string>
+    <string name="err_cle_manquante">Aucune clé API pour « %1$s » — ajoute-la dans Réglages › Fournisseurs.</string>
+
+    <!-- Fichiers & dossiers (err-046..057,059,060) -->
+    <string name="err_fichier_introuvable">Fichier introuvable : %1$s</string>
+    <string name="err_dossier_introuvable">Dossier introuvable : %1$s</string>
+    <string name="err_acces_refuse">Accès refusé à %1$s (droits du fichier ou Android).</string>
+    <string name="err_disque_plein">Disque plein — libère de la place (corbeille, caches) puis réessaie.</string>
+    <string name="err_binaire">Fichier binaire ou encodage invalide — lecture impossible en texte.</string>
+    <string name="err_existe_deja">Existe déjà : %1$s — renomme ou choisis une autre destination.</string>
+    <string name="err_chemin_hors_projet">Chemin hors du projet : %1$s</string>
+    <string name="err_chemin_invalide">Chemin invalide (.. interdit) : %1$s</string>
+    <string name="err_saf_revoque">Autorisation de stockage révoquée par Android — rouvre le dossier depuis l\'app.</string>
+    <string name="err_zip_slip">Archive suspecte (Zip Slip) : entrée hors de la destination.</string>
+    <string name="err_archive_corrompue">Archive corrompue : %1$s</string>
+    <string name="err_ecriture">Erreur d\'écriture : %1$s</string>
+    <string name="err_lecture">Erreur de lecture (fichier binaire ou corrompu ?) : %1$s</string>
+
+    <!-- Terminal (err-018,064,074..077) -->
+    <string name="err_terminal_bootstrap">Impossible de préparer le terminal : %1$s — vérifie l\'espace disque puis relance.</string>
+    <string name="err_telechargement">Téléchargement échoué après %1$d essais : %2$s</string>
+    <string name="err_binaire_invalide">Paquet téléchargé invalide — réessaie ou change de miroir.</string>
+
+    <!-- Droits & notifications (err-061/062/093, MA101) -->
+    <string name="err_notification_refusee">Notifications refusées : active-les dans les réglages Android pour suivre l\'agent.</string>
+    <string name="err_micro_refuse">Micro indisponible : autorise-le dans Réglages › Permissions.</string>
+
+    <!-- Agent & budget (err-061,062,085..090) -->
+    <string name="err_budget_depasse">Budget du jour dépassé (%1$d / %2$d tokens) — remonte la limite ou attends demain.</string>
+    <string name="err_limite_etapes">Limite de %1$d étapes atteinte pour cette demande.</string>
+    <string name="err_erreur_interne">Erreur interne de l\'agent : %1$s</string>
+    <string name="err_crash_redemarrage">L\'application a redémarré après un crash — Aide › Signaler un problème pour partager le rapport.</string>
+    <string name="err_conversation_corrompue">Conversation illisible — isolée dans les fichiers corrompus pour ne pas bloquer les autres.</string>
+    <string name="err_migration_sauvegarde">Sauvegarde pré-migration conservée dans %1$s avant toute transformation.</string>
+
+    <!-- Journal d'erreurs (err-097) -->
+    <string name="journal_titre">Journal d\'erreurs</string>
+    <string name="journal_recherche">Rechercher dans le journal…</string>
+    <string name="journal_partager">Partager le journal filtré (.json)</string>
+    <string name="journal_vide_titre">Aucune erreur enregistrée</string>
+    <string name="journal_vide_texte">Les échecs d\'outils de l\'agent, les erreurs réseau et les crashs apparaîtront ici, horodatés et filtrables.</string>
+    <string name="journal_tronque">Journal tronqué aux 200 entrées les plus récentes — affine avec un filtre ou une recherche.</string>
 </resources>

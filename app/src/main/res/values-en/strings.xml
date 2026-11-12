@@ -79,4 +79,71 @@
     <string name="shortcut_models_long">Open models</string>
     <string name="notif_channel_run">Agent running</string>
     <string name="notif_channel_alert">Agent alerts</string>
+
+    <!-- ═══ err-099 · error message audit — English catalog ═══════════════════
+         Complete review of the app failure messages, centralized here in
+         English (French default in values). Placeholders: %1$s text, %1$d number.
+         Wiring wave 1: error journal screen; remaining surfaces follow. -->
+
+    <!-- Network & AI (err-021..045,058) -->
+    <string name="err_reseau_absent">No network connection: check Wi-Fi or mobile data, then send the message again.</string>
+    <string name="err_serveur_injoignable">Cannot reach the server (network error). Check your Internet connection and try again.</string>
+    <string name="err_dns">Cannot resolve the server address (DNS): check your Internet connection or the server address.</string>
+    <string name="err_tls">Secure connection failed (TLS): the server certificate is invalid or blocked.</string>
+    <string name="err_local_injoignable">Local server unreachable (%1$s): make sure it is running and the phone is on the same network.</string>
+    <string name="err_http_fournisseur">Provider error (HTTP %1$d): %2$s</string>
+    <string name="err_401_cle_refusee">API key refused (401): check the key in Settings › Providers.</string>
+    <string name="err_403_acces_interdit">Forbidden (403): this account has no access to this model.</string>
+    <string name="err_404_route">Resource not found (404): invalid model or server address.</string>
+    <string name="err_surchauge_reessai">Server overloaded, retrying in %1$ds (attempt %2$d/%3$d)…</string>
+    <string name="err_reseau_reessai">Network error, retrying in %1$ds…</string>
+    <string name="err_flux_interrompu">Stream interrupted mid-answer — received content is kept and flagged.</string>
+    <string name="err_reponse_vide">Empty response from the model — try again or rephrase the request.</string>
+    <string name="err_contexte_depasse">Context exceeded: the conversation is too long — compact the history or start a new conversation.</string>
+    <string name="err_max_tokens">The model reached its token limit — response truncated.</string>
+    <string name="err_echec_apres_tentatives">Request failed after several attempts.</string>
+    <string name="err_url_invalide">Invalid server address: use a full http(s):// URL.</string>
+    <string name="err_boucle_outils">Tool loop detected — the agent stopped.</string>
+    <string name="err_arguments_outils">Invalid tool arguments: %1$s</string>
+    <string name="err_cle_manquante">No API key for “%1$s” — add it in Settings › Providers.</string>
+
+    <!-- Files & folders (err-046..057,059,060) -->
+    <string name="err_fichier_introuvable">File not found: %1$s</string>
+    <string name="err_dossier_introuvable">Folder not found: %1$s</string>
+    <string name="err_acces_refuse">Access denied to %1$s (file permissions or Android).</string>
+    <string name="err_disque_plein">Disk full — free some space (trash, caches) and try again.</string>
+    <string name="err_binaire">Binary file or invalid encoding — cannot read as text.</string>
+    <string name="err_existe_deja">Already exists: %1$s — rename it or choose another destination.</string>
+    <string name="err_chemin_hors_projet">Path outside the project: %1$s</string>
+    <string name="err_chemin_invalide">Invalid path (.. not allowed): %1$s</string>
+    <string name="err_saf_revoque">Storage permission revoked by Android — reopen the folder from the app.</string>
+    <string name="err_zip_slip">Suspicious archive (Zip Slip): entry outside the destination.</string>
+    <string name="err_archive_corrompue">Corrupted archive: %1$s</string>
+    <string name="err_ecriture">Write error: %1$s</string>
+    <string name="err_lecture">Read error (binary or corrupted file?): %1$s</string>
+
+    <!-- Terminal (err-018,064,074..077) -->
+    <string name="err_terminal_bootstrap">Cannot prepare the terminal: %1$s — check free disk space and retry.</string>
+    <string name="err_telechargement">Download failed after %1$d attempts: %2$s</string>
+    <string name="err_binaire_invalide">Invalid downloaded package — try again or switch mirror.</string>
+
+    <!-- Permissions & notifications (err-061/062/093, MA101) -->
+    <string name="err_notification_refusee">Notifications refused: enable them in Android settings to follow the agent.</string>
+    <string name="err_micro_refuse">Microphone unavailable: allow it in Settings › Permissions.</string>
+
+    <!-- Agent & budget (err-061,062,085..090) -->
+    <string name="err_budget_depasse">Daily budget exceeded (%1$d / %2$d tokens) — raise the limit or wait until tomorrow.</string>
+    <string name="err_limite_etapes">Step limit of %1$d reached for this request.</string>
+    <string name="err_erreur_interne">Internal agent error: %1$s</string>
+    <string name="err_crash_redemarrage">The app restarted after a crash — Help › Report a problem to share the report.</string>
+    <string name="err_conversation_corrompue">Unreadable conversation — isolated into corrupted files so others keep working.</string>
+    <string name="err_migration_sauvegarde">Pre-migration backup kept in %1$s before any transformation.</string>
+
+    <!-- Error journal (err-097) -->
+    <string name="journal_titre">Error journal</string>
+    <string name="journal_recherche">Search the journal…</string>
+    <string name="journal_partager">Share the filtered journal (.json)</string>
+    <string name="journal_vide_titre">No error recorded</string>
+    <string name="journal_vide_texte">Agent tool failures, network errors and crashes will appear here, timestamped and filterable.</string>
+    <string name="journal_tronque">Journal trimmed to the 200 most recent entries — refine with a filter or a search.</string>
 </resources>

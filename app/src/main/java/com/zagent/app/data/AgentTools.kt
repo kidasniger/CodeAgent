@@ -654,7 +654,28 @@ object AgentTools {
         }
         var enChaine = false
         var echappe = false
+        // err-098 — virgules finales avant } ou ] : JSON strict les refuse ; on les
+        // retire hors des chaînes (ce correctif ne court qu'après échec du premier
+        // parse, donc sur du JSON déjà malformé — jamais sur du JSON valide).
+        val sansVirgules = StringBuilder()
+        enChaine = false
+        echappe = false
+        for (c in s) {
+            if (echappe) { echappe = false; sansVirgules.append(c); continue }
+            if (c == '\\' && enChaine) { echappe = true; sansVirgules.append(c); continue }
+            if (c == '"') { enChaine = !enChaine; sansVirgules.append(c); continue }
+            if (enChaine) { sansVirgules.append(c); continue }
+            if (c == '}' || c == ']') {
+                var i = sansVirgules.length - 1
+                while (i >= 0 && sansVirgules[i].isWhitespace()) i--
+                if (i >= 0 && sansVirgules[i] == ',') sansVirgules.delete(i, sansVirgules.length)
+            }
+            sansVirgules.append(c)
+        }
+        s = sansVirgules.toString()
         val pile = ArrayDeque<Char>()
+        enChaine = false
+        echappe = false
         for (c in s) {
             if (echappe) { echappe = false; continue }
             if (c == '\\' && enChaine) { echappe = true; continue }

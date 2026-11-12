@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -133,16 +134,19 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
     var showInstructions by rememberSaveable { mutableStateOf(false) }
     var showPermissions by rememberSaveable { mutableStateOf(false) }
     var showActivity by rememberSaveable { mutableStateOf(false) }
+    // err-097 — journal d'erreurs dédié (agent / réseau / crash), avec filtres.
+    var showJournalErreurs by rememberSaveable { mutableStateOf(false) }
     var showAbout by rememberSaveable { mutableStateOf(false) }
     var showHelp by rememberSaveable { mutableStateOf(false) }
     val anyLot5 = showModels || showUsage || showInstructions || showPermissions ||
-        showActivity || showAbout || showHelp
+        showActivity || showJournalErreurs || showAbout || showHelp
     fun closeLot5() {
         showModels = false
         showUsage = false
         showInstructions = false
         showPermissions = false
         showActivity = false
+        showJournalErreurs = false
         showAbout = false
         showHelp = false
     }
@@ -152,6 +156,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
     if (showInstructions) { InstructionsScreen(viewModel) { closeLot5() }; return }
     if (showPermissions) { PermissionsScreen(viewModel) { closeLot5() }; return }
     if (showActivity) { ActivityScreen(viewModel) { closeLot5() }; return }
+    if (showJournalErreurs) { JournalErreursScreen(viewModel) { closeLot5() }; return }
     if (showAbout) { AboutScreen(viewModel) { closeLot5() }; return }
     if (showHelp) { HelpScreen(viewModel) { closeLot5() }; return }
 
@@ -217,6 +222,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                 Triple("Instructions de l'agent", "instructions système prompt règles", { showInstructions = true }),
                 Triple("Permissions", "permissions micro fichiers notifications", { showPermissions = true }),
                 Triple("Journal d'activité", "activité journal historique actions", { showActivity = true }),
+                Triple("Journal d'erreurs", "erreur crash diagnostic échec réseau journal problème", { showJournalErreurs = true }),
                 Triple("À propos", "à propos version licence liens", { showAbout = true }),
                 Triple("Aide", "aide faq astuce démarrer", { showHelp = true }),
                 Triple("GitHub", "github jeton token push pull dépôt", { avanceOuvert = true }),
@@ -359,6 +365,13 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                         "Tout ce que l'agent a fait, annulable",
                         tint = c.green,
                         onClick = { showActivity = true }
+                    )
+                    // err-097 — journal d'erreurs dédié : crashs, échecs agent, erreurs réseau.
+                    OverlayRow(
+                        Icons.Default.BugReport, "Journal d'erreurs",
+                        "Crashs, échecs agent, erreurs réseau",
+                        tint = c.red,
+                        onClick = { showJournalErreurs = true }
                     )
                     OverlayRow(
                         Icons.Default.HelpOutline, "Raccourcis & gestes",
