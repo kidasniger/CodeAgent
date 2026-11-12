@@ -5,8 +5,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -212,9 +214,17 @@ fun JournalErreursScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         val df = remember { SimpleDateFormat("d MMM · HH:mm:ss", Locale.getDefault()) }
         Column {
             filtrees.take(200).forEach { e ->
-                Row(Modifier.fillMaxWidth()) {
+                // resp-07 — IntrinsicSize.Min : le connecteur s'étire avec le
+                // contenu (échelle de police 2.0) au lieu d'une hauteur figée.
+                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
                     // Colonne temporelle : point coloré + ligne de liaison
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(26.dp)) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .width(26.dp)
+                            .fillMaxHeight()
+                            .padding(bottom = 14.dp)
+                    ) {
                         Box(
                             Modifier
                                 .size(10.dp)
@@ -230,7 +240,7 @@ fun JournalErreursScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                         Box(
                             Modifier
                                 .width(1.5.dp)
-                                .height(66.dp)
+                                .weight(1f)
                                 .background(c.border)
                         )
                     }

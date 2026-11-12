@@ -97,6 +97,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zagent.app.ui.components.common.GlassAlertDialog
@@ -191,6 +192,7 @@ internal fun FullscreenBar(
                 style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp),
                 color = c.text,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
             SmallIcon(Icons.Default.Refresh, "Recharger") { onRefresh() }

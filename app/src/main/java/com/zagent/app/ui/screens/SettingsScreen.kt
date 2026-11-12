@@ -73,6 +73,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zagent.app.ui.components.common.CircleIconButton
@@ -542,7 +543,8 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                                 shortUri(viewModel.workingFolderUriString) ?: "Aucun projet sélectionné",
                                 style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.5.sp),
                                 color = if (viewModel.workingFolderUriString.isNullOrEmpty()) c.amber else c.text2,
-                                maxLines = 1
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = c.text3, modifier = Modifier.size(20.dp))
@@ -567,7 +569,8 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                                 else instr.trim().lines().first().take(60),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = c.text2,
-                                maxLines = 1
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                         Icon(
@@ -681,7 +684,8 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                                 else "Renseigne les prix pour afficher le coût de la conversation",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = c.text2,
-                                maxLines = 1
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                         Icon(
@@ -1120,7 +1124,8 @@ private fun ExpandableRow(
                         fontSize = 11.5.sp
                     ),
                     color = c.text2,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
             Icon(

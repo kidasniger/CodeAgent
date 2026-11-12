@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -78,6 +80,9 @@ fun AttachSheet(
         Column(
             Modifier
                 .fillMaxWidth()
+                // resp-04 — feuille scrollable : les tuiles restent accessibles
+                // sur petit écran et à grande police.
+                .verticalScroll(rememberScrollState())
                 .navigationBarsPadding()
                 .glassSurface(LocalHazeState.current, LocalGlass.current, c.isDark, RoundedCornerShape(28.dp), LocalContext.current)
                 .padding(horizontal = 20.dp)

@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zagent.app.ui.components.common.GlassAlertDialog
@@ -56,6 +57,7 @@ import com.zagent.app.ui.components.common.makeQrBitmap
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.Zcolors
+import com.zagent.app.ui.theme.hauteurBorneDp
 import com.zagent.app.ui.viewmodel.MainViewModel
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
@@ -117,14 +119,16 @@ fun PreviewScreen(viewModel: MainViewModel, onClose: () -> Unit) {
                         viewModel.previewScreenPath.ifBlank { "aperçu" },
                         style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp),
                         color = c.text,
-                        maxLines = 1
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
                 Text(
                     currentUrl.ifBlank { "…" },
                     style = TextStyle(fontFamily = JetBrainsMono, fontSize = 9.5.sp),
                     color = c.text3,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
             BarIcon(Icons.Default.ScreenRotation, "Pivoter") {
@@ -215,10 +219,12 @@ fun PreviewScreen(viewModel: MainViewModel, onClose: () -> Unit) {
 
         // ── Console JS repliable ─────────────────────────────────────────────
         if (showConsole) {
+            // resp-06 — console JS bornée : 180 dp en portrait, réduite en
+            // paysage / petit écran pour ne pas écraser l'aperçu web.
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .height(180.dp)
+                    .height(hauteurBorneDp(180.dp, 0.42f))
                     .background(c.bg2)
                     .border(1.dp, c.border, RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
             ) {

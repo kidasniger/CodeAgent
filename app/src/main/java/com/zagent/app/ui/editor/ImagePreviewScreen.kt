@@ -34,6 +34,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -117,6 +118,7 @@ fun ImagePreviewScreen(viewModel: MainViewModel, onClose: () -> Unit) {
                 color = Color.White.copy(alpha = 0.85f),
                 style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp),
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
             Icon(

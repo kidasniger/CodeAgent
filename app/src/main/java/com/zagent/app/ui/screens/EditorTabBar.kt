@@ -98,6 +98,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zagent.app.ui.components.common.GlassAlertDialog
@@ -164,7 +165,8 @@ internal fun EditorTabBar(
                             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
                         ),
                         color = if (selected) c.text else c.text2,
-                        maxLines = 1
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     if (t.dirty) {
                         Spacer(Modifier.width(6.dp))

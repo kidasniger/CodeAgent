@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -122,9 +124,17 @@ fun ActivityScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         val df = remember { SimpleDateFormat("d MMM · HH:mm:ss", Locale.getDefault()) }
         Column {
             filtered.forEach { e ->
-                Row(Modifier.fillMaxWidth()) {
+                // resp-07 — IntrinsicSize.Min : le connecteur suit la hauteur
+                // réelle de la ligne (échelle de police agrandie incluse).
+                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
                     // Colonne temporelle : point + ligne
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(26.dp)) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .width(26.dp)
+                            .fillMaxHeight()
+                            .padding(bottom = 14.dp)
+                    ) {
                         Box(
                             Modifier
                                 .size(10.dp)
@@ -141,7 +151,7 @@ fun ActivityScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                         Box(
                             Modifier
                                 .width(1.5.dp)
-                                .height(74.dp)
+                                .weight(1f)
                                 .background(c.border)
                         )
                     }

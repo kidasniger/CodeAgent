@@ -126,6 +126,7 @@ import com.zagent.app.ui.theme.LocalGlass
 import com.zagent.app.ui.theme.LocalHazeState
 import com.zagent.app.ui.theme.SpaceGrotesk
 import com.zagent.app.ui.theme.Zcolors
+import com.zagent.app.ui.theme.hauteurBorneDp
 import com.zagent.app.ui.theme.glassSurface
 import com.zagent.app.ui.viewmodel.MainViewModel
 import kotlinx.coroutines.launch
@@ -770,7 +771,9 @@ fun FileBrowserScreen(
             onDismissRequest = { moveDialogOpen = false },
             title = { Text("Déplacer ${selected.size} élément(s) vers…", fontFamily = SpaceGrotesk, color = c.text) },
             text = {
-                Column(Modifier.height(300.dp).verticalScroll(rememberScrollState())) {
+                // resp-02 — hauteur bornée : 300 dp sur téléphone portrait,
+                // réduite en paysage / petit écran pour rester visible.
+                Column(Modifier.height(hauteurBorneDp(300.dp, 0.55f)).verticalScroll(rememberScrollState())) {
                     if (dossiers.isEmpty()) {
                         Text("Aucun dossier connu — déplie d'abord l'arborescence.", color = c.text2, fontFamily = Inter, fontSize = 12.sp)
                     }
@@ -841,7 +844,7 @@ fun FileBrowserScreen(
             onDismissRequest = { trashSheetOpen = false },
             title = { Text("Corbeille du projet", fontFamily = SpaceGrotesk, color = c.text) },
             text = {
-                Column(Modifier.height(320.dp).verticalScroll(rememberScrollState())) {
+                Column(Modifier.height(hauteurBorneDp(320.dp, 0.55f)).verticalScroll(rememberScrollState())) {
                     Text(
                         "Les éléments sont conservés 7 jours, puis supprimés automatiquement.",
                         fontFamily = Inter, fontSize = 11.5.sp, color = c.text3
@@ -891,7 +894,7 @@ fun FileBrowserScreen(
             onDismissRequest = { viewModel.closeBrowserFilePreview() },
             title = { Text(preview.path, color = c.text, fontFamily = JetBrainsMono, maxLines = 2) },
             text = {
-                Column(Modifier.fillMaxWidth().height(360.dp).verticalScroll(rememberScrollState())) {
+                Column(Modifier.fillMaxWidth().height(hauteurBorneDp(360.dp, 0.55f)).verticalScroll(rememberScrollState())) {
                     Text(preview.content, color = c.text2, style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp))
                 }
             },
@@ -1335,7 +1338,8 @@ private fun SwipeAction(label: String, icon: ImageVector, color: Color, onClick:
             label,
             style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 10.sp),
             color = Color.White,
-            maxLines = 1
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -1402,14 +1406,16 @@ private fun GridCell(
             if (entry.isDir) "Dossier" else formatSize(entry.size),
             style = TextStyle(fontFamily = Inter, fontSize = 10.5.sp),
             color = c.text3,
-            maxLines = 1
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
         if (!entry.isDir && formatDate(entry.lastModified).isNotEmpty()) {
             Text(
                 formatDate(entry.lastModified),
                 style = TextStyle(fontFamily = Inter, fontSize = 10.sp),
                 color = c.text3,
-                maxLines = 1
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -1659,7 +1665,8 @@ private fun ChipFavoriRecent(
             path.substringAfterLast('/'),
             style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp),
             color = c.text,
-            maxLines = 1
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
         if (onRemove != null) {
             Spacer(Modifier.width(4.dp))

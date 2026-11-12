@@ -371,7 +371,9 @@ private fun PrDialog(viewModel: MainViewModel, onDismiss: () -> Unit) {
             )
         },
         text = {
-            Column {
+            // resp-09 — contenu scrollable : le champ Description long reste
+            // accessible même à grande police ou en paysage.
+            Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text(
                     "Depuis la branche courante vers la branche par défaut du dépôt. Nécessite un jeton GitHub (Réglages).",
                     style = TextStyle(fontFamily = Inter, fontSize = 12.sp, lineHeight = 16.sp),

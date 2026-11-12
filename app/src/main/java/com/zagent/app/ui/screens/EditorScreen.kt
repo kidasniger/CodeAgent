@@ -104,6 +104,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zagent.app.ui.components.common.GlassAlertDialog
@@ -116,6 +117,7 @@ import com.zagent.app.ui.editor.SyntaxHighlighter
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.Zcolors
+import com.zagent.app.ui.theme.hauteurBorneDp
 import com.zagent.app.ui.theme.LocalGlass
 import com.zagent.app.ui.theme.LocalHazeState
 import com.zagent.app.ui.theme.glassSurface
@@ -263,14 +265,16 @@ fun EditorScreen(
                     tab?.name ?: "Éditeur",
                     style = TextStyle(fontFamily = JetBrainsMono, fontWeight = FontWeight.SemiBold, fontSize = 14.sp),
                     color = c.text,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 if (tab != null) {
                     Text(
                         tab.path,
                         style = TextStyle(fontFamily = JetBrainsMono, fontSize = 10.5.sp),
                         color = c.text3,
-                        maxLines = 1
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -561,6 +565,7 @@ fun EditorScreen(
                         style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp),
                         color = c.text2,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )
                     SmallIcon(Icons.Default.Refresh, "Recharger") { reloadTick++ }
@@ -702,7 +707,7 @@ fun EditorScreen(
                         }
                         SmallIcon(Icons.Default.Delete, "Vider la console") { console.clear() }
                     }
-                    ConsolePanel(console, Modifier.height(140.dp))
+                    ConsolePanel(console, Modifier.height(hauteurBorneDp(140.dp, 0.38f)))
                 }
             }
         }
