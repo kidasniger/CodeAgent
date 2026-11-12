@@ -404,8 +404,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                                     octets += it.length(); it.delete()
                                 }
                             }
-                            viewModel.statusMessage =
-                                "Caches vidés (" + java.lang.String.format(java.util.Locale.FRANCE, "%.1f", octets / 1_000_000f) + " Mo libérés)."
+                            viewModel.statut(R.string.statut_caches_vides, octets / 1_000_000f)
                         }
                     )
                 }
@@ -1045,7 +1044,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                 TextButton(onClick = {
                     val res = viewModel.importerReglages(jsonImport)
                     res.onSuccess { n ->
-                        viewModel.statusMessage = "Réglages importés ($n)."
+                        viewModel.statut(R.string.statut_reglages_importes, n)
                         showImportReglages = false
                     }
                 }) { Text(stringResource(R.string.action_importer), color = c.cyan) }

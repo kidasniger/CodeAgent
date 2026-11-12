@@ -145,6 +145,15 @@ internal fun nettoyerPlaceholders(message: String): String {
 }
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
+
+    /** err-099 — statuts et messages par le catalogue de ressources (fr/en) ; voir vague 2. */
+    private fun sm(res: Int, vararg args: Any): String =
+        getApplication<Application>().getString(res, *args)
+
+    /** Version publique pour l'UI hors composable (Réglages) : pousse directement un statut traduit. */
+    fun statut(res: Int, vararg args: Any) {
+        statusMessage = sm(res, *args)
+    }
     init {
         // err-077 — journalise tout crash fatal non intercepté (files/crash/).
         com.zagent.app.util.CrashHandler.installer(application)
@@ -768,7 +777,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val aResumer = ancien.joinToString("\n\n") { m ->
             m.role + " : " + m.content.orEmpty().substringBefore(CTX_MARKER).take(2000)
         }.take(60_000)
-        withContext(Dispatchers.Main) { statusMessage = "Résumé du contexte en cours…" }
+        withContext(Dispatchers.Main) { statusMessage = sm(R.string.statut_resume_contexte) }
         val buf = StringBuilder()
         val reponse = aiRepository.callChatCompletions(
             baseUrl = ModelCatalog.urlPourModele(effectiveModel, baseUrlInput),
@@ -807,8 +816,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             val ok = runCatching { compacterContexte(force = true) }.getOrDefault(false)
             withContext(Dispatchers.Main) {
-                statusMessage = if (ok) "Contexte compacté : l'historique ancien a été résumé."
-                else "Rien à compacter (historique trop court ou résumé indisponible)."
+                statusMessage = if (ok) sm(R.string.statut_contexte_compacte)
+                else sm(R.string.err_rien_compacter)
             }
         }
     }
@@ -837,7 +846,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         while (last >= 0 && list[last].role != "user") last--
         if (last < 0) return
         chat.edit.value = list.subList(0, last)
-        statusMessage = "Dernier tour annulé."
+        statusMessage = sm(R.string.statut_tour_annule)
     }
 
     /** Console JS partagée entre l'aperçu et le bouton de correction. */
@@ -1427,7 +1436,7 @@ done; } 2>&1 | head -c 50000
             } catch (e: Exception) {
                 // Une erreur inattendue dans la boucle de l'agent ne doit jamais fermer l'appli.
                 withContext(NonCancellable + Dispatchers.Main) {
-                    statusMessage = "Erreur de l'agent : " + (e.localizedMessage ?: e.javaClass.simpleName)
+                    statusMessage = sm(R.string.err_agent_exception, e.localizedMessage ?: e.javaClass.simpleName)
                 }
             } finally {
                 AgentService.stop(getApplication())
@@ -1456,17 +1465,17 @@ done; } 2>&1 | head -c 50000
             if (!java.io.File(p).isDirectory) {
                 workingFolderUriString = null
                 settingsManager.workingFolderUri = null
-                statusMessage = "Le dossier du projet précédent n'existe plus — sélectionne un nouveau projet."
+                statusMessage = sm(R.string.err_projet_absent)
             }
         }
         // err-078 — récupération après crash : message au redémarrage (rapport partageable via Aide).
         com.zagent.app.util.CrashHandler.dernierRapportNonVu(application)?.let {
-            statusMessage = "L'application a redémarré après un crash — Aide › Signaler un problème pour partager le rapport."
+            statusMessage = sm(R.string.err_crash_redemarrage)
             com.zagent.app.util.CrashHandler.marquerVu(application)
         }
         // err-085 — clés absentes après restauration de l'appareil : guider l'utilisateur.
         if (settingsManager.clesReinitialisees) {
-            statusMessage = "Réglages réinitialisés après restauration — ressaisis tes clés API dans Réglages › Fournisseurs."
+            statusMessage = sm(R.string.err_reglages_reinitialises)
         }
         terminal.projectDir = workingFolderUriString
         // MA79 : rouvre les onglets du projet au démarrage.
@@ -1737,7 +1746,7 @@ done; } 2>&1 | head -c 50000
     /** feat-074 — Importe une archive .zip choisie via le sélecteur SAF : copie à la racine puis extraction. */
     fun importProjectZip(uri: Uri) {
         browserError = null
-        statusMessage = "Import de l'archive en cours…"
+        statusMessage = sm(R.string.statut_import_archive)
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val repo = getFileRepo()
@@ -1779,7 +1788,7 @@ done; } 2>&1 | head -c 50000
 
     /** feat-075 — Zippe le projet et ouvre la feuille de partage Android. */
     fun exportProjectZip() {
-        statusMessage = "Export en cours…"
+        statusMessage = sm(R.string.statut_export)
         viewModelScope.launch(Dispatchers.IO) {
             val fichier = getFileRepo().exportProjectZip()
             withContext(Dispatchers.Main) {
@@ -1988,7 +1997,7 @@ done; } 2>&1 | head -c 50000
             ?: ModelCatalog.chaineRepli(modeleA).firstOrNull { clePourModele(it).isNotBlank() }
         if (modeleB == null || clePourModele(modeleA).isBlank() || clePourModele(modeleB).isBlank()) {
             withContext(Dispatchers.Main) {
-                statusMessage = "Mode Duo : choisis un second modèle dont la clé est renseignée."
+                statusMessage = sm(R.string.err_duo_cle_manquante)
                 isLoading = false
             }
             return
@@ -2025,7 +2034,7 @@ done; } 2>&1 | head -c 50000
             withContext(Dispatchers.Main) {
                 liveText = ""
                 liveReasoning = ""
-                statusMessage = "Duo · $moi s'exprime…"
+                statusMessage = sm(R.string.statut_duo_expression, moi)
             }
             val buf = StringBuilder()
             var dernierePublication = 0L
@@ -2051,7 +2060,7 @@ done; } 2>&1 | head -c 50000
                 val erreur = (reponse as? AiRepository.ApiResponse.Error)?.errorMessage
                 withContext(Dispatchers.Main) {
                     liveText = ""
-                    statusMessage = "Duo interrompu : " + (erreur ?: "réponse vide").take(120)
+                    statusMessage = sm(R.string.err_duo_interrompu, (erreur ?: sm(R.string.mot_reponse_vide)).take(120))
                     isLoading = false
                 }
                 return
@@ -2082,7 +2091,7 @@ done; } 2>&1 | head -c 50000
         withContext(Dispatchers.Main) {
             liveText = ""
             liveReasoning = ""
-            statusMessage = "Duo · relecture par $labelB…"
+            statusMessage = sm(R.string.statut_duo_relecture, labelB)
         }
         val messages = buildJsonArray {
             add(buildJsonObject {
@@ -2135,7 +2144,7 @@ done; } 2>&1 | head -c 50000
             ?: ModelCatalog.chaineRepli(modeleA).firstOrNull { clePourModele(it).isNotBlank() }
         if (modeleB == null || clePourModele(modeleB).isBlank()) {
             withContext(Dispatchers.Main) {
-                statusMessage = "Comparer : choisis un modèle B (menu du modèle, section Mode Duo)."
+                statusMessage = sm(R.string.err_duo_choisir_b)
             }
             return
         }
@@ -2170,7 +2179,7 @@ done; } 2>&1 | head -c 50000
         withContext(Dispatchers.Main) {
             liveText = ""
             liveReasoning = ""
-            statusMessage = "Duo · comparaison de $labelA et $labelB…"
+            statusMessage = sm(R.string.statut_duo_comparaison, labelA, labelB)
         }
         // Séquentiel : évite de doubler la charge réseau d'un même instant.
         val texteA = runCatching { interroger(modeleA, messagesA) }.getOrNull()
@@ -2200,8 +2209,7 @@ done; } 2>&1 | head -c 50000
         if (!estEnLigne()) {
             isOffline = true
             messageQueue.add(userText)
-            statusMessage = "Hors ligne — message mis en file (" + messageQueue.size +
-                "). Il partira dès le retour du réseau."
+            statusMessage = sm(R.string.statut_file_hors_ligne, messageQueue.size)
             return
         }
         isOffline = false
@@ -2211,22 +2219,21 @@ done; } 2>&1 | head -c 50000
             // feat-016 — l'agent travaille : le message rejoint la file d'attente
             // et part automatiquement à la fin du tour en cours.
             messageQueue.add(userText)
-            statusMessage = "Message mis en file (" + messageQueue.size + " en attente) — envoi dès la fin du tour."
+            statusMessage = sm(R.string.statut_file_attente, messageQueue.size)
             return
         }
         // MàJ 101 — la clé nécessaire dépend du modèle : un modèle NVIDIA exige
         // la clé NVIDIA, pas la clé z.ai.
         if (clePourModele(effectiveModel).isBlank()) {
             navigateTo(AppScreen.SETTINGS)
-            statusMessage = "Aucune clé API pour « " + effectiveModel + " » — ajoute-la dans Réglages › Fournisseurs."
+            statusMessage = sm(R.string.err_cle_manquante, effectiveModel)
             return
         }
         // corr-083 : fournisseur du modèle désactivé → envoi bloqué avec un
         // message clair et un chemin direct vers Réglages › Fournisseurs.
         val fournisseurDuModele = ModelCatalog.fournisseurPourModele(effectiveModel, fournisseurs)
         if (fournisseurDuModele != null && !fournisseurDuModele.actif) {
-            statusMessage = "« " + effectiveModel + " » appartient au fournisseur « " +
-                fournisseurDuModele.nom + " », désactivé. Réactive-le dans Réglages › Fournisseurs."
+            statusMessage = sm(R.string.err_fournisseur_desactive, effectiveModel, fournisseurDuModele.nom)
             isKeyInvalid = false
             isLoading = false
             return
@@ -2278,7 +2285,7 @@ done; } 2>&1 | head -c 50000
                     liveText = ""
                     liveCommand = null
                     liveCommandId = null
-                    statusMessage = "Erreur interne de l'agent : " + msg.take(160)
+                    statusMessage = sm(R.string.err_erreur_interne, msg.take(160))
                 }
             } finally {
                 AgentService.stop(getApplication())
@@ -2405,8 +2412,7 @@ done; } 2>&1 | head -c 50000
         val aujourdHui = usageRepoSnapshot().filter { it.ts >= debutJour }.sumOf { it.totalTokens }
         if (aujourdHui >= budget) {
             budgetDepasse = true
-            statusMessage = "Budget du jour dépassé (" + aujourdHui + " / " + budget +
-                " tokens). Tu peux continuer, mais pense à ajuster le budget dans Réglages."
+            statusMessage = sm(R.string.err_budget_avertissement, aujourdHui, budget)
         }
     }
 
@@ -2436,14 +2442,14 @@ done; } 2>&1 | head -c 50000
         val n = nom.trim().take(24)
         if (n.isEmpty()) return
         settingsManager.profilsReglages = profilsReglages + (n to settingsManager.instantaneProfil())
-        statusMessage = "Profil « $n » enregistré."
+        statusMessage = sm(R.string.statut_profil_enregistre, n)
     }
 
     /** feat-092 — Applique un profil enregistré. */
     fun appliquerProfil(nom: String) {
         val json = profilsReglages[nom] ?: return
         importerReglages(json).onSuccess {
-            statusMessage = "Profil « $nom » appliqué (" + it + " réglages)."
+            statusMessage = sm(R.string.statut_profil_applique, nom, it)
             saveSettings(apiKeyInput, modelInput, baseUrlInput, autoModeInput)
         }
     }
@@ -2642,7 +2648,7 @@ done; } 2>&1 | head -c 50000
 
     private suspend fun runAgentLoop() {
         isLoading = true
-        statusMessage = "Envoi à l'IA…"
+        statusMessage = sm(R.string.statut_envoi_ia)
         isCode1305Error = false
         showFallbackModelButton = false
 
@@ -2696,7 +2702,7 @@ done; } 2>&1 | head -c 50000
             withContext(Dispatchers.Main) {
                 isLoading = false
                 isNetworkError = true
-                statusMessage = "Aucune connexion réseau : vérifie le Wi-Fi ou les données mobiles puis renvoie le message."
+                statusMessage = sm(R.string.err_reseau_absent)
             }
             alertUser(sm(R.string.vm_agent_arrete), sm(R.string.vm_reseau_absent_court))
             return
@@ -2764,7 +2770,7 @@ done; } 2>&1 | head -c 50000
                 liveText = ""
                 liveReasoning = ""
                 thinkingStartedAt = System.currentTimeMillis()
-                statusMessage = "Envoi à l'IA…"
+                statusMessage = sm(R.string.statut_envoi_ia)
             }
             val liveBuf = StringBuilder()
             var lastPublish = 0L
@@ -2787,7 +2793,7 @@ done; } 2>&1 | head -c 50000
                     val nowMs = System.currentTimeMillis()
                     if (liveText.isEmpty() || nowMs - lastPublish >= 120) {
                         lastPublish = nowMs
-                        if (liveText.isEmpty()) statusMessage = "L'IA écrit…"
+                        if (liveText.isEmpty()) statusMessage = sm(R.string.statut_ia_ecrit)
                         liveText = liveBuf.toString()
                     }
                 },
@@ -2795,7 +2801,7 @@ done; } 2>&1 | head -c 50000
                     val nowMs = System.currentTimeMillis()
                     if (nowMs - lastPublish >= 120) {
                         lastPublish = nowMs
-                        statusMessage = "Réflexion en cours…"
+                        statusMessage = sm(R.string.statut_reflexion)
                         liveReasoning += piece
                     } else {
                         liveReasoning += piece
@@ -2819,8 +2825,7 @@ done; } 2>&1 | head -c 50000
                         repliEffectue = true
                         modeleUtilise = alt
                         withContext(Dispatchers.Main) {
-                            statusMessage = "Modèle indisponible — bascule vers " +
-                                (ModelCatalog.find(alt)?.label ?: alt)
+                            statusMessage = sm(R.string.err_modele_bascule, ModelCatalog.find(alt)?.label ?: alt)
                             liveText = ""
                             liveReasoning = ""
                         }
@@ -2897,7 +2902,7 @@ done; } 2>&1 | head -c 50000
                                         name = tc.name, toolLog = tc.name
                                     )
                                     isLoading = false
-                                    statusMessage = "Boucle d'outils détectée — l'agent s'est arrêté."
+                                    statusMessage = sm(R.string.err_boucle_outils)
                                 }
                                 alertUser(sm(R.string.vm_agent_arrete), sm(R.string.vm_outils_repetes))
                                 finished = true
@@ -2936,7 +2941,7 @@ done; } 2>&1 | head -c 50000
             withContext(Dispatchers.Main) {
                 isLoading = false
                 stepLimitReached = true
-                statusMessage = "Limite de $maxSteps étapes atteinte pour cette demande."
+                statusMessage = sm(R.string.err_limite_etapes, maxSteps)
             }
         }
     }
@@ -2990,7 +2995,7 @@ done; } 2>&1 | head -c 50000
         chat.edit.value = liste
         todos = emptyList()
         fileDiffCounts.clear()
-        statusMessage = "Message annulé avant la première réponse de l'agent."
+        statusMessage = sm(R.string.statut_message_annule)
         persistCurrentConversation()
     }
 
@@ -3014,7 +3019,7 @@ done; } 2>&1 | head -c 50000
         liveText = ""
         liveReasoning = ""
         isLoading = false
-        statusMessage = "Génération interrompue."
+        statusMessage = sm(R.string.statut_generation_interrompue)
         persistCurrentConversation()
     }
 
@@ -3576,7 +3581,7 @@ done; } 2>&1 | head -c 50000
             if (!allowed) return "Refusé par l'utilisateur: le lancement du serveur a été annulé."
             withContext(Dispatchers.Main) {
                 summaryCommands.add(command.take(100))
-                statusMessage = "Démarrage du serveur : " + command.take(50) + "…"
+                statusMessage = sm(R.string.statut_serveur_demarrage, command.take(50))
             }
             return terminal.startDevServer(command, workingFolderUriString)
         }
@@ -3674,12 +3679,12 @@ done; } 2>&1 | head -c 50000
 
     private suspend fun waitForDeleteConfirmation(path: String, toolCallId: String): Boolean {
         return suspendCancellableCoroutine { continuation ->
-            statusMessage = "En attente de ta confirmation…"
+            statusMessage = sm(R.string.statut_attente_confirmation)
             alertUser(sm(R.string.vm_confirmation_requise), sm(R.string.vm_supprimer_q, path))
             pendingDelete = PendingDelete(path, toolCallId)
             onDeleteConfirmed = { allowed ->
                 pendingDelete = null
-                statusMessage = "Exécution en cours…"
+                statusMessage = sm(R.string.statut_execution)
                 continuation.resume(allowed, null)
             }
             continuation.invokeOnCancellation {
@@ -3773,7 +3778,7 @@ done; } 2>&1 | head -c 50000
         onCommandConfirmed?.invoke(true)
         onCommandConfirmed = null
         pendingCommand = null
-        statusMessage = "Confirmations automatiques pour ce tour."
+        statusMessage = sm(R.string.statut_confirmations_auto)
     }
 
     private suspend fun waitForCommandConfirmation(
@@ -3786,16 +3791,16 @@ done; } 2>&1 | head -c 50000
         if (autoApprouverTour) {
             // ux-019 — ce tour est en mode « tout autoriser » : exécution directe.
             summaryCommands.add(command.take(100))
-            statusMessage = "Exécution en cours… (confirmations auto, ce tour)"
+            statusMessage = sm(R.string.statut_execution_auto)
             return true
         }
         return suspendCancellableCoroutine { continuation ->
-            statusMessage = "En attente de ta confirmation…"
+            statusMessage = sm(R.string.statut_attente_confirmation)
             alertUser(sm(R.string.vm_confirmation_requise), sm(R.string.vm_lancer, command.take(100)))
             pendingCommand = PendingCommand(command, toolCallId, note, changes, footer)
             onCommandConfirmed = { allowed ->
                 pendingCommand = null
-                statusMessage = "Exécution en cours…"
+                statusMessage = sm(R.string.statut_execution)
                 continuation.resume(allowed, null)
             }
             continuation.invokeOnCancellation {
@@ -3817,7 +3822,7 @@ done; } 2>&1 | head -c 50000
             summaryCommands.add(command.take(100))
             liveCommandId = toolCallId
             liveCommand = command
-            statusMessage = "Commande : " + command.take(60) + "…"
+            statusMessage = sm(R.string.statut_commande, command.take(60))
         }
         val t0Cmd = System.currentTimeMillis()
         try {
@@ -3973,12 +3978,12 @@ done; } 2>&1 | head -c 50000
 
     private suspend fun waitForAsk(toolCallId: String, questions: List<AskQuestion>): String? {
         return suspendCancellableCoroutine { continuation ->
-            statusMessage = "En attente de ta réponse…"
+            statusMessage = sm(R.string.statut_attente_reponse)
             alertUser("L'agent te pose une question", questions.first().question.take(120))
             pendingAsk = PendingAsk(toolCallId, questions)
             onAskAnswered = { answers ->
                 pendingAsk = null
-                statusMessage = "Exécution en cours…"
+                statusMessage = sm(R.string.statut_execution)
                 continuation.resume(answers, null)
             }
             continuation.invokeOnCancellation {
@@ -4014,7 +4019,7 @@ done; } 2>&1 | head -c 50000
             (smartModeInput && (!exists || isEdit))
         val allowed = if (auto) {
             if (autoModeInput) {
-                withContext(Dispatchers.Main) { statusMessage = "Mode Auto : écriture de $path…" }
+                withContext(Dispatchers.Main) { statusMessage = sm(R.string.statut_auto_ecriture, path) }
             }
             true
         } else {
@@ -4429,7 +4434,7 @@ done; } 2>&1 | head -c 50000
         if (isGeneratingCommitMsg) return
         val diffText = gitUi.changes?.diff.orEmpty()
         if (diffText.isBlank()) {
-            statusMessage = "Aucun changement à commenter."
+            statusMessage = sm(R.string.err_git_rien_commenter)
             return
         }
         isGeneratingCommitMsg = true
@@ -4540,7 +4545,7 @@ done; } 2>&1 | head -c 50000
     fun gitPush() {
         if (gitBranchBusy) return
         gitBranchBusy = true
-        statusMessage = "Push en cours…"
+        statusMessage = sm(R.string.statut_git_push)
         viewModelScope.launch(Dispatchers.IO) {
             val jeton = settingsManager.jetonGitHub
             val remote = gitRemoteOrigin()
@@ -4552,7 +4557,8 @@ done; } 2>&1 | head -c 50000
             val res = terminal.runCommand(cmd, workingFolderUriString, 120, silent = true) { }
             withContext(Dispatchers.Main) {
                 statusMessage = if (res.contains("->") || res.contains("up to date") || res.contains("Everything up-to-date"))
-                    "Push réussi" + (if (branch.isNotBlank()) " (branche " + branch + ")" else "") + "."
+                    if (branch.isNotBlank()) sm(R.string.statut_push_reussi_branche, branch)
+                    else sm(R.string.statut_push_reussi)
                 else messageGitSimple(res)
                 gitBranchBusy = false
             }
@@ -4567,7 +4573,7 @@ done; } 2>&1 | head -c 50000
     fun gitPull() {
         if (gitBranchBusy) return
         gitBranchBusy = true
-        statusMessage = "Pull en cours…"
+        statusMessage = sm(R.string.statut_git_pull)
         viewModelScope.launch(Dispatchers.IO) {
             val jeton = settingsManager.jetonGitHub
             val remote = gitRemoteOrigin()
@@ -4603,11 +4609,11 @@ done; } 2>&1 | head -c 50000
         val cible = url.trim()
         if (cible.isBlank() || gitBranchBusy) return
         if (!cible.startsWith("https://") && !cible.startsWith("http://") && !cible.startsWith("git@")) {
-            statusMessage = "URL invalide : commence par https:// ou git@."
+            statusMessage = sm(R.string.err_git_url_invalide)
             return
         }
         gitBranchBusy = true
-        statusMessage = "Clonage en cours… (les gros dépôts peuvent prendre du temps)"
+        statusMessage = sm(R.string.statut_git_clone)
         viewModelScope.launch(Dispatchers.IO) {
             // --depth 1 par défaut : clone rapide sur mobile ; le jeton s'injecte dans l'URL https.
             val jeton = settingsManager.jetonGitHub
@@ -4618,7 +4624,7 @@ done; } 2>&1 | head -c 50000
             ) { }
             withContext(Dispatchers.Main) {
                 val ok = !res.contains("fatal") && !res.contains("Erreur") && res.contains("Cloning")
-                statusMessage = if (ok) "Clonage réussi : " + cible.substringAfterLast('/').removeSuffix(".git")
+                statusMessage = if (ok) sm(R.string.statut_clone_reussi, cible.substringAfterLast('/').removeSuffix(".git"))
                 else messageGitSimple(res)
                 refreshProjectFiles()
                 gitBranchBusy = false
@@ -4635,7 +4641,7 @@ done; } 2>&1 | head -c 50000
             val res = terminal.runCommand("git stash push -m \"ZAgent " + System.currentTimeMillis() + "\" 2>&1", workingFolderUriString, 30, silent = true) { }
             val r = readGitChanges()
             withContext(Dispatchers.Main) {
-                statusMessage = if (res.contains("Saved working directory")) "Modifications mises de côté (stash)." else messageGitSimple(res)
+                statusMessage = if (res.contains("Saved working directory")) sm(R.string.statut_stash_ok) else messageGitSimple(res)
                 gitUi = gitUi.copy(changes = r)
                 gitBranchBusy = false
             }
@@ -4668,7 +4674,7 @@ done; } 2>&1 | head -c 50000
         val n = name.trim()
         if (gitBranchBusy || n.isBlank()) return
         if (!n.matches(Regex("[A-Za-z0-9._/-]+"))) {
-            statusMessage = "Nom de branche invalide : lettres, chiffres, . _ / - uniquement."
+            statusMessage = sm(R.string.err_git_branche_invalide)
             return
         }
         gitBranchBusy = true
@@ -4676,7 +4682,7 @@ done; } 2>&1 | head -c 50000
             val res = terminal.runCommand("git checkout -b \"" + n.replace("\"", "'") + "\" 2>&1", workingFolderUriString, 20, silent = true) { }
             withContext(Dispatchers.Main) {
                 statusMessage = if (res.contains("Switched") || res.contains("Basculement"))
-                    "Branche créée : " + n else messageGitSimple(res)
+                    sm(R.string.statut_branche_creee, n) else messageGitSimple(res)
                 refreshGitBranches()
                 gitBranchBusy = false
             }
@@ -4688,7 +4694,7 @@ done; } 2>&1 | head -c 50000
         val n = name.trim()
         if (gitBranchBusy || n.isBlank()) return
         if (n == "main" || n == "master") {
-            statusMessage = "La branche principale ne se supprime pas depuis l'application."
+            statusMessage = sm(R.string.err_git_branche_principale)
             return
         }
         gitBranchBusy = true
@@ -4696,7 +4702,7 @@ done; } 2>&1 | head -c 50000
             val res = terminal.runCommand("git branch -d \"" + n.replace("\"", "'") + "\" 2>&1", workingFolderUriString, 15, silent = true) { }
             withContext(Dispatchers.Main) {
                 statusMessage = if (res.contains("Deleted") || res.contains("Supprim"))
-                    "Branche supprimée : " + n else messageGitSimple(res)
+                    sm(R.string.statut_branche_supprimee, n) else messageGitSimple(res)
                 refreshGitBranches()
                 gitBranchBusy = false
             }
@@ -4734,12 +4740,12 @@ done; } 2>&1 | head -c 50000
         if (gitPrBusy) return
         val titre = title.trim()
         if (titre.isEmpty()) {
-            statusMessage = "Donne un titre à la pull request."
+            statusMessage = sm(R.string.err_git_pr_titre)
             return
         }
         val jeton = settingsManager.jetonGitHub
         if (jeton.isBlank()) {
-            statusMessage = "Renseigne d'abord un jeton GitHub dans Réglages (feat-082)."
+            statusMessage = sm(R.string.err_git_jeton_manquant)
             onDone(false)
             return
         }
@@ -4750,7 +4756,7 @@ done; } 2>&1 | head -c 50000
                 .lineSequence().firstOrNull()?.trim().orEmpty()
             val res = GitHubApi.createPullRequest(remote, jeton, branch, titre, body)
             withContext(Dispatchers.Main) {
-                statusMessage = res.fold({ "PR créée : " + it }, { it.message ?: "Échec de la PR." })
+                statusMessage = res.fold({ sm(R.string.statut_pr_creee, it) }, { it.message ?: sm(R.string.err_pr_echec) })
                 gitPrBusy = false
                 onDone(res.isSuccess)
             }
@@ -4794,7 +4800,7 @@ done; } 2>&1 | head -c 50000
             withContext(Dispatchers.Main) {
                 val cle = res.substringAfter("@@@\n", "").trim()
                 sshClePublique = cle
-                statusMessage = if (cle.isNotBlank()) "Clé SSH générée — copie la clé publique dans GitHub › Settings › SSH keys."
+                statusMessage = if (cle.isNotBlank()) sm(R.string.statut_cle_ssh_generee)
                 else messageGitSimple(res)
                 sshOccupe = false
             }
@@ -5107,7 +5113,7 @@ done; } 2>&1 | head -c 50000
             var page = doc.startPage(android.graphics.pdf.PdfDocument.PageInfo.Builder(pageW, pageH, pageIdx).create())
             var canvas = page.canvas
             var y = margin + 12f
-            canvas.drawText("Conversation ZAgent", margin, y, titlePaint)
+            canvas.drawText(sm(R.string.pdf_conversation), margin, y, titlePaint)
             y += lineHeight * 1.6f
             for ((isTitle, line) in lines) {
                 if (y > pageH - margin) {
