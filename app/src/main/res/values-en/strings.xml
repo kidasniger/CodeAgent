@@ -442,6 +442,27 @@
     <string name="tool_git_status">Git status…</string>
     <string name="tool_github_actions">Checking GitHub Actions runs…</string>
     <string name="tool_github_pr">Creating pull request “%1$s”…</string>
+    <!-- Session 15 — full GitHub control -->
+    <string name="tool_github_user">Checking GitHub token…</string>
+    <string name="tool_github_repos">Listing GitHub repositories…</string>
+    <string name="tool_github_repo_create">Creating repository “%1$s”…</string>
+    <string name="tool_github_file_read">Reading %1$s from GitHub…</string>
+    <string name="tool_github_file_write">Writing %1$s to GitHub…</string>
+    <string name="tool_github_file_delete">Deleting %1$s on GitHub…</string>
+    <string name="tool_github_branches">Listing GitHub branches…</string>
+    <string name="tool_github_branch_create">Creating branch “%1$s”…</string>
+    <string name="tool_github_issues">Listing issues…</string>
+    <string name="tool_github_issue_create">Creating issue “%1$s”…</string>
+    <string name="tool_github_issue_comment">Commenting on issue #%1$s…</string>
+    <string name="tool_github_issue_state">Changing issue #%1$s state…</string>
+    <string name="tool_github_pulls">Listing pull requests…</string>
+    <string name="tool_github_pr_merge">Merging pull request #%1$s…</string>
+    <string name="tool_github_pr_close">Closing pull request #%1$s…</string>
+    <string name="tool_github_releases">Listing releases…</string>
+    <string name="tool_github_release_create">Creating release %1$s…</string>
+    <string name="tool_github_gist">Creating gist…</string>
+    <string name="tool_github_search">GitHub search “%1$s”…</string>
+    <string name="tool_github_dispatch">Dispatching workflow “%1$s”…</string>
     <string name="tool_lint_code">Lint / formatting…</string>
     <string name="tool_list_dir">Reading folder %1$s…</string>
     <string name="tool_make_dir">Creating folder %1$s…</string>

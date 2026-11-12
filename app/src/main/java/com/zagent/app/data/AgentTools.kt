@@ -574,6 +574,334 @@ object AgentTools {
                 })
             })
         })
+        // ── Plein contrôle GitHub (session 15) : 11 outils supplémentaires.
+        // Toujours le même contrat : le jeton chiffré est injecté par l'app au
+        // moment de l'exécution ; il n'apparaît JAMAIS dans les arguments, la
+        // conversation ni les journaux, et l'IA ne doit jamais le demander.
+        // Paramètre repo commun : « owner/repo » ou URL ; s'il est absent, le
+        // remote origin du projet ouvert est utilisé.
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "github_user")
+                put("description", "Vérifie le jeton GitHub de l'utilisateur : renvoie le compte connecté (login, type, dépôts publics). Le jeton est géré en interne : ne le demande jamais.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {})
+                    put("required", buildJsonArray {})
+                })
+            })
+        })
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "github_repos")
+                put("description", "Liste les dépôts GitHub accessibles au jeton de l'utilisateur (triés par activité récente). Le jeton est géré en interne : ne le demande jamais.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {
+                        put("limit", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Nombre de dépôts à lister (1 à 30, défaut 10, optionnel)")
+                        })
+                        put("visibility", buildJsonObject {
+                            put("type", "string")
+                            put("description", "'all' (défaut), 'public' ou 'private' (optionnel)")
+                        })
+                    })
+                    put("required", buildJsonArray {})
+                })
+            })
+        })
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "github_repo_create")
+                put("description", "Crée un NOUVEAU dépôt sur le compte GitHub de l'utilisateur. Confirmé par l'utilisateur. Le jeton est géré en interne : ne le demande jamais.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {
+                        put("name", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Nom du dépôt (ex: mon-projet)")
+                        })
+                        put("description", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Description courte (optionnel)")
+                        })
+                        put("private", buildJsonObject {
+                            put("type", "string")
+                            put("description", "'true' (défaut, privé) ou 'false' (public, optionnel)")
+                        })
+                        put("auto_init", buildJsonObject {
+                            put("type", "string")
+                            put("description", "'true' (défaut) crée un README initial, 'false' pour un dépôt vide (optionnel)")
+                        })
+                    })
+                    put("required", buildJsonArray { add("name") })
+                })
+            })
+        })
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "github_file")
+                put("description", "Lit (action=read, défaut), crée/modifie (action=write) ou supprime (action=delete) un fichier DIRECTEMENT sur GitHub via l'API contents — chaque écriture est un commit. Ne remplace pas les fichiers locaux : à utiliser pour le dépôt distant (ex: correction rapide, fichier sur une autre branche). write et delete sont confirmés par l'utilisateur. Le jeton est géré en interne : ne le demande jamais.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {
+                        put("action", buildJsonObject {
+                            put("type", "string")
+                            put("description", "'read' (défaut), 'write' ou 'delete'")
+                        })
+                        put("repo", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Dépôt cible « owner/repo » (optionnel — sinon remote origin du projet)")
+                        })
+                        put("path", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Chemin du fichier dans le dépôt (ex: src/Main.kt)")
+                        })
+                        put("content", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Contenu COMPLET du fichier pour action=write")
+                        })
+                        put("message", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Message de commit pour write/delete (optionnel)")
+                        })
+                        put("branch", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Branche cible (optionnel — sinon branche par défaut)")
+                        })
+                        put("ref", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Branche/tag/commit à lire pour action=read (optionnel)")
+                        })
+                    })
+                    put("required", buildJsonArray { add("path") })
+                })
+            })
+        })
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "github_branch")
+                put("description", "Liste (action=list, défaut) les branches du dépôt distant, ou crée (action=create) une branche depuis une référence. create est confirmé par l'utilisateur. Le jeton est géré en interne : ne le demande jamais.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {
+                        put("action", buildJsonObject {
+                            put("type", "string")
+                            put("description", "'list' (défaut) ou 'create'")
+                        })
+                        put("repo", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Dépôt cible « owner/repo » (optionnel — sinon remote origin)")
+                        })
+                        put("name", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Nom de la branche à créer (pour action=create)")
+                        })
+                        put("from", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Branche source (optionnel — sinon branche par défaut)")
+                        })
+                    })
+                    put("required", buildJsonArray {})
+                })
+            })
+        })
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "github_issues")
+                put("description", "Issues GitHub : liste (action=list, défaut), crée (action=create), commente (action=comment), ferme (action=close) ou rouvre (action=reopen). Toute écriture est confirmée par l'utilisateur. Le jeton est géré en interne : ne le demande jamais.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {
+                        put("action", buildJsonObject {
+                            put("type", "string")
+                            put("description", "'list', 'create', 'comment', 'close' ou 'reopen'")
+                        })
+                        put("repo", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Dépôt cible « owner/repo » (optionnel — sinon remote origin)")
+                        })
+                        put("number", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Numéro de l'issue (pour comment/close/reopen)")
+                        })
+                        put("title", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Titre (pour action=create)")
+                        })
+                        put("body", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Corps de l'issue ou texte du commentaire")
+                        })
+                        put("labels", buildJsonObject {
+                            put("type", "array")
+                            put("description", "Étiquettes à poser à la création (optionnel)")
+                            put("items", buildJsonObject { put("type", "string") })
+                        })
+                        put("state", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Filtre pour action=list : 'open' (défaut), 'closed' ou 'all'")
+                        })
+                    })
+                    put("required", buildJsonArray {})
+                })
+            })
+        })
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "github_pulls")
+                put("description", "Pull requests GitHub : liste (action=list, défaut), fusionne (action=merge, méthode merge/squash/rebase) ou ferme (action=close). merge et close sont confirmés par l'utilisateur. Le jeton est géré en interne : ne le demande jamais.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {
+                        put("action", buildJsonObject {
+                            put("type", "string")
+                            put("description", "'list', 'merge' ou 'close'")
+                        })
+                        put("repo", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Dépôt cible « owner/repo » (optionnel — sinon remote origin)")
+                        })
+                        put("number", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Numéro de la pull request (pour merge/close)")
+                        })
+                        put("method", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Méthode de fusion pour action=merge : 'merge' (défaut), 'squash' ou 'rebase'")
+                        })
+                        put("state", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Filtre pour action=list : 'open' (défaut), 'closed' ou 'all'")
+                        })
+                    })
+                    put("required", buildJsonArray {})
+                })
+            })
+        })
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "github_releases")
+                put("description", "Releases GitHub : liste (action=list, défaut) ou crée (action=create, avec tag) une release. create est confirmé par l'utilisateur. Le jeton est géré en interne : ne le demande jamais.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {
+                        put("action", buildJsonObject {
+                            put("type", "string")
+                            put("description", "'list' (défaut) ou 'create'")
+                        })
+                        put("repo", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Dépôt cible « owner/repo » (optionnel — sinon remote origin)")
+                        })
+                        put("tag_name", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Tag de la release (pour action=create, ex: v1.2.0)")
+                        })
+                        put("name", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Titre de la release (optionnel — sinon le tag)")
+                        })
+                        put("body", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Notes de version (optionnel)")
+                        })
+                    })
+                    put("required", buildJsonArray {})
+                })
+            })
+        })
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "github_gist")
+                put("description", "Crée un gist GitHub (extrait de code partageable, secret par défaut). Confirmé par l'utilisateur. Le jeton est géré en interne : ne le demande jamais.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {
+                        put("content", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Contenu du gist")
+                        })
+                        put("filename", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Nom du fichier (optionnel, défaut zagent.txt)")
+                        })
+                        put("description", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Description du gist (optionnel)")
+                        })
+                        put("public", buildJsonObject {
+                            put("type", "string")
+                            put("description", "'true' pour un gist public, 'false' (défaut) pour un gist secret")
+                        })
+                    })
+                    put("required", buildJsonArray { add("content") })
+                })
+            })
+        })
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "github_search")
+                put("description", "Recherche GitHub : dépôts (type=repositories, défaut), issues (type=issues) ou code (type=code). Le jeton est géré en interne : ne le demande jamais.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {
+                        put("query", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Requête de recherche (syntaxe GitHub, ex: lang:kotlin etoile)")
+                        })
+                        put("type", buildJsonObject {
+                            put("type", "string")
+                            put("description", "'repositories' (défaut), 'issues' ou 'code'")
+                        })
+                        put("limit", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Nombre de résultats (1 à 20, défaut 10, optionnel)")
+                        })
+                    })
+                    put("required", buildJsonArray { add("query") })
+                })
+            })
+        })
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "github_dispatch")
+                put("description", "Déclenche un workflow GitHub Actions (workflow_dispatch) sur une référence (branche/tag). Confirmé par l'utilisateur ; le workflow doit déclarer workflow_dispatch. Le jeton est géré en interne : ne le demande jamais.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {
+                        put("workflow", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Nom de fichier du workflow (ex: ci.yml) ou son identifiant")
+                        })
+                        put("ref", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Branche ou tag sur lequel lancer le workflow")
+                        })
+                        put("repo", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Dépôt cible « owner/repo » (optionnel — sinon remote origin)")
+                        })
+                    })
+                    put("required", buildJsonArray {
+                        add("workflow")
+                        add("ref")
+                    })
+                })
+            })
+        })
         // ── feat-033/034 : run_tests et lint_code ───────────────────────────
         add(buildJsonObject {
             put("type", "function")
@@ -672,7 +1000,12 @@ object AgentTools {
         "git_commit", "pkg_install", "start_dev_server", "stop_dev_server", "dev_server_logs",
         "project_memory", "update_todos", "ask_user",
         // Session 12 — GitHub via le jeton chiffré (jamais exposé à l'IA).
-        "github_actions", "github_pr"
+        "github_actions", "github_pr",
+        // Session 15 — plein contrôle GitHub (dépôts, fichiers distants,
+        // branches, issues, PR, releases, gists, recherche, workflows).
+        "github_user", "github_repos", "github_repo_create", "github_file",
+        "github_branch", "github_issues", "github_pulls", "github_releases",
+        "github_gist", "github_search", "github_dispatch"
     )
 
     /**

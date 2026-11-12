@@ -446,6 +446,27 @@
     <string name="tool_git_status">Statut Git…</string>
     <string name="tool_github_actions">Consultation des runs GitHub Actions…</string>
     <string name="tool_github_pr">Création de la pull request « %1$s »…</string>
+    <!-- Session 15 — plein contrôle GitHub -->
+    <string name="tool_github_user">Vérification du jeton GitHub…</string>
+    <string name="tool_github_repos">Liste des dépôts GitHub…</string>
+    <string name="tool_github_repo_create">Création du dépôt « %1$s »…</string>
+    <string name="tool_github_file_read">Lecture de %1$s sur GitHub…</string>
+    <string name="tool_github_file_write">Écriture de %1$s sur GitHub…</string>
+    <string name="tool_github_file_delete">Suppression de %1$s sur GitHub…</string>
+    <string name="tool_github_branches">Liste des branches GitHub…</string>
+    <string name="tool_github_branch_create">Création de la branche « %1$s »…</string>
+    <string name="tool_github_issues">Liste des issues…</string>
+    <string name="tool_github_issue_create">Création de l\'issue « %1$s »…</string>
+    <string name="tool_github_issue_comment">Commentaire sur l\'issue #%1$s…</string>
+    <string name="tool_github_issue_state">Changement d\'état de l\'issue #%1$s…</string>
+    <string name="tool_github_pulls">Liste des pull requests…</string>
+    <string name="tool_github_pr_merge">Fusion de la pull request #%1$s…</string>
+    <string name="tool_github_pr_close">Fermeture de la pull request #%1$s…</string>
+    <string name="tool_github_releases">Liste des releases…</string>
+    <string name="tool_github_release_create">Création de la release %1$s…</string>
+    <string name="tool_github_gist">Création du gist…</string>
+    <string name="tool_github_search">Recherche GitHub « %1$s »…</string>
+    <string name="tool_github_dispatch">Déclenchement du workflow « %1$s »…</string>
     <string name="tool_lint_code">Lint / formatage…</string>
     <string name="tool_list_dir">Lecture du dossier %1$s…</string>
     <string name="tool_make_dir">Création du dossier %1$s…</string>
