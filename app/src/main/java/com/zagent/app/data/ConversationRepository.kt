@@ -123,6 +123,51 @@ class ConversationRepository(context: Context) : ConversationRepositoryApi {
         )
     }
 
+    /**
+     * Session 12 — réconciliation index ↔ fichiers : supprime les entrées dont
+     * le fichier de messages a disparu (crash entre index et messages), importe
+     * les fichiers orphelis jamais indexés (métadonnées reconstruites), puis
+     * persiste l'index corrigé. Coût : simple listing de dossier, aucun contenu lu.
+     */
+    fun reconcilierIndex(): List<ConversationMeta> {
+        val index = loadIndex()
+        val valides = ArrayList<ConversationMeta>()
+        val idsVus = HashSet<String>()
+        index.forEach { meta ->
+            val fichier = File(dir, meta.id + ".json")
+            if (fichier.exists()) {
+                if (idsVus.add(meta.id)) valides += meta
+            }
+            // fichier absent : entrée fantôme (crash entre index et messages) — retirée
+        }
+        // Fichiers orphelis : des messages existent mais aucune entrée d'index.
+        val orphelins = dir.listFiles { f -> f.isFile && f.name.endsWith(".json") } ?: emptyArray()
+        orphelins.forEach { f ->
+            val nom = f.name.removeSuffix(".json")
+            if (nom == "index" || nom.endsWith(".todos") || nom.contains(".corrupt-") || nom.startsWith("sauvegarde-pre-migration")) return@forEach
+            if (idsVus.contains(nom)) return@forEach
+            val msgs = loadMessages(nom)
+            if (msgs.isEmpty()) return@forEach
+            val premier = msgs.firstOrNull { it.role == "user" }?.content.orEmpty()
+            val dernierVisible = msgs.lastOrNull { it.role == "assistant" }?.content
+                ?: msgs.lastOrNull()?.content.orEmpty()
+            if (idsVus.add(nom)) {
+                valides += ConversationMeta(
+                    id = nom,
+                    title = autoTitle(premier),
+                    preview = autoPreview(dernierVisible),
+                    updatedAt = f.lastModified(),
+                    messageCount = msgs.size,
+                    pinned = false
+                )
+            }
+        }
+        if (valides.size != index.size) saveIndex(valides)
+        return valides.sortedWith(
+            compareByDescending<ConversationMeta> { it.pinned }.thenByDescending { it.updatedAt }
+        )
+    }
+
     override fun saveIndex(list: List<ConversationMeta>) {
         runCatching {
             indexFile.writeText(json.encodeToString(ListSerializer(ConversationMeta.serializer()), list))

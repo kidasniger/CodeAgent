@@ -532,6 +532,48 @@ object AgentTools {
                 })
             })
         })
+        // ── Session 12 : outils GitHub — le jeton chiffré de l'utilisateur est
+        // injecté par l'app au moment de l'exécution ; il n'apparaît JAMAIS dans
+        // les arguments, la conversation ni les journaux. L'IA ne doit jamais le
+        // demander ni demander de le coller dans un message.
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "github_actions")
+                put("description", "Liste les derniers runs GitHub Actions du dépôt (statut, branche, conclusion). Le jeton GitHub de l'utilisateur est utilisé automatiquement en interne : ne le demande jamais et ne le fais pas saisir.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {
+                        put("limit", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Nombre de runs à lister (1 à 10, défaut 5, optionnel)")
+                        })
+                    })
+                    put("required", buildJsonArray {})
+                })
+            })
+        })
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "github_pr")
+                put("description", "Crée une pull request de la branche courante vers la branche par défaut du dépôt GitHub. Le jeton est géré en interne : ne le demande jamais. Confirmé par l'utilisateur.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {
+                        put("title", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Titre de la pull request")
+                        })
+                        put("body", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Description (résumé des changements, optionnel)")
+                        })
+                    })
+                    put("required", buildJsonArray { add("title") })
+                })
+            })
+        })
         // ── feat-033/034 : run_tests et lint_code ───────────────────────────
         add(buildJsonObject {
             put("type", "function")
@@ -628,7 +670,9 @@ object AgentTools {
         "write_file", "edit_file", "apply_patch", "make_dir", "move_file", "copy_file",
         "delete_file", "run_command", "run_tests", "lint_code", "git_status", "git_diff",
         "git_commit", "pkg_install", "start_dev_server", "stop_dev_server", "dev_server_logs",
-        "project_memory", "update_todos", "ask_user"
+        "project_memory", "update_todos", "ask_user",
+        // Session 12 — GitHub via le jeton chiffré (jamais exposé à l'IA).
+        "github_actions", "github_pr"
     )
 
     /**

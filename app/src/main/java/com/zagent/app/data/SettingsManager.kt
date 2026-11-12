@@ -146,6 +146,21 @@ class SettingsManager(context: Context) {
         get() = prefs.getStringSet(KEY_MODELES_FAVORIS, emptySet()) ?: emptySet()
         set(value) = prefs.edit().putStringSet(KEY_MODELES_FAVORIS, value).apply()
 
+    /**
+     * Session 12 — modèles détectés par clé : pour chaque fournisseur (id), la
+     * liste des modèles renvoyée par son endpoint /models. Persistée en JSON.
+     */
+    var modelesDetectes: Map<String, List<String>>
+        get() = runCatching {
+            val brut = prefs.getString(KEY_MODELES_DETECTES, "") ?: ""
+            if (brut.isBlank()) emptyMap()
+            else prefJson.decodeFromString(modelesDetectesSerializer, brut)
+        }.getOrDefault(emptyMap())
+        set(value) = prefs.edit().putString(
+            KEY_MODELES_DETECTES,
+            prefJson.encodeToString(modelesDetectesSerializer, value)
+        ).apply()
+
     var model: String
         get() = prefs.getString(KEY_MODEL, "glm-4.5-flash") ?: "glm-4.5-flash"
         set(value) = prefs.edit().putString(KEY_MODEL, value).apply()
@@ -648,6 +663,9 @@ class SettingsManager(context: Context) {
     }
 
     private val instrSerializer = MapSerializer(String.serializer(), String.serializer())
+    /** Session 12 — sérialiseur Map<id fournisseur, liste de modèles détectés>. */
+    private val modelesDetectesSerializer =
+        MapSerializer(String.serializer(), ListSerializer(String.serializer()))
 
     /** Instructions personnalisées par projet (nom du dossier → texte), MA63. */
     private fun loadProjectInstructions(): Map<String, String> = runCatching {
@@ -843,6 +861,7 @@ class SettingsManager(context: Context) {
         private const val KEY_API_KEY = "api_key"
         private const val KEY_FOURNISSEURS = "fournisseurs_json"
         private const val KEY_MODELES_FAVORIS = "modeles_favoris"
+        private const val KEY_MODELES_DETECTES = "modeles_detectes"
         private const val KEY_MODEL = "model"
         private const val KEY_BASE_URL = "base_url"
         private const val KEY_AUTO_MODE = "auto_mode"

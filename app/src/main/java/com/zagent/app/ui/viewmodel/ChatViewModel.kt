@@ -81,7 +81,12 @@ class ChatViewModel(
         private set
 
     fun refreshConversations() {
-        conversationList = conversationRepo.loadIndex()
+        // Session 12 — réconcilie index ↔ fichiers avant l'affichage : entrées
+        // fantômes retirées, fichiers orphelis importés (aucun contenu lu si tout est sain).
+        viewModelScope.launch(Dispatchers.IO) {
+            val reconcilie = conversationRepo.reconcilierIndex()
+            withContext(Dispatchers.Main) { conversationList = reconcilie }
+        }
     }
 
     internal fun setConversationList(list: List<ConversationMeta>) {

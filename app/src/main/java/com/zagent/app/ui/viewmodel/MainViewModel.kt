@@ -335,6 +335,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var resultatsTestConnexion by mutableStateOf<Map<String, String>>(emptyMap())
     var testsConnexionEnCours by mutableStateOf<Set<String>>(emptySet())
 
+    // ── Session 12 — modèles détectés par clé (endpoint /models de chaque fournisseur) ──
+    /** Pour chaque id de fournisseur : les modèles renvoyés par son endpoint /models. */
+    var modelesDetectes by mutableStateOf(settingsManager.modelesDetectes)
+        private set
+
+    /** Modèles détectés d'un fournisseur qui ne figurent pas déjà au catalogue statique. */
+    fun modelesDetectesSupplementaires(idFournisseur: String): List<String> {
+        val detectes = modelesDetectes[idFournisseur].orEmpty()
+        val baseUrl = fournisseurs.firstOrNull { it.id == idFournisseur }?.baseUrl
+        val connus = ModelCatalog.all.filter { it.baseUrl == baseUrl }.map { it.id }.toSet()
+        return detectes.filter { it !in connus }
+    }
+
+    /** Enregistre (et persiste) les modèles détectés d'un fournisseur. */
+    private fun enregistrerModelesDetectes(idFournisseur: String, modeles: List<String>) {
+        val suivant = modelesDetectes + (idFournisseur to modeles)
+        modelesDetectes = suivant
+        settingsManager.modelesDetectes = suivant
+    }
+
     /** MàJ 101 — teste un fournisseur en direct via son endpoint /models. */
     fun testerFournisseur(id: String) {
         val f = fournisseurs.firstOrNull { it.id == id } ?: return
@@ -345,8 +365,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 f.cle.isBlank() -> "Clé absente — saisis d'abord la clé du fournisseur."
                 else -> try {
                     val modeles = aiRepository.listerModeles(f.baseUrl, f.cle)
+                    // Session 12 — la liste détectée est mémorisée et alimente
+                    // les options de modèles (écran Modèles + sélecteur du chat).
                     if (modeles.isEmpty()) "Connecté — le serveur ne liste aucun modèle."
-                    else "Connecté — " + modeles.size + " modèles disponibles."
+                    else {
+                        enregistrerModelesDetectes(f.id, modeles)
+                        "Connecté — " + modeles.size + " modèles détectés et intégrés aux options."
+                    }
                 } catch (e: Exception) {
                     // corr-043 : message explicite sur une erreur TLS (aucun
                     // TrustManager permissif n'existe dans le code, vérifié).
@@ -900,8 +925,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /** Liste conversationnelle filtrée pour les sélecteurs (favoris en tête). */
-    fun modelesConversationnels(capacite: Capacite?): List<com.zagent.app.data.ModelInfo> =
-        ModelCatalog.conversationnels(capacite, modelesFavoris)
+    fun modelesConversationnels(capacite: Capacite?): List<com.zagent.app.data.ModelInfo> {
+        val base = ModelCatalog.conversationnels(capacite, modelesFavoris)
+        // Session 12 — ajoute les modèles détectés via la clé du fournisseur actif
+        // (absents du catalogue statique) en fin de liste, sans doublon.
+        val fournisseurActif = ModelCatalog.fournisseurPourModele(effectiveModel, fournisseurs)
+            ?: fournisseurs.firstOrNull { it.cle.isNotBlank() && it.actif } ?: return base
+        val idsConnus = base.map { it.id }.toSet()
+        val supplementaires = modelesDetectesSupplementaires(fournisseurActif.id)
+            .filter { it !in idsConnus }
+            .take(12)
+            .map { id ->
+                com.zagent.app.data.ModelInfo(
+                    id = id,
+                    label = id.substringAfterLast('/').ifEmpty { id },
+                    description = "Détecté via la clé du fournisseur " + fournisseurActif.nom,
+                    contextWindow = "—",
+                    speed = 2,
+                    recommended = false
+                )
+            }
+        return if (supplementaires.isEmpty()) base else base + supplementaires
+    }
 
     var promptTokens by mutableStateOf(0)
     var completionTokens by mutableStateOf(0)
@@ -3067,6 +3112,9 @@ done; } 2>&1 | head -c 50000
             "start_dev_server" -> "Démarrage du serveur de développement…"
             "stop_dev_server" -> "Arrêt du serveur de développement…"
             "ask_user" -> "En attente de ta réponse…"
+            // Session 12 — outils GitHub (jeton injecté côté app, jamais montré).
+            "github_actions" -> "Consultation des runs GitHub Actions…"
+            "github_pr" -> "Création de la pull request « " + arg("title").take(50) + " »…"
             // feat-026..041 — descriptions des nouveaux outils.
             "find_files" -> "Recherche de fichiers « " + arg("pattern").take(40) + " »…"
             "file_info" -> "Infos de " + arg("path") + "…"
@@ -3557,6 +3605,60 @@ done; } 2>&1 | head -c 50000
             val answers = waitForAsk(tc.id, questions)
             return answers
                 ?: "L'utilisateur a ignoré les questions : continue avec des choix raisonnables par défaut."
+        }
+        // ── Session 12 : outils GitHub — le jeton chiffré est injecté ici, côté
+        // app. Il ne figure ni dans les arguments de l'IA, ni dans le résultat
+        // renvoyé au modèle, ni dans les journaux : l'IA peut AGIR sur GitHub
+        // sans jamais connaître le jeton.
+        if (tc.name == "github_actions" || tc.name == "github_pr") {
+            val jeton = settingsManager.jetonGitHub
+            if (jeton.isBlank()) {
+                return "Erreur: aucun jeton GitHub enregistré — l'utilisateur doit l'ajouter dans Réglages › GitHub (il n'est jamais transmis à l'IA)."
+            }
+            val t0GitHub = System.currentTimeMillis()
+            val oGitHub = AgentTools.argumentsLenients(tc.arguments)
+            fun argStr(cle: String): String = (oGitHub[cle]?.let { runCatching { it.jsonPrimitive.content }.getOrNull() }).orEmpty()
+            val resGitHub = if (tc.name == "github_actions") {
+                val limite = argStr("limit").toIntOrNull()?.coerceIn(1, 10) ?: 5
+                val remote = gitRemoteOrigin()
+                GitHubApi.actionsRuns(remote, jeton, limite).fold(
+                    onSuccess = { runs ->
+                        if (runs.isEmpty()) "Aucun run GitHub Actions pour ce dépôt."
+                        else runs.joinToString("\n") { r ->
+                            "run #" + r.runNumber + " " + r.name + " — branche " + r.branch +
+                                " : " + r.libelle + " (" + r.createdAt + ")"
+                        }
+                    },
+                    onFailure = { "Erreur: " + (it.message ?: "GitHub indisponible") }
+                )
+            } else {
+                val titre = argStr("title")
+                if (titre.isBlank()) {
+                    "Erreur: github_pr demande un titre (title)."
+                } else {
+                    val remote = gitRemoteOrigin()
+                    val branche = runCatching {
+                        terminal.runCommand("git rev-parse --abbrev-ref HEAD", workingFolderUriString, 10, silent = true) { }
+                            .lineSequence().firstOrNull()?.trim().orEmpty()
+                    }.getOrDefault("")
+                    if (branche.isBlank() || branche == "main" || branche == "master") {
+                        "Erreur: branche courante invalide pour une PR ($branche) — crée une branche et committe d'abord."
+                    } else {
+                        GitHubApi.createPullRequest(remote, jeton, branche, titre.take(120), argStr("body").take(2000)).fold(
+                            onSuccess = { "Pull request créée : $it" },
+                            onFailure = { "Erreur: " + (it.message ?: "création impossible") }
+                        )
+                    }
+                }
+            }
+            logActivity(
+                tc.name,
+                describeTool(tc.name, tc.arguments).removeSuffix("…"),
+                resGitHub.lineSequence().firstOrNull().orEmpty().take(160),
+                if (resGitHub.startsWith("Erreur")) ActivityStatus.ERREUR else ActivityStatus.OK,
+                System.currentTimeMillis() - t0GitHub
+            )
+            return resGitHub
         }
         val t0Tool = System.currentTimeMillis()
         val toolRes = AgentTools.executeTool(fileRepo, tc.name, tc.arguments)
@@ -4051,7 +4153,10 @@ done; } 2>&1 | head -c 50000
             preview = conversationRepo.autoPreview(lastVisible),
             updatedAt = System.currentTimeMillis(),
             messageCount = msgs.size,
-            pinned = existing?.pinned ?: false
+            pinned = existing?.pinned ?: false,
+            // Session 12 — préserve l'étiquette (feat-020) : chaque ré-archive
+            // écrasait le classement de l'utilisateur (incohérence d'historique).
+            etiquette = existing?.etiquette ?: ""
         )
         index.removeAll { it.id == id }
         index.add(meta)

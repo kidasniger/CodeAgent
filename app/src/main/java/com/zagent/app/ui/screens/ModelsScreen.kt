@@ -77,7 +77,11 @@ fun ModelsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         val fournisseurs = viewModel.fournisseurs
         fournisseurs.forEach { f ->
             val modelesFournisseur = ModelCatalog.all.filter { it.baseUrl == f.baseUrl }
-            if (modelesFournisseur.isEmpty()) return@forEach
+            // Session 12 — modèles détectés via la clé (endpoint /models) :
+            // affichés même quand le catalogue statique est vide (passerelles
+            // personnalisées), plus aucune passerelle valide n'est invisible.
+            val detectesSupp = viewModel.modelesDetectesSupplementaires(f.id)
+            if (modelesFournisseur.isEmpty() && detectesSupp.isEmpty()) return@forEach
             val conversationnels = modelesFournisseur.filter { !it.specialized }
             val specialises = modelesFournisseur.filter { it.specialized }
 
@@ -85,7 +89,33 @@ fun ModelsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 StatusCleFournisseur(f)
             }
-            Spacer(Modifier.height(8.dp))
+            // Session 12 — détection directe depuis l'écran Modèles : appelle
+            // l'endpoint /models du fournisseur et intègre la liste aux options.
+            val msgTest = viewModel.resultatsTestConnexion[f.id]
+            val testEnCours = f.id in viewModel.testsConnexionEnCours
+            Text(
+                if (testEnCours) "Détection en cours…"
+                else "Tester la clé et détecter les modèles",
+                style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
+                color = c.cyan,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
+                    .background(c.surface2)
+                    .clickable(enabled = !testEnCours && f.cle.isNotBlank()) {
+                        viewModel.testerFournisseur(f.id)
+                    }
+                    .padding(horizontal = 14.dp, vertical = 9.dp)
+            )
+            if (msgTest != null) {
+                Text(
+                    msgTest,
+                    style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp, lineHeight = 16.sp),
+                    color = c.text2
+                )
+                Spacer(Modifier.height(6.dp))
+            }
+            Spacer(Modifier.height(6.dp))
             conversationnels.forEach { m ->
                 ModelCard(
                     model = m,
@@ -96,6 +126,34 @@ fun ModelsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     onFavori = { viewModel.basculeFavori(m.id) }
                 )
                 Spacer(Modifier.height(10.dp))
+            }
+            // Session 12 — cartes des modèles détectés via la clé, sélectibles.
+            if (detectesSupp.isNotEmpty()) {
+                Text(
+                    "Détectés via la clé (" + detectesSupp.size + ") — endpoint /models de " + f.nom,
+                    style = TextStyle(fontFamily = Inter, fontSize = 12.sp, lineHeight = 17.sp),
+                    color = c.text2
+                )
+                Spacer(Modifier.height(8.dp))
+                detectesSupp.take(24).forEach { idDetecte ->
+                    val info = ModelInfo(
+                        id = idDetecte,
+                        label = idDetecte.substringAfterLast('/').ifEmpty { idDetecte },
+                        description = "Détecté via la clé — fenêtre de contexte et prix à confirmer",
+                        contextWindow = "—",
+                        speed = 2,
+                        recommended = false
+                    )
+                    ModelCard(
+                        model = info,
+                        selected = viewModel.effectiveModel == idDetecte,
+                        favori = idDetecte in viewModel.modelesFavoris,
+                        priceText = priceText,
+                        onSelect = { viewModel.selectGlobalModel(idDetecte) },
+                        onFavori = { viewModel.basculeFavori(idDetecte) }
+                    )
+                    Spacer(Modifier.height(10.dp))
+                }
             }
             if (specialises.isNotEmpty()) {
                 Text(
