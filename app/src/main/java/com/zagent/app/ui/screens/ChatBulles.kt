@@ -52,6 +52,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -67,6 +68,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.R
 import com.zagent.app.data.AiRepository
 import com.zagent.app.ui.components.common.AnsiText
 import com.zagent.app.ui.components.chat.CodeBlock
@@ -206,28 +208,28 @@ internal fun UserBubble(
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                 DropdownMenuItem(
-                    text = { Text("Copier le texte", color = c.text) },
+                    text = { Text(stringResource(R.string.action_copier_texte), color = c.text) },
                     onClick = { menuOpen = false; clipboard.setText(AnnotatedString(visibleText)) }
                 )
                 DropdownMenuItem(
-                    text = { Text("Sélectionner", color = c.text) },
+                    text = { Text(stringResource(R.string.action_selectionner), color = c.text) },
                     onClick = {
                         menuOpen = false
                         com.zagent.app.ui.components.common.ZEphemeral.show("Maintiens ton doigt sur le texte pour le sélectionner") // ui-091
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("Citer", color = c.text) },
+                    text = { Text(stringResource(R.string.action_citer), color = c.text) },
                     onClick = { menuOpen = false; onQuote(visibleText) }
                 )
                 if (onPin != null) {
                     DropdownMenuItem(
-                        text = { Text("Épingler", color = c.text) },
+                        text = { Text(stringResource(R.string.action_epingler), color = c.text) },
                         onClick = { menuOpen = false; onPin() } // feat-002
                     )
                 }
                 DropdownMenuItem(
-                    text = { Text("Supprimer", color = c.red) },
+                    text = { Text(stringResource(R.string.action_supprimer), color = c.red) },
                     onClick = { menuOpen = false; onDelete(messageIndex) }
                 )
             }
@@ -503,9 +505,9 @@ internal fun MessageActionsBar(
     var regenMenuOpen by remember { mutableStateOf(false) }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         if (!full) {
-            ActionIcon(Icons.Default.MoreHoriz, "Actions") { onToggle() }
+            ActionIcon(Icons.Default.MoreHoriz, stringResource(R.string.onglet_actions)) { onToggle() }
         } else {
-            ActionIcon(Icons.Default.ContentCopy, "Copier") { clipboard.setText(AnnotatedString(messageText)) }
+            ActionIcon(Icons.Default.ContentCopy, stringResource(R.string.action_copier)) { clipboard.setText(AnnotatedString(messageText)) }
             if (canRegenerate) {
                 // feat-004 — « Régénérer la réponse » avec choix d'un autre modèle :
                 // s'il existe des modèles alternatifs, le bouton ouvre un menu
@@ -520,12 +522,12 @@ internal fun MessageActionsBar(
                     }
                     DropdownMenu(expanded = regenMenuOpen, onDismissRequest = { regenMenuOpen = false }) {
                         DropdownMenuItem(
-                            text = { Text("Régénérer avec le modèle actuel", color = c.text) },
+                            text = { Text(stringResource(R.string.chat_regen_actuel), color = c.text) },
                             onClick = { regenMenuOpen = false; onRegenerate() }
                         )
                         modelesRegeneration.forEach { m ->
                             DropdownMenuItem(
-                                text = { Text("Régénérer avec " + m, color = c.text) },
+                                text = { Text(stringResource(R.string.chat_regen_avec, m), color = c.text) },
                                 onClick = { regenMenuOpen = false; onRegenerateWith(m) }
                             )
                         }
@@ -533,42 +535,42 @@ internal fun MessageActionsBar(
                 }
             }
             ActionIcon(
-                Icons.Default.ThumbUp, "Utile", // feat-017 — persisté via onEval
+                Icons.Default.ThumbUp, stringResource(R.string.content_utile), // feat-017 — persisté via onEval
                 tint = if (feedback == 1) c.green else c.text3
             ) { onEval(if (feedback == 1) 0 else 1) }
             ActionIcon(
-                Icons.Default.ThumbDown, "Pas utile",
+                Icons.Default.ThumbDown, stringResource(R.string.content_pas_utile),
                 tint = if (feedback == -1) c.red else c.text3
             ) { onEval(if (feedback == -1) 0 else -1) }
-            ActionIcon(Icons.Default.Share, "Partager") {
+            ActionIcon(Icons.Default.Share, stringResource(R.string.content_partager)) {
                 val send = Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"
                     putExtra(Intent.EXTRA_TEXT, messageText)
                 }
                 runCatching { ctx.startActivity(Intent.createChooser(send, "Partager le message")) }
             }
-            ActionIcon(Icons.Default.MoreHoriz, "Plus") { haptique.menu(); menuOpen = !menuOpen }
+            ActionIcon(Icons.Default.MoreHoriz, stringResource(R.string.content_plus)) { haptique.menu(); menuOpen = !menuOpen }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                DropdownMenuItem(text = { Text("Citer", color = c.text) }, onClick = { menuOpen = false; onQuote(messageText) })
+                DropdownMenuItem(text = { Text(stringResource(R.string.action_citer), color = c.text) }, onClick = { menuOpen = false; onQuote(messageText) })
                 DropdownMenuItem(
-                    text = { Text("Sélectionner", color = c.text) },
+                    text = { Text(stringResource(R.string.action_selectionner), color = c.text) },
                     onClick = {
                         menuOpen = false
                         com.zagent.app.ui.components.common.ZEphemeral.show("Maintiens ton doigt sur le texte pour le sélectionner") // ui-091
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("Épingler", color = c.text) },
+                    text = { Text(stringResource(R.string.action_epingler), color = c.text) },
                     onClick = { menuOpen = false; onPin() } // feat-002
                 )
                 // feat-023 — lecture à voix haute (synthèse vocale Android).
                 if (onSpeak != null) {
                     DropdownMenuItem(
-                        text = { Text("Lire à voix haute", color = c.text) },
+                        text = { Text(stringResource(R.string.action_lire_voix_haute), color = c.text) },
                         onClick = { menuOpen = false; onSpeak() }
                     )
                 }
-                DropdownMenuItem(text = { Text("Supprimer", color = c.red) }, onClick = { menuOpen = false; onDelete() })
+                DropdownMenuItem(text = { Text(stringResource(R.string.action_supprimer), color = c.red) }, onClick = { menuOpen = false; onDelete() })
             }
         }
         if (feedback != 0) {
@@ -642,7 +644,7 @@ internal fun CommandBlock(
                 )
                 ToolState.OK -> Icon(Icons.Default.Check, null, tint = c.green, modifier = Modifier.size(14.dp))
                 ToolState.ERROR -> Icon(Icons.Default.Close, null, tint = c.red, modifier = Modifier.size(14.dp))
-                ToolState.REFUSED -> Text("refusé", color = c.amber, fontSize = 12.sp)
+                ToolState.REFUSED -> Text(stringResource(R.string.chat_refuse), color = c.amber, fontSize = 12.sp)
             }
             if (result != null) {
                 Spacer(Modifier.width(4.dp))
@@ -679,7 +681,7 @@ internal fun CommandBlock(
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    "Arrêter",
+                    stringResource(R.string.action_arreter),
                     color = c.red,
                     style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold),
                     modifier = Modifier
@@ -734,7 +736,7 @@ internal fun CommandBlock(
         }
         if (canFix && result != null) {
             Text(
-                "Corriger avec l'IA",
+                stringResource(R.string.editor_corriger_ia),
                 color = c.cyan,
                 fontSize = 12.sp,
                 modifier = Modifier

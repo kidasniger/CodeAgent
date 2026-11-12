@@ -43,6 +43,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,6 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.R
 import com.zagent.app.ui.components.common.StatusBadge
 import com.zagent.app.ui.components.common.GlassCard
 import com.zagent.app.ui.components.chat.GitDiffView
@@ -88,8 +90,8 @@ fun GitScreen(viewModel: MainViewModel, onClose: () -> Unit) {
         viewModel.refreshGitBranches()
     }
 
-    OverlayScreen(title = "Git", subtitle = viewModel.folderLabel, onBack = onClose) {
-        OverlayTabs(listOf("Changements", "Historique", "Branches", "Actions"), tab) { tab = it }
+    OverlayScreen(title = stringResource(R.string.ui_git), subtitle = viewModel.folderLabel, onBack = onClose) {
+        OverlayTabs(listOf(R.string.onglet_changements, R.string.onglet_historique, R.string.onglet_branches, R.string.onglet_actions), tab) { tab = it }
         Spacer(Modifier.height(14.dp))
         when (tab) {
             0 -> ChangesTab(viewModel)
@@ -155,7 +157,7 @@ private fun ChangesTab(viewModel: MainViewModel) {
         Spacer(Modifier.height(6.dp))
         if (files.isEmpty()) {
             Text(
-                "Aucun changement : tout est propre.",
+                stringResource(R.string.git_tout_propre),
                 style = TextStyle(fontFamily = Inter, fontSize = 12.5.sp),
                 color = c.text2
             )
@@ -186,7 +188,7 @@ private fun ChangesTab(viewModel: MainViewModel) {
 
     GlassCard {
         Text(
-            "Message de commit",
+            stringResource(R.string.git_message_commit),
             style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
             color = c.text
         )
@@ -197,7 +199,7 @@ private fun ChangesTab(viewModel: MainViewModel) {
                 commitMsg = it
                 viewModel.gitCommitMessage = it
             },
-            placeholder = { Text("Ajoute un message clair et court…", style = TextStyle(fontFamily = Inter, fontSize = 13.sp), color = c.text3) },
+            placeholder = { Text(stringResource(R.string.git_message_hint), style = TextStyle(fontFamily = Inter, fontSize = 13.sp), color = c.text3) },
             textStyle = TextStyle(fontFamily = Inter, fontSize = 13.5.sp, color = c.text),
             minLines = 2,
             maxLines = 4,
@@ -294,7 +296,7 @@ private fun ChangesTab(viewModel: MainViewModel) {
     Spacer(Modifier.height(12.dp))
 
     Text(
-        "Diff complet",
+        stringResource(R.string.ui_diff_complet),
         style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
         color = c.text
     )
@@ -317,13 +319,13 @@ private fun CloneCard(viewModel: MainViewModel) {
     var busy by remember { mutableStateOf(false) }
     GlassCard {
         Text(
-            "Cloner un dépôt (feat-081)",
+            stringResource(R.string.git_cloner),
             style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
             color = c.text
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            "Colle une URL https://github.com/… ; un jeton peut être enregistré dans Réglages pour un dépôt privé.",
+            stringResource(R.string.git_clone_note),
             style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp, lineHeight = 15.sp),
             color = c.text2
         )
@@ -331,7 +333,7 @@ private fun CloneCard(viewModel: MainViewModel) {
         OutlinedTextField(
             value = url,
             onValueChange = { url = it },
-            placeholder = { Text("https://github.com/propriétaire/dépôt", style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp), color = c.text3) },
+            placeholder = { Text(stringResource(R.string.git_url_exemple), style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp), color = c.text3) },
             textStyle = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.5.sp, color = c.text),
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
@@ -365,7 +367,7 @@ private fun PrDialog(viewModel: MainViewModel, onDismiss: () -> Unit) {
         containerColor = c.surface,
         title = {
             Text(
-                "Créer une pull request",
+                stringResource(R.string.git_creer_pr),
                 style = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.SemiBold, fontSize = 18.sp),
                 color = c.text
             )
@@ -375,7 +377,7 @@ private fun PrDialog(viewModel: MainViewModel, onDismiss: () -> Unit) {
             // accessible même à grande police ou en paysage.
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text(
-                    "Depuis la branche courante vers la branche par défaut du dépôt. Nécessite un jeton GitHub (Réglages).",
+                    stringResource(R.string.git_pr_note),
                     style = TextStyle(fontFamily = Inter, fontSize = 12.sp, lineHeight = 16.sp),
                     color = c.text2
                 )
@@ -383,7 +385,7 @@ private fun PrDialog(viewModel: MainViewModel, onDismiss: () -> Unit) {
                 OutlinedTextField(
                     value = titre,
                     onValueChange = { titre = it },
-                    placeholder = { Text("Titre", color = c.text3, style = TextStyle(fontFamily = Inter, fontSize = 13.sp)) },
+                    placeholder = { Text(stringResource(R.string.ui_titre), color = c.text3, style = TextStyle(fontFamily = Inter, fontSize = 13.sp)) },
                     textStyle = TextStyle(fontFamily = Inter, fontSize = 13.5.sp, color = c.text),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -392,7 +394,7 @@ private fun PrDialog(viewModel: MainViewModel, onDismiss: () -> Unit) {
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    placeholder = { Text("Description (facultative)", color = c.text3, style = TextStyle(fontFamily = Inter, fontSize = 13.sp)) },
+                    placeholder = { Text(stringResource(R.string.git_description_facultative), color = c.text3, style = TextStyle(fontFamily = Inter, fontSize = 13.sp)) },
                     textStyle = TextStyle(fontFamily = Inter, fontSize = 13.sp, color = c.text),
                     minLines = 2,
                     maxLines = 4,
@@ -402,7 +404,7 @@ private fun PrDialog(viewModel: MainViewModel, onDismiss: () -> Unit) {
         },
         confirmButton = {
             Text(
-                "Créer",
+                stringResource(R.string.action_creer),
                 style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 14.sp),
                 color = if (titre.isNotBlank() && !viewModel.gitPrBusy) c.cyan else c.text3,
                 modifier = Modifier
@@ -415,7 +417,7 @@ private fun PrDialog(viewModel: MainViewModel, onDismiss: () -> Unit) {
         },
         dismissButton = {
             Text(
-                "Annuler",
+                stringResource(R.string.action_annuler),
                 style = TextStyle(fontFamily = Inter, fontSize = 14.sp),
                 color = c.text2,
                 modifier = Modifier
@@ -525,7 +527,7 @@ private fun BranchesTab(viewModel: MainViewModel) {
                 Spacer(Modifier.width(10.dp))
                 MonoLine(b.name, if (b.current) c.cyan else c.text, Modifier.weight(1f))
                 if (b.current) {
-                    Icon(Icons.Default.Check, "Branche actuelle", tint = c.cyan, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Check, stringResource(R.string.git_branche_actuelle), tint = c.cyan, modifier = Modifier.size(16.dp))
                 } else {
                     // feat-084 : suppression de branche (long appui = trop discret,
                     // icône visible au bout de la ligne ; la principale est refusée côté VM).
@@ -546,7 +548,7 @@ private fun BranchesTab(viewModel: MainViewModel) {
     // feat-084 : créer une branche et basculer dessus
     GlassCard {
         Text(
-            "Nouvelle branche",
+            stringResource(R.string.git_nouvelle_branche),
             style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
             color = c.text
         )
@@ -575,7 +577,7 @@ private fun BranchesTab(viewModel: MainViewModel) {
                     }
                     .padding(10.dp)
             ) {
-                Icon(Icons.Default.Add, "Créer la branche", tint = c.cyan, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.Add, stringResource(R.string.git_creer_branche), tint = c.cyan, modifier = Modifier.size(18.dp))
             }
         }
     }
@@ -585,7 +587,7 @@ private fun BranchesTab(viewModel: MainViewModel) {
             CircularProgressIndicator(modifier = Modifier.size(14.dp), color = c.cyan, strokeWidth = 1.6.dp)
             Spacer(Modifier.width(8.dp))
             Text(
-                "Bascule en cours…",
+                stringResource(R.string.chat_bascule),
                 style = TextStyle(fontFamily = Inter, fontSize = 12.sp),
                 color = c.text2
             )
@@ -593,7 +595,7 @@ private fun BranchesTab(viewModel: MainViewModel) {
     }
     Spacer(Modifier.height(6.dp))
     Text(
-        "Touche une branche pour basculer dessus (les changements non commités doivent être compatibles). L'icône poubelle supprime une branche locale.",
+        stringResource(R.string.git_branches_note),
         style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp, lineHeight = 16.sp),
         color = c.text3
     )
@@ -665,14 +667,14 @@ private fun ActionsTab(viewModel: MainViewModel) {
     val context = androidx.compose.ui.platform.LocalContext.current
     GlassCard {
         Text(
-            "Clés SSH (feat-058)",
+            stringResource(R.string.git_cles_ssh),
             style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
             color = c.text
         )
         Spacer(Modifier.height(6.dp))
         if (viewModel.sshClePublique.isBlank()) {
             Text(
-                "Aucune clé SSH. Génère une paire ed25519 puis ajoute la clé publique dans GitHub › Settings › SSH keys pour cloner/pousser sans jeton.",
+                stringResource(R.string.git_ssh_vide),
                 style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp, lineHeight = 15.sp),
                 color = c.text2
             )
@@ -689,7 +691,7 @@ private fun ActionsTab(viewModel: MainViewModel) {
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                "Copier la clé publique",
+                stringResource(R.string.action_copier_cle_publique),
                 style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
                 color = c.cyan,
                 modifier = Modifier

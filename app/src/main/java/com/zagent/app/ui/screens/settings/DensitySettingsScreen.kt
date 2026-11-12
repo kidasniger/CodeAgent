@@ -16,39 +16,41 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.zagent.app.R
 import com.zagent.app.ui.viewmodel.MainViewModel
 
 @Composable
 fun DensitySettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     var density by remember(viewModel.densityScale) { mutableFloatStateOf(viewModel.densityScale) }
     val presets = listOf(
-        0.85f to "Compacte",
-        1.00f to "Équilibrée",
-        1.10f to "Aérée"
+        0.85f to R.string.density_compacte,
+        1.00f to R.string.density_equilibree,
+        1.10f to R.string.density_aeree
     )
-    SettingsPageScaffold(title = "Densité", onBack = onBack) {
-        SettingsSectionLabel("MISE EN PAGE")
+    SettingsPageScaffold(title = stringResource(R.string.ui_densite), onBack = onBack) {
+        SettingsSectionLabel(stringResource(R.string.ui_mise_en_page))
         SettingsCard {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-                Text("Compacité de l’interface", color = MaterialTheme.colorScheme.onSurface)
+                Text(stringResource(R.string.ui_compacite_interface), color = MaterialTheme.colorScheme.onSurface)
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    presets.forEach { (value, label) ->
+                    presets.forEach { (value, labelRes) ->
                         FilterChip(
                             selected = kotlin.math.abs(density - value) < 0.015f,
                             onClick = {
                                 density = value
                                 viewModel.updateDensityScale(value)
                             },
-                            label = { Text(label) }
+                            label = { Text(stringResource(labelRes)) }
                         )
                     }
                 }
                 Spacer(Modifier.height(16.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Espacement", color = MaterialTheme.colorScheme.onSurface)
+                    Text(stringResource(R.string.ui_espacement), color = MaterialTheme.colorScheme.onSurface)
                     Text("${(density * 100).toInt()} %", color = MaterialTheme.colorScheme.primary)
                 }
                 Slider(
@@ -60,8 +62,8 @@ fun DensitySettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     valueRange = 0.80f..1.12f
                 )
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Dense", style = MaterialTheme.typography.labelSmall)
-                    Text("Confortable", style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(R.string.ui_dense), style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(R.string.ui_confortable), style = MaterialTheme.typography.labelSmall)
                 }
             }
         }

@@ -46,6 +46,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,6 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.R
 import com.zagent.app.data.ConversationMeta
 import com.zagent.app.ui.components.common.GradientButton
 import androidx.compose.material3.TextButton
@@ -138,7 +140,7 @@ fun HistoryDrawer(viewModel: MainViewModel, onClose: () -> Unit) {
                     Icon(Icons.Default.History, null, tint = c.cyan, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(10.dp))
                     Text(
-                        "Historique",
+                        stringResource(R.string.onglet_historique),
                         style = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.SemiBold, fontSize = 19.sp),
                         color = c.text,
                         modifier = Modifier.weight(1f)
@@ -199,7 +201,7 @@ fun HistoryDrawer(viewModel: MainViewModel, onClose: () -> Unit) {
                     }
                 }
                 Text(
-                    "Importer une conversation (.json)",
+                    stringResource(R.string.history_importer_conversation),
                     style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
                     color = c.cyan,
                     modifier = Modifier
@@ -350,11 +352,11 @@ private fun HistoryRow(viewModel: MainViewModel, meta: ConversationMeta, onClose
                 if (pinning) {
                     Icon(Icons.Default.PushPin, null, tint = c.cyan, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Épingler", style = TextStyle(fontFamily = Inter, fontSize = 12.sp), color = c.cyan)
+                    Text(stringResource(R.string.action_epingler), style = TextStyle(fontFamily = Inter, fontSize = 12.sp), color = c.cyan)
                 } else if (deleting) {
                     Icon(Icons.Default.DeleteOutline, null, tint = c.red, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Supprimer", style = TextStyle(fontFamily = Inter, fontSize = 12.sp), color = c.red)
+                    Text(stringResource(R.string.action_supprimer), style = TextStyle(fontFamily = Inter, fontSize = 12.sp), color = c.red)
                 }
             }
         }
@@ -452,11 +454,11 @@ private fun EtiquetteDialog(
     var valeur by remember { mutableStateOf(meta.etiquette) }
     GlassAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Dossier / étiquette", fontFamily = SpaceGrotesk, color = c.text) },
+        title = { Text(stringResource(R.string.history_dossier_etiquette), fontFamily = SpaceGrotesk, color = c.text) },
         text = {
             Column {
                 Text(
-                    "Classe la conversation (ex. « travail », « projet X »). Vide = sans dossier.",
+                    stringResource(R.string.history_classe_hint),
                     fontFamily = Inter, fontSize = 12.sp, color = c.text2
                 )
                 Spacer(Modifier.height(10.dp))
@@ -485,10 +487,10 @@ private fun EtiquetteDialog(
             TextButton(onClick = {
                 viewModel.setConversationEtiquette(meta.id, valeur)
                 onDismiss()
-            }) { Text("Enregistrer", color = c.cyan) }
+            }) { Text(stringResource(R.string.action_enregistrer), color = c.cyan) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Annuler", color = c.text2) }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_annuler), color = c.text2) }
         }
     )
 }

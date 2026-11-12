@@ -24,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import com.zagent.app.R
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.Zcolors
@@ -104,7 +106,7 @@ fun ImagePreviewScreen(viewModel: MainViewModel, onClose: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                Icons.Default.Close, "Fermer",
+                Icons.Default.Close, stringResource(R.string.action_fermer),
                 tint = Color.White,
                 modifier = Modifier
                     .size(34.dp)
@@ -122,7 +124,7 @@ fun ImagePreviewScreen(viewModel: MainViewModel, onClose: () -> Unit) {
                 modifier = Modifier.weight(1f)
             )
             Icon(
-                Icons.Default.OpenInNew, "Ouvrir avec une autre application",
+                Icons.Default.OpenInNew, stringResource(R.string.content_ouvrir_autre_app),
                 tint = Color.White,
                 modifier = Modifier
                     .size(34.dp)

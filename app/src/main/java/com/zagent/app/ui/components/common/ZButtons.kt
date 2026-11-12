@@ -25,6 +25,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.drawBehind
@@ -36,6 +37,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
+import com.zagent.app.R
 import com.zagent.app.ui.theme.LocalGlass
 import com.zagent.app.ui.theme.LocalHazeState
 import com.zagent.app.ui.theme.glassSurface
@@ -396,7 +398,7 @@ fun TypingPill(label: String, modifier: Modifier = Modifier, onStop: (() -> Unit
                     .padding(horizontal = 10.dp, vertical = 5.dp)
             ) {
                 Text(
-                    "Stop",
+                    stringResource(R.string.action_stop),
                     style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
                     color = c.red
                 )

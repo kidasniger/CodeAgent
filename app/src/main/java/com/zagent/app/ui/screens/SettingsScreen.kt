@@ -52,6 +52,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
+import com.zagent.app.R
 import com.zagent.app.ui.components.common.GlassAlertDialog
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -63,6 +64,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -201,9 +203,9 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            CircleIconButton(Icons.AutoMirrored.Filled.ArrowBack, "Retour", onClick = onDismiss)
+            CircleIconButton(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_retour), onClick = onDismiss)
             Spacer(Modifier.width(12.dp))
-            Text("Réglages", style = MaterialTheme.typography.headlineSmall, color = c.text)
+            Text(stringResource(R.string.ui_reglages), style = MaterialTheme.typography.headlineSmall, color = c.text)
         }
 
         // ux-081 — état du groupe « Avancé » (partagé avec la recherche).
@@ -248,7 +250,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                 OutlinedTextField(
                     value = requeteReglage,
                     onValueChange = { requeteReglage = it },
-                    placeholder = { Text("Rechercher un réglage…", style = TextStyle(fontFamily = Inter, fontSize = 13.5.sp), color = c.text3) },
+                    placeholder = { Text(stringResource(R.string.settings_recherche_hint), style = TextStyle(fontFamily = Inter, fontSize = 13.5.sp), color = c.text3) },
                     textStyle = TextStyle(fontFamily = Inter, fontSize = 13.5.sp, color = c.text),
                     singleLine = true,
                     colors = androidx.compose.material3.TextFieldDefaults.colors(
@@ -298,7 +300,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                 }
             } else {
                 Text(
-                    "Aucun réglage ne correspond.",
+                    stringResource(R.string.settings_aucun_resultat),
                     style = TextStyle(fontFamily = Inter, fontSize = 12.5.sp),
                     color = c.text2,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
@@ -308,7 +310,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
             OutlinedTextField(
                 value = requeteReglage,
                 onValueChange = { requeteReglage = it },
-                placeholder = { Text("Rechercher un réglage…", style = TextStyle(fontFamily = Inter, fontSize = 13.5.sp), color = c.text3) },
+                placeholder = { Text(stringResource(R.string.settings_recherche_hint), style = TextStyle(fontFamily = Inter, fontSize = 13.5.sp), color = c.text3) },
                 leadingIcon = { Icon(Icons.Default.Search, null, tint = c.text2, modifier = Modifier.size(18.dp)) },
                 textStyle = TextStyle(fontFamily = Inter, fontSize = 13.5.sp, color = c.text),
                 singleLine = true,
@@ -439,7 +441,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
             GlassCard(contentPadding = PaddingValues(0.dp)) {
                 ExpandableRow(
                     icon = { IconBadge(Icons.Default.AutoAwesome, c.violet) },
-                    title = "Modèle",
+                    title = stringResource(R.string.ui_modele),
                     subtitle = model,
                     subtitleMono = true
                 ) {
@@ -462,7 +464,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                     }
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "NVIDIA NIM et autres fournisseurs : Réglages › Modèles. La clé de chaque API part avec ses modèles (MàJ 101).",
+                        stringResource(R.string.settings_nvidia_note),
                         style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp, lineHeight = 16.sp),
                         color = c.text2
                     )
@@ -480,9 +482,9 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                         IconBadge(Icons.Default.Tune, c.violet)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("Mode Auto", style = MaterialTheme.typography.titleMedium, color = c.text)
+                            Text(stringResource(R.string.settings_mode_auto), style = MaterialTheme.typography.titleMedium, color = c.text)
                             Text(
-                                "Écrire les fichiers sans confirmation",
+                                stringResource(R.string.securite_ecrire_sans_confirmation),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = c.text2
                             )
@@ -507,9 +509,9 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                         IconBadge(Icons.Default.Tune, c.cyan)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("Mode intelligent", style = MaterialTheme.typography.titleMedium, color = c.text)
+                            Text(stringResource(R.string.settings_mode_intelligent), style = MaterialTheme.typography.titleMedium, color = c.text)
                             Text(
-                                "Nouveaux fichiers et petites modifications sans confirmation ; écrasement et suppression confirmés",
+                                stringResource(R.string.securite_nouveaux_note2),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = c.text2
                             )
@@ -538,7 +540,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                         IconBadge(Icons.Default.Folder, c.amber)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("Projet actif", style = MaterialTheme.typography.titleMedium, color = c.text)
+                            Text(stringResource(R.string.settings_projet_actif), style = MaterialTheme.typography.titleMedium, color = c.text)
                             Text(
                                 shortUri(viewModel.workingFolderUriString) ?: "Aucun projet sélectionné",
                                 style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.5.sp),
@@ -563,7 +565,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                         IconBadge(Icons.Default.AutoAwesome, c.violet)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("Instructions personnalisées", style = MaterialTheme.typography.titleMedium, color = c.text)
+                            Text(stringResource(R.string.settings_instructions_perso), style = MaterialTheme.typography.titleMedium, color = c.text)
                             Text(
                                 if (instr.isBlank()) "Règles ajoutées à chaque demande (en plus de AGENT.md du projet)"
                                 else instr.trim().lines().first().take(60),
@@ -591,7 +593,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                             },
                             placeholder = {
                                 Text(
-                                    "Ex : réponds en français, utilise TypeScript, pas de commentaires inutiles…",
+                                    stringResource(R.string.instructions_ex),
                                     color = c.text3,
                                     style = TextStyle(fontSize = 12.sp)
                                 )
@@ -618,9 +620,9 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                         IconBadge(Icons.Default.Tune, c.cyan)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("Limite d'étapes", style = MaterialTheme.typography.titleMedium, color = c.text)
+                            Text(stringResource(R.string.settings_limite_etapes), style = MaterialTheme.typography.titleMedium, color = c.text)
                             Text(
-                                "Étapes maximum par demande, puis bouton Continuer",
+                                stringResource(R.string.settings_limite_etapes_note),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = c.text2
                             )
@@ -677,7 +679,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                         IconBadge(Icons.Default.Tune, c.green)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("Prix des tokens", style = MaterialTheme.typography.titleMedium, color = c.text)
+                            Text(stringResource(R.string.settings_prix_tokens), style = MaterialTheme.typography.titleMedium, color = c.text)
                             Text(
                                 if (viewModel.priceInInput > 0f || viewModel.priceOutInput > 0f)
                                     "Entrée " + viewModel.priceInInput + " / sortie " + viewModel.priceOutInput + " par million (USD)"
@@ -714,7 +716,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                                     priceOut.replace(',', '.').toFloatOrNull() ?: 0f
                                 )
                             },
-                            label = { Text("Entrée, USD par million de tokens", color = c.text3, style = TextStyle(fontSize = 12.sp)) },
+                            label = { Text(stringResource(R.string.settings_prix_entree), color = c.text3, style = TextStyle(fontSize = 12.sp)) },
                             textStyle = TextStyle(fontFamily = JetBrainsMono, fontSize = 13.sp, color = c.text),
                             singleLine = true,
                             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
@@ -734,7 +736,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                                     it.replace(',', '.').toFloatOrNull() ?: 0f
                                 )
                             },
-                            label = { Text("Sortie, USD par million de tokens", color = c.text3, style = TextStyle(fontSize = 12.sp)) },
+                            label = { Text(stringResource(R.string.settings_prix_sortie), color = c.text3, style = TextStyle(fontSize = 12.sp)) },
                             textStyle = TextStyle(fontFamily = JetBrainsMono, fontSize = 13.sp, color = c.text),
                             singleLine = true,
                             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
@@ -775,13 +777,13 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
             Spacer(Modifier.height(8.dp))
             GlassCard {
                 Text(
-                    "Jeton d'accès personnel",
+                    stringResource(R.string.git_jeton_label),
                     style = MaterialTheme.typography.titleMedium,
                     color = c.text
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Utilisé pour cloner un dépôt privé, push/pull et créer des pull requests. Stocké chiffré, jamais envoyé aux modèles.",
+                    stringResource(R.string.git_jeton_note),
                     style = MaterialTheme.typography.bodySmall,
                     color = c.text2
                 )
@@ -821,20 +823,20 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
             Spacer(Modifier.height(8.dp))
             GlassCard {
                 Text(
-                    "Sauvegarde des réglages",
+                    stringResource(R.string.ui_sauvegarde_reglages),
                     style = MaterialTheme.typography.titleMedium,
                     color = c.text
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Exporte la configuration SANS les clés (modèle, apparence, agent, sécurité) pour la partager ou la restaurer.",
+                    stringResource(R.string.settings_export_note),
                     style = MaterialTheme.typography.bodySmall,
                     color = c.text2
                 )
                 Spacer(Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        "Exporter",
+                        stringResource(R.string.action_exporter),
                         style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
                         color = c.cyan,
                         modifier = Modifier
@@ -856,7 +858,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
                     Text(
-                        "Importer",
+                        stringResource(R.string.action_importer),
                         style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
                         color = c.violet,
                         modifier = Modifier
@@ -871,13 +873,13 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
 
                 Spacer(Modifier.height(14.dp))
                 Text(
-                    "Profils de réglages",
+                    stringResource(R.string.settings_profils),
                     style = MaterialTheme.typography.titleMedium,
                     color = c.text
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Enregistre le modèle et les réglages d'agent actuels sous un nom (ex. « travail ») pour les rappeler en un tap.",
+                    stringResource(R.string.settings_profils_note),
                     style = MaterialTheme.typography.bodySmall,
                     color = c.text2
                 )
@@ -900,7 +902,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                             Spacer(Modifier.width(8.dp))
                             Text(nom, style = MaterialTheme.typography.bodyMedium, color = c.text, modifier = Modifier.weight(1f))
                             Text(
-                                "Appliquer",
+                                stringResource(R.string.action_appliquer),
                                 style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
                                 color = c.cyan
                             )
@@ -917,7 +919,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                     Spacer(Modifier.height(6.dp))
                 }
                 Text(
-                    "Enregistrer le profil actuel…",
+                    stringResource(R.string.settings_profil_actuel),
                     style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
                     color = c.cyan,
                     modifier = Modifier
@@ -929,13 +931,13 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                 Spacer(Modifier.height(14.dp))
                 // feat-098 : budget quotidien
                 Text(
-                    "Budget quotidien (tokens)",
+                    stringResource(R.string.settings_budget_quotidien),
                     style = MaterialTheme.typography.titleMedium,
                     color = c.text
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Une alerte apparaît quand l'usage du jour dépasse ce plafond (0 = pas de budget).",
+                    stringResource(R.string.settings_budget_note),
                     style = MaterialTheme.typography.bodySmall,
                     color = c.text2
                 )
@@ -987,9 +989,9 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                     IconBadge(Icons.Default.Tune, c.violet)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Apparence", style = MaterialTheme.typography.titleMedium, color = c.text)
+                        Text(stringResource(R.string.ui_apparence), style = MaterialTheme.typography.titleMedium, color = c.text)
                         Text(
-                            "Thème, verre, police et densité",
+                            stringResource(R.string.settings_apparence_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = c.text2
                         )
@@ -1005,7 +1007,7 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
 
             Spacer(Modifier.height(24.dp))
             Text(
-                "ZAgent · fabriqué pour Z.ai",
+                stringResource(R.string.about_credit),
                 style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp),
                 color = c.text3,
                 modifier = Modifier
@@ -1021,11 +1023,11 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
         var jsonImport by remember { mutableStateOf("") }
         GlassAlertDialog(
             onDismissRequest = { showImportReglages = false },
-            title = { Text("Importer des réglages", fontFamily = SpaceGrotesk, color = c.text) },
+            title = { Text(stringResource(R.string.settings_importer_reglages), fontFamily = SpaceGrotesk, color = c.text) },
             text = {
                 Column {
                     Text(
-                        "Colle le JSON exporté depuis une autre installation. Les clés API éventuelles sont ignorées.",
+                        stringResource(R.string.settings_import_note),
                         fontFamily = Inter, fontSize = 12.sp, color = c.text2
                     )
                     Spacer(Modifier.height(10.dp))
@@ -1046,10 +1048,10 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                         viewModel.statusMessage = "Réglages importés ($n)."
                         showImportReglages = false
                     }
-                }) { Text("Importer", color = c.cyan) }
+                }) { Text(stringResource(R.string.action_importer), color = c.cyan) }
             },
             dismissButton = {
-                TextButton(onClick = { showImportReglages = false }) { Text("Annuler", color = c.text2) }
+                TextButton(onClick = { showImportReglages = false }) { Text(stringResource(R.string.action_annuler), color = c.text2) }
             }
         )
     }
@@ -1059,18 +1061,18 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
         var nomProfil by remember { mutableStateOf("") }
         GlassAlertDialog(
             onDismissRequest = { showProfilDialog = false },
-            title = { Text("Enregistrer un profil", fontFamily = SpaceGrotesk, color = c.text) },
+            title = { Text(stringResource(R.string.settings_enregistrer_profil), fontFamily = SpaceGrotesk, color = c.text) },
             text = {
                 Column {
                     Text(
-                        "Capture le modèle, le mode auto, le mode intelligent, le budget et les étapes actuels.",
+                        stringResource(R.string.settings_profil_capture),
                         fontFamily = Inter, fontSize = 12.sp, color = c.text2
                     )
                     Spacer(Modifier.height(10.dp))
                     OutlinedTextField(
                         value = nomProfil,
                         onValueChange = { nomProfil = it },
-                        placeholder = { Text("travail, économie…", color = c.text3, fontSize = 13.sp) },
+                        placeholder = { Text(stringResource(R.string.settings_profil_hint), color = c.text3, fontSize = 13.sp) },
                         textStyle = TextStyle(fontFamily = Inter, fontSize = 13.5.sp, color = c.text),
                         singleLine = true
                     )
@@ -1080,10 +1082,10 @@ fun SettingsScreen(viewModel: MainViewModel, onDismiss: () -> Unit, openAppearan
                 TextButton(onClick = {
                     viewModel.enregistrerProfil(nomProfil)
                     showProfilDialog = false
-                }) { Text("Enregistrer", color = c.cyan) }
+                }) { Text(stringResource(R.string.action_enregistrer), color = c.cyan) }
             },
             dismissButton = {
-                TextButton(onClick = { showProfilDialog = false }) { Text("Annuler", color = c.text2) }
+                TextButton(onClick = { showProfilDialog = false }) { Text(stringResource(R.string.action_annuler), color = c.text2) }
             }
         )
     }
@@ -1312,7 +1314,7 @@ private fun CarteFournisseur(
                             .padding(horizontal = 10.dp, vertical = 8.dp)
                     ) {
                         Text(
-                            "Supprimer",
+                            stringResource(R.string.action_supprimer),
                             style = TextStyle(fontFamily = Inter, fontSize = 12.5.sp),
                             color = c.red
                         )
@@ -1352,9 +1354,9 @@ private fun AjoutFournisseurSection(onAjouter: (String, String, String) -> Strin
             IconBadge(Icons.Default.Add, c.violet)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text("Ajouter un fournisseur", style = MaterialTheme.typography.titleMedium, color = c.text)
+                Text(stringResource(R.string.settings_ajouter_fournisseur), style = MaterialTheme.typography.titleMedium, color = c.text)
                 Text(
-                    "OpenRouter, Groq, Ollama local, LM Studio… tout endpoint au format OpenAI",
+                    stringResource(R.string.settings_endpoint_note),
                     style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp, lineHeight = 15.sp),
                     color = c.text2
                 )
@@ -1375,7 +1377,7 @@ private fun AjoutFournisseurSection(onAjouter: (String, String, String) -> Strin
             if (erreurUrl) {
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "HTTPS obligatoire (sauf localhost/192.168.x/10.x) : corrige l'URL ou utilise une passerelle locale.",
+                    stringResource(R.string.settings_https_note),
                     color = c.red,
                     style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp, lineHeight = 15.sp)
                 )
@@ -1418,7 +1420,7 @@ private fun AjoutFournisseurSection(onAjouter: (String, String, String) -> Strin
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    "Enregistrer ce fournisseur",
+                    stringResource(R.string.settings_enregistrer_fournisseur),
                     style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.5.sp),
                     color = if (valide) c.cyan else c.text3
                 )

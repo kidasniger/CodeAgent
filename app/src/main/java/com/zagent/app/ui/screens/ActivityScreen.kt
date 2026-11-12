@@ -3,6 +3,7 @@ package com.zagent.app.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.R
 import com.zagent.app.data.ActivityEvent
 import com.zagent.app.data.ActivityStatus
 import com.zagent.app.ui.components.common.GlassCard
@@ -77,13 +79,13 @@ fun ActivityScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         }
     }
 
-    OverlayScreen(title = "Activité de l'agent", subtitle = events.size.toString() + " événements", onBack = onBack) {
-        OverlayTabs(listOf("Tout", "Réussi", "Problème", "Annulé"), filter) { filter = it }
+    OverlayScreen(title = stringResource(R.string.ui_activite_agent), subtitle = events.size.toString() + " événements", onBack = onBack) {
+        OverlayTabs(listOf(R.string.onglet_tout, R.string.onglet_reussi, R.string.onglet_probleme, R.string.onglet_annule), filter) { filter = it }
         Spacer(Modifier.height(10.dp))
         // feat-099 — export du journal d'activité (JSON partageable).
         val ctx = LocalContext.current
         Text(
-            "Exporter le journal (.json)",
+            stringResource(R.string.journal_exporter),
             style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
             color = c.cyan,
             modifier = Modifier
@@ -209,7 +211,7 @@ fun ActivityScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                                     CircularProgressIndicator(modifier = Modifier.size(12.dp), color = c.cyan, strokeWidth = 1.6.dp)
                                 } else {
                                     Text(
-                                        "Annuler cette écriture",
+                                        stringResource(R.string.chat_annuler_ecriture),
                                         style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 11.5.sp),
                                         color = c.amber,
                                         modifier = Modifier

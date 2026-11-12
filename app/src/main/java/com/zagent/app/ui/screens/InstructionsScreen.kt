@@ -30,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,6 +38,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.R
 import com.zagent.app.ui.components.common.GlassCard
 import com.zagent.app.ui.components.common.OverlayScreen
 import com.zagent.app.ui.components.common.OverlaySection
@@ -82,7 +84,7 @@ fun InstructionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     var global by remember { mutableStateOf(viewModel.customInstructionsInput) }
     var project by remember { mutableStateOf(viewModel.projectInstructionsText()) }
 
-    OverlayScreen(title = "Instructions personnalisées", subtitle = "Ajoutées au prompt de l'agent", onBack = onBack) {
+    OverlayScreen(title = stringResource(R.string.settings_instructions_perso), subtitle = "Ajoutées au prompt de l'agent", onBack = onBack) {
         // ── Instructions globales ────────────────────────────────────────────
         OverlaySection("Globales — toutes les conversations")
         GlassCard {
@@ -111,7 +113,7 @@ fun InstructionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 Icon(Icons.Default.Folder, null, tint = c.violet, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    "Prioritaires sur le texte global pour ce projet.",
+                    stringResource(R.string.instructions_projet_note),
                     style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp),
                     color = c.text2
                 )
@@ -138,7 +140,7 @@ fun InstructionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         // ── Modèles prêts à l'emploi ─────────────────────────────────────────
         OverlaySection("Modèles prêts à l'emploi")
         Text(
-            "Un tap remplace le texte global par le modèle choisi.",
+            stringResource(R.string.instructions_modele_note),
             style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp),
             color = c.text3
         )

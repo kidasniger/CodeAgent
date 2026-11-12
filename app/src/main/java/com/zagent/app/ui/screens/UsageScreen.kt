@@ -30,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,6 +39,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.R
 import com.zagent.app.data.UsageEntry
 import com.zagent.app.data.UsageRepository
 import com.zagent.app.ui.components.common.GlassCard
@@ -107,8 +109,8 @@ fun UsageScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     }
     val maxShare = ((byModel.maxOfOrNull { it.second } ?: 1)).coerceAtLeast(1)
 
-    OverlayScreen(title = "Usage & coûts", subtitle = totalTokens.toString() + " tokens · " + days + " jours", onBack = onBack) {
-        OverlayTabs(listOf("7 jours", "30 jours"), range) { range = it; selectedBar = -1 }
+    OverlayScreen(title = stringResource(R.string.ui_usage_couts), subtitle = totalTokens.toString() + " tokens · " + days + " jours", onBack = onBack) {
+        OverlayTabs(listOf(R.string.onglet_7_jours, R.string.onglet_30_jours), range) { range = it; selectedBar = -1 }
         Spacer(Modifier.height(14.dp))
 
         if (inRange.isEmpty()) {
@@ -120,7 +122,7 @@ fun UsageScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         } else {
             GlassCard {
                 Text(
-                    "Tokens par jour",
+                    stringResource(R.string.settings_tokens_jour),
                     style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
                     color = c.text
                 )
@@ -143,7 +145,7 @@ fun UsageScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     )
                 } else {
                     Text(
-                        "Touche une barre pour le détail du jour.",
+                        stringResource(R.string.usage_touche_barre),
                         style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp),
                         color = c.text3
                     )
@@ -195,7 +197,7 @@ fun UsageScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.FileDownload, null, tint = c.cyan, modifier = Modifier.size(15.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Exporter CSV", style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp), color = c.text)
+                        Text(stringResource(R.string.action_exporter_csv), style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp), color = c.text)
                     }
                 }
                 Box(
@@ -214,7 +216,7 @@ fun UsageScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.DeleteOutline, null, tint = c.red, modifier = Modifier.size(15.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Effacer", style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp), color = c.text)
+                        Text(stringResource(R.string.action_effacer), style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp), color = c.text)
                     }
                 }
             }

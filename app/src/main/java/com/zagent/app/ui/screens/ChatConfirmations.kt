@@ -35,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.R
 import com.zagent.app.ui.components.common.GlassAlertDialog
 import com.zagent.app.ui.components.common.GlassModalBottomSheet
 import com.zagent.app.ui.components.chat.GitDiffView
@@ -77,11 +79,11 @@ internal fun ApplyCodeDialog(code: String, onApply: (String) -> Unit, onDismiss:
     var path by remember { mutableStateOf("") }
     GlassAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Appliquer au fichier", fontFamily = SpaceGrotesk, color = c.text) },
+        title = { Text(stringResource(R.string.chat_appliquer_fichier), fontFamily = SpaceGrotesk, color = c.text) },
         text = {
             Column(Modifier.fillMaxWidth()) {
                 Text(
-                    "Le contenu du bloc remplacera tout le fichier (le fichier est créé s'il n'existe pas). Chemin relatif au projet.",
+                    stringResource(R.string.chat_bloc_note),
                     style = TextStyle(fontFamily = Inter, fontSize = 12.5.sp),
                     color = c.text2
                 )
@@ -104,11 +106,11 @@ internal fun ApplyCodeDialog(code: String, onApply: (String) -> Unit, onDismiss:
         },
         confirmButton = {
             TextButton(enabled = path.isNotBlank(), onClick = { onApply(path.trim()) }) {
-                Text("Appliquer", color = if (path.isNotBlank()) c.cyan else c.text3)
+                Text(stringResource(R.string.action_appliquer), color = if (path.isNotBlank()) c.cyan else c.text3)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Annuler", color = c.text2) }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_annuler), color = c.text2) }
         }
     )
 }
@@ -147,12 +149,12 @@ internal fun CommandConfirmSheet(
                 Spacer(Modifier.width(14.dp))
                 Column {
                     Text(
-                        "Commande de l'agent",
+                        stringResource(R.string.securite_commande_agent),
                         style = TextStyle(fontFamily = Inter, fontSize = 12.sp, fontWeight = FontWeight.Medium),
                         color = c.text2
                     )
                     Text(
-                        "Exécuter cette commande ?",
+                        stringResource(R.string.chat_executer_commande_q),
                         style = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.SemiBold, fontSize = 20.sp),
                         color = c.text
                     )
@@ -162,7 +164,7 @@ internal fun CommandConfirmSheet(
             if (pending.command.contains("sudo", ignoreCase = true) || pending.command.contains("rm -rf", ignoreCase = true)) {
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    "COMMANDE SENSIBLE",
+                    stringResource(R.string.chat_commande_sensible),
                     color = c.red,
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.clip(RoundedCornerShape(50)).background(c.red.copy(alpha = 0.12f)).padding(horizontal = 10.dp, vertical = 6.dp)
@@ -234,7 +236,7 @@ internal fun CommandConfirmSheet(
             // ux-019 — quand plusieurs confirmations se suivent dans le même
             // tour, un seul tap passe le reste du tour en exécution automatique.
             Text(
-                "Tout autoriser pour ce tour",
+                stringResource(R.string.chat_tout_autoriser_tour),
                 style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
                 color = c.cyan,
                 modifier = Modifier
@@ -279,12 +281,12 @@ internal fun DeleteConfirmSheet(
                 Spacer(Modifier.width(14.dp))
                 Column {
                     Text(
-                        "Confirmation de suppression",
+                        stringResource(R.string.ui_confirmation_suppression),
                         style = TextStyle(fontFamily = Inter, fontSize = 12.sp, fontWeight = FontWeight.Medium),
                         color = c.text2
                     )
                     Text(
-                        "Supprimer cet élément ?",
+                        stringResource(R.string.ui_supprimer_cet_element_q),
                         style = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.SemiBold, fontSize = 20.sp),
                         color = c.text
                     )
@@ -311,7 +313,7 @@ internal fun DeleteConfirmSheet(
 
             Spacer(Modifier.height(10.dp))
             Text(
-                "L'agent demande à supprimer cet élément du projet. Cette action est définitive.",
+                stringResource(R.string.chat_agent_suppression_def),
                 style = MaterialTheme.typography.bodySmall,
                 color = c.text2
             )
@@ -370,12 +372,12 @@ internal fun WriteConfirmSheet(
                 Spacer(Modifier.width(14.dp))
                 Column {
                     Text(
-                        "Confirmation d'écriture",
+                        stringResource(R.string.ui_confirmation_ecriture),
                         style = TextStyle(fontFamily = Inter, fontSize = 12.sp, fontWeight = FontWeight.Medium),
                         color = c.text2
                     )
                     Text(
-                        "Autoriser cette écriture ?",
+                        stringResource(R.string.chat_autoriser_ecriture_q),
                         style = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.SemiBold, fontSize = 20.sp),
                         color = c.text
                     )
@@ -419,12 +421,12 @@ internal fun WriteConfirmSheet(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        "Toujours autoriser ce fichier",
+                        stringResource(R.string.chat_toujours_fichier),
                         style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 14.sp),
                         color = c.text
                     )
                     Text(
-                        "Les prochaines écritures de l'agent sur ce fichier seront automatiques.",
+                        stringResource(R.string.chat_ecritures_auto_fichier),
                         style = MaterialTheme.typography.bodySmall,
                         color = c.text2
                     )

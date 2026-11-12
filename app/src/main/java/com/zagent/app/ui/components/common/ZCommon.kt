@@ -25,6 +25,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.drawBehind
@@ -36,6 +37,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
+import com.zagent.app.R
 import com.zagent.app.ui.theme.LocalGlass
 import com.zagent.app.ui.theme.LocalHazeState
 import com.zagent.app.ui.theme.glassSurface
@@ -144,6 +146,7 @@ fun ZBreadcrumb(
                 ),
                 color = if (i == segments.lastIndex) c.text else c.cyan,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
                     .clickable(enabled = i < segments.lastIndex) { onSegmentClick(i) }
@@ -179,7 +182,7 @@ fun ZSliderRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(format(value), color = Zcolors.text2)
                 if (defaultValue != null && onReset != null && kotlin.math.abs(value - defaultValue) > 0.001f) {
-                    TextButton(onClick = onReset) { Text("Réinitialiser") }
+                    TextButton(onClick = onReset) { Text(stringResource(R.string.action_reinitialiser)) }
                 }
             }
         }

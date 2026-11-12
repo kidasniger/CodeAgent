@@ -40,6 +40,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Modifier
@@ -58,6 +59,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.R
 import com.zagent.app.data.TodoItem
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
@@ -271,7 +273,7 @@ internal fun TaskSummary(
                 Spacer(Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        "Voir le diff",
+                        stringResource(R.string.action_voir_diff),
                         color = c.cyan,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -283,7 +285,7 @@ internal fun TaskSummary(
                     )
                     if (hasUndo) {
                         Text(
-                            "Annuler les modifications",
+                            stringResource(R.string.editor_annuler_modifs),
                             color = c.amber,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,

@@ -46,6 +46,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.runtime.getValue
@@ -61,6 +62,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.R
 import com.zagent.app.ui.components.common.GlassAlertDialog
 import com.zagent.app.ui.components.common.CircleIconButton
 import com.zagent.app.data.HapticLevel
@@ -142,12 +144,12 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         "glass" -> GlassSettingsScreen(viewModel = viewModel, onBack = { destination = null })
         "font" -> FontSettingsScreen(viewModel, onBack = { destination = null })
         "density" -> DensitySettingsScreen(viewModel, onBack = { destination = null })
-        else -> SettingsPageScaffold(title = "Apparence", onBack = onBack) {
+        else -> SettingsPageScaffold(title = stringResource(R.string.ui_apparence), onBack = onBack) {
             if (showResetAppearance) {
                 GlassAlertDialog(
                     onDismissRequest = { showResetAppearance = false },
-                    title = { Text("Tout réinitialiser ?") },
-                    text = { Text("Tous les réglages d’apparence seront restaurés : thème, presets, accents, verre clair et sombre, OLED, couleurs système, rayons et horaires. Les clés API et les projets ne seront pas modifiés.") },
+                    title = { Text(stringResource(R.string.ui_tout_reinitialiser_q)) },
+                    text = { Text(stringResource(R.string.ui_reset_apparence_texte)) },
                     confirmButton = {
                         TextButton(onClick = {
                             viewModel.settingsManager.resetAppearance()
@@ -166,17 +168,17 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                             accentDarkHex = ""
                             accentHue = 0f
                             showResetAppearance = false
-                        }) { Text("Réinitialiser") }
+                        }) { Text(stringResource(R.string.action_reinitialiser)) }
                     },
-                    dismissButton = { TextButton(onClick = { showResetAppearance = false }) { Text("Annuler") } }
+                    dismissButton = { TextButton(onClick = { showResetAppearance = false }) { Text(stringResource(R.string.action_annuler)) } }
                 )
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 androidx.compose.material3.TextButton(onClick = { showResetAppearance = true }) {
-                    Text("Tout réinitialiser")
+                    Text(stringResource(R.string.ui_tout_reinitialiser))
                 }
             }
-            SettingsSectionLabel("STYLE")
+            SettingsSectionLabel(stringResource(R.string.ui_style))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -226,26 +228,26 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     FilterChip(
                         selected = true,
                         onClick = {},
-                        label = { Text("Perso") }
+                        label = { Text(stringResource(R.string.ui_perso)) }
                     )
                 }
             }
 
-            SettingsSectionLabel("TEINTE")
+            SettingsSectionLabel(stringResource(R.string.ui_teinte))
             SettingsCard {
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-                    Text("MODIFIER POUR", color = Zcolors.text3, style = MaterialTheme.typography.labelSmall, letterSpacing = 1.4.sp)
+                    Text(stringResource(R.string.ui_modifier_pour), color = Zcolors.text3, style = MaterialTheme.typography.labelSmall, letterSpacing = 1.4.sp)
                     Spacer(Modifier.height(8.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilterChip(
                             selected = !accentEditorDark,
                             onClick = { accentEditorDark = false; syncHueFromAccent() },
-                            label = { Text("Clair") }
+                            label = { Text(stringResource(R.string.ui_clair)) }
                         )
                         FilterChip(
                             selected = accentEditorDark,
                             onClick = { accentEditorDark = true; syncHueFromAccent() },
-                            label = { Text("Sombre") }
+                            label = { Text(stringResource(R.string.ui_sombre)) }
                         )
                     }
                     Spacer(Modifier.height(12.dp))
@@ -254,11 +256,11 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Couleur d'accent", color = Zcolors.text, style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.ui_couleur_accent), color = Zcolors.text, style = MaterialTheme.typography.titleMedium)
                         FilterChip(
                             selected = accentHex.isBlank(),
                             onClick = { selectAccent("") },
-                            label = { Text("Aucune") }
+                            label = { Text(stringResource(R.string.ui_aucune)) }
                         )
                     }
                     Text(
@@ -295,7 +297,7 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                         )
                     }
                     Spacer(Modifier.height(8.dp))
-                    Text("COULEURS RAPIDES", color = Zcolors.text3, style = MaterialTheme.typography.labelSmall, letterSpacing = 1.4.sp)
+                    Text(stringResource(R.string.ui_couleurs_rapides), color = Zcolors.text3, style = MaterialTheme.typography.labelSmall, letterSpacing = 1.4.sp)
                     Spacer(Modifier.height(10.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -333,45 +335,45 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 }
             }
 
-            SettingsSectionLabel("PERSONNALISATION")
+            SettingsSectionLabel(stringResource(R.string.ui_personnalisation))
             SettingsCard {
                 AppearanceNavigationRow(
                     icon = Icons.Default.Contrast,
-                    title = "Thème",
-                    subtitle = "Système, clair ou sombre",
+                    title = stringResource(R.string.ui_theme),
+                    subtitle = stringResource(R.string.theme_systeme_clair_sombre),
                     onClick = { destination = "theme" }
                 )
                 SettingsInsetDivider()
                 AppearanceNavigationRow(
                     icon = Icons.Default.Layers,
-                    title = "Verre",
-                    subtitle = "Matériau, couleur et effets",
+                    title = stringResource(R.string.ui_verre),
+                    subtitle = stringResource(R.string.glass_materiau_desc),
                     onClick = { destination = "glass" }
                 )
                 SettingsInsetDivider()
                 AppearanceNavigationRow(
                     icon = Icons.Default.FormatSize,
-                    title = "Police",
-                    subtitle = "Famille et taille du texte",
+                    title = stringResource(R.string.ui_police),
+                    subtitle = stringResource(R.string.ui_famille_taille),
                     onClick = { destination = "font" }
                 )
                 SettingsInsetDivider()
                 AppearanceNavigationRow(
                     icon = Icons.Default.DensityMedium,
-                    title = "Densité",
-                    subtitle = "Espacement et compacité",
+                    title = stringResource(R.string.ui_densite),
+                    subtitle = stringResource(R.string.ui_espacement_compacite),
                     onClick = { destination = "density" }
                 )
             }
 
             // MA72 : coupe les transitions de navigation (fondu + glissement).
             // MàJ 97 — échelle de texte de 85 % à 130 %, avec aperçu en direct.
-            SettingsSectionLabel("TAILLE DU TEXTE")
+            SettingsSectionLabel(stringResource(R.string.ui_taille_texte))
             SettingsCard {
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
                     var tailleLocale by remember(viewModel.fontScale) { mutableFloatStateOf(viewModel.fontScale) }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Échelle de l'interface", color = Zcolors.text, style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.ui_echelle_interface), color = Zcolors.text, style = MaterialTheme.typography.titleMedium)
                         Text("${(tailleLocale * 100).roundToInt()} %", color = Zcolors.cyan, style = MaterialTheme.typography.titleMedium)
                     }
                     Slider(
@@ -389,7 +391,7 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     }
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        "APERÇU",
+                        stringResource(R.string.ui_apercu),
                         style = MaterialTheme.typography.labelSmall,
                         color = Zcolors.text3,
                         letterSpacing = 1.4.sp
@@ -398,7 +400,7 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     // L'aperçu applique le même multiplicateur que scaledTypography :
                     // les sp restent ensuite multipliés par le fontScale du système.
                     Text(
-                        "L'agent lit le projet, propose un correctif et l'applique après ta confirmation.",
+                        stringResource(R.string.editor_fix_note),
                         style = MaterialTheme.typography.bodyLarge.copy(
                             fontSize = (16 * tailleLocale).sp,
                             lineHeight = (24 * tailleLocale).sp
@@ -407,7 +409,7 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "La taille choisie s'ajoute à celle d'Android (Paramètres › Écran › Taille de police).",
+                        stringResource(R.string.ui_font_note_android),
                         style = MaterialTheme.typography.bodySmall,
                         color = Zcolors.text2
                     )
@@ -416,13 +418,13 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
 
             // MàJ 100 — langue de l'interface (langue par application, repli
             // AppCompat pour API 26-32 ; réglage système natif à partir d'API 33).
-            SettingsSectionLabel("LANGUE")
+            SettingsSectionLabel(stringResource(R.string.ui_langue))
             SettingsCard {
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-                    Text("Langue de l'interface", color = Zcolors.text, style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.ui_langue_interface), color = Zcolors.text, style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        "« Système » suit la langue d'Android. Le changement s'applique immédiatement.",
+                        stringResource(R.string.ui_langue_note),
                         style = MaterialTheme.typography.bodySmall,
                         color = Zcolors.text2
                     )
@@ -449,7 +451,7 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 }
             }
 
-            SettingsSectionLabel("ANIMATIONS")
+            SettingsSectionLabel(stringResource(R.string.ui_animations))
             SettingsCard {
                 Row(
                     modifier = Modifier
@@ -469,9 +471,9 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     }
                     Spacer(Modifier.size(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Réduire les animations", style = MaterialTheme.typography.titleMedium, color = Zcolors.text)
+                        Text(stringResource(R.string.ui_reduire_animations), style = MaterialTheme.typography.titleMedium, color = Zcolors.text)
                         Spacer(Modifier.height(2.dp))
-                        Text("Transitions de navigation instantanées", style = MaterialTheme.typography.bodySmall, color = Zcolors.text2)
+                        Text(stringResource(R.string.ui_transitions_instant), style = MaterialTheme.typography.bodySmall, color = Zcolors.text2)
                     }
                     Switch(
                         checked = viewModel.reduceAnimations,
@@ -481,7 +483,7 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             }
 
             // MàJ 91 — retour haptique ciblé (menus, curseurs, envoi, fin de tâche).
-            SettingsSectionLabel("RETOUR HAPTIQUE")
+            SettingsSectionLabel(stringResource(R.string.ui_retour_haptique_lbl))
             SettingsCard {
                 Row(
                     modifier = Modifier
@@ -500,9 +502,9 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     }
                     Spacer(Modifier.size(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Retour haptique", style = MaterialTheme.typography.titleMedium, color = Zcolors.text)
+                        Text(stringResource(R.string.ui_retour_haptique), style = MaterialTheme.typography.titleMedium, color = Zcolors.text)
                         Spacer(Modifier.height(2.dp))
-                        Text("Menus, curseurs, envoi et fin de tâche", style = MaterialTheme.typography.bodySmall, color = Zcolors.text2)
+                        Text(stringResource(R.string.ui_haptique_detail), style = MaterialTheme.typography.bodySmall, color = Zcolors.text2)
                     }
                 }
                 Row(
@@ -524,7 +526,7 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             }
 
             // MA81 : l'éditeur garde un fond de code sombre, même en interface claire.
-            SettingsSectionLabel("ÉDITEUR")
+            SettingsSectionLabel(stringResource(R.string.ui_editeur_lbl))
             SettingsCard {
                 Row(
                     modifier = Modifier
@@ -544,10 +546,10 @@ fun AppearanceSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     }
                     Spacer(Modifier.size(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Code toujours sombre", style = MaterialTheme.typography.titleMedium, color = Zcolors.text)
+                        Text(stringResource(R.string.ui_code_toujours_sombre), style = MaterialTheme.typography.titleMedium, color = Zcolors.text)
                         Spacer(Modifier.height(2.dp))
                         Text(
-                            "L'éditeur garde son fond nuit et sa palette adaptée ; désactivé, le code suit le thème clair.",
+                            stringResource(R.string.ui_code_sombre_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = Zcolors.text2
                         )

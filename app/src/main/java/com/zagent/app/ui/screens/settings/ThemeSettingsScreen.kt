@@ -23,10 +23,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.zagent.app.R
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.ThemeMode
@@ -49,8 +51,8 @@ fun ThemeSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     var oled by remember { mutableStateOf(viewModel.oledBlack) }
     var dynamic by remember { mutableStateOf(viewModel.dynamicSystemColors) }
     var radius by remember { mutableStateOf(viewModel.cornerRadius) }
-    SettingsPageScaffold(title = "Thème", onBack = onBack) {
-        SettingsSectionLabel("MODE")
+    SettingsPageScaffold(title = stringResource(R.string.ui_theme), onBack = onBack) {
+        SettingsSectionLabel(stringResource(R.string.ui_mode_lbl))
         SettingsCard {
             ThemeMode.entries.forEachIndexed { index, mode ->
                 ThemeModeRow(
@@ -63,7 +65,7 @@ fun ThemeSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         }
         Spacer(Modifier.height(4.dp))
         if (viewModel.themeMode == ThemeMode.SCHEDULED) {
-            SettingsSectionLabel("HORAIRES")
+            SettingsSectionLabel(stringResource(R.string.ui_horaires))
             SettingsCard {
                 OutlinedTextField(
                     value = darkTime,
@@ -76,7 +78,7 @@ fun ThemeSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                             }
                         }
                     },
-                    label = { Text("Passage en sombre (HH:mm)") },
+                    label = { Text(stringResource(R.string.theme_sombre_heure)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -91,7 +93,7 @@ fun ThemeSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                             }
                         }
                     },
-                    label = { Text("Passage en clair (HH:mm)") },
+                    label = { Text(stringResource(R.string.theme_clair_heure)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -100,32 +102,32 @@ fun ThemeSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         // ui-019 — aperçu du thème en direct : les couleurs de Zcolors sont
         // animées (tween 300) dans ZAgentTheme, donc tout changement ci-dessus
         // (mode, OLED, rayon) se répercute immédiatement sur cette carte.
-        SettingsSectionLabel("APERÇU")
+        SettingsSectionLabel(stringResource(R.string.ui_apercu))
         ThemePreviewCard()
-        SettingsSectionLabel("RAYON DES ANGLES")
+        SettingsSectionLabel(stringResource(R.string.ui_rayon_angles))
         SettingsCard {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)
             ) {
-                listOf(8 to "Net", 16 to "Doux", 28 to "Très rond").forEach { (value, label) ->
+                listOf(8 to R.string.theme_rayon_net, 16 to R.string.theme_rayon_doux, 28 to R.string.theme_rayon_rond).forEach { (value, labelRes) ->
                     FilterChip(
                         selected = radius == value,
                         onClick = { radius = value; viewModel.updateCornerRadius(value); settings.markStylePresetCustom() },
-                        label = { Text(label) }
+                        label = { Text(stringResource(labelRes)) }
                     )
                 }
             }
         }
-        SettingsSectionLabel("OPTIONS D’AFFICHAGE")
+        SettingsSectionLabel(stringResource(R.string.ui_options_affichage))
         SettingsCard {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Noir pur (OLED)", color = Zcolors.text)
-                    Text("Fond noir et surfaces profondes en mode sombre", color = Zcolors.text2, style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.theme_noir_pur), color = Zcolors.text)
+                    Text(stringResource(R.string.theme_noir_pur_desc), color = Zcolors.text2, style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
                 }
                 Switch(checked = oled, onCheckedChange = { oled = it; viewModel.updateOledBlack(it); settings.markStylePresetCustom() })
             }
@@ -136,15 +138,15 @@ fun ThemeSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text("Couleurs du système", color = Zcolors.text)
-                        Text("Utiliser la palette dynamique Android", color = Zcolors.text2, style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.theme_couleurs_systeme), color = Zcolors.text)
+                        Text(stringResource(R.string.theme_palette_dynamique), color = Zcolors.text2, style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
                     }
                     Switch(checked = dynamic, onCheckedChange = { dynamic = it; viewModel.updateDynamicSystemColors(it); settings.markStylePresetCustom() })
                 }
             }
         }
         SettingsInfoRow(
-            title = "Thème de l’application",
+            title = stringResource(R.string.ui_theme_app),
             description = "Le mode Système suit automatiquement l’apparence définie dans les réglages Android."
         )
     }
@@ -181,7 +183,7 @@ private fun ThemePreviewCard() {
                         .padding(horizontal = Zdimens.m, vertical = Zdimens.s)
                 ) {
                     Text(
-                        "Voici le rendu des messages.",
+                        stringResource(R.string.theme_apercu_messages),
                         style = TextStyle(fontFamily = Inter, fontSize = 13.sp),
                         color = c.text
                     )
@@ -197,7 +199,7 @@ private fun ThemePreviewCard() {
                         .padding(horizontal = Zdimens.l, vertical = 8.dp)
                 ) {
                     Text(
-                        "Action",
+                        stringResource(R.string.ui_action),
                         style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
                         color = c.onGrad
                     )

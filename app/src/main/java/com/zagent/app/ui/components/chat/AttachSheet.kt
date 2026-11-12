@@ -32,6 +32,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -46,6 +47,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.zagent.app.R
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.LocalGlass
@@ -89,13 +91,13 @@ fun AttachSheet(
                 .padding(bottom = 24.dp)
         ) {
             Text(
-                "Ajouter au message",
+                stringResource(R.string.chat_ajouter_message),
                 style = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.SemiBold, fontSize = 20.sp),
                 color = c.text
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                "Le contenu est joint au contexte de l'agent avec ton message.",
+                stringResource(R.string.chat_piece_jointe_note),
                 style = TextStyle(fontFamily = Inter, fontSize = 12.5.sp),
                 color = c.text2
             )
@@ -104,7 +106,7 @@ fun AttachSheet(
                 AttachTile(
                     icon = Icons.Default.AttachFile,
                     tint = c.cyan,
-                    title = "Fichier",
+                    title = stringResource(R.string.ui_fichier),
                     description = "Joindre un fichier du téléphone",
                     modifier = Modifier.weight(1f),
                     onClick = onPickFile
@@ -112,7 +114,7 @@ fun AttachSheet(
                 AttachTile(
                     icon = Icons.Default.PhotoIcon,
                     tint = c.violet,
-                    title = "Image",
+                    title = stringResource(R.string.ui_image),
                     description = "Photo ou capture d'écran",
                     modifier = Modifier.weight(1f),
                     onClick = onPickImage
@@ -123,7 +125,7 @@ fun AttachSheet(
                 AttachTile(
                     icon = Icons.Default.FolderOpen,
                     tint = c.amber,
-                    title = "Dossier du projet",
+                    title = stringResource(R.string.ui_dossier_projet),
                     description = "Arborescence complète du projet",
                     enabled = hasProject,
                     modifier = Modifier.weight(1f),
@@ -132,7 +134,7 @@ fun AttachSheet(
                 AttachTile(
                     icon = Icons.Default.ContentPaste,
                     tint = c.green,
-                    title = "Coller",
+                    title = stringResource(R.string.action_coller),
                     description = "Insérer le presse-papiers",
                     modifier = Modifier.weight(1f),
                     onClick = onPaste
@@ -255,7 +257,7 @@ fun AttachmentThumbsRow(
                 ) {
                     Icon(
                         Icons.Default.Close,
-                        "Retirer " + a.name,
+                        stringResource(R.string.action_retirer) + a.name,
                         tint = Color.White,
                         modifier = Modifier.size(10.dp)
                     )

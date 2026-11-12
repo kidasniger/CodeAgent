@@ -45,6 +45,7 @@ import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Terminal
+import com.zagent.app.R
 import com.zagent.app.ui.editor.ConsolePanel
 import com.zagent.app.ui.editor.PreviewPane
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -64,6 +65,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -195,10 +197,10 @@ internal fun FullscreenBar(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
-            SmallIcon(Icons.Default.Refresh, "Recharger") { onRefresh() }
+            SmallIcon(Icons.Default.Refresh, stringResource(R.string.action_recharger)) { onRefresh() }
             ConsoleIcon(errors) { onConsole() }
             Box {
-                SmallIcon(Icons.Default.MoreVert, "Menu") { onMenu(true) }
+                SmallIcon(Icons.Default.MoreVert, stringResource(R.string.content_menu)) { onMenu(true) }
                 // MA78 : menu unifié en verre (remplace GlassDropdownMenu + DropdownMenuItem).
                 ZMenu(expanded = menuOpen, onDismiss = { onMenu(false) }) {
                     ZMenuItem(label = "Recharger", icon = Icons.Default.Refresh, onClick = { onMenu(false); onRefresh() })
@@ -223,7 +225,7 @@ internal fun ConsoleIcon(errors: Int, onClick: () -> Unit) {
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Icon(Icons.Default.Terminal, "Console", tint = c.text2, modifier = Modifier.size(20.dp))
+        Icon(Icons.Default.Terminal, stringResource(R.string.content_console), tint = c.text2, modifier = Modifier.size(20.dp))
         if (errors > 0) {
             Box(
                 Modifier

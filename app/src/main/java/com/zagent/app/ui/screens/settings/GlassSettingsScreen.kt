@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Opacity
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -21,6 +22,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.R
 import com.zagent.app.ui.components.common.GlassAlertDialog
 import com.zagent.app.ui.components.common.GlassPreviewCard
 import com.zagent.app.ui.theme.*
@@ -76,27 +78,27 @@ fun GlassSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         viewModel.updateGlassSettings(dark, current)
     }
 
-    SettingsPageScaffold(title = "Verre", onBack = onBack) {
-        SettingsSectionLabel("ACTIVATION")
+    SettingsPageScaffold(title = stringResource(R.string.ui_verre), onBack = onBack) {
+        SettingsSectionLabel(stringResource(R.string.ui_activation))
         SettingsCard {
             Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Liquid Glass", color = Zcolors.text, style = MaterialTheme.typography.titleMedium)
-                    Text("Surfaces flottantes translucides", color = Zcolors.text2, style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.glass_titre), color = Zcolors.text, style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.glass_surfaces_desc), color = Zcolors.text2, style = MaterialTheme.typography.bodySmall)
                 }
                 Switch(checked = current.enabled, onCheckedChange = { save(current.copy(enabled = it)) })
             }
         }
 
-        SettingsSectionLabel("MODIFIER POUR")
+        SettingsSectionLabel(stringResource(R.string.ui_modifier_pour))
         SettingsCard {
             Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = !editDark, onClick = { load(false) }, label = { Text("Clair") })
-                FilterChip(selected = editDark, onClick = { load(true) }, label = { Text("Sombre") })
+                FilterChip(selected = !editDark, onClick = { load(false) }, label = { Text(stringResource(R.string.ui_clair)) })
+                FilterChip(selected = editDark, onClick = { load(true) }, label = { Text(stringResource(R.string.ui_sombre)) })
             }
         }
 
-        SettingsSectionLabel("APERÇU")
+        SettingsSectionLabel(stringResource(R.string.ui_apercu))
         GlassPreviewCard(
             modifier = Modifier.fillMaxWidth(),
             material = current.material.label(),
@@ -107,7 +109,7 @@ fun GlassSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             activeTab = "Chat"
         )
 
-        SettingsSectionLabel("MATÉRIAU")
+        SettingsSectionLabel(stringResource(R.string.ui_materiau))
         SettingsCard {
             Column {
                 GlassMaterial.entries.forEachIndexed { index, item ->
@@ -137,8 +139,8 @@ fun GlassSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         SettingsCard {
             Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Toujours respecter mon réglage", color = Zcolors.text)
-                    Text("Ignore l'allègement automatique", color = Zcolors.text2, style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.glass_toujours_reglage), color = Zcolors.text)
+                    Text(stringResource(R.string.glass_ignore_allegement), color = Zcolors.text2, style = MaterialTheme.typography.bodySmall)
                 }
                 Switch(checked = current.alwaysRespectSetting, onCheckedChange = { save(current.copy(alwaysRespectSetting = it)) })
             }
@@ -160,10 +162,10 @@ fun GlassSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             )
         }
 
-        SettingsSectionLabel("COULEUR")
+        SettingsSectionLabel(stringResource(R.string.ui_couleur))
         SettingsCard {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Teinte appliquée uniquement aux surfaces flottantes", color = Zcolors.text2, style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.glass_tinte_note), color = Zcolors.text2, style = MaterialTheme.typography.bodySmall)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     glassSwatches.take(5).forEach { (hex, label) ->
                         GlassSwatch(hex, label, current.colour) {
@@ -212,7 +214,7 @@ fun GlassSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             }
         }
 
-        SettingsSectionLabel("EFFETS")
+        SettingsSectionLabel(stringResource(R.string.ui_effets))
         SettingsCard {
             GlassSliderRow("Couleur", Icons.Default.Opacity, current.tint, 0f..1f, { String.format("%d %%", (it * 100).toInt()) }) {
                 save(current.copy(tint = it))
@@ -222,7 +224,7 @@ fun GlassSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 save(current.copy(frost = it.dp))
             }
             if (current.material == GlassMaterial.QUALITY && current.frost > 16.dp) {
-                Text("Peut ralentir les anciens téléphones", color = Zcolors.text3, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 16.dp, bottom = 8.dp))
+                Text(stringResource(R.string.glass_ralentir_anciens), color = Zcolors.text3, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 16.dp, bottom = 8.dp))
             }
             SettingsInsetDivider()
             GlassSliderRow("Film", Icons.Default.Tune, current.film, 0f..1f, { String.format("%d %%", (it * 100).toInt()) }) {
@@ -235,13 +237,13 @@ fun GlassSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         }
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TextButton(onClick = { resetDialog = true }) { Text("Réinitialiser") }
+            TextButton(onClick = { resetDialog = true }) { Text(stringResource(R.string.action_reinitialiser)) }
         }
         if (resetDialog) {
             GlassAlertDialog(
                 onDismissRequest = { resetDialog = false },
-                title = { Text("Réinitialiser le verre ?") },
-                text = { Text("Les réglages clair et sombre seront restaurés.") },
+                title = { Text(stringResource(R.string.glass_reset_q)) },
+                text = { Text(stringResource(R.string.glass_reset_texte)) },
                 confirmButton = {
                     TextButton(onClick = {
                         val light = GlassSettings(film = 0.60f)
@@ -251,9 +253,9 @@ fun GlassSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                         current = if (editDark) dark else light
                         viewModel.updateGlassSettings(editDark, current)
                         resetDialog = false
-                    }) { Text("Réinitialiser") }
+                    }) { Text(stringResource(R.string.action_reinitialiser)) }
                 },
-                dismissButton = { TextButton(onClick = { resetDialog = false }) { Text("Annuler") } }
+                dismissButton = { TextButton(onClick = { resetDialog = false }) { Text(stringResource(R.string.action_annuler)) } }
             )
         }
     }

@@ -961,7 +961,8 @@ private fun UnifiedDiff(lines: List<DiffUtil.Line>, theme: CodeTheme) {
                     annotated,
                     style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp, lineHeight = 16.sp),
                     color = textColor,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -1028,6 +1029,7 @@ private fun DiffSide(line: DiffUtil.Line?, theme: CodeTheme, isOld: Boolean, mod
             style = TextStyle(fontFamily = JetBrainsMono, fontSize = 10.5.sp, lineHeight = 16.sp),
             color = fg,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(end = 6.dp)
         )
     }

@@ -85,6 +85,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -108,6 +109,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.R
 import com.zagent.app.data.FileRepository
 import com.zagent.app.ui.components.common.CircleIconButton
 import com.zagent.app.ui.components.common.GlassAlertDialog
@@ -274,10 +276,10 @@ fun FileBrowserScreen(
                     .padding(vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                CircleIconButton(Icons.AutoMirrored.Filled.ArrowBack, "Retour", onClick = onBack)
+                CircleIconButton(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_retour), onClick = onBack)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Explorateur", style = MaterialTheme.typography.headlineSmall, color = c.text)
+                    Text(stringResource(R.string.ui_explorateur), style = MaterialTheme.typography.headlineSmall, color = c.text)
                     Text(
                         "${viewModel.folderLabel} · ${viewModel.browserCount} fichiers",
                         style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp),
@@ -291,7 +293,7 @@ fun FileBrowserScreen(
                 // MA85 : tri par nom / date / taille.
                 Box {
                     CircleIconButton(
-                        Icons.AutoMirrored.Filled.Sort, "Trier",
+                        Icons.AutoMirrored.Filled.Sort, stringResource(R.string.content_trier),
                         onClick = { sortMenuOpen = true },
                         tintBackground = if (sortMode != SortMode.NAME_ASC) c.cyanBg else c.surface2
                     )
@@ -306,7 +308,7 @@ fun FileBrowserScreen(
                     }
                 }
                 Spacer(Modifier.width(10.dp))
-                CircleIconButton(Icons.Default.Refresh, "Rafraîchir", onClick = { viewModel.refreshBrowser() })
+                CircleIconButton(Icons.Default.Refresh, stringResource(R.string.content_rafraichir), onClick = { viewModel.refreshBrowser() })
                 Spacer(Modifier.width(10.dp))
                 // MA85 : bascule liste ↔ grille.
                 CircleIconButton(
@@ -316,7 +318,7 @@ fun FileBrowserScreen(
                 )
                 Spacer(Modifier.width(10.dp))
                 Box {
-                    CircleIconButton(Icons.Default.Add, "Nouveau", onClick = { menuNew = true })
+                    CircleIconButton(Icons.Default.Add, stringResource(R.string.content_nouveau), onClick = { menuNew = true })
                     ZMenu(
                         expanded = menuNew,
                         onDismiss = { menuNew = false }
@@ -370,7 +372,7 @@ fun FileBrowserScreen(
                 Icon(Icons.Default.Lock, null, tint = c.text3, modifier = Modifier.size(12.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    "Accès limité au dossier choisi",
+                    stringResource(R.string.ui_acces_limite),
                     style = TextStyle(fontFamily = Inter, fontSize = 11.sp),
                     color = c.text3
                 )
@@ -432,7 +434,7 @@ fun FileBrowserScreen(
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    "Copier",
+                    stringResource(R.string.action_copier),
                     style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
                     color = c.cyan,
                     modifier = Modifier
@@ -449,7 +451,7 @@ fun FileBrowserScreen(
                 Spacer(Modifier.width(6.dp))
                 // feat-071 : déplacer la sélection vers un dossier
                 Text(
-                    "Déplacer",
+                    stringResource(R.string.action_deplacer),
                     style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
                     color = c.violet,
                     modifier = Modifier
@@ -460,7 +462,7 @@ fun FileBrowserScreen(
                 Spacer(Modifier.width(6.dp))
                 // feat-071/073 : zipper la sélection
                 Text(
-                    "Zipper",
+                    stringResource(R.string.action_zipper),
                     style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
                     color = c.amber,
                     modifier = Modifier
@@ -470,7 +472,7 @@ fun FileBrowserScreen(
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    "Supprimer",
+                    stringResource(R.string.action_supprimer),
                     style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
                     color = c.red,
                     modifier = Modifier
@@ -509,7 +511,7 @@ fun FileBrowserScreen(
                 value = query,
                 onValueChange = { query = it },
                 placeholder = {
-                    Text("Rechercher un fichier…", style = TextStyle(fontFamily = Inter, fontSize = 14.sp), color = c.text3)
+                    Text(stringResource(R.string.ui_rechercher_fichier), style = TextStyle(fontFamily = Inter, fontSize = 14.sp), color = c.text3)
                 },
                 textStyle = TextStyle(fontFamily = Inter, fontSize = 14.sp, color = c.text),
                 singleLine = true,
@@ -531,7 +533,7 @@ fun FileBrowserScreen(
             Column(Modifier.padding(horizontal = 16.dp)) {
                 if (viewModel.browserFavorites.isNotEmpty()) {
                     Text(
-                        "Favoris",
+                        stringResource(R.string.ui_favoris),
                         style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 11.5.sp),
                         color = c.text3
                     )
@@ -556,7 +558,7 @@ fun FileBrowserScreen(
                 }
                 if (viewModel.browserRecents.isNotEmpty()) {
                     Text(
-                        "Récents",
+                        stringResource(R.string.ui_recents),
                         style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 11.5.sp),
                         color = c.text3
                     )
@@ -722,7 +724,7 @@ fun FileBrowserScreen(
                 }
                 Spacer(Modifier.weight(1f))
                 Text(
-                    "dernière sync · à l'instant",
+                    stringResource(R.string.files_derniere_sync),
                     style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp),
                     color = c.text3
                 )
@@ -739,7 +741,7 @@ fun FileBrowserScreen(
             title = { Text("Supprimer ${selected.size} élément${if (selected.size > 1) "s" else ""} ?", fontFamily = SpaceGrotesk, color = c.text) },
             text = {
                 Text(
-                    "Les dossiers sélectionnés et tout leur contenu seront supprimés.",
+                    stringResource(R.string.files_suppression_dossiers_note),
                     fontFamily = Inter, fontSize = 13.sp, color = c.text2
                 )
             },
@@ -749,10 +751,10 @@ fun FileBrowserScreen(
                     selected.toList().forEach { viewModel.trashBrowserPath(it) }
                     selected.clear()
                     confirmDeleteSelected = false
-                }) { Text("Supprimer", color = c.red) }
+                }) { Text(stringResource(R.string.action_supprimer), color = c.red) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmDeleteSelected = false }) { Text("Annuler", color = c.text2) }
+                TextButton(onClick = { confirmDeleteSelected = false }) { Text(stringResource(R.string.action_annuler), color = c.text2) }
             }
         )
     }
@@ -775,7 +777,7 @@ fun FileBrowserScreen(
                 // réduite en paysage / petit écran pour rester visible.
                 Column(Modifier.height(hauteurBorneDp(300.dp, 0.55f)).verticalScroll(rememberScrollState())) {
                     if (dossiers.isEmpty()) {
-                        Text("Aucun dossier connu — déplie d'abord l'arborescence.", color = c.text2, fontFamily = Inter, fontSize = 12.sp)
+                        Text(stringResource(R.string.ui_aucun_dossier_connu), color = c.text2, fontFamily = Inter, fontSize = 12.sp)
                     }
                     dossiers.forEach { d ->
                         Text(
@@ -796,7 +798,7 @@ fun FileBrowserScreen(
             },
             confirmButton = {},
             dismissButton = {
-                TextButton(onClick = { moveDialogOpen = false }) { Text("Annuler", color = c.text2) }
+                TextButton(onClick = { moveDialogOpen = false }) { Text(stringResource(R.string.action_annuler), color = c.text2) }
             }
         )
     }
@@ -806,7 +808,7 @@ fun FileBrowserScreen(
         var nomZip by remember { mutableStateOf("archive") }
         GlassAlertDialog(
             onDismissRequest = { zipDialogOpen = false },
-            title = { Text("Créer une archive", fontFamily = SpaceGrotesk, color = c.text) },
+            title = { Text(stringResource(R.string.ui_creer_archive), fontFamily = SpaceGrotesk, color = c.text) },
             text = {
                 Column {
                     Text(
@@ -828,10 +830,10 @@ fun FileBrowserScreen(
                     viewModel.zipSelected(selected.toList(), nomZip.trim())
                     selected.clear()
                     zipDialogOpen = false
-                }) { Text("Zipper", color = c.cyan) }
+                }) { Text(stringResource(R.string.action_zipper), color = c.cyan) }
             },
             dismissButton = {
-                TextButton(onClick = { zipDialogOpen = false }) { Text("Annuler", color = c.text2) }
+                TextButton(onClick = { zipDialogOpen = false }) { Text(stringResource(R.string.action_annuler), color = c.text2) }
             }
         )
     }
@@ -842,17 +844,17 @@ fun FileBrowserScreen(
         LaunchedEffect(Unit) { entries = viewModel.loadTrashEntries() }
         GlassAlertDialog(
             onDismissRequest = { trashSheetOpen = false },
-            title = { Text("Corbeille du projet", fontFamily = SpaceGrotesk, color = c.text) },
+            title = { Text(stringResource(R.string.ui_corbeille_projet), fontFamily = SpaceGrotesk, color = c.text) },
             text = {
                 Column(Modifier.height(hauteurBorneDp(320.dp, 0.55f)).verticalScroll(rememberScrollState())) {
                     Text(
-                        "Les éléments sont conservés 7 jours, puis supprimés automatiquement.",
+                        stringResource(R.string.ui_corbeille_note),
                         fontFamily = Inter, fontSize = 11.5.sp, color = c.text3
                     )
                     Spacer(Modifier.height(8.dp))
                     when {
-                        entries == null -> Text("Chargement…", color = c.text2, fontFamily = Inter, fontSize = 12.sp)
-                        entries.orEmpty().isEmpty() -> Text("La corbeille est vide.", color = c.text2, fontFamily = Inter, fontSize = 12.sp)
+                        entries == null -> Text(stringResource(R.string.ui_chargement), color = c.text2, fontFamily = Inter, fontSize = 12.sp)
+                        entries.orEmpty().isEmpty() -> Text(stringResource(R.string.ui_corbeille_vide), color = c.text2, fontFamily = Inter, fontSize = 12.sp)
                         else -> entries.orEmpty().forEach { entry ->
                             Row(
                                 Modifier.fillMaxWidth().padding(vertical = 6.dp),
@@ -881,10 +883,10 @@ fun FileBrowserScreen(
                 TextButton(onClick = {
                     viewModel.emptyTrash()
                     trashSheetOpen = false
-                }) { Text("Vider", color = c.red) }
+                }) { Text(stringResource(R.string.action_vider), color = c.red) }
             },
             dismissButton = {
-                TextButton(onClick = { trashSheetOpen = false }) { Text("Fermer", color = c.text2) }
+                TextButton(onClick = { trashSheetOpen = false }) { Text(stringResource(R.string.action_fermer), color = c.text2) }
             }
         )
     }
@@ -900,7 +902,7 @@ fun FileBrowserScreen(
             },
             confirmButton = {
                 TextButton(onClick = { viewModel.closeBrowserFilePreview() }) {
-                    Text("Fermer", color = c.cyan)
+                    Text(stringResource(R.string.action_fermer), color = c.cyan)
                 }
             }
         )
@@ -937,10 +939,10 @@ fun FileBrowserScreen(
                         if (kind == "file") viewModel.createBrowserFile(n) else viewModel.createBrowserFolder(n)
                     }
                     createKind = null
-                }) { Text("Créer", color = c.cyan) }
+                }) { Text(stringResource(R.string.action_creer), color = c.cyan) }
             },
             dismissButton = {
-                TextButton(onClick = { createKind = null }) { Text("Annuler", color = c.text2) }
+                TextButton(onClick = { createKind = null }) { Text(stringResource(R.string.action_annuler), color = c.text2) }
             }
         )
     }
@@ -949,7 +951,7 @@ fun FileBrowserScreen(
         var name by remember(e.path) { mutableStateOf(e.name) }
         GlassAlertDialog(
             onDismissRequest = { renameTarget = null },
-            title = { Text("Renommer", fontFamily = SpaceGrotesk, color = c.text) },
+            title = { Text(stringResource(R.string.action_renommer), fontFamily = SpaceGrotesk, color = c.text) },
             text = {
                 OutlinedTextField(
                     value = name,
@@ -962,10 +964,10 @@ fun FileBrowserScreen(
                 TextButton(onClick = {
                     viewModel.renameBrowserPath(e.path, name.trim())
                     renameTarget = null
-                }) { Text("Renommer", color = c.cyan) }
+                }) { Text(stringResource(R.string.action_renommer), color = c.cyan) }
             },
             dismissButton = {
-                TextButton(onClick = { renameTarget = null }) { Text("Annuler", color = c.text2) }
+                TextButton(onClick = { renameTarget = null }) { Text(stringResource(R.string.action_annuler), color = c.text2) }
             }
         )
     }
@@ -973,7 +975,7 @@ fun FileBrowserScreen(
     deleteTarget?.let { e ->
         GlassAlertDialog(
             onDismissRequest = { deleteTarget = null },
-            title = { Text("Supprimer ?", fontFamily = SpaceGrotesk, color = c.text) },
+            title = { Text(stringResource(R.string.ui_supprimer_question), fontFamily = SpaceGrotesk, color = c.text) },
             text = {
                 Text(
                     e.path + if (e.isDir) "\n(le dossier et tout son contenu)" else "",
@@ -985,10 +987,10 @@ fun FileBrowserScreen(
                     // feat-079 : la corbeille remplace la suppression définitive.
                     viewModel.trashBrowserPath(e.path)
                     deleteTarget = null
-                }) { Text("Supprimer", color = c.red) }
+                }) { Text(stringResource(R.string.action_supprimer), color = c.red) }
             },
             dismissButton = {
-                TextButton(onClick = { deleteTarget = null }) { Text("Annuler", color = c.text2) }
+                TextButton(onClick = { deleteTarget = null }) { Text(stringResource(R.string.action_annuler), color = c.text2) }
             }
         )
     }
@@ -1023,19 +1025,19 @@ private fun BrowserEmptyState(queryBlank: Boolean, error: String?, onNewFile: ()
     if (!queryBlank) {
         ZEmptyState(
             kind = ZEmptyKind.RESULTS,
-            title = "Aucun résultat",
+            title = stringResource(R.string.ui_aucun_resultat),
             body = "Aucun fichier ne correspond à ta recherche. Essaie un autre mot-clé."
         )
     } else if (error != null) {
         ZEmptyState(
             kind = ZEmptyKind.OFFLINE,
-            title = "Dossier inaccessible",
+            title = stringResource(R.string.ui_dossier_inaccessible),
             body = error
         )
     } else {
         ZEmptyState(
             kind = ZEmptyKind.FOLDER,
-            title = "Ce dossier est vide",
+            title = stringResource(R.string.ui_dossier_vide),
             body = "Crée un premier fichier pour démarrer le projet.",
             actionText = "Nouveau fichier",
             onAction = onNewFile
@@ -1487,7 +1489,7 @@ private fun RowMenu(
                 .clickable { open = true },
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.MoreVert, "Actions", tint = c.text3, modifier = Modifier.size(18.dp))
+            Icon(Icons.Default.MoreVert, stringResource(R.string.onglet_actions), tint = c.text3, modifier = Modifier.size(18.dp))
         }
         // MA78 : menu unifié en verre ; MA85 : « Copier le chemin » ajouté.
         ZMenu(
@@ -1618,7 +1620,7 @@ private fun FichierModele(
         var nom by remember { mutableStateOf(nomDefaut) }
         GlassAlertDialog(
             onDismissRequest = { demande = false },
-            title = { Text("Nouveau fichier depuis modèle", fontFamily = SpaceGrotesk, color = c.text) },
+            title = { Text(stringResource(R.string.ui_nouveau_fichier_modele), fontFamily = SpaceGrotesk, color = c.text) },
             text = {
                 OutlinedTextField(
                     value = nom,
@@ -1631,10 +1633,10 @@ private fun FichierModele(
                 TextButton(onClick = {
                     onCreer(nom.trim(), contenu)
                     demande = false
-                }) { Text("Créer", color = c.cyan) }
+                }) { Text(stringResource(R.string.action_creer), color = c.cyan) }
             },
             dismissButton = {
-                TextButton(onClick = { demande = false }) { Text("Annuler", color = c.text2) }
+                TextButton(onClick = { demande = false }) { Text(stringResource(R.string.action_annuler), color = c.text2) }
             }
         )
     }
@@ -1671,7 +1673,7 @@ private fun ChipFavoriRecent(
         if (onRemove != null) {
             Spacer(Modifier.width(4.dp))
             Icon(
-                Icons.Default.Close, "Retirer " + path + " des favoris",
+                Icons.Default.Close, stringResource(R.string.action_retirer) + path + " des favoris",
                 tint = c.text3,
                 modifier = Modifier
                     .size(22.dp)

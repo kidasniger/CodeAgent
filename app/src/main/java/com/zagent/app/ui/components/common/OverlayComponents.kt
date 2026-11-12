@@ -30,6 +30,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,6 +43,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.input.pointer.pointerInput
+import com.zagent.app.R
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.SpaceGrotesk
@@ -77,7 +79,7 @@ fun OverlayScreen(
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            CircleIconButton(Icons.AutoMirrored.Filled.ArrowBack, "Retour", onClick = onBack)
+            CircleIconButton(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_retour), onClick = onBack)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
@@ -115,7 +117,7 @@ fun OverlayScreen(
 
 /** Onglets du LOT 5 : chips égales, style sobre, sans bordure marquée (MA58/MA61). */
 @Composable
-fun OverlayTabs(tabs: List<String>, selected: Int, modifier: Modifier = Modifier, onSelect: (Int) -> Unit) {
+fun OverlayTabs(tabs: List<Int>, selected: Int, modifier: Modifier = Modifier, onSelect: (Int) -> Unit) {
     val c = Zcolors
     Row(
         modifier
@@ -142,7 +144,7 @@ fun OverlayTabs(tabs: List<String>, selected: Int, modifier: Modifier = Modifier
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    label,
+                    stringResource(label),
                     style = TextStyle(
                         fontFamily = Inter,
                         fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,

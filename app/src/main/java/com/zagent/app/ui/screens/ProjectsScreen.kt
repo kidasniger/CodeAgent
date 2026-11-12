@@ -33,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.R
 import com.zagent.app.ui.components.common.GlassCard
 import com.zagent.app.ui.components.common.GradientButton
 import com.zagent.app.ui.components.common.OverlayEmptyState
@@ -77,7 +79,7 @@ fun ProjectsScreen(viewModel: MainViewModel, onClose: () -> Unit) {
     val current = viewModel.workingFolderUriString
 
     OverlayScreen(
-        title = "Projets",
+        title = stringResource(R.string.ui_projets),
         subtitle = current?.substringAfterLast('/') ?: "Aucun projet actif",
         onBack = onClose
     ) {
@@ -105,7 +107,7 @@ fun ProjectsScreen(viewModel: MainViewModel, onClose: () -> Unit) {
         if (projects.isEmpty()) {
             OverlayEmptyState(
                 icon = Icons.Default.FolderOpen,
-                title = "Aucun projet pour l'instant",
+                title = stringResource(R.string.ui_aucun_projet),
                 text = "Crée un projet depuis un template ou importe un dossier de ton téléphone. L'agent n'accède qu'au projet actif."
             )
         } else {
@@ -124,7 +126,7 @@ fun ProjectsScreen(viewModel: MainViewModel, onClose: () -> Unit) {
             GlassCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp)) {
                 if (others.isEmpty() && favs.isNotEmpty()) {
                     Text(
-                        "Tous les projets sont épinglés.",
+                        stringResource(R.string.ui_tous_epingles),
                         style = TextStyle(fontFamily = Inter, fontSize = 12.5.sp),
                         color = c.text3,
                         modifier = Modifier.padding(12.dp)

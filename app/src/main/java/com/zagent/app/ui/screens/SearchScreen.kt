@@ -34,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,6 +45,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.R
 import com.zagent.app.data.ProjectSearch
 import com.zagent.app.ui.components.common.OverlayEmptyState
 import com.zagent.app.ui.components.common.OverlaySearchField
@@ -90,20 +92,20 @@ fun SearchScreen(viewModel: MainViewModel, onClose: () -> Unit) {
         }
     }
 
-    OverlayScreen(title = "Recherche", subtitle = viewModel.folderLabel, onBack = onClose) {
+    OverlayScreen(title = stringResource(R.string.ui_recherche), subtitle = viewModel.folderLabel, onBack = onClose) {
         OverlaySearchField(
             value = query,
             onValueChange = { query = it },
             placeholder = "Rechercher partout…"
         )
         Spacer(Modifier.height(10.dp))
-        OverlayTabs(listOf("Conversations", "Fichiers", "Code"), tab) { tab = it }
+        OverlayTabs(listOf(R.string.onglet_conversations, R.string.onglet_fichiers, R.string.onglet_code), tab) { tab = it }
         Spacer(Modifier.height(14.dp))
 
         if (query.isBlank()) {
             if (history.isNotEmpty()) {
                 Text(
-                    "Recherches récentes",
+                    stringResource(R.string.ui_recherches_recentes),
                     style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
                     color = c.text3,
                     modifier = Modifier.padding(bottom = 6.dp)
@@ -129,7 +131,7 @@ fun SearchScreen(viewModel: MainViewModel, onClose: () -> Unit) {
             } else {
                 OverlayEmptyState(
                     icon = Icons.Default.Search,
-                    title = "Recherche globale",
+                    title = stringResource(R.string.ui_recherche_globale),
                     text = "Retrouve un message, un fichier ou une ligne de code parmi les conversations et le projet actif."
                 )
             }

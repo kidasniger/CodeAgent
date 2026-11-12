@@ -197,7 +197,7 @@ internal fun ChatEmptyState(
         noFolder -> EmptyState(
             icon = Icons.Default.FolderOpen,
             tint = c.amber,
-            title = "Aucun projet choisi",
+            title = stringResource(R.string.ui_aucun_projet_choisi),
             body = "Crée ou choisis un projet : ZAgent y lira et écrira les fichiers, et le terminal s'y ouvre au même endroit.",
             primaryText = "Choisir un projet",
             onPrimary = onPickFolder,
@@ -207,7 +207,7 @@ internal fun ChatEmptyState(
         noKey -> EmptyState(
             icon = Icons.Default.Key,
             tint = c.violet,
-            title = "Branche ta première clé API",
+            title = stringResource(R.string.onboarding_cle_titre),
             body = "Z.ai, NVIDIA NIM ou ta propre passerelle : colle la clé dans Réglages › Fournisseurs d'IA — une clé par API, détectée automatiquement. Stockage local chiffré.",
             primaryText = "Ouvrir les réglages",
             onPrimary = onOpenSettings

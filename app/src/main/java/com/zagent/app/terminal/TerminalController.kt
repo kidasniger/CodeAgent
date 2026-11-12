@@ -824,7 +824,7 @@ class TerminalController(
                     children[x]?.let { stack.addAll(it) }
                 }
                 for (pid in all.reversed()) {
-                    try { android.os.Process.killProcess(pid) } catch (e: Exception) { }
+                    try { android.os.Process.killProcess(pid) } catch (_: Exception) { /* processus déjà parti */ }
                 }
             } catch (e: Exception) {
                 // on retombe sur destroyForcibly
@@ -974,7 +974,7 @@ class TerminalController(
     private fun createSession(): TerminalSession? {
         ensureMirror()
         // Réinstalle le crochet apt à chaque ouverture : prend en compte un script mis à jour.
-        try { installDebPatcher() } catch (e: Exception) { }
+        try { installDebPatcher() } catch (_: Exception) { /* non bloquant : patcher best-effort */ }
         ensureBashExecutable()
         homeDir.mkdirs()
         File(prefixDir, "tmp").mkdirs()

@@ -46,6 +46,7 @@ import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Terminal
+import com.zagent.app.R
 import com.zagent.app.ui.editor.ConsolePanel
 import com.zagent.app.ui.editor.PreviewPane
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -65,6 +66,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -179,7 +181,7 @@ internal fun EditorTabBar(
                             .clickable { if (t.dirty) onRequestClose(index) else editor.close(index) },
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.Close, "Fermer l'onglet", tint = c.text3, modifier = Modifier.size(14.dp))
+                        Icon(Icons.Default.Close, stringResource(R.string.content_fermer_onglet), tint = c.text3, modifier = Modifier.size(14.dp))
                     }
                 }
                 // MA78 : menu unifié en verre (remplace GlassDropdownMenu + DropdownMenuItem).

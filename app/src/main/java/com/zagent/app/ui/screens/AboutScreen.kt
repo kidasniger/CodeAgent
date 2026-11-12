@@ -33,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,6 +44,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.R
 import com.zagent.app.update.ReleaseSummary
 import com.zagent.app.update.UpdateManager
 import com.zagent.app.update.UpdateState
@@ -77,7 +79,7 @@ fun AboutScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         releases = withContext(Dispatchers.IO) { UpdateManager.fetchRecentReleases(5) }
     }
 
-    OverlayScreen(title = "À propos", subtitle = "ZAgent — agent de code sur téléphone", onBack = onBack) {
+    OverlayScreen(title = stringResource(R.string.ui_a_propos), subtitle = "ZAgent — agent de code sur téléphone", onBack = onBack) {
         // ── Carte identité ───────────────────────────────────────────────────
         Column(
             Modifier
@@ -139,11 +141,11 @@ fun AboutScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     is UpdateState.Checking -> {
                         CircularProgressIndicator(modifier = Modifier.size(18.dp), color = c.cyan, strokeWidth = 2.dp)
                         Spacer(Modifier.width(10.dp))
-                        StatusText("Vérification en cours…", c.text2)
+                        StatusText(stringResource(R.string.about_verif_en_cours), c.text2)
                     }
                     is UpdateState.Downloading -> {
                         Column(Modifier.weight(1f)) {
-                            StatusText("Téléchargement : " + s.percent + " %", c.cyan)
+                            StatusText(stringResource(R.string.about_telechargement, s.percent), c.cyan)
                             Spacer(Modifier.height(6.dp))
                             LinearProgressIndicator(
                                 progress = { s.percent / 100f },
@@ -155,7 +157,7 @@ fun AboutScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     }
                     is UpdateState.Available -> {
                         Column(Modifier.weight(1f)) {
-                            StatusText("Version " + s.info.tag + " disponible", c.amber)
+                            StatusText(stringResource(R.string.about_version_dispo, s.info.tag), c.amber)
                             if (s.info.notes.isNotBlank()) {
                                 Spacer(Modifier.height(6.dp))
                                 Text(
@@ -168,16 +170,16 @@ fun AboutScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                         }
                     }
                     is UpdateState.UpToDate -> {
-                        StatusText("Déjà à jour (" + s.currentVersion + ")", c.green)
+                        StatusText(stringResource(R.string.about_deja_a_jour, s.currentVersion), c.green)
                     }
                     is UpdateState.Error -> {
-                        StatusText("Erreur : " + s.message.take(80), c.red)
+                        StatusText(stringResource(R.string.about_erreur, s.message.take(80)), c.red)
                     }
-                    else -> StatusText("Dernière vérification sur demande", c.text2)
+                    else -> StatusText(stringResource(R.string.about_verif_demande), c.text2)
                 }
                 Spacer(Modifier.width(10.dp))
                 Icon(
-                    Icons.Default.Refresh, "Vérifier les mises à jour",
+                    Icons.Default.Refresh, stringResource(R.string.content_verifier_maj),
                     tint = c.cyan,
                     modifier = Modifier
                         .size(20.dp)
@@ -215,7 +217,7 @@ fun AboutScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                                 if (r.prerelease) {
                                     Spacer(Modifier.width(8.dp))
                                     Text(
-                                        "bêta",
+                                        stringResource(R.string.ui_beta),
                                         style = TextStyle(fontFamily = Inter, fontSize = 10.sp),
                                         color = c.amber,
                                         modifier = Modifier
@@ -307,7 +309,7 @@ fun AboutScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             Icon(Icons.Default.BugReport, null, tint = c.cyan, modifier = Modifier.size(15.dp))
             Spacer(Modifier.width(6.dp))
             Text(
-                "Signaler un problème ou proposer une idée",
+                stringResource(R.string.aide_signaler_note),
                 style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
                 color = c.text
             )

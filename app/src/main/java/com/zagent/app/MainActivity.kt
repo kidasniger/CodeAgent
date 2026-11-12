@@ -36,6 +36,7 @@ import dev.chrisbanes.haze.hazeSource
 import com.zagent.app.ui.components.common.AmbientBackground
 import com.zagent.app.ui.components.common.FloatingTabBar
 import com.zagent.app.ui.navigation.ZNavHost
+import com.zagent.app.ui.navigation.ZRoutes
 import com.zagent.app.ui.theme.LocalGlass
 import com.zagent.app.ui.theme.LocalHazeState
 import androidx.compose.runtime.Composable
@@ -234,8 +235,8 @@ class MainActivity : AppCompatActivity() {
         // Le manifeste déclare déjà le schéma zagent en VIEW/BROWSABLE.
         if (action == Intent.ACTION_VIEW) {
             when (intent.dataString) {
-                "zagent://git" -> viewModel.handleAppShortcut(MainViewModel.ACTION_SHORTCUT_OPEN_GIT)
-                "zagent://models" -> viewModel.handleAppShortcut(MainViewModel.ACTION_SHORTCUT_OPEN_MODELS)
+                "${ZRoutes.DEEP_LINK_SCHEME}://git" -> viewModel.handleAppShortcut(MainViewModel.ACTION_SHORTCUT_OPEN_GIT)
+                "${ZRoutes.DEEP_LINK_SCHEME}://models" -> viewModel.handleAppShortcut(MainViewModel.ACTION_SHORTCUT_OPEN_MODELS)
             }
         }
     }

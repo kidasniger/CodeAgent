@@ -35,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,6 +46,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.R
 import com.zagent.app.ui.components.common.GlassModalBottomSheet
 import com.zagent.app.ui.components.common.OverlayRow
 import com.zagent.app.ui.theme.Inter
@@ -119,13 +121,13 @@ fun ShareSheet(viewModel: MainViewModel, onClose: () -> Unit) {
                 .padding(bottom = 24.dp)
         ) {
             Text(
-                "Partager la conversation",
+                stringResource(R.string.chat_partager_conversation),
                 style = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.SemiBold, fontSize = 19.sp),
                 color = c.text
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                "Le contenu est converti en Markdown, prêt à relire ou archiver.",
+                stringResource(R.string.chat_export_md_note),
                 style = TextStyle(fontFamily = Inter, fontSize = 12.sp),
                 color = c.text2
             )
@@ -149,8 +151,8 @@ fun ShareSheet(viewModel: MainViewModel, onClose: () -> Unit) {
 
             OverlayRow(
                 icon = Icons.Default.ContentCopy,
-                title = "Copier en Markdown",
-                subtitle = "Le texte complet dans le presse-papiers",
+                title = stringResource(R.string.action_copier_markdown),
+                subtitle = stringResource(R.string.ui_presse_papier_note),
                 onClick = {
                     clipboard.setText(AnnotatedString(viewModel.buildConversationMarkdown(includeTools, hidePaths)))
                     notice = "Markdown copié"
@@ -158,28 +160,28 @@ fun ShareSheet(viewModel: MainViewModel, onClose: () -> Unit) {
             )
             OverlayRow(
                 icon = Icons.Default.Save,
-                title = "Enregistrer en .md",
-                subtitle = "Choisir l'emplacement puis sauvegarder",
+                title = stringResource(R.string.chat_enregistrer_md),
+                subtitle = stringResource(R.string.share_choisir_emplacement),
                 onClick = { saveMd.launch("conversation-zagent.md") }
             )
             OverlayRow(
                 icon = Icons.Default.Description,
-                title = "Exporter en PDF",
-                subtitle = "Document paginé, lisible partout",
+                title = stringResource(R.string.chat_exporter_pdf),
+                subtitle = stringResource(R.string.chat_export_pdf_note),
                 tint = c.red,
                 onClick = { savePdf.launch("conversation-zagent.pdf") }
             )
             OverlayRow(
                 icon = Icons.Default.DataObject,
-                title = "Exporter en JSON", // feat-018
-                subtitle = "Fichier réimportable dans ZAgent",
+                title = stringResource(R.string.chat_exporter_json), // feat-018
+                subtitle = stringResource(R.string.chat_export_json_note),
                 tint = c.violet,
                 onClick = { saveJson.launch("conversation-zagent.json") }
             )
             OverlayRow(
                 icon = Icons.AutoMirrored.Filled.OpenInNew,
-                title = "Partager via…",
-                subtitle = "Intent Android (mail, notes, messageries)",
+                title = stringResource(R.string.ui_partager_via),
+                subtitle = stringResource(R.string.share_intent_note),
                 tint = c.green,
                 onClick = {
                     val send = Intent(Intent.ACTION_SEND).apply {

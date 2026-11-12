@@ -456,7 +456,8 @@ fun GlassPreviewCard(
                     color = Color.White.copy(alpha = 0.88f),
                     fontFamily = Inter,
                     fontSize = 10.sp,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Spacer(Modifier.weight(1f))
                 Text(
@@ -464,7 +465,8 @@ fun GlassPreviewCard(
                     color = Color.White.copy(alpha = 0.78f),
                     fontFamily = JetBrainsMono,
                     fontSize = 8.sp,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
@@ -502,7 +504,8 @@ fun GlassPreviewCard(
                             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                             fontSize = 7.sp,
                             maxLines = 1,
-                            softWrap = false
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }

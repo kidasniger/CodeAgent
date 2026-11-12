@@ -17,9 +17,11 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.R
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.SpaceGrotesk
 import com.zagent.app.ui.viewmodel.MainViewModel
@@ -34,11 +36,11 @@ fun FontSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         "SYSTEM" to "Système",
         "SPACE_GROTESK" to "Space Grotesk"
     )
-    SettingsPageScaffold(title = "Police", onBack = onBack) {
-        SettingsSectionLabel("FAMILLE")
+    SettingsPageScaffold(title = stringResource(R.string.ui_police), onBack = onBack) {
+        SettingsSectionLabel(stringResource(R.string.ui_famille))
         SettingsCard {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-                Text("Police de l’interface", color = MaterialTheme.colorScheme.onSurface)
+                Text(stringResource(R.string.ui_police_interface), color = MaterialTheme.colorScheme.onSurface)
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     families.forEach { (id, label) ->
@@ -54,7 +56,7 @@ fun FontSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "Aperçu de la typographie",
+                    stringResource(R.string.ui_apercu_typo),
                     fontFamily = when (selectedFamily) {
                         "SYSTEM" -> androidx.compose.ui.text.font.FontFamily.Default
                         "SPACE_GROTESK" -> SpaceGrotesk
@@ -64,17 +66,17 @@ fun FontSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    "Les changements s’appliquent immédiatement à toute l’application.",
+                    stringResource(R.string.ui_font_applique),
                     style = MaterialTheme.typography.bodySmall
                 )
             }
         }
         Spacer(Modifier.height(8.dp))
-        SettingsSectionLabel("TAILLE DU TEXTE")
+        SettingsSectionLabel(stringResource(R.string.ui_taille_texte))
         SettingsCard {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Échelle", color = MaterialTheme.colorScheme.onSurface)
+                    Text(stringResource(R.string.ui_echelle), color = MaterialTheme.colorScheme.onSurface)
                     Text("${(size * 100).toInt()} %", color = MaterialTheme.colorScheme.primary)
                 }
                 Slider(
@@ -86,19 +88,19 @@ fun FontSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     valueRange = 0.85f..1.25f
                 )
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Petite", style = MaterialTheme.typography.labelSmall)
-                    Text("Normale", style = MaterialTheme.typography.labelSmall)
-                    Text("Grande", style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(R.string.ui_petite), style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(R.string.ui_normale), style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(R.string.ui_grande), style = MaterialTheme.typography.labelSmall)
                 }
             }
         }
         Spacer(Modifier.height(8.dp))
         // MA83 : tailles de police du code, réglables aussi au pincement.
-        SettingsSectionLabel("TAILLE DU CODE")
+        SettingsSectionLabel(stringResource(R.string.ui_taille_code))
         SettingsCard {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Éditeur", color = MaterialTheme.colorScheme.onSurface)
+                    Text(stringResource(R.string.ui_editeur), color = MaterialTheme.colorScheme.onSurface)
                     Text("${viewModel.editorFontSize} sp", color = MaterialTheme.colorScheme.primary)
                 }
                 Slider(
@@ -108,12 +110,12 @@ fun FontSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     steps = 11
                 )
                 Text(
-                    "Pince la zone de code ou glisse ce curseur (10 à 22 sp).",
+                    stringResource(R.string.ui_pin_code),
                     style = MaterialTheme.typography.bodySmall
                 )
                 Spacer(Modifier.height(12.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Terminal", color = MaterialTheme.colorScheme.onSurface)
+                    Text(stringResource(R.string.ui_terminal), color = MaterialTheme.colorScheme.onSurface)
                     Text("${viewModel.terminalFontSize} sp", color = MaterialTheme.colorScheme.primary)
                 }
                 Slider(
@@ -123,7 +125,7 @@ fun FontSettingsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     steps = 11
                 )
                 Text(
-                    "Pince l'écran du terminal ou glisse ce curseur (10 à 22 sp).",
+                    stringResource(R.string.ui_pin_terminal),
                     style = MaterialTheme.typography.bodySmall
                 )
             }

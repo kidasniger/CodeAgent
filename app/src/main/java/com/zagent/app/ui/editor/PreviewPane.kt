@@ -47,6 +47,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,6 +59,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.zagent.app.R
 import com.zagent.app.ui.theme.JetBrainsMono
 import com.zagent.app.ui.theme.Zcolors
 import kotlinx.coroutines.Dispatchers
@@ -390,7 +392,7 @@ fun ConsolePanel(state: ConsoleState, modifier: Modifier) {
     ) {
         if (state.entries.isEmpty()) {
             Text(
-                "Console vide",
+                stringResource(R.string.editor_console_vide),
                 style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp),
                 color = c.text3
             )

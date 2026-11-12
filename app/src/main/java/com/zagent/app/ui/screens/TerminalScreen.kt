@@ -28,6 +28,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -116,10 +117,10 @@ fun TerminalScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Retour", tint = c.text)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_retour), tint = c.text)
             }
             Text(
-                "Terminal",
+                stringResource(R.string.ui_terminal),
                 style = MaterialTheme.typography.titleLarge,
                 color = c.text,
                 modifier = Modifier.weight(1f)
@@ -135,7 +136,7 @@ fun TerminalScreen(
                     }
                 }
                 IconButton(onClick = { controller.openSession() }) {
-                    Icon(Icons.Default.Refresh, "Relancer l'onglet", tint = c.text2)
+                    Icon(Icons.Default.Refresh, stringResource(R.string.terminal_relancer_onglet), tint = c.text2)
                 }
             }
         }
@@ -143,11 +144,11 @@ fun TerminalScreen(
         when (state) {
             is TerminalController.State.Idle -> Centered {
                 Text(
-                    "Le terminal a besoin de télécharger son système (une seule fois).",
+                    stringResource(R.string.terminal_telecharge_note),
                     color = c.text2,
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
                 )
-                Button(onClick = { controller.install() }) { Text("Installer le terminal") }
+                Button(onClick = { controller.install() }) { Text(stringResource(R.string.terminal_installer)) }
             }
 
             is TerminalController.State.Working -> Centered {
@@ -178,8 +179,8 @@ fun TerminalScreen(
                 )
                 // err-074 — « Réparer » : repose les droits et relance la configuration sans retélécharger.
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Button(onClick = { controller.install() }) { Text("Réessayer") }
-                    Button(onClick = { controller.reparer() }) { Text("Réparer") }
+                    Button(onClick = { controller.install() }) { Text(stringResource(R.string.action_reessayer)) }
+                    Button(onClick = { controller.reparer() }) { Text(stringResource(R.string.action_reparer)) }
                 }
             }
 
@@ -218,12 +219,12 @@ fun TerminalScreen(
                         var nom by remember(ongletARenommer) { mutableStateOf(tab.nom.orEmpty()) }
                         AlertDialog(
                             onDismissRequest = { ongletARenommer = -1 },
-                            title = { Text("Renommer l'onglet", color = c.text) },
+                            title = { Text(stringResource(R.string.terminal_renommer_onglet), color = c.text) },
                             text = {
                                 TextField(
                                     value = nom,
                                     onValueChange = { nom = it },
-                                    placeholder = { Text("Nom (vide = Shell " + tab.number + ")") },
+                                    placeholder = { Text(stringResource(R.string.terminal_nom_shell, tab.number)) },
                                     singleLine = true
                                 )
                             },
@@ -234,7 +235,7 @@ fun TerminalScreen(
                                 }) { Text("OK", color = c.cyan) }
                             },
                             dismissButton = {
-                                TextButton(onClick = { ongletARenommer = -1 }) { Text("Annuler", color = c.text2) }
+                                TextButton(onClick = { ongletARenommer = -1 }) { Text(stringResource(R.string.action_annuler), color = c.text2) }
                             },
                             containerColor = c.surface2
                         )
@@ -335,7 +336,7 @@ private fun TabsRow(
                 .padding(horizontal = 14.dp, vertical = 7.dp)
         ) {
             Text(
-                "Agent",
+                stringResource(R.string.ui_agent),
                 color = if (showAgent) c.bg else c.text2,
                 style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
             )
@@ -349,7 +350,7 @@ private fun TabsRow(
                 .padding(horizontal = 14.dp, vertical = 7.dp)
         ) {
             Text(
-                "Paquets",
+                stringResource(R.string.ui_paquets),
                 color = if (showPaquets) c.bg else c.text2,
                 style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
             )
@@ -363,7 +364,7 @@ private fun TabsRow(
                 .padding(horizontal = 14.dp, vertical = 7.dp)
         ) {
             Text(
-                "Bashrc",
+                stringResource(R.string.ui_bashrc),
                 color = if (showBashrc) c.bg else c.text2,
                 style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
             )
@@ -397,14 +398,14 @@ private fun AgentLogPane(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "Lecture seule : actions et commandes de l'agent",
+                stringResource(R.string.securite_lecture_seule),
                 color = c.text3,
                 style = TextStyle(fontSize = 12.sp),
                 modifier = Modifier.weight(1f)
             )
             if (log.isNotEmpty()) {
                 Text(
-                    "Vider",
+                    stringResource(R.string.action_vider),
                     color = c.amber,
                     style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold),
                     modifier = Modifier
@@ -418,7 +419,7 @@ private fun AgentLogPane(
         TextField(
             value = recherche,
             onValueChange = { recherche = it },
-            placeholder = { Text("Rechercher dans la sortie…", style = TextStyle(fontSize = 12.5.sp)) },
+            placeholder = { Text(stringResource(R.string.terminal_recherche_sortie), style = TextStyle(fontSize = 12.5.sp)) },
             singleLine = true,
             textStyle = TextStyle(fontSize = 13.sp, color = c.text),
             colors = TextFieldDefaults.colors(
@@ -520,9 +521,9 @@ private fun ShellPane(controller: TerminalController, termBg: Int, modifier: Mod
         }
         if (controller.sessionEnded) {
             Centered {
-                Text("Session terminée", color = c.text2)
+                Text(stringResource(R.string.terminal_session_terminee), color = c.text2)
                 Spacer(Modifier.height(8.dp))
-                Button(onClick = { controller.openSession() }) { Text("Relancer") }
+                Button(onClick = { controller.openSession() }) { Text(stringResource(R.string.action_relancer)) }
             }
         }
     }
@@ -642,7 +643,7 @@ private fun HistoriquePane(controller: TerminalController, onFermer: () -> Unit)
                 modifier = Modifier.weight(1f)
             )
             Text(
-                "Vider",
+                stringResource(R.string.action_vider),
                 color = c.amber,
                 style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold),
                 modifier = Modifier
@@ -651,7 +652,7 @@ private fun HistoriquePane(controller: TerminalController, onFermer: () -> Unit)
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             )
             Text(
-                "Fermer",
+                stringResource(R.string.action_fermer),
                 color = c.cyan,
                 style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold),
                 modifier = Modifier
@@ -663,7 +664,7 @@ private fun HistoriquePane(controller: TerminalController, onFermer: () -> Unit)
         TextField(
             value = q,
             onValueChange = { q = it },
-            placeholder = { Text("Rechercher une commande…", style = TextStyle(fontSize = 12.5.sp)) },
+            placeholder = { Text(stringResource(R.string.terminal_recherche_commande), style = TextStyle(fontSize = 12.5.sp)) },
             singleLine = true,
             textStyle = TextStyle(fontSize = 13.sp, color = c.text),
             colors = TextFieldDefaults.colors(
@@ -759,7 +760,7 @@ private fun PaquetsPane(controller: TerminalController, modifier: Modifier) {
             TextField(
                 value = nouveau,
                 onValueChange = { nouveau = it },
-                placeholder = { Text("Nom du paquet à installer…", style = TextStyle(fontSize = 12.5.sp)) },
+                placeholder = { Text(stringResource(R.string.terminal_paquet_hint), style = TextStyle(fontSize = 12.5.sp)) },
                 singleLine = true,
                 textStyle = TextStyle(fontSize = 13.sp, color = c.text),
                 colors = TextFieldDefaults.colors(
@@ -772,7 +773,7 @@ private fun PaquetsPane(controller: TerminalController, modifier: Modifier) {
                 modifier = Modifier.weight(1f)
             )
             Text(
-                "Installer",
+                stringResource(R.string.action_installer),
                 color = if (nouveau.isBlank() || operation != null) c.text3 else c.green,
                 style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold),
                 modifier = Modifier
@@ -791,7 +792,7 @@ private fun PaquetsPane(controller: TerminalController, modifier: Modifier) {
         TextField(
             value = q,
             onValueChange = { q = it },
-            placeholder = { Text("Rechercher un paquet installé…", style = TextStyle(fontSize = 12.5.sp)) },
+            placeholder = { Text(stringResource(R.string.terminal_recherche_paquet), style = TextStyle(fontSize = 12.5.sp)) },
             singleLine = true,
             textStyle = TextStyle(fontSize = 13.sp, color = c.text),
             colors = TextFieldDefaults.colors(
@@ -837,7 +838,7 @@ private fun PaquetsPane(controller: TerminalController, modifier: Modifier) {
                         modifier = Modifier.weight(1f)
                     )
                     Text(
-                        "Supprimer",
+                        stringResource(R.string.action_supprimer),
                         color = c.red,
                         style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold),
                         modifier = Modifier
@@ -882,7 +883,7 @@ private fun BashrcPane(controller: TerminalController, modifier: Modifier) {
     Column(modifier.verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "~/.bashrc — sourcé par chaque nouveau shell",
+                stringResource(R.string.terminal_bashrc_note),
                 color = c.text2,
                 style = TextStyle(fontSize = 12.sp),
                 modifier = Modifier.weight(1f)
@@ -912,7 +913,7 @@ private fun BashrcPane(controller: TerminalController, modifier: Modifier) {
         TextField(
             value = texte.orEmpty(),
             onValueChange = { texte = it; message = "" },
-            placeholder = { Text("Alias et fonctions bash…", style = TextStyle(fontSize = 12.5.sp)) },
+            placeholder = { Text(stringResource(R.string.terminal_alias_hint), style = TextStyle(fontSize = 12.5.sp)) },
             textStyle = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.5.sp, color = c.text),
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = c.surface2,
@@ -928,7 +929,7 @@ private fun BashrcPane(controller: TerminalController, modifier: Modifier) {
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "Enregistrer",
+                stringResource(R.string.action_enregistrer),
                 color = c.green,
                 style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold),
                 modifier = Modifier
@@ -947,4 +948,3 @@ private fun BashrcPane(controller: TerminalController, modifier: Modifier) {
         }
     }
 }
-

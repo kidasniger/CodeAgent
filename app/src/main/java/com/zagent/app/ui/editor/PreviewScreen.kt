@@ -42,6 +42,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,6 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.R
 import com.zagent.app.ui.components.common.GlassAlertDialog
 import com.zagent.app.ui.components.common.makeQrBitmap
 import com.zagent.app.ui.theme.Inter
@@ -103,8 +105,8 @@ fun PreviewScreen(viewModel: MainViewModel, onClose: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            BarIcon(Icons.Default.Close, "Fermer l'aperçu") { onClose() }
-            BarIcon(Icons.Default.Refresh, "Recharger") { reloadTick++ }
+            BarIcon(Icons.Default.Close, stringResource(R.string.content_fermer_apercu)) { onClose() }
+            BarIcon(Icons.Default.Refresh, stringResource(R.string.action_recharger)) { reloadTick++ }
             Column(Modifier.weight(1f)) {
                 // MA88 : voyant du serveur local devant l'adresse.
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -131,13 +133,13 @@ fun PreviewScreen(viewModel: MainViewModel, onClose: () -> Unit) {
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            BarIcon(Icons.Default.ScreenRotation, "Pivoter") {
+            BarIcon(Icons.Default.ScreenRotation, stringResource(R.string.content_pivoter)) {
                 landscape = !landscape
                 (context as? Activity)?.requestedOrientation =
                     if (landscape) ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
                     else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
             }
-            BarIcon(Icons.Default.OpenInNew, "Ouvrir dans le navigateur") {
+            BarIcon(Icons.Default.OpenInNew, stringResource(R.string.content_ouvrir_navigateur)) {
                 if (currentUrl.startsWith("http")) {
                     val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(currentUrl))
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -145,13 +147,13 @@ fun PreviewScreen(viewModel: MainViewModel, onClose: () -> Unit) {
                 }
             }
             // MA88 : copier l'adresse locale.
-            BarIcon(Icons.Default.ContentCopy, "Copier l'URL") {
+            BarIcon(Icons.Default.ContentCopy, stringResource(R.string.content_copier_url)) {
                 if (currentUrl.startsWith("http")) {
                     clipboard.setText(AnnotatedString(currentUrl))
                     com.zagent.app.ui.components.common.ZEphemeral.show("URL copiée")
                 }
             }
-            BarIcon(Icons.Default.QrCode2, "QR code de l'adresse") {
+            BarIcon(Icons.Default.QrCode2, stringResource(R.string.content_qr_adresse)) {
                 if (currentUrl.startsWith("http")) showQr = true
             }
         }
@@ -162,7 +164,7 @@ fun PreviewScreen(viewModel: MainViewModel, onClose: () -> Unit) {
                 .padding(horizontal = 10.dp, vertical = 2.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            listOf("Téléphone", "Tablette", "Bureau").forEachIndexed { i, label ->
+            listOf(R.string.preview_telephone, R.string.preview_tablette, R.string.preview_bureau).forEachIndexed { i, labelRes ->
                 val active = device == i
                 Box(
                     Modifier
@@ -177,7 +179,7 @@ fun PreviewScreen(viewModel: MainViewModel, onClose: () -> Unit) {
                         .padding(horizontal = 12.dp, vertical = 5.dp)
                 ) {
                     Text(
-                        label,
+                        stringResource(labelRes),
                         style = TextStyle(
                             fontFamily = Inter,
                             fontSize = 11.sp,
@@ -188,7 +190,7 @@ fun PreviewScreen(viewModel: MainViewModel, onClose: () -> Unit) {
                 }
             }
             Spacer(Modifier.weight(1f))
-            BarIcon(Icons.Default.Terminal, "Console JS") { showConsole = !showConsole }
+            BarIcon(Icons.Default.Terminal, stringResource(R.string.content_console_js)) { showConsole = !showConsole }
         }
 
         // ── WebView, cadré selon l'appareil choisi ───────────────────────────
@@ -241,7 +243,7 @@ fun PreviewScreen(viewModel: MainViewModel, onClose: () -> Unit) {
                         modifier = Modifier.weight(1f)
                     )
                     Text(
-                        "Replier",
+                        stringResource(R.string.ui_replier),
                         style = TextStyle(fontFamily = Inter, fontSize = 11.sp, fontWeight = FontWeight.SemiBold),
                         color = c.cyan,
                         modifier = Modifier
@@ -259,7 +261,7 @@ fun PreviewScreen(viewModel: MainViewModel, onClose: () -> Unit) {
         val bmp = remember(currentUrl) { makeQrBitmap(currentUrl) }
         GlassAlertDialog(
             onDismissRequest = { showQr = false },
-            title = { Text("Scanner depuis un autre appareil", fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = c.text) },
+            title = { Text(stringResource(R.string.preview_scanner), fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = c.text) },
             text = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                     if (bmp != null) {
@@ -275,7 +277,7 @@ fun PreviewScreen(viewModel: MainViewModel, onClose: () -> Unit) {
             },
             confirmButton = {
                 Text(
-                    "Fermer",
+                    stringResource(R.string.action_fermer),
                     style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 14.sp),
                     color = c.cyan,
                     modifier = Modifier

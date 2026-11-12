@@ -165,7 +165,7 @@ fun JournalErreursScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         subtitle = filtrees.size.toString() + " entrée" + if (filtrees.size > 1) "s" else "",
         onBack = onBack
     ) {
-        OverlayTabs(listOf("Tout", "Agent", "Réseau", "Crash"), filtre) { filtre = it }
+        OverlayTabs(listOf(R.string.onglet_tout, R.string.onglet_agent, R.string.onglet_reseau, R.string.onglet_crash), filtre) { filtre = it }
         Spacer(Modifier.height(10.dp))
         OverlaySearchField(requete, { requete = it }, stringResource(R.string.journal_recherche))
         Spacer(Modifier.height(10.dp))
@@ -262,7 +262,7 @@ fun JournalErreursScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                                         .padding(horizontal = 7.dp, vertical = 1.dp)
                                 ) {
                                     Text(
-                                        "critique",
+                                        stringResource(R.string.journal_critique),
                                         style = TextStyle(fontFamily = JetBrainsMono, fontSize = 9.sp, fontWeight = FontWeight.SemiBold),
                                         color = c.red
                                     )

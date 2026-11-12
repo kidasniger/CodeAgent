@@ -444,7 +444,7 @@ fun ChatScreen(
                     onValueChange = { searchQuery = it },
                     placeholder = {
                         Text(
-                            "Rechercher dans la conversation",
+                            stringResource(R.string.chat_rechercher_conversation),
                             style = TextStyle(fontFamily = Inter, fontSize = 13.sp),
                             color = c.text3
                         )
@@ -467,14 +467,14 @@ fun ChatScreen(
                         .clip(CircleShape)
                         .clickable { naviguerRecherche(-1) },
                     contentAlignment = Alignment.Center
-                ) { Icon(Icons.Default.ExpandLess, "Occurrence précédente", tint = c.text2) }
+                ) { Icon(Icons.Default.ExpandLess, stringResource(R.string.content_occurrence_prec), tint = c.text2) }
                 Box(
                     Modifier
                         .size(40.dp)
                         .clip(CircleShape)
                         .clickable { naviguerRecherche(1) },
                     contentAlignment = Alignment.Center
-                ) { Icon(Icons.Default.ExpandMore, "Occurrence suivante", tint = c.text2) }
+                ) { Icon(Icons.Default.ExpandMore, stringResource(R.string.content_occurrence_suiv), tint = c.text2) }
                 Box(
                     Modifier
                         .size(40.dp)
@@ -484,7 +484,7 @@ fun ChatScreen(
                             searchQuery = ""
                         },
                     contentAlignment = Alignment.Center
-                ) { Icon(Icons.Default.Close, "Fermer la recherche", tint = c.text2) }
+                ) { Icon(Icons.Default.Close, stringResource(R.string.content_fermer_recherche), tint = c.text2) }
             }
         }
 
@@ -505,14 +505,14 @@ fun ChatScreen(
                         .padding(bottom = 24.dp)
                 ) {
                     Text(
-                        "Messages épinglés",
+                        stringResource(R.string.chat_messages_epingles),
                         style = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.SemiBold, fontSize = 17.sp),
                         color = c.text
                     )
                     Spacer(Modifier.height(10.dp))
                     if (epingles.isEmpty()) {
                         Text(
-                            "Aucun message épinglé. Ouvre le menu d'un message puis « Épingler ».",
+                            stringResource(R.string.chat_aucun_epingle),
                             style = TextStyle(fontFamily = Inter, fontSize = 12.5.sp),
                             color = c.text2
                         )
@@ -747,7 +747,7 @@ fun ChatScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "Hors ligne — le chat attend le réseau (tap pour réessayer). Éditeur et terminal restent utilisables.",
+                            stringResource(R.string.chat_hors_ligne_bandeau),
                             style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp),
                             color = c.amber,
                             modifier = Modifier.weight(1f, fill = false)
@@ -768,7 +768,7 @@ fun ChatScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "Budget du jour dépassé — alerte (modifiable dans Réglages).",
+                            stringResource(R.string.budget_bandeau),
                             style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp),
                             color = c.violet
                         )
@@ -887,7 +887,7 @@ fun ChatScreen(
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    "Annuler",
+                    stringResource(R.string.action_annuler),
                     color = c.cyan,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -901,7 +901,7 @@ fun ChatScreen(
         // feat-013 — rappel discret que le mode Plan est actif.
         if (viewModel.planMode) {
             Text(
-                "Mode Plan : l'agent propose un plan et attend ta validation avant d'écrire (/plan pour désactiver)",
+                stringResource(R.string.chat_mode_plan_note),
                 style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp),
                 color = c.cyan,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
@@ -921,7 +921,7 @@ fun ChatScreen(
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    "Annuler",
+                    stringResource(R.string.action_annuler),
                     color = c.cyan,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,

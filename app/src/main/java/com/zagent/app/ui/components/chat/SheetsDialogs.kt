@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,6 +41,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.horizontalScroll
+import com.zagent.app.R
 import com.zagent.app.data.ModelCatalog
 import com.zagent.app.data.Capacite
 import com.zagent.app.ui.theme.Inter
@@ -107,7 +109,7 @@ fun GitDiffView(
             )
         } else if (rows.isEmpty()) {
             Text(
-                "Aucun changement.",
+                stringResource(R.string.git_aucun_changement),
                 style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp),
                 color = c.text2,
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
@@ -190,14 +192,14 @@ fun GitChangesSheet(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "Changements Git",
+                    stringResource(R.string.git_changements_titre),
                     style = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.SemiBold, fontSize = 20.sp),
                     color = c.text,
                     modifier = Modifier.weight(1f)
                 )
                 if (onOpenFull != null) {
                     TextButton(onClick = onOpenFull) {
-                        Text("Écran complet", color = c.violet)
+                        Text(stringResource(R.string.ui_ecran_complet), color = c.violet)
                     }
                 }
                 TextButton(onClick = onRefresh, enabled = !loading) {
@@ -240,7 +242,7 @@ fun ModelPickerDialog(
 
     GlassAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Modèle de la conversation", fontFamily = SpaceGrotesk, color = c.text) },
+        title = { Text(stringResource(R.string.chat_modele_conversation), fontFamily = SpaceGrotesk, color = c.text) },
         text = {
             Column(
                 Modifier
@@ -282,7 +284,7 @@ fun ModelPickerDialog(
                 OutlinedTextField(
                     value = custom,
                     onValueChange = { custom = it },
-                    placeholder = { Text("autre identifiant de modèle", fontFamily = JetBrainsMono, color = c.text3) },
+                    placeholder = { Text(stringResource(R.string.chat_autre_id_modele), fontFamily = JetBrainsMono, color = c.text3) },
                     textStyle = TextStyle(fontFamily = JetBrainsMono, color = c.text, fontSize = 13.sp),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -290,7 +292,7 @@ fun ModelPickerDialog(
                 if (custom.isBlank()) {
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "Ce choix ne vaut que pour cette conversation et revient au réglage global avec « Nouvelle conversation ».",
+                        stringResource(R.string.chat_modele_conversation_note),
                         style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp),
                         color = c.text2
                     )
@@ -299,7 +301,7 @@ fun ModelPickerDialog(
                 // ── MàJ 104 : Mode Duo ────────────────────────────────────────
                 Spacer(Modifier.height(14.dp))
                 Text(
-                    "Mode Duo — deux modèles ensemble",
+                    stringResource(R.string.duo_titre),
                     style = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
                     color = c.text
                 )
@@ -315,12 +317,12 @@ fun ModelPickerDialog(
                 }
                 when (duoMode) {
                     "collaboration" -> Text(
-                        "Le modèle choisi plus haut (A) fait la tâche, puis le modèle B relit sa réponse et propose des corrections.",
+                        stringResource(R.string.duo_relire_note),
                         style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp, lineHeight = 16.sp),
                         color = c.text2
                     )
                     "debat" -> Text(
-                        "A et B alternent à voix haute, deux tours chacun, puis concluent. Écris ton sujet pour lancer le débat.",
+                        stringResource(R.string.duo_debat_note),
                         style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp, lineHeight = 16.sp),
                         color = c.text2
                     )
@@ -333,7 +335,7 @@ fun ModelPickerDialog(
                 if (duoMode != null) {
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "Modèle B du duo :",
+                        stringResource(R.string.duo_modele_b),
                         style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
                         color = c.text2
                     )
@@ -383,7 +385,7 @@ fun ModelPickerDialog(
         },
         dismissButton = {
             if (custom.isNotBlank()) {
-                TextButton(onClick = onDismiss) { Text("Annuler", color = c.text2) }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_annuler), color = c.text2) }
             }
         }
     )
@@ -449,7 +451,7 @@ private fun LigneModeleCatalogue(
                             .padding(horizontal = 6.dp, vertical = 1.dp)
                     ) {
                         Text(
-                            "Recommandé",
+                            stringResource(R.string.models_recommande),
                             style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 9.sp),
                             color = c.amber
                         )
@@ -654,7 +656,7 @@ fun UsageLine(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "Afficher l'usage sous les messages",
+                            stringResource(R.string.chat_usage_sous_messages),
                             style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp),
                             color = c.text2,
                             modifier = Modifier.weight(1f)
@@ -700,7 +702,7 @@ fun DevServerBar(
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    "Serveur de développement",
+                    stringResource(R.string.ui_serveur_dev),
                     style = TextStyle(fontFamily = Inter, fontSize = 12.sp, fontWeight = FontWeight.Medium),
                     color = c.text
                 )
@@ -708,7 +710,8 @@ fun DevServerBar(
                     url?.removePrefix("http://") ?: "démarrage…",
                     style = TextStyle(fontFamily = JetBrainsMono, fontSize = 10.5.sp),
                     color = c.text2,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
             if (url != null) {

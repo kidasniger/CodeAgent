@@ -37,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,6 +45,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.R
 import com.zagent.app.ui.components.common.GlassCard
 import com.zagent.app.ui.components.common.OverlayScreen
 import com.zagent.app.ui.components.common.OverlaySection
@@ -75,7 +77,7 @@ fun HelpScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     }
     val tip = remember { tips.random() }
 
-    OverlayScreen(title = "Raccourcis & gestes", subtitle = "Tout ce que ZAgent sait faire au doigt", onBack = onBack) {
+    OverlayScreen(title = stringResource(R.string.ui_raccourcis_gestes), subtitle = "Tout ce que ZAgent sait faire au doigt", onBack = onBack) {
         // ── feat-100 : visite guidée interactive ─────────────────────────────
         OverlaySection("Visite guidée")
         VisiteGuideeSection()
@@ -94,7 +96,7 @@ fun HelpScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             Spacer(Modifier.width(12.dp))
             Column {
                 Text(
-                    "Astuce du jour",
+                    stringResource(R.string.aide_astuce_jour),
                     style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
                     color = c.cyan
                 )
@@ -164,13 +166,13 @@ fun HelpScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         val ctxDiagnostic = androidx.compose.ui.platform.LocalContext.current
         GlassCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp)) {
             Text(
-                "Génère un rapport de diagnostic (version, appareil, dernier crash, activité récente) et partage-le. Aucune clé API ni contenu de conversation n'y figure.",
+                stringResource(R.string.aide_diag_note),
                 style = TextStyle(fontFamily = Inter, fontSize = 12.sp),
                 color = c.text2
             )
             Spacer(Modifier.height(10.dp))
             Text(
-                "Signaler un problème",
+                stringResource(R.string.aide_signaler),
                 style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
                 color = c.cyan,
                 modifier = Modifier
@@ -218,7 +220,7 @@ fun HelpScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         OverlaySection("Joindre des fichiers avec @")
         GlassCard {
             Text(
-                "Tape « @ » puis quelques lettres du nom : l'autocomplétion propose les fichiers du projet. Le contenu du fichier cité est joint au message.",
+                stringResource(R.string.chat_astuce_ata),
                 style = TextStyle(fontFamily = Inter, fontSize = 13.sp, lineHeight = 19.sp),
                 color = c.text
             )
@@ -366,7 +368,7 @@ private fun VisiteGuideeSection() {
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                "Précédent",
+                stringResource(R.string.action_precedent),
                 style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
                 color = if (etape > 0) c.text2 else c.text3,
                 modifier = Modifier

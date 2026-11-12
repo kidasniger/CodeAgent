@@ -42,6 +42,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,6 +54,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.R
 import com.zagent.app.data.ConversationMeta
 import com.zagent.app.ui.screens.ChatScreen
 import com.zagent.app.ui.screens.EditorScreen
@@ -144,7 +146,7 @@ fun HistoryPane(
         ) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    "Historique",
+                    stringResource(R.string.onglet_historique),
                     style = TextStyle(fontFamily = SpaceGrotesk, fontSize = 17.sp, fontWeight = FontWeight.SemiBold),
                     color = c.text
                 )
@@ -175,7 +177,7 @@ fun HistoryPane(
         if (conversations.isEmpty()) {
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Text(
-                    "Tes conversations apparaîtront ici, groupées par jour.",
+                    stringResource(R.string.history_vide),
                     style = TextStyle(fontFamily = Inter, fontSize = 12.sp),
                     color = c.text3,
                     modifier = Modifier.padding(horizontal = 24.dp)
@@ -431,7 +433,7 @@ fun SplitEditorChat(
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    "Quitter le plein écran",
+                    stringResource(R.string.ui_quitter_plein_ecran),
                     style = TextStyle(fontFamily = Inter, fontSize = 11.sp),
                     color = c.text2
                 )

@@ -161,14 +161,14 @@ fun ZNavHost(
     ) {
         composable(
             route = ZRoutes.CHAT,
-            deepLinks = listOf(navDeepLink { uriPattern = "zagent://chat" })
+            deepLinks = listOf(navDeepLink { uriPattern = "${ZRoutes.DEEP_LINK_SCHEME}://chat" })
         ) {
             AdaptiveChatPane(viewModel = viewModel, widthSizeClass = widthSizeClass)
         }
 
         composable(
             route = ZRoutes.FILES,
-            deepLinks = listOf(navDeepLink { uriPattern = "zagent://files" })
+            deepLinks = listOf(navDeepLink { uriPattern = "${ZRoutes.DEEP_LINK_SCHEME}://files" })
         ) {
             FileBrowserScreen(viewModel = viewModel, onBack = { viewModel.navigateBack() })
         }
@@ -182,7 +182,7 @@ fun ZNavHost(
                     defaultValue = null
                 }
             ),
-            deepLinks = listOf(navDeepLink { uriPattern = "zagent://editor?path={path}" })
+            deepLinks = listOf(navDeepLink { uriPattern = "${ZRoutes.DEEP_LINK_SCHEME}://editor?path={path}" })
         ) { entry ->
             val path = entry.arguments?.getString("path")
             // Deep link ou restauration : ouvre le fichier demandé si l'éditeur
@@ -210,7 +210,7 @@ fun ZNavHost(
 
         composable(
             route = ZRoutes.TERMINAL,
-            deepLinks = listOf(navDeepLink { uriPattern = "zagent://terminal" })
+            deepLinks = listOf(navDeepLink { uriPattern = "${ZRoutes.DEEP_LINK_SCHEME}://terminal" })
         ) {
             TerminalScreen(
                 controller = viewModel.terminal,
@@ -222,7 +222,7 @@ fun ZNavHost(
 
         composable(
             route = ZRoutes.SETTINGS,
-            deepLinks = listOf(navDeepLink { uriPattern = "zagent://settings" })
+            deepLinks = listOf(navDeepLink { uriPattern = "${ZRoutes.DEEP_LINK_SCHEME}://settings" })
         ) {
             SettingsScreen(viewModel = viewModel, onDismiss = { viewModel.navigateBack() })
         }
@@ -230,7 +230,7 @@ fun ZNavHost(
         // MA71 : route dédiée à la sous-vue Apparence (deep link zagent://settings/appearance).
         composable(
             route = ZRoutes.SETTINGS_APPEARANCE,
-            deepLinks = listOf(navDeepLink { uriPattern = "zagent://settings/appearance" })
+            deepLinks = listOf(navDeepLink { uriPattern = "${ZRoutes.DEEP_LINK_SCHEME}://settings/appearance" })
         ) {
             SettingsScreen(
                 viewModel = viewModel,

@@ -30,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.R
 import com.zagent.app.data.Capacite
 import com.zagent.app.data.Fournisseur
 import com.zagent.app.data.ModelCatalog
@@ -68,7 +70,7 @@ fun ModelsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
     var customModel by remember { mutableStateOf("") }
     var customUrl by remember { mutableStateOf(viewModel.baseUrlInput) }
 
-    OverlayScreen(title = "Modèles", subtitle = "Actif : " + viewModel.effectiveModel, onBack = onBack) {
+    OverlayScreen(title = stringResource(R.string.ui_modeles), subtitle = "Actif : " + viewModel.effectiveModel, onBack = onBack) {
         val priceText = if (viewModel.priceInInput <= 0f && viewModel.priceOutInput <= 0f)
             "Prix non configurés"
         else
@@ -182,7 +184,7 @@ fun ModelsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         androidx.compose.material3.OutlinedTextField(
             value = customModel,
             onValueChange = { customModel = it },
-            placeholder = { Text("identifiant du modèle (ex : mon-org/mon-modele)", style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp), color = c.text3) },
+            placeholder = { Text(stringResource(R.string.models_id_exemple), style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp), color = c.text3) },
             textStyle = TextStyle(fontFamily = JetBrainsMono, fontSize = 13.sp, color = c.text),
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
@@ -191,14 +193,14 @@ fun ModelsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         androidx.compose.material3.OutlinedTextField(
             value = customUrl,
             onValueChange = { customUrl = it },
-            placeholder = { Text("URL de base de l'API (chat/completions)", style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp), color = c.text3) },
+            placeholder = { Text(stringResource(R.string.models_url_base), style = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp), color = c.text3) },
             textStyle = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.5.sp, color = c.text),
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(10.dp))
         Text(
-            "Astuce : enregistre plutôt la passerelle dans Réglages › Fournisseurs d'IA avec sa propre clé — ses modèles arriveront ici automatiquement.",
+            stringResource(R.string.chat_astuce_passerelle),
             style = TextStyle(fontFamily = Inter, fontSize = 12.sp, lineHeight = 17.sp),
             color = c.text2
         )
@@ -221,7 +223,7 @@ fun ModelsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    "Appliquer le modèle",
+                    stringResource(R.string.chat_appliquer_modele),
                     style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.5.sp),
                     color = if (customModel.isNotBlank()) c.text else c.text3
                 )
@@ -234,7 +236,7 @@ fun ModelsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             Icon(Icons.Default.Bolt, null, tint = c.amber, modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(6.dp))
             Text(
-                "Astuce : le chip modèle du champ de saisie change le modèle de la conversation en cours seulement. Les étoiles épinglent tes modèles en tête du sélecteur.",
+                stringResource(R.string.chat_astuce_chip),
                 style = TextStyle(fontFamily = Inter, fontSize = 12.sp, lineHeight = 16.sp),
                 color = c.text2,
                 modifier = Modifier.weight(1f)
@@ -317,7 +319,7 @@ private fun ModelCard(
                             .padding(horizontal = 8.dp, vertical = 2.dp)
                     ) {
                         Text(
-                            "Recommandé",
+                            stringResource(R.string.models_recommande),
                             style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 10.sp),
                             color = c.amber
                         )
@@ -325,7 +327,7 @@ private fun ModelCard(
                 }
                 Spacer(Modifier.width(6.dp))
                 if (selected) {
-                    Icon(Icons.Default.Check, "Sélectionné", tint = c.cyan, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Check, stringResource(R.string.ui_selectionne), tint = c.cyan, modifier = Modifier.size(16.dp))
                 }
                 // MàJ 102 — étoile favori : épingle le modèle en tête des sélecteurs.
                 Icon(

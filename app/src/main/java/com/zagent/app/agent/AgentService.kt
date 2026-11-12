@@ -16,7 +16,8 @@ class AgentService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         AgentNotifier.ensureChannels(this)
-        val text = intent?.getStringExtra("text") ?: "L'agent travaille…"
+        val text = intent?.getStringExtra("text")
+            ?: getString(com.zagent.app.R.string.notif_agent_travaille)
         try {
             // MA29 : type dataSync déclaré (manifeste) et passé explicitement ;
             // ServiceCompat ignore le type sous API 29.
@@ -47,7 +48,7 @@ class AgentService : Service() {
         /** Vrai tant qu'un serveur de développement tourne : le service reste alors actif. */
         @Volatile var devServerActive = false
 
-        fun start(ctx: Context, text: String = "L'agent travaille…") {
+        fun start(ctx: Context, text: String = ctx.getString(com.zagent.app.R.string.notif_agent_travaille)) {
             try {
                 ctx.startForegroundService(Intent(ctx, AgentService::class.java).putExtra("text", text))
             } catch (e: Exception) {
@@ -57,12 +58,13 @@ class AgentService : Service() {
 
         fun stop(ctx: Context) {
             if (devServerActive) {
-                start(ctx, "Serveur de développement actif")
+                start(ctx, ctx.getString(com.zagent.app.R.string.notif_serveur_dev))
                 return
             }
             try {
                 ctx.stopService(Intent(ctx, AgentService::class.java))
-            } catch (e: Exception) {
+            } catch (_: Exception) {
+                // arrêt refusé : rien à faire, le service se termine de toute façon
             }
         }
     }

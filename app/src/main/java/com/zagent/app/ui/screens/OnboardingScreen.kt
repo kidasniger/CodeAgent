@@ -50,6 +50,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,6 +63,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.R
 import com.zagent.app.ui.components.common.GlassCard
 import com.zagent.app.ui.components.common.GradientButton
 import com.zagent.app.ui.components.common.ModelChip
@@ -149,7 +151,7 @@ fun OnboardingScreen(
                     .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
                 Text(
-                    "Passer",
+                    stringResource(R.string.action_passer),
                     color = c.text2,
                     style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 )
@@ -178,7 +180,7 @@ fun OnboardingScreen(
                 when (p) {
                     0 -> {
                         Text(
-                            "Bienvenue sur\nZAgent",
+                            stringResource(R.string.onboarding_bienvenue),
                             style = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, fontSize = 27.sp, lineHeight = 34.sp),
                             color = c.text,
                             textAlign = TextAlign.Center,
@@ -186,7 +188,7 @@ fun OnboardingScreen(
                         )
                         Spacer(Modifier.height(10.dp))
                         Text(
-                            "Un agent de code qui lit, crée et modifie les fichiers de ton projet, directement depuis ton téléphone. Décris une tâche, il s'occupe du reste.",
+                            stringResource(R.string.onboarding_intro),
                             style = TextStyle(fontFamily = Inter, fontSize = 14.5.sp, lineHeight = 22.sp),
                             color = c.text2,
                             textAlign = TextAlign.Center,
@@ -194,7 +196,7 @@ fun OnboardingScreen(
                         )
                         Spacer(Modifier.height(22.dp))
                         Text(
-                            "Choisis ton thème",
+                            stringResource(R.string.onboarding_choisir_theme),
                             style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
                             color = c.text3
                         )
@@ -216,7 +218,7 @@ fun OnboardingScreen(
 
                     1 -> {
                         Text(
-                            "Branche ta\nclé API",
+                            stringResource(R.string.onboarding_cle),
                             style = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, fontSize = 27.sp, lineHeight = 34.sp),
                             color = c.text,
                             textAlign = TextAlign.Center,
@@ -224,7 +226,7 @@ fun OnboardingScreen(
                         )
                         Spacer(Modifier.height(10.dp))
                         Text(
-                            "Choisis ton fournisseur et colle sa clé — détectée automatiquement (nvapi- = NVIDIA). Tout se change dans Réglages › Fournisseurs.",
+                            stringResource(R.string.onboarding_fournisseur_note),
                             style = TextStyle(fontFamily = Inter, fontSize = 14.5.sp, lineHeight = 22.sp),
                             color = c.text2,
                             textAlign = TextAlign.Center,
@@ -242,7 +244,7 @@ fun OnboardingScreen(
                                 Icon(Icons.Default.Key, null, tint = c.cyan, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(10.dp))
                                 Text(
-                                    "Clé API",
+                                    stringResource(R.string.settings_cle_api),
                                     style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 14.sp),
                                     color = c.text,
                                     modifier = Modifier.weight(1f)
@@ -371,7 +373,7 @@ fun OnboardingScreen(
                         }
                         Spacer(Modifier.height(16.dp))
                         Text(
-                            "Modèle de départ",
+                            stringResource(R.string.templates_modele_depart),
                             style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
                             color = c.text3
                         )
@@ -392,7 +394,7 @@ fun OnboardingScreen(
 
                     else -> {
                         Text(
-                            "Un dossier\npar projet",
+                            stringResource(R.string.onboarding_dossier),
                             style = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, fontSize = 27.sp, lineHeight = 34.sp),
                             color = c.text,
                             textAlign = TextAlign.Center,
@@ -400,7 +402,7 @@ fun OnboardingScreen(
                         )
                         Spacer(Modifier.height(10.dp))
                         Text(
-                            "L'agent n'accède qu'au projet actif. Importe un dossier de ton téléphone pour commencer, ou crée un projet plus tard depuis l'écran Projets.",
+                            stringResource(R.string.onboarding_acces_note),
                             style = TextStyle(fontFamily = Inter, fontSize = 14.5.sp, lineHeight = 22.sp),
                             color = c.text2,
                             textAlign = TextAlign.Center,
@@ -420,7 +422,7 @@ fun OnboardingScreen(
                             Icon(Icons.Default.FolderOpen, null, tint = c.cyan, modifier = Modifier.size(20.dp))
                             Spacer(Modifier.width(12.dp))
                             Text(
-                                "Choisir un dossier du téléphone",
+                                stringResource(R.string.ui_choisir_dossier),
                                 style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 14.sp),
                                 color = c.text
                             )
@@ -442,12 +444,12 @@ fun OnboardingScreen(
                                 Spacer(Modifier.width(12.dp))
                                 Column(Modifier.weight(1f)) {
                                     Text(
-                                        "Créer un projet d'exemple",
+                                        stringResource(R.string.onboarding_projet_exemple),
                                         style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 14.sp),
                                         color = c.text
                                     )
                                     Text(
-                                        "README, page HTML et script Python, prêts à modifier",
+                                        stringResource(R.string.onboarding_exemple_desc),
                                         style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp),
                                         color = c.text2
                                     )
@@ -472,12 +474,12 @@ fun OnboardingScreen(
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(
-                                    "Essayer l'effet verre",
+                                    stringResource(R.string.onboarding_essayer_verre),
                                     style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 14.sp),
                                     color = c.text
                                 )
                                 Text(
-                                    "Verre dépoli flottant sur les barres et feuilles. Réglable dans Apparence.",
+                                    stringResource(R.string.glass_desc_long),
                                     style = TextStyle(fontFamily = Inter, fontSize = 12.sp),
                                     color = c.text2
                                 )
@@ -631,7 +633,7 @@ private fun ThemePreview() {
                 .padding(12.dp)
         ) {
             Text(
-                "Je modifie le fichier demandé…",
+                stringResource(R.string.chat_modifie_fichier),
                 style = TextStyle(fontFamily = Inter, fontSize = 12.sp),
                 color = c.text
             )
@@ -645,7 +647,7 @@ private fun ThemePreview() {
                     .padding(horizontal = 16.dp, vertical = 9.dp)
             ) {
                 Text(
-                    "Envoyer",
+                    stringResource(R.string.action_envoyer),
                     style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
                     color = c.onGrad
                 )

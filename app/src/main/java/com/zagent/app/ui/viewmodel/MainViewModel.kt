@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateSetOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.zagent.app.R
 import com.zagent.app.agent.AgentNotifier
 import com.zagent.app.agent.AgentService
 import com.zagent.app.data.AgentTools
@@ -939,7 +940,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 com.zagent.app.data.ModelInfo(
                     id = id,
                     label = id.substringAfterLast('/').ifEmpty { id },
-                    description = "Détecté via la clé du fournisseur " + fournisseurActif.nom,
+                    description = sm(R.string.models_detecte_cle, fournisseurActif.nom),
                     contextWindow = "—",
                     speed = 2,
                     recommended = false
@@ -1085,7 +1086,7 @@ done; } 2>&1 | head -c 50000
     fun importZip(uri: Uri) {
         if (transferBusy) return
         transferBusy = true
-        transferStatus = "Import du zip en cours…"
+        transferStatus = sm(R.string.vm_import_zip)
         viewModelScope.launch(Dispatchers.IO) {
             var dest: File? = null
             val msg = try {
@@ -1096,10 +1097,10 @@ done; } 2>&1 | head -c 50000
                 d.mkdirs()
                 val count = unzipTo(uri, d)
                 withContext(Dispatchers.Main) { selectProject(name) }
-                "Importé : $name ($count fichiers)"
+                sm(R.string.vm_importe, name, count)
             } catch (e: Exception) {
                 dest?.deleteRecursively()
-                "Erreur d'import : " + (e.localizedMessage ?: e.javaClass.simpleName)
+                sm(R.string.vm_erreur_import, e.localizedMessage ?: e.javaClass.simpleName)
             }
             withContext(Dispatchers.Main) {
                 transferStatus = msg
@@ -1111,7 +1112,7 @@ done; } 2>&1 | head -c 50000
     private fun unzipTo(uri: Uri, dest: File): Int {
         val resolver = getApplication<Application>().contentResolver
         val names = ArrayList<String>()
-        (resolver.openInputStream(uri) ?: throw IllegalStateException("Fichier illisible.")).use { ins ->
+        (resolver.openInputStream(uri) ?: throw IllegalStateException(sm(R.string.vm_fichier_illisible))).use { ins ->
             ZipInputStream(ins.buffered()).use { z ->
                 var e = z.nextEntry
                 while (e != null) {
@@ -1120,14 +1121,14 @@ done; } 2>&1 | head -c 50000
                 }
             }
         }
-        if (names.isEmpty()) throw IllegalStateException("Le zip est vide ou invalide.")
+        if (names.isEmpty()) throw IllegalStateException(sm(R.string.vm_zip_vide))
         val real = names.filter { it.isNotEmpty() && !it.startsWith("__MACOSX/") }
         val firstSegments = real.map { it.substringBefore('/') }.toSet()
         // Un seul dossier racine dans le zip : on le retire pour que les fichiers arrivent à la racine du projet.
         val strip = if (firstSegments.size == 1 && real.all { it.contains('/') }) firstSegments.first() + "/" else ""
         val destCanon = dest.canonicalPath
         var count = 0
-        (resolver.openInputStream(uri) ?: throw IllegalStateException("Fichier illisible.")).use { ins ->
+        (resolver.openInputStream(uri) ?: throw IllegalStateException(sm(R.string.vm_fichier_illisible))).use { ins ->
             ZipInputStream(ins.buffered()).use { z ->
                 var e = z.nextEntry
                 while (e != null) {
@@ -1161,22 +1162,22 @@ done; } 2>&1 | head -c 50000
     fun importFolder(uri: Uri) {
         if (transferBusy) return
         transferBusy = true
-        transferStatus = "Import du dossier en cours…"
+        transferStatus = sm(R.string.vm_import_dossier)
         viewModelScope.launch(Dispatchers.IO) {
             var dest: File? = null
             val msg = try {
                 val app = getApplication<Application>()
-                val root = DocumentFile.fromTreeUri(app, uri) ?: throw IllegalStateException("Dossier inaccessible.")
+                val root = DocumentFile.fromTreeUri(app, uri) ?: throw IllegalStateException(sm(R.string.vm_dossier_inaccessible))
                 val name = uniqueProjectName(sanitizeProjectName(root.name ?: "dossier"))
                 val d = File(projectsRoot(), name)
                 dest = d
                 d.mkdirs()
                 val count = copyTree(root, d)
                 withContext(Dispatchers.Main) { selectProject(name) }
-                "Importé : $name ($count fichiers)"
+                sm(R.string.vm_importe, name, count)
             } catch (e: Exception) {
                 dest?.deleteRecursively()
-                "Erreur d'import : " + (e.localizedMessage ?: e.javaClass.simpleName)
+                sm(R.string.vm_erreur_import, e.localizedMessage ?: e.javaClass.simpleName)
             }
             withContext(Dispatchers.Main) {
                 transferStatus = msg
@@ -1210,21 +1211,21 @@ done; } 2>&1 | head -c 50000
     fun exportProject(project: String, uri: Uri) {
         if (transferBusy) return
         transferBusy = true
-        transferStatus = "Export de $project en cours…"
+        transferStatus = sm(R.string.vm_export_cours, project)
         viewModelScope.launch(Dispatchers.IO) {
             val msg = try {
                 val dir = File(projectsRoot(), project)
-                if (!dir.isDirectory) throw IllegalStateException("Projet introuvable.")
+                if (!dir.isDirectory) throw IllegalStateException(sm(R.string.vm_projet_introuvable))
                 var count = 0
                 (getApplication<Application>().contentResolver.openOutputStream(uri)
-                    ?: throw IllegalStateException("Destination inaccessible.")).use { os ->
+                    ?: throw IllegalStateException(sm(R.string.vm_destination_inaccessible))).use { os ->
                     ZipOutputStream(os.buffered()).use { z ->
                         count = zipDir(dir, project + "/", z)
                     }
                 }
-                "Exporté : $project.zip ($count fichiers)"
+                sm(R.string.vm_exporte, project, count)
             } catch (e: Exception) {
-                "Erreur d'export : " + (e.localizedMessage ?: e.javaClass.simpleName)
+                sm(R.string.vm_erreur_export, e.localizedMessage ?: e.javaClass.simpleName)
             }
             withContext(Dispatchers.Main) {
                 transferStatus = msg
@@ -1315,8 +1316,8 @@ done; } 2>&1 | head -c 50000
             return "Nom invalide : lettres, chiffres, point, tiret et underscore (50 max)."
         }
         val dir = java.io.File(projectsRoot(), n)
-        if (dir.exists() && !dir.isDirectory) return "Un fichier porte déjà ce nom."
-        if (!dir.isDirectory && !dir.mkdirs()) return "Impossible de créer le dossier."
+        if (dir.exists() && !dir.isDirectory) return sm(R.string.vm_fichier_existe)
+        if (!dir.isDirectory && !dir.mkdirs()) return sm(R.string.vm_creer_dossier_ko)
         selectProject(n)
         return null
     }
@@ -1525,7 +1526,7 @@ done; } 2>&1 | head -c 50000
                     browserChildren[path] = it
                     if (path == ".") browserError = null
                 }.onFailure {
-                    browserError = it.localizedMessage ?: "Impossible de lire le dossier."
+                    browserError = it.localizedMessage ?: sm(R.string.vm_lire_dossier_ko)
                     if (path == ".") browserChildren[path] = emptyList()
                 }
                 loadingDirectories.remove(path)
@@ -1553,7 +1554,7 @@ done; } 2>&1 | head -c 50000
             withContext(Dispatchers.Main) {
                 val rootResult = loaded.firstOrNull { it.first == "." }?.second
                 rootResult?.onSuccess { browserError = null }?.onFailure {
-                    browserError = it.localizedMessage ?: "Impossible de lire le dossier du projet."
+                    browserError = it.localizedMessage ?: sm(R.string.vm_lire_dossier_projet_ko)
                 }
                 for ((p, result) in loaded) {
                     result.onSuccess { browserChildren[p] = it }
@@ -1624,7 +1625,7 @@ done; } 2>&1 | head -c 50000
      */
     fun createBrowserFileAvecModele(path: String, contenu: String) {
         if (path.isBlank() || path.contains("..")) {
-            browserError = "Nom invalide."
+            browserError = sm(R.string.vm_nom_invalide)
             return
         }
         browserError = null
@@ -1650,7 +1651,7 @@ done; } 2>&1 | head -c 50000
 
     fun deleteBrowserPath(path: String) {
         if (editor.hasDirtyUnder(path)) {
-            browserError = "Enregistre ou ferme les onglets modifiés avant de supprimer."
+            browserError = sm(R.string.vm_onglets_ouverts_suppr)
             return
         }
         browserError = null
@@ -1669,12 +1670,12 @@ done; } 2>&1 | head -c 50000
 
     fun renameBrowserPath(path: String, newName: String) {
         if (newName.isBlank() || newName.contains('/') || newName.contains("..")) {
-            browserError = "Nom invalide."
+            browserError = sm(R.string.vm_nom_invalide)
             return
         }
         if (newName == path.substringAfterLast('/')) return
         if (editor.hasDirtyUnder(path)) {
-            browserError = "Enregistre ou ferme les onglets modifiés avant de renommer."
+            browserError = sm(R.string.vm_onglets_ouverts_renom)
             return
         }
         browserError = null
@@ -1745,7 +1746,7 @@ done; } 2>&1 | head -c 50000
                 val bytes = getApplication<Application>().contentResolver.openInputStream(uri)?.use { it.readBytes() }
                 if (bytes == null || bytes.size > 100_000_000L) {
                     withContext(Dispatchers.Main) {
-                        browserError = if (bytes == null) "Archive illisible." else "Archive trop grande (> 100 Mo)."
+                        browserError = if (bytes == null) sm(R.string.vm_archive_illisible) else sm(R.string.vm_archive_trop_grande)
                         statusMessage = ""
                     }
                     return@launch
@@ -1767,7 +1768,7 @@ done; } 2>&1 | head -c 50000
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    browserError = "Import impossible : ${e.localizedMessage ?: "erreur inconnue"}"
+                    browserError = sm(R.string.vm_import_impossible, e.localizedMessage ?: sm(R.string.mot_erreur_inconnue))
                     statusMessage = ""
                 }
             }
@@ -1784,7 +1785,7 @@ done; } 2>&1 | head -c 50000
             withContext(Dispatchers.Main) {
                 statusMessage = ""
                 if (fichier == null) {
-                    browserError = "Export impossible : aucun projet ouvert ou erreur d'écriture."
+                    browserError = sm(R.string.vm_export_impossible)
                     return@withContext
                 }
                 try {
@@ -1796,12 +1797,12 @@ done; } 2>&1 | head -c 50000
                         putExtra(Intent.EXTRA_STREAM, uri)
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
-                    val chooser = Intent.createChooser(share, "Exporter le projet").apply {
+                    val chooser = Intent.createChooser(share, sm(R.string.vm_exporter_projet)).apply {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
                     getApplication<Application>().startActivity(chooser)
                 } catch (e: Exception) {
-                    browserError = "Partage impossible : ${e.localizedMessage ?: "erreur inconnue"}"
+                    browserError = sm(R.string.vm_partage_impossible, e.localizedMessage ?: sm(R.string.mot_erreur_inconnue))
                 }
             }
         }
@@ -1840,7 +1841,7 @@ done; } 2>&1 | head -c 50000
     /** Supprime en passant par la corbeille (restaurable 7 jours). */
     fun trashBrowserPath(path: String) {
         if (editor.hasDirtyUnder(path)) {
-            browserError = "Enregistre ou ferme les onglets modifiés avant de supprimer."
+            browserError = sm(R.string.vm_onglets_ouverts_suppr)
             return
         }
         browserError = null
@@ -1906,7 +1907,7 @@ done; } 2>&1 | head -c 50000
                     }
                 } else {
                     val uri = repository.fileUri(path)
-                        ?: throw IllegalStateException("Fichier introuvable ou inaccessible.")
+                        ?: throw IllegalStateException(sm(R.string.vm_fichier_introuvable))
                     val mimeType = repository.mimeType(path)
                     withContext(Dispatchers.Main) {
                         try {
@@ -1916,12 +1917,12 @@ done; } 2>&1 | head -c 50000
                                 clipData = ClipData.newRawUri(path.substringAfterLast('/'), uri)
                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             }
-                            val chooser = Intent.createChooser(viewIntent, "Ouvrir avec").apply {
+                            val chooser = Intent.createChooser(viewIntent, sm(R.string.vm_ouvrir_avec)).apply {
                                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             }
                             getApplication<Application>().startActivity(chooser)
                         } catch (error: Exception) {
-                            browserError = "Aucune application ne peut ouvrir ce fichier : ${error.localizedMessage ?: path}"
+                            browserError = sm(R.string.vm_aucune_app, error.localizedMessage ?: path)
                         } finally {
                             browserFileLoading = false
                         }
@@ -1930,7 +1931,7 @@ done; } 2>&1 | head -c 50000
             } catch (error: Exception) {
                 withContext(Dispatchers.Main) {
                     browserFileLoading = false
-                    browserError = "Impossible d'ouvrir $path : ${error.localizedMessage ?: "erreur inconnue"}"
+                    browserError = "Impossible d'ouvrir $path : ${error.localizedMessage ?: sm(R.string.mot_erreur_inconnue)}"
                 }
             }
         }
@@ -2697,7 +2698,7 @@ done; } 2>&1 | head -c 50000
                 isNetworkError = true
                 statusMessage = "Aucune connexion réseau : vérifie le Wi-Fi ou les données mobiles puis renvoie le message."
             }
-            alertUser("L'agent s'est arrêté", "Aucune connexion réseau détectée.")
+            alertUser(sm(R.string.vm_agent_arrete), sm(R.string.vm_reseau_absent_court))
             return
         }
 
@@ -2826,7 +2827,7 @@ done; } 2>&1 | head -c 50000
                         continue
                     }
                     dernierTourEnEchec = true
-                    alertUser("L'agent s'est arrêté", result.errorMessage.take(120))
+                    alertUser(sm(R.string.vm_agent_arrete), result.errorMessage.take(120))
                     liveText = ""
                     liveReasoning = ""
                     isLoading = false
@@ -2861,7 +2862,7 @@ done; } 2>&1 | head -c 50000
                     if (toolCalls.isNullOrEmpty()) {
                         val reasoning = liveReasoning.ifBlank { result.reasoningContent ?: "" }
                         val assistantMsg = ChatMessage("assistant", content ?: "", reasoning = reasoning.ifBlank { null })
-                        alertUser("L'agent a terminé", (content ?: "Tâche terminée.").trim().take(140))
+                        alertUser(sm(R.string.vm_agent_termine), (content ?: sm(R.string.vm_tache_terminee)).trim().take(140))
                         withContext(Dispatchers.Main) {
                             chat.edit.value = chat.edit.value + assistantMsg
                             liveText = ""
@@ -2889,8 +2890,7 @@ done; } 2>&1 | head -c 50000
                                 compteurBoucleOutil = 1
                             }
                             if (compteurBoucleOutil >= 3) {
-                                val msgBoucle = "Erreur: boucle d'outils détectée — 3 appels identiques consécutifs à " +
-                                    tc.name + ". Arrête cette approche et propose une autre méthode."
+                                val msgBoucle = sm(R.string.vm_boucle_outils, tc.name)
                                 withContext(Dispatchers.Main) {
                                     chat.edit.value = chat.edit.value + ChatMessage(
                                         role = "tool", content = msgBoucle, toolCallId = tc.id,
@@ -2899,7 +2899,7 @@ done; } 2>&1 | head -c 50000
                                     isLoading = false
                                     statusMessage = "Boucle d'outils détectée — l'agent s'est arrêté."
                                 }
-                                alertUser("L'agent s'est arrêté", "Appels d'outils identiques répétés (boucle détectée).")
+                                alertUser(sm(R.string.vm_agent_arrete), sm(R.string.vm_outils_repetes))
                                 finished = true
                                 break
                             }
@@ -2932,7 +2932,7 @@ done; } 2>&1 | head -c 50000
         }
 
         if (!finished) {
-            alertUser("L'agent s'est arrêté", "Limite de $maxSteps étapes atteinte.")
+            alertUser(sm(R.string.vm_agent_arrete), sm(R.string.vm_limite_etapes, maxSteps))
             withContext(Dispatchers.Main) {
                 isLoading = false
                 stepLimitReached = true
@@ -3099,39 +3099,39 @@ done; } 2>&1 | head -c 50000
         val o = try { Json.parseToJsonElement(argumentsJson) as? JsonObject } catch (e: Exception) { null }
         fun arg(k: String): String = (o?.get(k) as? JsonPrimitive)?.content?.trim().orEmpty()
         return when (name) {
-            "list_dir" -> "Lecture du dossier " + arg("path").ifEmpty { "." } + "…"
-            "read_file" -> "Lecture de " + arg("path") + "…"
-            "make_dir" -> "Création du dossier " + arg("path") + "…"
-            "write_file" -> "Écriture de " + arg("path") + "…"
-            "edit_file" -> "Modification de " + arg("path") + "…"
-            "delete_file" -> "Suppression de " + arg("path") + "…"
-            "search_in_files" -> "Recherche de « " + arg("query").take(40) + " »…"
-            "run_command" -> "Commande : " + arg("command").take(60) + "…"
-            "project_memory" -> if (arg("action") == "write") "Enregistrement en mémoire de projet…" else "Lecture de la mémoire de projet…" // feat-008
-            "update_todos" -> "Mise à jour des tâches…"
-            "start_dev_server" -> "Démarrage du serveur de développement…"
-            "stop_dev_server" -> "Arrêt du serveur de développement…"
-            "ask_user" -> "En attente de ta réponse…"
+            "list_dir" -> sm(R.string.tool_list_dir, arg("path").ifEmpty { "." })
+            "read_file" -> sm(R.string.tool_read_file, arg("path"))
+            "make_dir" -> sm(R.string.tool_make_dir, arg("path"))
+            "write_file" -> sm(R.string.tool_write_file, arg("path"))
+            "edit_file" -> sm(R.string.tool_edit_file, arg("path"))
+            "delete_file" -> sm(R.string.tool_delete_file, arg("path"))
+            "search_in_files" -> sm(R.string.tool_search_files, arg("query").take(40))
+            "run_command" -> sm(R.string.tool_run_command, arg("command").take(60))
+            "project_memory" -> if (arg("action") == "write") sm(R.string.tool_memory_write) else sm(R.string.tool_memory_read) // feat-008
+            "update_todos" -> sm(R.string.tool_update_todos)
+            "start_dev_server" -> sm(R.string.tool_start_dev)
+            "stop_dev_server" -> sm(R.string.tool_stop_dev)
+            "ask_user" -> sm(R.string.tool_ask_user)
             // Session 12 — outils GitHub (jeton injecté côté app, jamais montré).
-            "github_actions" -> "Consultation des runs GitHub Actions…"
-            "github_pr" -> "Création de la pull request « " + arg("title").take(50) + " »…"
+            "github_actions" -> sm(R.string.tool_github_actions)
+            "github_pr" -> sm(R.string.tool_github_pr, arg("title").take(50))
             // feat-026..041 — descriptions des nouveaux outils.
-            "find_files" -> "Recherche de fichiers « " + arg("pattern").take(40) + " »…"
-            "file_info" -> "Infos de " + arg("path") + "…"
-            "diff_files" -> "Diff de " + arg("path_a") + " et " + arg("path_b") + "…"
-            "fetch_url" -> "Téléchargement de " + arg("url").take(60) + "…"
-            "search_symbols" -> "Recherche de symboles « " + arg("query").take(40) + " »…"
-            "get_project_info" -> "Analyse du projet…"
-            "move_file" -> "Déplacement de " + arg("source") + "…"
-            "copy_file" -> "Copie de " + arg("source") + "…"
-            "apply_patch" -> "Application du patch…"
-            "git_status" -> "Statut Git…"
-            "git_diff" -> "Diff Git…"
-            "git_commit" -> "Commit Git…"
-            "run_tests" -> "Lancement des tests…"
-            "lint_code" -> "Lint / formatage…"
-            "web_search" -> "Recherche web…"
-            else -> "Exécution de $name…"
+            "find_files" -> sm(R.string.tool_find_files, arg("pattern").take(40))
+            "file_info" -> sm(R.string.tool_file_info, arg("path"))
+            "diff_files" -> sm(R.string.tool_diff_files, arg("path_a"), arg("path_b"))
+            "fetch_url" -> sm(R.string.tool_fetch_url, arg("url").take(60))
+            "search_symbols" -> sm(R.string.tool_search_symbols, arg("query").take(40))
+            "get_project_info" -> sm(R.string.tool_project_info)
+            "move_file" -> sm(R.string.tool_move_file, arg("source"))
+            "copy_file" -> sm(R.string.tool_copy_file, arg("source"))
+            "apply_patch" -> sm(R.string.tool_apply_patch)
+            "git_status" -> sm(R.string.tool_git_status)
+            "git_diff" -> sm(R.string.tool_git_diff)
+            "git_commit" -> sm(R.string.tool_git_commit)
+            "run_tests" -> sm(R.string.tool_run_tests)
+            "lint_code" -> sm(R.string.tool_lint_code)
+            "web_search" -> sm(R.string.tool_web_search)
+            else -> sm(R.string.tool_exec, name)
         }
     }
 
@@ -3675,7 +3675,7 @@ done; } 2>&1 | head -c 50000
     private suspend fun waitForDeleteConfirmation(path: String, toolCallId: String): Boolean {
         return suspendCancellableCoroutine { continuation ->
             statusMessage = "En attente de ta confirmation…"
-            alertUser("Confirmation requise", "Supprimer $path ?")
+            alertUser(sm(R.string.vm_confirmation_requise), sm(R.string.vm_supprimer_q, path))
             pendingDelete = PendingDelete(path, toolCallId)
             onDeleteConfirmed = { allowed ->
                 pendingDelete = null
@@ -3791,7 +3791,7 @@ done; } 2>&1 | head -c 50000
         }
         return suspendCancellableCoroutine { continuation ->
             statusMessage = "En attente de ta confirmation…"
-            alertUser("Confirmation requise", "Lancer : " + command.take(100))
+            alertUser(sm(R.string.vm_confirmation_requise), sm(R.string.vm_lancer, command.take(100)))
             pendingCommand = PendingCommand(command, toolCallId, note, changes, footer)
             onCommandConfirmed = { allowed ->
                 pendingCommand = null
@@ -4078,7 +4078,7 @@ done; } 2>&1 | head -c 50000
         val diff = DiffUtil.diff(oldContent, content)
 
         return suspendCancellableCoroutine { continuation ->
-            alertUser("Confirmation requise", "Écrire $path ?")
+            alertUser(sm(R.string.vm_confirmation_requise), sm(R.string.vm_ecrire, path))
             pendingWrite = PendingWrite(path, content, toolCallId, diff)
             onWriteConfirmed = { allowed ->
                 pendingWrite = null
@@ -4887,7 +4887,7 @@ done; } 2>&1 | head -c 50000
     ) {
         viewModelScope.launch(Dispatchers.IO) {
             withContext(Dispatchers.Main) {
-                transferStatus = "Création du projet « " + templateLabel + " »…"
+                transferStatus = sm(R.string.vm_creation_projet, templateLabel)
             }
             val base = sanitizeProjectName(templateLabel.replace(" ", "-").lowercase(Locale.ROOT))
             val name = uniqueProjectName(base)
@@ -4906,7 +4906,7 @@ done; } 2>&1 | head -c 50000
             if (ok) refreshProjectFiles()
             val success = ok
             withContext(Dispatchers.Main) {
-                transferStatus = if (success) "Projet créé : $name" else "Erreur lors de la création du projet"
+                transferStatus = if (success) sm(R.string.vm_projet_cree, name) else sm(R.string.vm_projet_creation_ko)
                 if (success) {
                     isTemplatesOpen = false
                     // corr-095 : un {placeholder} non rempli ne part jamais vers le
@@ -5019,9 +5019,9 @@ done; } 2>&1 | head -c 50000
             val resultat = runCatching {
                 val texte = getApplication<Application>().contentResolver.openInputStream(uri)
                     ?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
-                    ?: error("Fichier illisible")
+                    ?: error(sm(R.string.vm_fichier_illisible_court))
                 val racine = Json.parseToJsonElement(texte).jsonObject
-                val messagesJson = racine["messages"] as? JsonArray ?: error("Aucun tableau « messages »")
+                val messagesJson = racine["messages"] as? JsonArray ?: error(sm(R.string.vm_aucun_tableau))
                 val importes = messagesJson.mapNotNull { el ->
                     val o = el as? JsonObject ?: return@mapNotNull null
                     val role = (o["role"] as? JsonPrimitive)?.contentOrNull ?: return@mapNotNull null
@@ -5041,10 +5041,10 @@ done; } 2>&1 | head -c 50000
                         }
                     )
                 }
-                if (importes.isEmpty()) error("Aucun message exploitable dans le fichier")
+                if (importes.isEmpty()) error(sm(R.string.vm_aucun_message_exploitable))
                 importes
             }.getOrElse {
-                withContext(Dispatchers.Main) { onDone("Import échoué : " + (it.message ?: "?").take(120)) }
+                withContext(Dispatchers.Main) { onDone(sm(R.string.vm_import_echoue, (it.message ?: "?").take(120))) }
                 return@launch
             }
             // Nouvelle conversation dédiée aux messages importés.
@@ -5057,7 +5057,7 @@ done; } 2>&1 | head -c 50000
                 promptTokens = 0
                 completionTokens = 0
                 persistCurrentConversation(immediate = true)
-                onDone("Import réussi : " + resultat.size + " messages.")
+                onDone(sm(R.string.vm_import_reussi, resultat.size))
             }
         }
     }

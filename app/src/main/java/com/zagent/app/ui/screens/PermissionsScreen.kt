@@ -34,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.R
 import com.zagent.app.data.ActivityEvent
 import com.zagent.app.data.ActivityStatus
 import com.zagent.app.ui.components.common.GlassCard
@@ -94,19 +96,19 @@ fun PermissionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         allowedPaths = viewModel.settingsManager.alwaysAllowedPaths.toList().sorted()
     }
 
-    OverlayScreen(title = "Permissions & sécurité", subtitle = "Ce que l'agent peut faire sans te demander", onBack = onBack) {
+    OverlayScreen(title = stringResource(R.string.ui_permissions_securite), subtitle = "Ce que l'agent peut faire sans te demander", onBack = onBack) {
         // ── Mode général ─────────────────────────────────────────────────────
         OverlaySection("Mode de l'agent")
         GlassCard {
             ModeRow(
-                title = "Mode Auto",
-                subtitle = "L'agent enchaîne sans confirmation (git push, commit et commandes destructrices restent confirmés).",
+                title = stringResource(R.string.settings_mode_auto),
+                subtitle = stringResource(R.string.securite_enchaine_note),
                 checked = viewModel.autoModeInput,
                 onToggle = { viewModel.autoModeInput = it; viewModel.settingsManager.autoMode = it }
             )
             ModeRow(
-                title = "Mode Intelligent",
-                subtitle = "Nouveaux fichiers et modifications légères sans confirmation, écrasements et suppressions confirmés.",
+                title = stringResource(R.string.settings_mode_intelligent),
+                subtitle = stringResource(R.string.securite_nouveaux_note),
                 checked = viewModel.smartModeInput,
                 onToggle = { viewModel.setSmartMode(it) }
             )
@@ -117,56 +119,56 @@ fun PermissionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         OverlaySection("Toujours autoriser")
         GlassCard {
             ModeRow(
-                title = "Lire les fichiers",
-                subtitle = "L'agent peut explorer et lire le projet.",
+                title = stringResource(R.string.securite_lire_fichiers),
+                subtitle = stringResource(R.string.securite_lire_note),
                 checked = lecture,
                 onToggle = { viewModel.settingsManager.allowRead = it; lecture = it },
                 icon = Icons.Default.Visibility,
                 tint = c.cyan
             )
             ModeRow(
-                title = "Mode lecture seule",
-                subtitle = "Bloque tout : écritures, suppressions et commandes. L'agent ne peut que lire et analyser.",
+                title = stringResource(R.string.securite_mode_lecture),
+                subtitle = stringResource(R.string.securite_bloque_tout),
                 checked = lectureSeule,
                 onToggle = { viewModel.settingsManager.lectureSeule = it; lectureSeule = it },
                 icon = Icons.Default.Lock,
                 tint = c.text2
             )
             ModeRow(
-                title = "Écrire les fichiers",
-                subtitle = "Créations et modifications sans confirmation.",
+                title = stringResource(R.string.securite_ecrire_fichiers),
+                subtitle = stringResource(R.string.securite_creations_note),
                 checked = ecriture,
                 onToggle = { viewModel.settingsManager.allowWrite = it; ecriture = it },
                 icon = Icons.Default.Bolt,
                 tint = c.amber
             )
             ModeRow(
-                title = "Supprimer des fichiers",
-                subtitle = "Suppressions sans confirmation.",
+                title = stringResource(R.string.ui_supprimer_fichiers),
+                subtitle = stringResource(R.string.securite_suppressions_note),
                 checked = suppression,
                 onToggle = { viewModel.settingsManager.allowDelete = it; suppression = it },
                 icon = Icons.Default.Delete,
                 tint = c.red
             )
             ModeRow(
-                title = "Exécuter des commandes",
-                subtitle = "Commandes shell sans confirmation (git push, commit et commandes destructrices restent confirmés).",
+                title = stringResource(R.string.securite_executer_commandes),
+                subtitle = stringResource(R.string.securite_commandes_note),
                 checked = execution,
                 onToggle = { viewModel.settingsManager.allowExecute = it; execution = it },
                 icon = Icons.Default.Terminal,
                 tint = c.violet
             )
             ModeRow(
-                title = "Recherche web", // feat-032
-                subtitle = "L'agent peut chercher sur le web (DuckDuckGo) et lire des pages avec fetch_url pour la documentation.",
+                title = stringResource(R.string.ui_recherche_web), // feat-032
+                subtitle = stringResource(R.string.securite_web_note),
                 checked = rechercheWeb,
                 onToggle = { viewModel.settingsManager.rechercheWebActive = it; rechercheWeb = it },
                 icon = Icons.Default.Language,
                 tint = c.cyan
             )
             ModeRow(
-                title = "Modèle de secours automatique", // feat-025
-                subtitle = "En cas de surcharge ou de clé refusée, bascule tout seul vers un modèle disponible (désactive pour rester sur ton modèle).",
+                title = stringResource(R.string.settings_modele_secours), // feat-025
+                subtitle = stringResource(R.string.settings_modele_secours_note),
                 checked = repliAuto,
                 onToggle = { viewModel.settingsManager.repliAutoActif = it; repliAuto = it },
                 icon = Icons.Default.SwapHoriz,
@@ -179,7 +181,7 @@ fun PermissionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         OverlaySection("Permissions par outil")
         GlassCard {
             Text(
-                "Réglage fin : chaque outil de l'agent peut être autorisé sans confirmation, laissé en demande, ou interdit.",
+                stringResource(R.string.securite_fin_note),
                 style = TextStyle(fontFamily = Inter, fontSize = 12.5.sp, lineHeight = 18.sp),
                 color = c.text2,
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -240,7 +242,7 @@ fun PermissionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         GlassCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(10.dp)) {
             if (allowedPaths.isEmpty()) {
                 Text(
-                    "Aucun chemin pour l'instant. Quand l'agent propose une écriture, choisis « Toujours autoriser » pour l'ajouter ici.",
+                    stringResource(R.string.chat_toujours_liste_vide),
                     style = TextStyle(fontFamily = Inter, fontSize = 12.5.sp, lineHeight = 18.sp),
                     color = c.text2
                 )
@@ -256,7 +258,7 @@ fun PermissionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     Spacer(Modifier.width(10.dp))
                     MonoLine(p, c.text, Modifier.weight(1f))
                     Text(
-                        "Retirer",
+                        stringResource(R.string.action_retirer),
                         style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
                         color = c.red,
                         modifier = Modifier
@@ -384,4 +386,3 @@ private fun PuceOutil(label: String, activee: Boolean, teinte: Color, onClick: (
             .padding(horizontal = 7.dp, vertical = 4.dp)
     )
 }
-

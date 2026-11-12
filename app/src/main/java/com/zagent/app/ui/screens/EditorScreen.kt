@@ -51,6 +51,7 @@ import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Terminal
+import com.zagent.app.R
 import com.zagent.app.ui.editor.ConsolePanel
 import com.zagent.app.ui.editor.PreviewPane
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -71,6 +72,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -258,7 +260,7 @@ fun EditorScreen(
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            CircleIconButton(Icons.AutoMirrored.Filled.ArrowBack, "Retour", onClick = onBack, size = 38.dp)
+            CircleIconButton(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_retour), onClick = onBack, size = 38.dp)
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(
@@ -283,25 +285,25 @@ fun EditorScreen(
                 Spacer(Modifier.width(8.dp))
             }
             CircleIconButton(
-                Icons.AutoMirrored.Filled.Undo, "Annuler",
+                Icons.AutoMirrored.Filled.Undo, stringResource(R.string.action_annuler),
                 onClick = { tab?.undo() }, size = 36.dp,
                 iconTint = if ((tab?.undoCount ?: 0) > 0) c.text else c.text3
             )
             Spacer(Modifier.width(6.dp))
             CircleIconButton(
-                Icons.AutoMirrored.Filled.Redo, "Refaire",
+                Icons.AutoMirrored.Filled.Redo, stringResource(R.string.content_refaire),
                 onClick = { tab?.redo() }, size = 36.dp,
                 iconTint = if ((tab?.redoCount ?: 0) > 0) c.text else c.text3
             )
             Spacer(Modifier.width(6.dp))
             CircleIconButton(
-                Icons.Default.Search, "Rechercher",
+                Icons.Default.Search, stringResource(R.string.content_rechercher),
                 onClick = { showSearch = !showSearch }, size = 36.dp,
                 iconTint = if (showSearch) c.cyan else c.text
             )
             Spacer(Modifier.width(6.dp))
             CircleIconButton(
-                Icons.Default.PlayArrow, "Aperçu",
+                Icons.Default.PlayArrow, stringResource(R.string.content_apercu),
                 onClick = {
                     if (showPreview) {
                         showPreview = false
@@ -317,7 +319,7 @@ fun EditorScreen(
             )
             Spacer(Modifier.width(6.dp))
             CircleIconButton(
-                Icons.Default.Save, "Enregistrer",
+                Icons.Default.Save, stringResource(R.string.action_enregistrer),
                 onClick = { tab?.let { editor.save(it) } }, size = 36.dp,
                 iconTint = if (tab?.dirty == true) c.green else c.text3
             )
@@ -325,7 +327,7 @@ fun EditorScreen(
             if (viewModel.peutExecuterFichier(tab?.path)) {
                 Spacer(Modifier.width(6.dp))
                 CircleIconButton(
-                    Icons.Default.PlayCircle, "Exécuter ce fichier",
+                    Icons.Default.PlayCircle, stringResource(R.string.content_executer_fichier),
                     onClick = { viewModel.executerFichierEditeur() }, size = 36.dp,
                     iconTint = c.green
                 )
@@ -398,8 +400,8 @@ fun EditorScreen(
                         color = c.text2
                     )
                     Spacer(Modifier.width(4.dp))
-                    SmallIcon(Icons.Default.KeyboardArrowUp, "Précédent") { goTo(safeIdx - 1) }
-                    SmallIcon(Icons.Default.KeyboardArrowDown, "Suivant") { goTo(safeIdx + 1) }
+                    SmallIcon(Icons.Default.KeyboardArrowUp, stringResource(R.string.action_precedent)) { goTo(safeIdx - 1) }
+                    SmallIcon(Icons.Default.KeyboardArrowDown, stringResource(R.string.action_suivant)) { goTo(safeIdx + 1) }
                     // MA82 : options « respecter la casse » et « mot entier ».
                     OptionChip("Aa", "Respecter la casse", caseSensitive) { caseSensitive = !caseSensitive }
                     Spacer(Modifier.width(4.dp))
@@ -424,7 +426,7 @@ fun EditorScreen(
                             val newText = text.replaceRange(r.first, r.last + 1, replacement)
                             tab?.applyEdit(TextFieldValue(newText, TextRange(r.first + replacement.length)))
                         }
-                    ) { Text("Remplacer", color = if (matches.isNotEmpty()) c.cyan else c.text3, fontSize = 12.sp) }
+                    ) { Text(stringResource(R.string.action_remplacer), color = if (matches.isNotEmpty()) c.cyan else c.text3, fontSize = 12.sp) }
                     TextButton(
                         enabled = matches.isNotEmpty(),
                         onClick = {
@@ -438,7 +440,7 @@ fun EditorScreen(
                             sb.append(text, last, text.length)
                             tab?.applyEdit(TextFieldValue(sb.toString(), TextRange(0)))
                         }
-                    ) { Text("Tout", color = if (matches.isNotEmpty()) c.cyan else c.text3, fontSize = 12.sp) }
+                    ) { Text(stringResource(R.string.ui_tout), color = if (matches.isNotEmpty()) c.cyan else c.text3, fontSize = 12.sp) }
                 }
                 // feat-060 — aller à la ligne.
                 if (showAllerLigne) {
@@ -462,7 +464,7 @@ fun EditorScreen(
                                 val target = ((n - 1) * lineHeightPx - lineHeightPx * 6).toInt().coerceAtLeast(0)
                                 scope.launch { vScroll?.animateScrollTo(target) }
                             }
-                        ) { Text("Aller", color = if (numeroLigne.isNotEmpty()) c.cyan else c.text3, fontSize = 12.sp) }
+                        ) { Text(stringResource(R.string.action_aller), color = if (numeroLigne.isNotEmpty()) c.cyan else c.text3, fontSize = 12.sp) }
                     }
                 }
             }
@@ -503,13 +505,13 @@ fun EditorScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "L'agent a modifié ce fichier.",
+                    stringResource(R.string.chat_agent_a_modifie),
                     style = TextStyle(fontFamily = Inter, fontSize = 12.sp),
                     color = c.amber,
                     modifier = Modifier.weight(1f)
                 )
-                TextButton(onClick = { editor.reloadFromDisk(tab) }) { Text("Recharger", color = c.amber, fontSize = 12.sp) }
-                TextButton(onClick = { tab.externalConflict = false }) { Text("Garder le mien", color = c.text2, fontSize = 12.sp) }
+                TextButton(onClick = { editor.reloadFromDisk(tab) }) { Text(stringResource(R.string.action_recharger), color = c.amber, fontSize = 12.sp) }
+                TextButton(onClick = { tab.externalConflict = false }) { Text(stringResource(R.string.editor_garder_mien), color = c.text2, fontSize = 12.sp) }
             }
         }
 
@@ -527,7 +529,7 @@ fun EditorScreen(
                         color = c.text2
                     )
                     if (!editor.loading) {
-                        TextButton(onClick = onBack) { Text("Ouvrir depuis l'explorateur", color = c.cyan) }
+                        TextButton(onClick = onBack) { Text(stringResource(R.string.editor_ouvrir_explorateur), color = c.cyan) }
                     }
                 }
             } else {
@@ -568,14 +570,14 @@ fun EditorScreen(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )
-                    SmallIcon(Icons.Default.Refresh, "Recharger") { reloadTick++ }
-                    SmallIcon(Icons.Default.Terminal, "Console") { showConsole = !showConsole }
-                    SmallIcon(Icons.Default.OpenInNew, "Écran complet") { viewModel.openPreviewScreen(entry) }
+                    SmallIcon(Icons.Default.Refresh, stringResource(R.string.action_recharger)) { reloadTick++ }
+                    SmallIcon(Icons.Default.Terminal, stringResource(R.string.content_console)) { showConsole = !showConsole }
+                    SmallIcon(Icons.Default.OpenInNew, stringResource(R.string.ui_ecran_complet)) { viewModel.openPreviewScreen(entry) }
                     SmallIcon(
                         if (previewFull) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
-                        "Plein écran"
+                        stringResource(R.string.content_plein_ecran)
                     ) { previewFull = !previewFull }
-                    SmallIcon(Icons.Default.Close, "Fermer l'aperçu") {
+                    SmallIcon(Icons.Default.Close, stringResource(R.string.content_fermer_apercu)) {
                         showPreview = false
                         previewFull = false
                     }
@@ -653,10 +655,10 @@ fun EditorScreen(
                                                 console.errorsAsText() + "\nCorrige-les."
                                             viewModel.navigateBack()
                                             viewModel.sendMessage(msg)
-                                        }) { Text("Corriger avec l'IA", color = c.cyan, fontSize = 12.sp) }
+                                        }) { Text(stringResource(R.string.editor_corriger_ia), color = c.cyan, fontSize = 12.sp) }
                                     }
-                                    SmallIcon(Icons.Default.Delete, "Vider la console") { console.clear() }
-                                    SmallIcon(Icons.Default.Close, "Fermer la console") { fsConsole = false }
+                                    SmallIcon(Icons.Default.Delete, stringResource(R.string.content_vider_console)) { console.clear() }
+                                    SmallIcon(Icons.Default.Close, stringResource(R.string.content_fermer_console)) { fsConsole = false }
                                 }
                                 ConsolePanel(console, Modifier.weight(1f))
                             }
@@ -673,9 +675,9 @@ fun EditorScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 if (fsPillOpen) {
-                                    SmallIcon(Icons.Default.Refresh, "Recharger") { reloadTick++ }
+                                    SmallIcon(Icons.Default.Refresh, stringResource(R.string.action_recharger)) { reloadTick++ }
                                     ConsoleIcon(console.errorCount) { fsConsole = true }
-                                    SmallIcon(Icons.Default.FullscreenExit, "Quitter le plein écran") { previewFull = false }
+                                    SmallIcon(Icons.Default.FullscreenExit, stringResource(R.string.ui_quitter_plein_ecran)) { previewFull = false }
                                 }
                                 SmallIcon(
                                     if (fsPillOpen) Icons.Default.Close else Icons.Default.MoreVert,
@@ -703,9 +705,9 @@ fun EditorScreen(
                                     console.errorsAsText() + "\nCorrige-les."
                                 viewModel.navigateBack()
                                 viewModel.sendMessage(msg)
-                            }) { Text("Corriger avec l'IA", color = c.cyan, fontSize = 12.sp) }
+                            }) { Text(stringResource(R.string.editor_corriger_ia), color = c.cyan, fontSize = 12.sp) }
                         }
-                        SmallIcon(Icons.Default.Delete, "Vider la console") { console.clear() }
+                        SmallIcon(Icons.Default.Delete, stringResource(R.string.content_vider_console)) { console.clear() }
                     }
                     ConsolePanel(console, Modifier.height(hauteurBorneDp(140.dp, 0.38f)))
                 }
@@ -767,21 +769,21 @@ fun EditorScreen(
         } else {
             GlassAlertDialog(
                 onDismissRequest = { confirmClose = null },
-                title = { Text("Modifications non enregistrées", color = c.text, fontFamily = Inter, fontSize = 17.sp) },
+                title = { Text(stringResource(R.string.editor_modifs_non_enregistrees), color = c.text, fontFamily = Inter, fontSize = 17.sp) },
                 text = { Text(t.name, color = c.text2, fontFamily = JetBrainsMono, fontSize = 13.sp) },
                 confirmButton = {
                     TextButton(onClick = {
                         editor.save(t) { ok -> if (ok) editor.close(editor.tabs.indexOf(t)) }
                         confirmClose = null
-                    }) { Text("Enregistrer", color = c.cyan) }
+                    }) { Text(stringResource(R.string.action_enregistrer), color = c.cyan) }
                 },
                 dismissButton = {
                     Row {
-                        TextButton(onClick = { confirmClose = null }) { Text("Annuler", color = c.text2) }
+                        TextButton(onClick = { confirmClose = null }) { Text(stringResource(R.string.action_annuler), color = c.text2) }
                         TextButton(onClick = {
                             editor.close(index)
                             confirmClose = null
-                        }) { Text("Ignorer", color = c.red) }
+                        }) { Text(stringResource(R.string.action_ignorer), color = c.red) }
                     }
                 }
             )
@@ -800,7 +802,7 @@ private fun MarkdownPreview(contenu: String, modifier: Modifier = Modifier) {
         if (contenu.isBlank()) {
             item {
                 Text(
-                    "Le fichier est vide — écris du Markdown à gauche, l'aperçu se met à jour en direct.",
+                    stringResource(R.string.preview_md_vide),
                     style = TextStyle(fontFamily = Inter, fontSize = 12.5.sp),
                     color = c.text3
                 )

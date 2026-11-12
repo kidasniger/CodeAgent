@@ -28,6 +28,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,6 +37,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zagent.app.R
 import com.zagent.app.data.AskQuestion
 import com.zagent.app.ui.theme.Inter
 import com.zagent.app.ui.theme.Zcolors
@@ -95,7 +97,7 @@ fun AskCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "Préférences",
+                stringResource(R.string.ui_preferences),
                 style = TextStyle(fontFamily = Inter, fontSize = 16.sp, fontWeight = FontWeight.SemiBold),
                 color = c.text
             )
@@ -181,7 +183,7 @@ fun AskCard(
                             Box {
                                 if (otherText[i].value.isEmpty()) {
                                     Text(
-                                        "Ta réponse…",
+                                        stringResource(R.string.duo_ta_reponse),
                                         style = TextStyle(fontFamily = Inter, fontSize = 14.sp),
                                         color = c.text3
                                     )
