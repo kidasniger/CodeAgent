@@ -209,7 +209,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (container.settingsManager.tourEnCours) {
             container.settingsManager.tourEnCours = false
             container.settingsManager.journalerAccesSecret("stale_lock_libere", "tour_crash")
-            statusMessage = sm(R.string.statut_verrous_liberes)
+            // statusMessage est déclaré après l'init : l'affectation passe par la
+            // coroutine Main (deferred) pour respecter l'ordre d'initialisation.
+            viewModelScope.launch(Dispatchers.Main) {
+                statusMessage = sm(R.string.statut_verrous_liberes)
+            }
         }
     }
     private val conversationRepo: ConversationRepository get() = container.conversationRepo
@@ -3833,8 +3837,8 @@ done; } 2>&1 | head -c 50000
             val t0VagueC = System.currentTimeMillis()
             val resVagueC = when (tc.name) {
                 "project_plan" -> {
-                    val action = argumentsOutil(tc)["action"]?.trim().orEmpty()
-                    val texte = argumentsOutil(tc)["plan"]?.trim().orEmpty()
+                    val action = chaineArg(tc, "action")
+                    val texte = chaineArg(tc, "plan")
                     val idConv = conversationId
                     when (action) {
                         "read" -> {
@@ -3878,11 +3882,11 @@ done; } 2>&1 | head -c 50000
                         "Si le contexte grossit trop : résume tes découvertes dans project_memory, lis les gros fichiers par plages (offset_line/lines) et évite de répéter de longues sorties."
                 }
                 "screenshot_project" -> captureApercuProjet(
-                    argumentsOutil(tc)["path"].orEmpty()
+                    chaineArg(tc, "path")
                 )
                 else -> decrireImageLocale(
-                    argumentsOutil(tc)["path"].orEmpty(),
-                    argumentsOutil(tc)["prompt"].orEmpty()
+                    chaineArg(tc, "path"),
+                    chaineArg(tc, "prompt")
                 )
             }
             logActivity(
@@ -3910,8 +3914,8 @@ done; } 2>&1 | head -c 50000
         val toolRes = plafonnerResultat(AgentTools.executeTool(fileRepo, tc.name, tc.arguments)) // ia-039
         if (tc.name in outilsLectureSeule) cacheOutilsTour[cleCache] = toolRes
         if (tc.name == "fetch_url") {
-            val u = argumentsOutil(tc)["url"]?.jsonPrimitive?.contentOrNull
-            if (u != null && !toolRes.startsWith("Erreur")) summaryUrls.add(u.take(120))
+            val u = chaineArg(tc, "url")
+            if (u.isNotBlank() && !toolRes.startsWith("Erreur")) summaryUrls.add(u.take(120))
         }
         logActivity(
             tc.name,
@@ -4529,6 +4533,10 @@ done; } 2>&1 | head -c 50000
         AgentTools.argumentsLenients(tc.arguments)
     }.getOrDefault(JsonObject(emptyMap()))
 
+    /** Chaîne d'un argument d'un tool call (tolérant, "" si absent). */
+    private fun chaineArg(tc: AiRepository.ToolCallData, cle: String): String =
+        argumentsOutil(tc)[cle]?.jsonPrimitive?.contentOrNull?.trim().orEmpty()
+
     /**
      * ia-039 — plafonne un résultat d'outil à [SettingsManager.limiteResultatOutil]
      * avec un suffixe explicite « [tronqué] » (l'IA sait qu'il manque des données).
@@ -4545,6 +4553,7 @@ done; } 2>&1 | head -c 50000
      */
     private suspend fun captureApercuProjet(chemin: String): String = withContext(Dispatchers.Main) {
         if (chemin.isBlank()) return@withContext "Erreur: screenshot_project demande le chemin du fichier à rendre (path)."
+        val fileRepo = getFileRepo()
         val html = fileRepo.readFile(chemin)
         if (html.startsWith("Erreur")) return@withContext html
         if (!chemin.lowercase().endsWith(".html") && !chemin.lowercase().endsWith(".mdx") && !chemin.lowercase().endsWith(".htm"))
@@ -4588,6 +4597,7 @@ done; } 2>&1 | head -c 50000
      */
     private suspend fun decrireImageLocale(chemin: String, prompt: String): String {
         if (chemin.isBlank()) return "Erreur: image_describe demande le chemin de l'image (path)."
+        val fileRepo = getFileRepo()
         val donnees = fileRepo.readBytes(chemin)
         if (donnees == null || donnees.isEmpty()) return "Erreur: image introuvable ou vide ($chemin)."
         val extension = chemin.substringAfterLast('.', "").lowercase()

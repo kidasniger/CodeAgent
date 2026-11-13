@@ -103,7 +103,6 @@ class ChatViewModel(
 
     /** ia-028 — plan de projet de la conversation courante (persisté). */
     var planCourant by mutableStateOf("")
-        private set
 
     internal fun setConversationList(list: List<ConversationMeta>) {
         conversationList = list
