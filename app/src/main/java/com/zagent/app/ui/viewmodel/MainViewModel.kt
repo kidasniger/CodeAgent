@@ -197,6 +197,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         // err-032 — proxy HTTP optionnel appliqué au client IA au démarrage
         // (seule la requête IA est concernée ; le terminal reste direct).
         aiRepository.configurerProxy(container.settingsManager.proxyActif())
+        // sec-014 — masquage des jetons dans tout contexte envoyé au modèle.
+        aiRepository.masqueur = container.settingsManager::masquerSecrets
+        // sec-017 — un 401/403 GitHub marque le jeton comme révoqué (guidage).
+        GitHubApi.surJetonRevoque = { container.settingsManager.signalerJetonRevoque() }
+        // sec-021 — liste blanche de domaines branchée sur fetch_url.
+        AgentTools.domaineAutoriseFiltre = container.settingsManager::domaineAutorise
     }
     private val conversationRepo: ConversationRepository get() = container.conversationRepo
     private val usageRepo: UsageRepository get() = container.usageRepo
@@ -352,6 +358,65 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     /** Pour chaque id de fournisseur : les modèles renvoyés par son endpoint /models. */
     var modelesDetectes by mutableStateOf(settingsManager.modelesDetectes)
         private set
+
+    // ── Session 17 / vague B — sécurité (sec-020, 022, 024) ─────────────────
+
+    /**
+     * sec-022 — id du fournisseur actif pour le modèle courant (empreinte
+     * visuelle de la barre du chat). Hors catalogue : le fournisseur dont
+     * l'URL correspond, sinon "perso".
+     */
+    fun fournisseurActifId(): String {
+        val modele = effectiveModel
+        return ModelCatalog.find(modele)?.fournisseurId
+            ?: fournisseurs.firstOrNull {
+                it.baseUrl == ModelCatalog.urlPourModele(modele, settingsManager.baseUrl)
+            }?.id
+            ?: "perso"
+    }
+
+    /** sec-020 — purge les copies d'exécution des clés et journalise. */
+    fun purgerMemoireCles(onDone: () -> Unit = {}) {
+        viewModelScope.launch(Dispatchers.IO) {
+            settingsManager.journalerAccesSecret("purge_memoire", "cles_execution")
+            modelesDetectes = emptyMap()
+            withContext(Dispatchers.Main) { onDone() }
+        }
+    }
+
+    /** sec-024 — exporte les réglages avec empreinte SHA-256 (sans clés). */
+    fun exporterReglagesVerifie(uri: android.net.Uri, onDone: (Boolean) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val ok = runCatching {
+                val json = settingsManager.exporterReglagesVerifie()
+                getApplication<Application>().contentResolver.openOutputStream(uri, "wt")?.use {
+                    it.write(json.toByteArray(Charsets.UTF_8))
+                    true
+                } ?: false
+            }.getOrDefault(false)
+            if (ok) settingsManager.journalerAccesSecret("export_reglages_verifie", "sha256")
+            withContext(Dispatchers.Main) { onDone(ok) }
+        }
+    }
+
+    /** sec-024 — restauration vérifiée (empreinte SHA-256 contrôlée avant import). */
+    fun importerReglagesVerifie(uri: android.net.Uri, onDone: (Int?, String?) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val (n, erreur) = runCatching {
+                val texte = getApplication<Application>().contentResolver.openInputStream(uri)
+                    ?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                    ?: error("Fichier illisible")
+                val r = settingsManager.importerReglagesVerifie(texte)
+                r.getOrDefault(0) to (if (r.isFailure) (r.exceptionOrNull()?.message ?: "import refusé") else null)
+            }.getOrElse { 0 to (it.message ?: "erreur inconnue") }
+            if (erreur == null && n > 0) {
+                modelesDetectes = settingsManager.modelesDetectes
+                settingsManager.journalerAccesSecret("import_reglages_verifie", "$n reglages")
+            }
+            withContext(Dispatchers.Main) { onDone(if (erreur == null) n else null, erreur) }
+        }
+    }
+
 
     /** Modèles détectés d'un fournisseur qui ne figurent pas déjà au catalogue statique. */
     fun modelesDetectesSupplementaires(idFournisseur: String): List<String> {
@@ -2216,6 +2281,12 @@ done; } 2>&1 | head -c 50000
             return
         }
         isOffline = false
+        // sec-015 — expiration de session : si activé, les clés exigent une
+        // reverification du PIN après 24 h (non bloquant pour la saisie).
+        if (settingsManager.clesExigentReverification()) {
+            statusMessage = sm(R.string.err_pin_exige)
+            return
+        }
         // feat-098 — budget quotidien : alerte (non bloquante) si dépassé.
         verifierBudget()
         if (isLoading) {
@@ -3160,6 +3231,9 @@ done; } 2>&1 | head -c 50000
             "env_connect" -> sm(R.string.tool_env_connect, arg("repo").take(50))
             "env_statut" -> sm(R.string.tool_env_statut)
             "env_sync" -> sm(R.string.tool_env_sync)
+            // Session 17 / vague B — coffre d'alias secrets (sec-013).
+            "secret_list" -> sm(R.string.tool_secret_list)
+            "secret_read" -> sm(R.string.tool_secret_read, arg("alias").take(30))
             // feat-026..041 — descriptions des nouveaux outils.
             "find_files" -> sm(R.string.tool_find_files, arg("pattern").take(40))
             "file_info" -> sm(R.string.tool_file_info, arg("path"))
@@ -3662,6 +3736,44 @@ done; } 2>&1 | head -c 50000
         }
         if (tc.name.startsWith("env_")) {
             return executerOutilEnv(tc)
+        }
+        // ── sec-013 — coffre d'alias secrets (vague B) : secret_list / secret_read.
+        // L'IA ne voit JAMAIS une valeur : les réponses ne contiennent que des
+        // alias ou des masques ; l'usage passe par {{secret:alias}} substitué à
+        // l'exécution dans [executerCommandeAgent].
+        if (tc.name == "secret_list" || tc.name == "secret_read") {
+            val t0Secret = System.currentTimeMillis()
+            val resSecret = when (tc.name) {
+                "secret_list" -> {
+                    val alias = container.settingsManager.secretsAlias.keys
+                    if (alias.isEmpty()) {
+                        "Aucun alias de secret enregistré. L'utilisateur peut en créer dans Réglages › Sécurité (coffre d'alias) ; ensuite, insère {{secret:alias}} dans une commande pour utiliser la valeur sans jamais la connaître."
+                    } else {
+                        "Alias de secrets disponibles : " + alias.sorted().joinToString(", ") +
+                            ". Utilise le marqueur {{secret:alias}} dans une commande (ex : run_command) ; la valeur est substituée par l'application à l'exécution et ne t'est jamais montrée."
+                    }
+                }
+                else -> {
+                    val a = argStr("alias").trim()
+                    if (a.isEmpty()) "Erreur: secret_read demande un alias."
+                    else {
+                        val v = container.settingsManager.secretValeur(a)
+                        if (v == null) "Erreur: aucun secret pour l'alias « $a » (secret_list liste les alias existants)."
+                        else {
+                            val masque = (if (v.length > 4) "…" + v.takeLast(4) else "…") + " (" + v.length + " caractères)"
+                            "L'alias « $a » existe, valeur masquée : $masque. Pour l'utiliser, insère {{secret:$a}} dans une commande ; la substitution se fait à l'exécution, hors de ta portée."
+                        }
+                    }
+                }
+            }
+            logActivity(
+                tc.name,
+                describeTool(tc.name, tc.arguments).removeSuffix("…"),
+                resSecret.lineSequence().firstOrNull().orEmpty().take(160),
+                if (resSecret.startsWith("Erreur")) ActivityStatus.ERREUR else ActivityStatus.OK,
+                System.currentTimeMillis() - t0Secret
+            )
+            return resSecret
         }
         val t0Tool = System.currentTimeMillis()
         val toolRes = AgentTools.executeTool(fileRepo, tc.name, tc.arguments)
@@ -4263,7 +4375,10 @@ done; } 2>&1 | head -c 50000
      * affichage live, journal d'activité. Extraite de run_command pour être
      * partagée par git_commit, run_tests et lint_code.
      */
-    private suspend fun executerCommandeAgent(command: String, toolCallId: String, timeout: Int = Constants.TEMPS_MAX_COMMANDE_S): String {
+    private suspend fun executerCommandeAgent(commandBrute: String, toolCallId: String, timeout: Int = Constants.TEMPS_MAX_COMMANDE_S): String {
+        // sec-013 — substitution des {{secret:alias}} AU DERNIER MOMENT : la
+        // commande montrée en confirmation garde le marqueur, jamais la valeur.
+        val command = container.settingsManager.substituerSecrets(commandBrute)
         withContext(Dispatchers.Main) {
             liveOutput = ""
             liveStartedAt = System.currentTimeMillis()

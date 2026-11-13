@@ -142,6 +142,20 @@ internal fun AmbientTopBar(
                     Spacer(Modifier.width(6.dp))
                     Text(label, style = TextStyle(fontFamily = Inter, fontSize = 11.sp, fontWeight = FontWeight.Medium), color = dot)
                     Spacer(Modifier.width(8.dp))
+                    // sec-022 — empreinte visuelle du fournisseur actif : la pastille
+                    // devant le modèle porte la teinte stable de sa passerelle.
+                    val idFournisseurActif = viewModel.fournisseurActifId()
+                    Box(
+                        Modifier
+                            .size(7.dp)
+                            .background(
+                                androidx.compose.ui.graphics.Color(
+                                    com.zagent.app.data.Fournisseurs.teinteStable(idFournisseurActif)
+                                ),
+                                CircleShape
+                            )
+                    )
+                    Spacer(Modifier.width(4.dp))
                     MonoChip(
                         viewModel.effectiveModel,
                         modifier = Modifier

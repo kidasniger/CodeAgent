@@ -115,4 +115,35 @@ object Fournisseurs {
         return runCatching { complete(JSON.decodeFromString(listeSerializer, brut)) }
             .getOrDefault(integres())
     }
+
+    /**
+     * sec-022 — teinte stable d'un fournisseur (empreinte visuelle) : couleur
+     * dérivée du hachage de l'id, saturation/luminosité fixés pour rester
+     * lisible sur les thèmes sombre et clair. Même id = même couleur partout
+     * (barre du chat, écran fournisseurs).
+     */
+    fun teinteStable(id: String): Long {
+        val h = (id.ifBlank { "?" }).fold(112) { acc, ch -> (acc * 31 + ch.code) and 0xFFFFFF }
+        val teinte = (h % 360) / 360f
+        // HSL(teinte, 0.62, 0.55) → RGB pur Kotlin (pas de java.awt sur Android).
+        val s = 0.62f
+        val l = 0.55f
+        val q = if (l < 0.5f) l * (1 + s) else l + s - l * s
+        val p = 2f * l - q
+        fun canal(t: Float): Float {
+            var tt = t
+            if (tt < 0f) tt += 1f
+            if (tt > 1f) tt -= 1f
+            return when {
+                tt < 1f / 6f -> p + (q - p) * 6f * tt
+                tt < 1f / 2f -> q
+                tt < 2f / 3f -> p + (q - p) * (2f / 3f - tt) * 6f
+                else -> p
+            }
+        }
+        val r = (canal(teinte + 1f / 3f) * 255f).toInt().coerceIn(0, 255)
+        val g = (canal(teinte) * 255f).toInt().coerceIn(0, 255)
+        val b = (canal(teinte - 1f / 3f) * 255f).toInt().coerceIn(0, 255)
+        return 0xFF000000L or (r shl 16).toLong() or (g shl 8).toLong() or b.toLong()
+    }
 }

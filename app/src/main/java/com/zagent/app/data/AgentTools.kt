@@ -11,6 +11,13 @@ import kotlinx.serialization.json.*
  * « tools » : nom, description JSON-Schema, arguments sérialisés.
  */
 object AgentTools {
+
+    /**
+     * sec-021 — filtre de domaine pour fetch_url, branché par l'app
+     * (SettingsManager::domaineAutorise). Null = aucune liste blanche.
+     */
+    var domaineAutoriseFiltre: ((String) -> Boolean)? = null
+
     val toolsJson = buildJsonArray {
         add(buildJsonObject {
             put("type", "function")
@@ -950,6 +957,36 @@ object AgentTools {
                 })
             })
         })
+        // ── sec-013 : coffre d'alias secrets (l'IA ne voit jamais les valeurs) ──
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "secret_list")
+                put("description", "Liste les alias de secrets disponibles (sans valeurs). Un alias sert à insérer sa valeur dans une commande via le marqueur {{secret:alias}} ; la valeur réelle est substituée par l'application à l'exécution et n'apparaît jamais dans le contexte.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {})
+                    put("required", buildJsonArray {})
+                })
+            })
+        })
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "secret_read")
+                put("description", "Vérifie qu'un alias de secret existe et renvoie son masque (ex : sk-…f3ab, 32 caractères) — JAMAIS la valeur. Pour utiliser la valeur dans une commande, insère le marqueur {{secret:alias}} ; l'application la substitue à l'exécution.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {
+                        put("alias", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Nom de l'alias (ex : openrouter, npm_token)")
+                        })
+                    })
+                    put("required", buildJsonArray { add("alias") })
+                })
+            })
+        })
         // ── feat-033/034 : run_tests et lint_code ───────────────────────────
         add(buildJsonObject {
             put("type", "function")
@@ -1055,7 +1092,9 @@ object AgentTools {
         "github_branch", "github_issues", "github_pulls", "github_releases",
         "github_gist", "github_search", "github_dispatch",
         // Session 16 — environnement : dépôt GitHub complet, hors ligne.
-        "env_connect", "env_statut", "env_sync"
+        "env_connect", "env_statut", "env_sync",
+        // Session 17 / vague B — coffre d'alias secrets (sec-013).
+        "secret_list", "secret_read"
     )
 
     /**
@@ -1386,6 +1425,11 @@ object AgentTools {
             if (!local) return "Erreur: seule l'URLs HTTPS est autorisée (http toléré pour localhost uniquement)."
         } else if (!u.startsWith("https://")) {
             return "Erreur: URL invalide — commence par https://"
+        }
+        // sec-021 — liste blanche de domaines branchée par l'app (vide = tout autorisé).
+        val filtreDomaine = domaineAutoriseFiltre
+        if (filtreDomaine != null && !filtreDomaine(u)) {
+            return "Erreur: domaine non autorisé par la liste blanche de fetch_url (Réglages › Sécurité)."
         }
         return try {
             val conn = java.net.URL(u).openConnection() as java.net.HttpURLConnection

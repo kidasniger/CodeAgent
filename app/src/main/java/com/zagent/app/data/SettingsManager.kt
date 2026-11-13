@@ -752,6 +752,192 @@ class SettingsManager(context: Context) {
         return java.net.Proxy(java.net.Proxy.Type.HTTP, java.net.InetSocketAddress(h, p))
     }
 
+    // ── Session 17 / vague B — sécurité & secrets (sec-013..024) ────────────
+
+    // sec-013 — coffre d'alias secrets : l'IA ne voit jamais la valeur, elle
+    // liste les alias et insère {{secret:alias}} ; la substitution se fait à
+    // l'exécution (run_command), hors du contexte envoyé au modèle.
+    private val KEY_SECRETS = "secrets_alias"
+
+    var secretsAlias: Map<String, String>
+        get() {
+            val brut = prefs.getString(KEY_SECRETS, "{}") ?: "{}"
+            return runCatching {
+                val o = org.json.JSONObject(brut)
+                (0 until o.length()).associate { o.names()!!.getString(it) to o.getString(it) }
+            }.getOrDefault(emptyMap())
+        }
+        private set(value) {
+            val o = org.json.JSONObject()
+            value.forEach { (k, v) -> o.put(k, v) }
+            prefs.edit().putString(KEY_SECRETS, o.toString()).apply()
+        }
+
+    /** sec-013 — enregistre (ou remplace) un secret sous alias. */
+    fun definirSecret(alias: String, valeur: String) {
+        val a = alias.trim().take(40)
+        if (a.isEmpty() || valeur.isEmpty()) return
+        secretsAlias = secretsAlias + (a to valeur)
+        journalerAccesSecret("definition", a)
+    }
+
+    /** sec-013 — supprime un secret d'alias. */
+    fun supprimerSecret(alias: String) {
+        secretsAlias = secretsAlias - alias
+        journalerAccesSecret("suppression", alias)
+    }
+
+    /** sec-013 — valeur réelle d'un alias (jamais envoyée au modèle). */
+    fun secretValeur(alias: String): String? {
+        val v = secretsAlias[alias]
+        if (v != null) journalerAccesSecret("lecture", alias)
+        return v
+    }
+
+    /** sec-013 — substitue les {{secret:alias}} d'une commande à l'exécution. */
+    fun substituerSecrets(commande: String): String {
+        var sortie = commande
+        Regex("\\{\\{secret:([^}]{1,40})\\}\\}").findAll(commande).forEach { m ->
+            val alias = m.groupValues[1]
+            val v = secretValeur(alias)
+            if (v != null) sortie = sortie.replace(m.value, v)
+        }
+        return sortie
+    }
+
+    // sec-015 — expiration de session : re-demande du code PIN avant d'utiliser
+    // les clés après 24 h (optionnel).
+    private val KEY_PIN = "code_pin"
+    private val KEY_PIN_ACTIF = "pin_actif"
+    private val KEY_PIN_CLES = "pin_exige_cles"
+    private val KEY_PIN_HORODATAGE = "pin_cles_debloquees_le"
+
+    /** sec-015 — code PIN (stocké chiffré par EncryptedSharedPreferences). */
+    var codePin: String
+        get() = prefs.getString(KEY_PIN, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_PIN, value.trim().take(12)).apply()
+
+    /** sec-015 — un code PIN est défini. */
+    val pinActif: Boolean get() = prefs.getString(KEY_PIN, "")?.isNotBlank() == true
+
+    /** sec-015 — exige une reverification du PIN avant l'usage des clés après 24 h. */
+    var exigePinCles: Boolean
+        get() = prefs.getBoolean(KEY_PIN_CLES, false)
+        set(value) = prefs.edit().putBoolean(KEY_PIN_CLES, value).apply()
+
+    /** sec-015 — dernier déblocage validé (0 = jamais). */
+    var horodatageClesDebloquees: Long
+        get() = prefs.getLong(KEY_PIN_HORODATAGE, 0L)
+        set(value) = prefs.edit().putLong(KEY_PIN_HORODATAGE, value).apply()
+
+    /** sec-015 — les clés exigent-elles une reverification maintenant ? */
+    fun clesExigentReverification(): Boolean =
+        exigePinCles && pinActif &&
+            (horodatageClesDebloquees == 0L ||
+                System.currentTimeMillis() - horodatageClesDebloquees > 24L * 60 * 60 * 1000)
+
+    /** sec-015 — valide le PIN (retourne true et marque le déblocage si correct). */
+    fun verifierPin(saisie: String): Boolean {
+        val ok = pinActif && saisie.trim() == codePin
+        if (ok) {
+            horodatageClesDebloquees = System.currentTimeMillis()
+            journalerAccesSecret("deblocage_cles", "pin")
+        }
+        return ok
+    }
+
+    // sec-016 — journal d'accès aux secrets (qui/quoi/quand, JAMAIS de valeur).
+    private val KEY_JOURNAL_SECRETS = "journal_secrets"
+
+    fun journalerAccesSecret(action: String, cible: String) {
+        runCatching {
+            val l = prefs.getString(KEY_JOURNAL_SECRETS, "") ?: ""
+            val entree = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.ROOT)
+                .format(java.util.Date()) + " — " + action + " · " + cible
+            val lignes = l.split("\n").filter { it.isNotBlank() }.toMutableList()
+            lignes.add(entree)
+            // 200 dernières entrées suffisent ; les plus anciennes partent.
+            while (lignes.size > 200) lignes.removeAt(0)
+            prefs.edit().putString(KEY_JOURNAL_SECRETS, lignes.joinToString("\n")).apply()
+        }
+    }
+
+    /** sec-016 — journal consultable (texte horodaté, aucune valeur secrète). */
+    fun lireJournalSecrets(): List<String> =
+        (prefs.getString(KEY_JOURNAL_SECRETS, "") ?: "").split("\n").filter { it.isNotBlank() }.reversed()
+
+    // sec-017 — jeton GitHub révoqué détecté (HTTP 401) → guidage rotation.
+    private val KEY_JETON_REVOQUE = "jeton_revoque_le"
+
+    var jetonRevoqueDetecteLe: Long
+        get() = prefs.getLong(KEY_JETON_REVOQUE, 0L)
+        set(value) = prefs.edit().putLong(KEY_JETON_REVOQUE, value).apply()
+
+    /** sec-017 — enregistre une détection de 401 (révocation probable). */
+    fun signalerJetonRevoque() {
+        jetonRevoqueDetecteLe = System.currentTimeMillis()
+        journalerAccesSecret("jeton_revoque_401", "github")
+    }
+
+    // sec-019 — verrou biométrique global optionnel (Android Keystore).
+    private val KEY_VERROU_BIO = "verrou_biometrie"
+
+    var verrouBiometrie: Boolean
+        get() = prefs.getBoolean(KEY_VERROU_BIO, false)
+        set(value) {
+            prefs.edit().putBoolean(KEY_VERROU_BIO, value).apply()
+            if (value) journalerAccesSecret("verrou_bio_active", "app") else journalerAccesSecret("verrou_bio_desactive", "app")
+        }
+
+    // sec-021 — liste blanche de domaines pour fetch_url (vide = tout autorisé).
+    private val KEY_DOMAINES_AUTORISES = "domaines_autorises"
+
+    var domainesAutorises: List<String>
+        get() = (prefs.getString(KEY_DOMAINES_AUTORISES, "") ?: "")
+            .split(",").map { it.trim().lowercase() }.filter { it.isNotBlank() }
+        set(value) = prefs.edit().putString(KEY_DOMAINES_AUTORISES, value.joinToString(",")).apply()
+
+    /** sec-021 — l'hôte d'une URL est-il autorisé par la liste blanche ? */
+    fun domaineAutorise(url: String): Boolean {
+        val liste = domainesAutorises
+        if (liste.isEmpty()) return true
+        val hote = runCatching { java.net.URI(url).host?.lowercase() }.getOrNull() ?: return false
+        return liste.any { hote == it || hote.endsWith(".$it") }
+    }
+
+    // sec-024 — export/import réglages avec empreinte SHA-256 de vérification.
+    // L'empreinte porte sur la chaîne brute du corps (jamais re-sérialisée),
+    // donc la vérification est déterministe d'un appareil à l'autre.
+    fun exporterReglagesVerifie(): String {
+        val corps = exporterReglages()
+        val empreinte = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(corps.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+        // « corps » reste une CHAÎNE brute (jamais re-sérialisée) : l'empreinte
+        // calculée à l'import est donc identique à celle de l'export.
+        return org.json.JSONObject()
+            .put("type", "zagent-reglages")
+            .put("sha256", empreinte)
+            .put("corps", corps)
+            .toString(2)
+    }
+
+    /** sec-024 — restauration vérifiée : l'empreinte doit correspondre au corps. */
+    fun importerReglagesVerifie(json: String): Result<Int> {
+        return runCatching {
+            val o = org.json.JSONObject(json)
+            val corpsStr = o.optString("corps")
+            if (corpsStr.isBlank()) error("Fichier sans corps de réglages")
+            if (o.optString("type") == "zagent-reglages" && o.has("sha256")) {
+                val empreinte = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(corpsStr.toByteArray(Charsets.UTF_8))
+                    .joinToString("") { "%02x".format(it) }
+                if (o.getString("sha256") != empreinte) error("Empreinte SHA-256 divergente : fichier altéré")
+            }
+            importerReglages(corpsStr).getOrThrow()
+        }
+    }
+
     // ── feat-091 : export / import des réglages (SANS les clés API) ─────────
 
     /**
@@ -847,6 +1033,29 @@ class SettingsManager(context: Context) {
     }
 
     companion object {
+        // sec-014 — formes de jetons reconnues : GitHub PAT (classic/fine),
+        // OpenAI/Anthropic sk-, Bearer JWT, Google AIza. Testable JVM (pur).       
+        private val FORMES_JETONS = listOf(
+            Regex("github_pat_[A-Za-z0-9_]{30,}"),
+            Regex("ghp_[A-Za-z0-9]{30,}"),
+            Regex("gho_[A-Za-z0-9]{30,}"),
+            Regex("sk-[A-Za-z0-9_-]{20,}"),
+            Regex("sk-ant-[A-Za-z0-9_-]{20,}"),
+            Regex("Bearer [A-Za-z0-9._-]{20,}"),
+            Regex("AIza[A-Za-z0-9_-]{30,}")
+        )
+        private const val CHAINE_MASQUE = "«[masqué]»"
+
+        /**
+         * sec-014 — masque toute valeur ressemblant à un jeton dans un texte
+         * destiné au modèle (contexte, résultats d'outils, fichiers piqués).
+         */
+        fun masquerSecrets(texte: String): String {
+            var t = texte
+            FORMES_JETONS.forEach { t = t.replace(it, CHAINE_MASQUE) }
+            return t
+        }
+
         private const val KEY_BUDGET_TOKENS = "budget_tokens_jour"
         private const val KEY_PROXY_HOST = "proxy_host"
         private const val KEY_PROXY_PORT = "proxy_port"

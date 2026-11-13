@@ -819,4 +819,38 @@
     <string name="history_stats_tokens">Estimated tokens</string>
     <string name="history_stats_outils">Tool calls</string>
     <string name="history_stats_modeles">Models used</string>
+    <!-- Session 17 — wave B (sec-013..024) -->
+    <string name="tool_secret_list">Listing secret aliases</string>
+    <string name="tool_secret_read">Reading mask of secret %1$s</string>
+    <string name="sec_coffre_titre">Secret alias vault</string>
+    <string name="sec_coffre_hint">The AI only accesses aliases: it inserts {{secret:alias}} into commands and the real value is substituted at execution time, never shown.</string>
+    <string name="sec_coffre_ajouter">Add a secret</string>
+    <string name="sec_coffre_alias">Alias</string>
+    <string name="sec_coffre_valeur">Secret value</string>
+    <string name="sec_coffre_vide">No secret stored.</string>
+    <string name="sec_journal_titre">Secret access journal</string>
+    <string name="sec_journal_vide">No access recorded.</string>
+    <string name="sec_pin_titre">PIN code &amp; session expiry</string>
+    <string name="sec_pin_exige">Re-ask PIN before using keys after 24 h</string>
+    <string name="sec_pin_definir">Set the PIN code</string>
+    <string name="sec_pin_change">Change the PIN code</string>
+    <string name="sec_pin_saisir">PIN code</string>
+    <string name="sec_pin_faux">Wrong PIN.</string>
+    <string name="sec_pin_ok">PIN validated: key access unlocked for 24 h.</string>
+    <string name="sec_verrou_bio">Lock app (biometrics/device PIN)</string>
+    <string name="sec_domaines_titre">Domain whitelist (fetch_url)</string>
+    <string name="sec_domaines_hint">Comma-separated domains (e.g. github.com, api.openai.com). Empty = all allowed. Subdomains included.</string>
+    <string name="sec_jetons_masques">Automatic token masking</string>
+    <string name="sec_jetons_masques_hint">Any token-like value (github_pat_, ghp_, sk-…, Bearer …) is masked before being sent to the model.</string>
+    <string name="sec_rotation_titre">Revoked GitHub token detected</string>
+    <string name="sec_rotation_body">A GitHub request returned 401: the token is probably revoked or expired. Generate a new fine-grained PAT on GitHub then paste it in Settings › GitHub.</string>
+    <string name="sec_backup_export">Verified settings backup (SHA-256, no keys)</string>
+    <string name="sec_backup_import">Restore a verified backup</string>
+    <string name="sec_backup_ok">%1$d settings restored (checksum verified).</string>
+    <string name="sec_backup_altere">Backup rejected: %1$s</string>
+    <string name="sec_modele_hors_catalogue">Off-catalog model: unknown cost and limits — check spelling or provider.</string>
+    <string name="sec_coller_purger">Paste then purge clipboard</string>
+    <string name="sec_purger_memoire">Purge keys from memory (lock)</string>
+    <string name="sec_purger_ok">Keys purged from runtime memory.</string>
+    <string name="err_pin_exige">Key session expired: re-enter your PIN in Permissions &amp; security to continue.</string>
 </resources>

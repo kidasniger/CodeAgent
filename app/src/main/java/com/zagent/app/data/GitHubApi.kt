@@ -33,6 +33,12 @@ object GitHubApi {
         .readTimeout(20, TimeUnit.SECONDS)
         .build()
 
+    /**
+     * sec-017 — branché par l'app : appelé dès qu'un 401/403 révèle un jeton
+     * révoqué ou insuffisant, pour déclencher le guidage de rotation.
+     */
+    var surJetonRevoque: (() -> Unit)? = null
+
     private fun JsonObject.string(key: String): String =
         when (val v = this[key]) {
             is JsonPrimitive -> if (v.isString) v.content else v.content
@@ -129,7 +135,10 @@ object GitHubApi {
                         Result.success(url.ifBlank { "PR créée." })
                     }
                     resp.code == 422 -> Result.failure(Exception("Une PR existe déjà pour cette branche, ou les branches sont identiques."))
-                    resp.code == 401 || resp.code == 403 -> Result.failure(Exception("Jeton GitHub refusé (HTTP ${resp.code}). Vérifie-le dans Réglages."))
+                    resp.code == 401 || resp.code == 403 -> {
+                        surJetonRevoque?.invoke() // sec-017
+                        Result.failure(Exception("Jeton GitHub refusé (HTTP ${resp.code}). Vérifie-le dans Réglages."))
+                    }
                     else -> Result.failure(Exception("GitHub a répondu HTTP ${resp.code}."))
                 }
             }
@@ -181,6 +190,7 @@ object GitHubApi {
         val detail = runCatching {
             json.parseToJsonElement(corps).jsonObject.string("message")
         }.getOrDefault("")
+        if (code == 401 || code == 403) surJetonRevoque?.invoke() // sec-017
         return when (code) {
             401, 403 -> "Jeton GitHub refusé (HTTP $code) — vérifie-le dans Réglages › GitHub" +
                 (if (detail.isNotBlank()) " ($detail)" else "")

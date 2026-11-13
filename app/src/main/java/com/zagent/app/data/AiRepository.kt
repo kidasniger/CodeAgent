@@ -23,6 +23,27 @@ import kotlin.random.Random
  * vit dans Constants.
  */
 class AiRepository : AiRepositoryApi {
+
+    /** sec-014 — masquage branché par l'app (SettingsManager::masquerSecrets). */
+    var masqueur: ((String) -> String)? = null
+
+    /**
+     * sec-014 — applique [masqueur] au champ « content » string de chaque
+     * message sortant (les contents multimodaux en JsonArray passent tels quels).
+     */
+    private fun masquerJsonArray(messages: JsonArray): JsonArray {
+        val m = masqueur ?: return messages
+        return try {
+            JsonArray(messages.map { el ->
+                val o = el as? JsonObject ?: return@map el
+                val contenu = o["content"] as? JsonPrimitive ?: return@map el
+                if (!contenu.isString) return@map el
+                JsonObject(o.toMap() + ("content" to JsonPrimitive(m(contenu.content))))
+            })
+        } catch (e: Exception) {
+            messages
+        }
+    }
     @Volatile
     private var client: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(Constants.RESEAU_TIMEOUT_S.toLong(), TimeUnit.SECONDS)
@@ -260,7 +281,7 @@ class AiRepository : AiRepositoryApi {
         baseUrl: String,
         apiKey: String,
         model: String,
-        messages: JsonArray,
+        messagesIn: JsonArray,
         onRetryUpdate: (String) -> Unit,
         onDelta: (String) -> Unit,
         onReasoningDelta: (String) -> Unit,
@@ -271,6 +292,10 @@ class AiRepository : AiRepositoryApi {
     ): ApiResponse {
         // Source unique de l'URL par défaut : ModelCatalog.URL_ZAI (com.zagent.app.data).
         val url = if (baseUrl.isBlank()) ModelCatalog.URL_ZAI else baseUrl
+
+        // sec-014 — masquage des jetons branché par l'app avant tout envoi :
+        // toute valeur ressemblant à un token dans un message part masquée.
+        val messages = masquerJsonArray(messagesIn)
 
         val requestBodyJson = buildJsonObject {
             put("model", model)

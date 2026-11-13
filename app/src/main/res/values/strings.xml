@@ -823,4 +823,38 @@
     <string name="history_stats_tokens">Tokens estimés</string>
     <string name="history_stats_outils">Appels d\'outils</string>
     <string name="history_stats_modeles">Modèles utilisés</string>
+    <!-- Session 17 — vague B (sec-013..024) -->
+    <string name="tool_secret_list">Liste des alias de secrets</string>
+    <string name="tool_secret_read">Lecture du masque du secret %1$s</string>
+    <string name="sec_coffre_titre">Coffre d\'alias secrets</string>
+    <string name="sec_coffre_hint">L\'IA n\'y accède que via des alias : elle insère {{secret:alias}} dans ses commandes et la valeur réelle est substituée à l\'exécution, jamais montrée.</string>
+    <string name="sec_coffre_ajouter">Ajouter un secret</string>
+    <string name="sec_coffre_alias">Alias</string>
+    <string name="sec_coffre_valeur">Valeur secrète</string>
+    <string name="sec_coffre_vide">Aucun secret enregistré.</string>
+    <string name="sec_journal_titre">Journal d\'accès aux secrets</string>
+    <string name="sec_journal_vide">Aucun accès enregistré.</string>
+    <string name="sec_pin_titre">Code PIN &amp; expiration de session</string>
+    <string name="sec_pin_exige">Re-demander le PIN avant d\'utiliser les clés après 24 h</string>
+    <string name="sec_pin_definir">Définir le code PIN</string>
+    <string name="sec_pin_change">Modifier le code PIN</string>
+    <string name="sec_pin_saisir">Code PIN</string>
+    <string name="sec_pin_faux">PIN incorrect.</string>
+    <string name="sec_pin_ok">PIN validé : accès aux clés débloqué 24 h.</string>
+    <string name="sec_verrou_bio">Verrouiller l\'app (biométrie/PIN matériel)</string>
+    <string name="sec_domaines_titre">Liste blanche de domaines (fetch_url)</string>
+    <string name="sec_domaines_hint">Domaines séparés par des virgules (ex : github.com, api.openai.com). Vide = tout autorisé. Sous-domaines inclus.</string>
+    <string name="sec_jetons_masques">Masquage automatique des jetons</string>
+    <string name="sec_jetons_masques_hint">Toute valeur ressemblant à un token (github_pat_, ghp_, sk-…, Bearer …) est masquée avant l\'envoi au modèle.</string>
+    <string name="sec_rotation_titre">Jeton GitHub révoqué détecté</string>
+    <string name="sec_rotation_body">Une requête GitHub a renvoyé 401 : le jeton est probablement révoqué ou expiré. Génère un nouveau fine-grained PAT sur GitHub puis colle-le dans Réglages › GitHub.</string>
+    <string name="sec_backup_export">Sauvegarde vérifiée des réglages (SHA-256, sans clés)</string>
+    <string name="sec_backup_import">Restaurer une sauvegarde vérifiée</string>
+    <string name="sec_backup_ok">%1$d réglages restaurés (empreinte vérifiée).</string>
+    <string name="sec_backup_altere">Sauvegarde rejetée : %1$s</string>
+    <string name="sec_modele_hors_catalogue">Modèle hors catalogue : coût et limite inconnus — vérifie l\'orthographe ou le fournisseur.</string>
+    <string name="sec_coller_purger">Coller puis purger le presse-papiers</string>
+    <string name="sec_purger_memoire">Purger les clés de la mémoire (verrou)</string>
+    <string name="sec_purger_ok">Clés purgées de la mémoire d\'exécution.</string>
+    <string name="err_pin_exige">Session des clés expirée : re-entre ton code PIN dans Permissions &amp; sécurité pour continuer.</string>
 </resources>

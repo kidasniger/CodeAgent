@@ -77,6 +77,20 @@ fun ModelsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             "Entrée " + formatPrice(viewModel.priceInInput) + " · Sortie " + formatPrice(viewModel.priceOutInput) + " / M tokens"
 
         val fournisseurs = viewModel.fournisseurs
+        // sec-023 — avertissement modèle hors catalogue (coût/limites inconnus).
+        if (ModelCatalog.find(viewModel.effectiveModel) == null && viewModel.effectiveModel.isNotBlank()) {
+            Text(
+                stringResource(R.string.sec_modele_hors_catalogue),
+                style = TextStyle(fontFamily = Inter, fontSize = 11.5.sp, lineHeight = 16.sp),
+                color = c.amber,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                    .background(c.amber.copy(alpha = 0.12f))
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            )
+            Spacer(Modifier.height(8.dp))
+        }
         fournisseurs.forEach { f ->
             val modelesFournisseur = ModelCatalog.all.filter { it.baseUrl == f.baseUrl }
             // Session 12 — modèles détectés via la clé (endpoint /models) :
