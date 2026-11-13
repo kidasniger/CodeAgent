@@ -4681,11 +4681,6 @@ done; } 2>&1 | head -c 50000
         }
     }
 
-    /** Supprime une conversation de l'historique (MA56). */
-    fun deleteConversation(id: String) {
-        chat.deleteConversation(id, conversationId) { clearConversation() }
-    }
-
     /** Épingle / désépingle une conversation (glisser vers la droite, MA56). */
     fun toggleConversationPin(id: String) = chat.toggleConversationPin(id)
 
