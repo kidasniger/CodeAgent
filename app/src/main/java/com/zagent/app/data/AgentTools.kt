@@ -902,6 +902,54 @@ object AgentTools {
                 })
             })
         })
+        // ── Environnement (session 16, env-006) : un dépôt GitHub complet
+        // comme environnement de travail, utilisable même hors ligne. Même
+        // contrat que github_* : aucun jeton dans les arguments ni résultats.
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "env_connect")
+                put("description", "Connecte un dépôt GitHub comme environnement de l'agent : clone COMPLET (tout l'historique) dans un nouveau projet et en fait le dossier de travail — l'agent peut ensuite tout faire dessus même hors ligne (lecture, édition, commits locaux). Confirmé par l'utilisateur. Le jeton est géré en interne : ne le demande jamais.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {
+                        put("repo", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Dépôt à connecter « owner/repo » ou URL github.com (ex: kidasniger/zagent-playground)")
+                        })
+                        put("branch", buildJsonObject {
+                            put("type", "string")
+                            put("description", "Branche à cloner (optionnel — défaut : branche par défaut du dépôt)")
+                        })
+                    })
+                    put("required", buildJsonArray { add("repo") })
+                })
+            })
+        })
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "env_statut")
+                put("description", "État de l'environnement courant : dépôt et branche connectés, commits en avance (à pousser) et en retard (à tirer), fichiers modifiés non commités, conflits, en ligne/hors ligne. Aucun réseau nécessaire.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {})
+                    put("required", buildJsonArray {})
+                })
+            })
+        })
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "env_sync")
+                put("description", "Synchronise l'environnement avec GitHub : récupère les nouveautés distantes puis pousse le travail local (commits groupés) sur la branche courante. Refusé hors ligne — rien ne se perd. Confirmé par l'utilisateur.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {})
+                    put("required", buildJsonArray {})
+                })
+            })
+        })
         // ── feat-033/034 : run_tests et lint_code ───────────────────────────
         add(buildJsonObject {
             put("type", "function")
@@ -1005,7 +1053,9 @@ object AgentTools {
         // branches, issues, PR, releases, gists, recherche, workflows).
         "github_user", "github_repos", "github_repo_create", "github_file",
         "github_branch", "github_issues", "github_pulls", "github_releases",
-        "github_gist", "github_search", "github_dispatch"
+        "github_gist", "github_search", "github_dispatch",
+        // Session 16 — environnement : dépôt GitHub complet, hors ligne.
+        "env_connect", "env_statut", "env_sync"
     )
 
     /**

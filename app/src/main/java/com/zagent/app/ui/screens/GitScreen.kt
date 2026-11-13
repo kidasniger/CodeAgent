@@ -88,6 +88,8 @@ fun GitScreen(viewModel: MainViewModel, onClose: () -> Unit) {
         viewModel.refreshGitChanges()
         viewModel.refreshGitLog()
         viewModel.refreshGitBranches()
+        // env-004 — état de l'environnement GitHub (aucun réseau nécessaire).
+        viewModel.refreshEnvStatut()
     }
 
     OverlayScreen(title = stringResource(R.string.ui_git), subtitle = viewModel.folderLabel, onBack = onClose) {
@@ -100,6 +102,8 @@ fun GitScreen(viewModel: MainViewModel, onClose: () -> Unit) {
             else -> ActionsTab(viewModel)
         }
     }
+    // env-002 — dialogue de connexion d'un dépôt comme environnement.
+    EnvConnexionDialog(viewModel)
 }
 
 // ── Onglet Changements ───────────────────────────────────────────────────────
@@ -118,6 +122,10 @@ private fun ChangesTab(viewModel: MainViewModel) {
     }
     if (changes.error != null) {
         OverlayEmptyState(Icons.Default.CallMerge, "Pas de dépôt Git", changes.error ?: "")
+        Spacer(Modifier.height(10.dp))
+        // env-004 — proposition « Connecter un dépôt comme environnement » :
+        // le clone complet devient le dossier de travail de l'agent.
+        EnvCarte(viewModel)
         Spacer(Modifier.height(10.dp))
         CloneCard(viewModel)
         return
@@ -241,6 +249,11 @@ private fun ChangesTab(viewModel: MainViewModel) {
             )
         }
     }
+    Spacer(Modifier.height(12.dp))
+
+    // env-004 — carte Environnement GitHub : état avance/retard/modifs/
+    // conflits + synchronisation groupée (pull + push), hors ligne respecté.
+    EnvCarte(viewModel)
     Spacer(Modifier.height(12.dp))
 
     // ── feat-085/086 : pull, push, stash + feat-088 : PR ─────────────────────
