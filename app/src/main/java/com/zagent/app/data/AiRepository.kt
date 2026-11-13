@@ -281,7 +281,7 @@ class AiRepository : AiRepositoryApi {
         baseUrl: String,
         apiKey: String,
         model: String,
-        messagesIn: JsonArray,
+        messages: JsonArray,
         onRetryUpdate: (String) -> Unit,
         onDelta: (String) -> Unit,
         onReasoningDelta: (String) -> Unit,
@@ -295,11 +295,11 @@ class AiRepository : AiRepositoryApi {
 
         // sec-014 — masquage des jetons branché par l'app avant tout envoi :
         // toute valeur ressemblant à un token dans un message part masquée.
-        val messages = masquerJsonArray(messagesIn)
+        val messagesMasques = masquerJsonArray(messages)
 
         val requestBodyJson = buildJsonObject {
             put("model", model)
-            put("messages", messages)
+            put("messages", messagesMasques)
             if (avecOutils) {
                 put("tools", AgentTools.toolsJson)
                 put("tool_choice", "auto")

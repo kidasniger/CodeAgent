@@ -197,8 +197,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         // err-032 — proxy HTTP optionnel appliqué au client IA au démarrage
         // (seule la requête IA est concernée ; le terminal reste direct).
         aiRepository.configurerProxy(container.settingsManager.proxyActif())
-        // sec-014 — masquage des jetons dans tout contexte envoyé au modèle.
-        aiRepository.masqueur = container.settingsManager::masquerSecrets
+        // sec-014 — masquage des jetons dans tout contexte envoyé au modèle
+        // (fonction companion : SettingsManager.masquerSecrets).
+        aiRepository.masqueur = { SettingsManager.masquerSecrets(it) }
         // sec-017 — un 401/403 GitHub marque le jeton comme révoqué (guidage).
         GitHubApi.surJetonRevoque = { container.settingsManager.signalerJetonRevoque() }
         // sec-021 — liste blanche de domaines branchée sur fetch_url.
@@ -3754,7 +3755,9 @@ done; } 2>&1 | head -c 50000
                     }
                 }
                 else -> {
-                    val a = argStr("alias").trim()
+                    val a = runCatching {
+                        (AgentTools.argumentsLenients(tc.arguments)["alias"] as? JsonPrimitive)?.content?.trim().orEmpty()
+                    }.getOrDefault("")
                     if (a.isEmpty()) "Erreur: secret_read demande un alias."
                     else {
                         val v = container.settingsManager.secretValeur(a)

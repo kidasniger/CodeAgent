@@ -764,7 +764,8 @@ class SettingsManager(context: Context) {
             val brut = prefs.getString(KEY_SECRETS, "{}") ?: "{}"
             return runCatching {
                 val o = org.json.JSONObject(brut)
-                (0 until o.length()).associate { o.names()!!.getString(it) to o.getString(it) }
+                val noms = o.names() ?: return@runCatching emptyMap<String, String>()
+                (0 until noms.length()).associate { noms.getString(it) to o.getString(noms.getString(it)) }
             }.getOrDefault(emptyMap())
         }
         private set(value) {
