@@ -174,6 +174,7 @@ class ConversationRepository private constructor(private val dir: File) : Conver
      */
     fun reconcilierIndex(): List<ConversationMeta> {
         val index = loadIndex()
+        orphelinsImportes = 0
         val valides = ArrayList<ConversationMeta>()
         val idsVus = HashSet<String>()
         index.forEach { meta ->
@@ -196,6 +197,7 @@ class ConversationRepository private constructor(private val dir: File) : Conver
             if (idsVus.contains(nom)) return@forEach
             val msgs = loadMessages(nom)
             if (msgs.isEmpty()) return@forEach
+            orphelinsImportes++
             val premier = msgs.firstOrNull { it.role == "user" }?.content.orEmpty()
             val dernierVisible = msgs.lastOrNull { it.role == "assistant" }?.content
                 ?: msgs.lastOrNull()?.content.orEmpty()
@@ -211,14 +213,14 @@ class ConversationRepository private constructor(private val dir: File) : Conver
             }
         }
         if (valides.size != index.size) saveIndex(valides)
-        // hist-012 — compteur d'orphelins réconciliés pour l'indicateur visuel.
-        derniersOrphelins = valides.size - index.size
-        return valides.sortedWith(triIndex())
+        // hist-012 — compteur d'orphelins importés pour l'indicateur visuel.
+        return valides.sortedWith(triIndex()).also { derniersOrphelins = orphelinsImportes }
     }
 
     /** hist-012 — nombre d'orphelins importés lors du dernier [reconcilierIndex]. */
     var derniersOrphelins: Int = 0
         private set
+    private var orphelinsImportes: Int = 0
 
     /**
      * hist-006 — Recompte les messages de chaque entrée d'index depuis les
@@ -272,39 +274,55 @@ class ConversationRepository private constructor(private val dir: File) : Conver
 
     // ── hist-009 : corbeille d'historique (suppression réversible 7 jours) ──
 
+    /** Registre persistant de la corbeille : titre original + date de suppression. */
+    private val corbeilleFichier = File(dir, ".corbeille-index.json")
+
+    private fun lireCorbeille(): MutableList<CorbeilleEntree> = runCatching {
+        if (!corbeilleFichier.exists()) mutableListOf()
+        else json.decodeFromString(ListSerializer(CorbeilleEntree.serializer()), corbeilleFichier.readText()).toMutableList()
+    }.getOrDefault(mutableListOf())
+
+    private fun ecrireCorbeille(l: List<CorbeilleEntree>) {
+        runCatching {
+            if (l.isEmpty()) corbeilleFichier.delete()
+            else corbeilleFichier.writeText(json.encodeToString(ListSerializer(CorbeilleEntree.serializer()), l))
+        }
+    }
+
     /** Déplace une conversation vers la corbeille (fichier renommé, pas détruit). */
     fun mettreCorbeille(id: String) {
         runCatching {
             val f = File(dir, "$id.json")
             if (f.exists()) {
-                File(dir, ".corbeille-${System.currentTimeMillis()}-$id.json").let { dest ->
-                    f.renameTo(dest)
-                    File(dir, "$id.todos.json").renameTo(File(dir, dest.nameWithoutExtension + ".todos.json"))
-                }
+                val dest = File(dir, ".corbeille-${System.currentTimeMillis()}-$id.json")
+                f.renameTo(dest)
+                File(dir, "$id.todos.json").renameTo(File(dir, dest.name.removeSuffix(".json") + ".todos.json"))
+                val index = loadIndex()
+                val titre = index.firstOrNull { it.id == id }?.title ?: id
+                val cl = lireCorbeille()
+                cl.removeAll { it.id == id }
+                cl += CorbeilleEntree(dest.name, id, titre, System.currentTimeMillis())
+                ecrireCorbeille(cl)
+                saveIndex(index.filter { it.id != id })
             }
-            val index = loadIndex().filter { it.id != id }
-            saveIndex(index)
         }
     }
 
-    /** Liste le contenu de la corbeille (métadonnées reconstruites du nom de fichier). */
+    /** Liste le contenu de la corbeille (registre persistant + fichiers orphelis reconstruits). */
     fun listerCorbeille(): List<CorbeilleEntree> {
-        val out = ArrayList<CorbeilleEntree>()
+        val connus = lireCorbeille()
+        val nomsConnus = connus.map { it.nom }.toHashSet()
         dir.listFiles { f -> f.isFile && f.name.startsWith(".corbeille-") && f.name.endsWith(".json") && !f.name.contains(".todos") }?.forEach { f ->
+            if (f.name == corbeilleFichier.name || nomsConnus.contains(f.name)) return@forEach
             val parties = f.name.removePrefix(".corbeille-").removeSuffix(".json").split("-", limit = 2)
             val ts = parties.firstOrNull()?.toLongOrNull() ?: f.lastModified()
             val id = parties.getOrNull(1) ?: f.nameWithoutExtension
-            val titre = runCatching {
-                val texte = f.readText()
-                val premier = texte.indexOf("\"title\":")
-                if (premier >= 0) texte.substring(premier + 9).trim().trimStart('"').substringBefore('"').take(48) else id
-            }.getOrDefault(id)
-            out += CorbeilleEntree(f.name, id, titre, ts)
+            connus += CorbeilleEntree(f.name, id, id, ts)
         }
-        return out.sortedByDescending { it.supprimeLe }
+        return connus.sortedByDescending { it.supprimeLe }
     }
 
-    /** Restaure une entrée de la corbeille (recrée l'entrée d'index). */
+    /** Restaure une entrée de la corbeille (titre original préservé). */
     fun restaurerDeCorbeille(nom: String) {
         runCatching {
             val f = File(dir, nom)
@@ -314,12 +332,16 @@ class ConversationRepository private constructor(private val dir: File) : Conver
             f.renameTo(File(dir, "$id.json"))
             val todos = File(dir, nom.removeSuffix(".json") + ".todos.json")
             if (todos.exists()) todos.renameTo(File(dir, "$id.todos.json"))
+            val cl = lireCorbeille()
+            val entree = cl.firstOrNull { it.nom == nom }
+            cl.removeAll { it.nom == nom }
+            ecrireCorbeille(cl)
             val msgs = loadMessages(id)
             val index = loadIndex().toMutableList()
             if (index.none { it.id == id }) {
                 index += ConversationMeta(
                     id = id,
-                    title = autoTitle(msgs.firstOrNull { it.role == "user" }?.content),
+                    title = entree?.titre ?: autoTitle(msgs.firstOrNull { it.role == "user" }?.content),
                     preview = autoPreview(msgs.lastOrNull()?.content),
                     updatedAt = f.lastModified(),
                     messageCount = msgs.size
@@ -333,11 +355,21 @@ class ConversationRepository private constructor(private val dir: File) : Conver
     fun purgerCorbeille(maxAgeDays: Long = 7) {
         runCatching {
             val seuil = System.currentTimeMillis() - maxAgeDays * 24 * 60 * 60 * 1000
-            dir.listFiles { f -> f.isFile && f.name.startsWith(".corbeille-") }?.forEach { f ->
+            val cl = lireCorbeille()
+            cl.removeAll { e ->
+                if (e.supprimeLe < seuil) {
+                    File(dir, e.nom).delete()
+                    File(dir, e.nom.removeSuffix(".json") + ".todos.json").delete()
+                    true
+                } else false
+            }
+            // Orphelins de la corbeille hors registre (ancien format).
+            dir.listFiles { f -> f.isFile && f.name.startsWith(".corbeille-") && f.name != corbeilleFichier.name }?.forEach { f ->
                 val parties = f.name.removePrefix(".corbeille-").removeSuffix(".json").split("-", limit = 2)
                 val ts = parties.firstOrNull()?.toLongOrNull() ?: f.lastModified()
                 if (ts < seuil) f.delete()
             }
+            ecrireCorbeille(cl)
         }
     }
 

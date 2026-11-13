@@ -187,6 +187,7 @@ class HistoriqueVagueATest {
         val (repo, base) = repoVierge()
         try {
             repo.saveMessages("g", listOf(message("user", "Référencée"), message("assistant", "ok")))
+            repo.saveIndex(listOf(ConversationMeta("g", "Référencée", "", System.currentTimeMillis(), 2)))
             repo.saveMessages("orph-1", listOf(message("user", "Orpheline réelle")))
             // Fichiers système qui NE doivent PAS devenir des conversations.
             File(base, ".corbeille-123-abc.json").writeText("[]")

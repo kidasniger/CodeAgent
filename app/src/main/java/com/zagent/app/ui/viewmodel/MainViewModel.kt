@@ -4703,6 +4703,10 @@ done; } 2>&1 | head -c 50000
 
     /** hist-009 — Suppression réversible : corbeille de 7 jours au lieu d'un effacement direct. */
     fun deleteConversation(id: String) {
+        // hist-009 — annule le persist débouncé du tour en cours : sinon il
+        // réécrirait le fichier après la mise en corbeille (conversation
+        // ressuscitée comme orpheline au prochain scan).
+        persistJob?.cancel()
         chat.supprimerVersCorbeille(id, conversationId) { clearConversation() }
     }
 
