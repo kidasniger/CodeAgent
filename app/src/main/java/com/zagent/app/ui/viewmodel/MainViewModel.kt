@@ -24,6 +24,7 @@ import com.zagent.app.data.parseAskQuestions
 import com.zagent.app.data.TodoItem
 import com.zagent.app.data.parseTodos
 import com.zagent.app.data.DiffUtil
+import com.zagent.app.data.EnvParse
 import com.zagent.app.data.Capacite
 import com.zagent.app.data.Fournisseur
 import com.zagent.app.data.Fournisseurs
@@ -5464,7 +5465,7 @@ done; } 2>&1 | head -c 50000
         runCatching {
             val cm = getApplication<Application>()
                 .getSystemService(android.content.Context.CONNECTIVITY_SERVICE)
-                as? android.net.ConnectivityManager ?: return
+                as? android.net.ConnectivityManager ?: return@runCatching
             cm.registerDefaultNetworkCallback(object : android.net.ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: android.net.Network) {
                     // Réseau revenu : vide la file hors ligne si un tour n'est pas en cours.
