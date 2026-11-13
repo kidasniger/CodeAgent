@@ -21,7 +21,31 @@ data class ConversationMeta(
     val messageCount: Int = 0,
     val pinned: Boolean = false,
     /** feat-020 — étiquette / dossier de classement (chaîne vide = sans dossier). */
-    val etiquette: String = ""
+    val etiquette: String = "",
+    /** hist-008 — archivage froid : le fichier ne garde plus que titre + résumé. */
+    val archiveFroide: Boolean = false
+)
+
+/** hist-009 — Entrée de la corbeille d'historique (suppression réversible 7 jours). */
+@Serializable
+data class CorbeilleEntree(
+    val nom: String,
+    val id: String,
+    val titre: String,
+    val supprimeLe: Long
+)
+
+/** hist-011 — Statistiques d'une conversation (tokens estimés, outils, modèles). */
+@Serializable
+data class StatsConversation(
+    val messages: Int = 0,
+    val messagesUtilisateur: Int = 0,
+    val messagesAssistant: Int = 0,
+    val appelsOutils: Int = 0,
+    val outils: Map<String, Int> = emptyMap(),
+    val caracteres: Long = 0L,
+    val tokensEstimes: Long = 0L,
+    val modeles: Map<String, Int> = emptyMap()
 )
 
 /** Appel d'outil sérialisé (équivalent de AiRepository.ToolCallData, sans dépendance). */
@@ -59,9 +83,14 @@ data class ConversationHit(
  * texte et les libellés automatiques. Implémente ConversationRepositoryApi
  * pour la simulation en tests.
  */
-class ConversationRepository(context: Context) : ConversationRepositoryApi {
+class ConversationRepository private constructor(private val dir: File) : ConversationRepositoryApi {
+    /** Constructeur applicatif : dossier privé de l'app. */
+    constructor(context: Context) : this(File(context.filesDir, "conversations").apply { mkdirs() })
+
+    /** hist-* — constructeur de test : dossier temporaire contrôlé (JVM). */
+    constructor(baseDir: File, testMarker: Boolean) : this(baseDir.apply { mkdirs() })
+
     private val json = Json { coerceInputValues = true; ignoreUnknownKeys = true; encodeDefaults = true }
-    private val dir = File(context.filesDir, "conversations").apply { mkdirs() }
     private val indexFile = File(dir, "index.json")
 
     /**
@@ -102,6 +131,12 @@ class ConversationRepository(context: Context) : ConversationRepositoryApi {
         // Rien à faire ici pour l'instant ; point d'entrée des migrations à venir.
     }
 
+    init {
+        // hist-009 — purge automatique de la corbeille au démarrage : tout ce
+        // qui dépasse 7 jours est définitivement effacé.
+        purgerCorbeille()
+    }
+
     /** err-095 — isole un fichier de données corrompu (sauvegarde horodatée) avant de repartir à vide. */
     private fun isolerFichierCorrompu(f: File) {
         runCatching {
@@ -119,9 +154,17 @@ class ConversationRepository(context: Context) : ConversationRepositoryApi {
         }.getOrNull()
         if (resultat == null && indexFile.exists()) isolerFichierCorrompu(indexFile) // err-095
         return resultat.orEmpty().sortedWith(
-            compareByDescending<ConversationMeta> { it.pinned }.thenByDescending { it.updatedAt }
+            compareByDescending<ConversationMeta> { it.pinned }
+                .thenByDescending { it.updatedAt }
+                // hist-007 — tri secondaire alphabétique (même jour = ordre stable).
+                .thenBy { it.title.lowercase() }
         )
     }
+
+    /** hist-007 — tri utilisé partout (épinglées, date desc, puis titre). */
+    private fun triIndex() = compareByDescending<ConversationMeta> { it.pinned }
+        .thenByDescending { it.updatedAt }
+        .thenBy { it.title.lowercase() }
 
     /**
      * Session 12 — réconciliation index ↔ fichiers : supprime les entrées dont
@@ -144,7 +187,12 @@ class ConversationRepository(context: Context) : ConversationRepositoryApi {
         val orphelins = dir.listFiles { f -> f.isFile && f.name.endsWith(".json") } ?: emptyArray()
         orphelins.forEach { f ->
             val nom = f.name.removeSuffix(".json")
-            if (nom == "index" || nom.endsWith(".todos") || nom.contains(".corrupt-") || nom.startsWith("sauvegarde-pre-migration")) return@forEach
+            // hist-009/008 — les fichiers système (corbeille, plein, froid, todos,
+            // sauvegardes) ne sont jamais des conversations orphelines.
+            if (nom == "index" || nom.startsWith(".") || nom.contains(".corbeille-") ||
+                nom.endsWith(".plein") || nom.endsWith(".froid") || nom.endsWith(".froid-restaure") ||
+                nom.endsWith(".todos") || nom.contains(".corrupt-") || nom.startsWith("sauvegarde-pre-migration")
+            ) return@forEach
             if (idsVus.contains(nom)) return@forEach
             val msgs = loadMessages(nom)
             if (msgs.isEmpty()) return@forEach
@@ -163,9 +211,31 @@ class ConversationRepository(context: Context) : ConversationRepositoryApi {
             }
         }
         if (valides.size != index.size) saveIndex(valides)
-        return valides.sortedWith(
-            compareByDescending<ConversationMeta> { it.pinned }.thenByDescending { it.updatedAt }
-        )
+        // hist-012 — compteur d'orphelins réconciliés pour l'indicateur visuel.
+        derniersOrphelins = valides.size - index.size
+        return valides.sortedWith(triIndex())
+    }
+
+    /** hist-012 — nombre d'orphelins importés lors du dernier [reconcilierIndex]. */
+    var derniersOrphelins: Int = 0
+        private set
+
+    /**
+     * hist-006 — Recompte les messages de chaque entrée d'index depuis les
+     * fichiers : l'index peut être périmé si un crash a suivi saveIndex mais
+     * précédé saveMessages. L'affichage ne ment donc jamais.
+     */
+    fun recompterMessages(index: List<ConversationMeta>): List<ConversationMeta> = index.map { meta ->
+        val f = File(dir, meta.id + ".json")
+        if (!f.exists()) meta
+        else {
+            // Recompte léger : nombre d'occurrences de "role" dans le JSON
+            // (une entrée par message sérialisé) sans tout désérialiser.
+            val compte = runCatching {
+                f.readText().split("\"role\":").size - 1
+            }.getOrDefault(meta.messageCount)
+            if (compte != meta.messageCount && compte >= 0) meta.copy(messageCount = compte) else meta
+        }
     }
 
     override fun saveIndex(list: List<ConversationMeta>) {
@@ -198,6 +268,161 @@ class ConversationRepository(context: Context) : ConversationRepositoryApi {
             File(dir, "$id.json").delete()
             File(dir, "$id.todos.json").delete()
         }
+    }
+
+    // ── hist-009 : corbeille d'historique (suppression réversible 7 jours) ──
+
+    /** Déplace une conversation vers la corbeille (fichier renommé, pas détruit). */
+    fun mettreCorbeille(id: String) {
+        runCatching {
+            val f = File(dir, "$id.json")
+            if (f.exists()) {
+                File(dir, ".corbeille-${System.currentTimeMillis()}-$id.json").let { dest ->
+                    f.renameTo(dest)
+                    File(dir, "$id.todos.json").renameTo(File(dir, dest.nameWithoutExtension + ".todos.json"))
+                }
+            }
+            val index = loadIndex().filter { it.id != id }
+            saveIndex(index)
+        }
+    }
+
+    /** Liste le contenu de la corbeille (métadonnées reconstruites du nom de fichier). */
+    fun listerCorbeille(): List<CorbeilleEntree> {
+        val out = ArrayList<CorbeilleEntree>()
+        dir.listFiles { f -> f.isFile && f.name.startsWith(".corbeille-") && f.name.endsWith(".json") && !f.name.contains(".todos") }?.forEach { f ->
+            val parties = f.name.removePrefix(".corbeille-").removeSuffix(".json").split("-", limit = 2)
+            val ts = parties.firstOrNull()?.toLongOrNull() ?: f.lastModified()
+            val id = parties.getOrNull(1) ?: f.nameWithoutExtension
+            val titre = runCatching {
+                val texte = f.readText()
+                val premier = texte.indexOf("\"title\":")
+                if (premier >= 0) texte.substring(premier + 9).trim().trimStart('"').substringBefore('"').take(48) else id
+            }.getOrDefault(id)
+            out += CorbeilleEntree(f.name, id, titre, ts)
+        }
+        return out.sortedByDescending { it.supprimeLe }
+    }
+
+    /** Restaure une entrée de la corbeille (recrée l'entrée d'index). */
+    fun restaurerDeCorbeille(nom: String) {
+        runCatching {
+            val f = File(dir, nom)
+            if (!f.exists()) return
+            val parties = nom.removePrefix(".corbeille-").removeSuffix(".json").split("-", limit = 2)
+            val id = parties.getOrNull(1) ?: nom
+            f.renameTo(File(dir, "$id.json"))
+            val todos = File(dir, nom.removeSuffix(".json") + ".todos.json")
+            if (todos.exists()) todos.renameTo(File(dir, "$id.todos.json"))
+            val msgs = loadMessages(id)
+            val index = loadIndex().toMutableList()
+            if (index.none { it.id == id }) {
+                index += ConversationMeta(
+                    id = id,
+                    title = autoTitle(msgs.firstOrNull { it.role == "user" }?.content),
+                    preview = autoPreview(msgs.lastOrNull()?.content),
+                    updatedAt = f.lastModified(),
+                    messageCount = msgs.size
+                )
+                saveIndex(index)
+            }
+        }
+    }
+
+    /** Purge définitive de la corbeille : entrées de plus de 7 jours. */
+    fun purgerCorbeille(maxAgeDays: Long = 7) {
+        runCatching {
+            val seuil = System.currentTimeMillis() - maxAgeDays * 24 * 60 * 60 * 1000
+            dir.listFiles { f -> f.isFile && f.name.startsWith(".corbeille-") }?.forEach { f ->
+                val parties = f.name.removePrefix(".corbeille-").removeSuffix(".json").split("-", limit = 2)
+                val ts = parties.firstOrNull()?.toLongOrNull() ?: f.lastModified()
+                if (ts < seuil) f.delete()
+            }
+        }
+    }
+
+    // ── hist-008 : archivage froid (> 30 jours) ─────────────────────────────
+
+    /**
+     * hist-008 — Compresse les conversations plus vieilles que [maxAgeDays] :
+     * le fichier de messages ne garde que le premier message utilisateur et le
+     * dernier message assistant (titre + résumé), l'index passe archiveFroide.
+     * Le JSON reste ouvrable/cherchable ; rien n'est perdu de manière silencieuse.
+     */
+    fun archiverFroid(maxAgeDays: Long = 30): Int {
+        var n = 0
+        runCatching {
+            val seuil = System.currentTimeMillis() - maxAgeDays * 24 * 60 * 60 * 1000
+            val index = loadIndex().toMutableList()
+            index.forEachIndexed { i, meta ->
+                if (meta.archiveFroide || meta.updatedAt >= seuil) return@forEachIndexed
+                val f = File(dir, meta.id + ".json")
+                if (!f.exists()) return@forEachIndexed
+                val msgs = loadMessages(meta.id)
+                val premier = msgs.firstOrNull { it.role == "user" }
+                val dernier = msgs.lastOrNull { it.role == "assistant" }
+                val compact = listOfNotNull(premier, dernier)
+                if (compact.size < msgs.size) {
+                    File(dir, meta.id + ".froid.json").writeText(
+                        json.encodeToString(ListSerializer(StoredMessage.serializer()), compact)
+                    )
+                    f.renameTo(File(dir, meta.id + ".plein.json"))
+                    File(dir, meta.id + ".froid.json").renameTo(f)
+                    index[i] = meta.copy(archiveFroide = true)
+                    n++
+                }
+            }
+            saveIndex(index)
+        }
+        return n
+    }
+
+    /** hist-008 — Rouvre une conversation froide (restaure le contenu plein). */
+    fun dearchiver(id: String) {
+        runCatching {
+            val plein = File(dir, "$id.plein.json")
+            if (plein.exists()) {
+                File(dir, "$id.json").renameTo(File(dir, "$id.froid-restaure.json"))
+                plein.renameTo(File(dir, "$id.json"))
+            }
+            val index = loadIndex().toMutableList()
+            val i = index.indexOfFirst { it.id == id }
+            if (i >= 0) index[i] = index[i].copy(archiveFroide = false)
+            saveIndex(index)
+        }
+    }
+
+    // ── hist-011 : statistiques par conversation ────────────────────────────
+
+    /**
+     * hist-011 — Statistiques d'une conversation : compte de messages par rôle,
+     * outils appelés (avec fréquence), caractères et tokens estimés (≈ chars/4),
+     * modèles utilisés. Lecture seule, aucun coût réseau.
+     */
+    fun statistiques(id: String): StatsConversation {
+        val msgs = loadMessages(id)
+        val outils = LinkedHashMap<String, Int>()
+        val modeles = LinkedHashMap<String, Int>()
+        var chars = 0L
+        var appels = 0
+        msgs.forEach { m ->
+            chars += (m.content?.length ?: 0) + (m.reasoning?.length ?: 0) + (m.toolLog?.length ?: 0)
+            m.toolCalls?.forEach { tc ->
+                appels++
+                outils[tc.name] = (outils[tc.name] ?: 0) + 1
+            }
+            if (!m.modele.isNullOrBlank()) modeles[m.modele!!] = (modeles[m.modele!!] ?: 0) + 1
+        }
+        return StatsConversation(
+            messages = msgs.size,
+            messagesUtilisateur = msgs.count { it.role == "user" },
+            messagesAssistant = msgs.count { it.role == "assistant" },
+            appelsOutils = appels,
+            outils = outils,
+            caracteres = chars,
+            tokensEstimes = chars / 4,
+            modeles = modeles
+        )
     }
 
     /**
@@ -239,7 +464,9 @@ class ConversationRepository(context: Context) : ConversationRepositoryApi {
             var count = 0
             for (m in msgs) {
                 if (count >= maxPer) break
-                val text = m.content.orEmpty()
+                // hist-001 — recherche aussi dans reasoning et toolLog.
+                val text = listOf(m.content.orEmpty(), m.reasoning.orEmpty(), m.toolLog.orEmpty())
+                    .joinToString("\n")
                 if (text.length > 40_000) continue
                 val at = text.indexOf(q, ignoreCase = true)
                 if (at >= 0) {

@@ -7,7 +7,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zagent.app.data.ConversationMeta
 import com.zagent.app.data.ConversationRepository
+import com.zagent.app.data.CorbeilleEntree
 import com.zagent.app.data.SettingsManager
+import com.zagent.app.data.StatsConversation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -85,9 +87,19 @@ class ChatViewModel(
         // fantômes retirées, fichiers orphelis importés (aucun contenu lu si tout est sain).
         viewModelScope.launch(Dispatchers.IO) {
             val reconcilie = conversationRepo.reconcilierIndex()
-            withContext(Dispatchers.Main) { conversationList = reconcilie }
+            // hist-006 — les comptes de messages sont relus depuis les fichiers
+            // (jamais depuis un index potentiellement périmé).
+            val recompte = conversationRepo.recompterMessages(reconcilie)
+            withContext(Dispatchers.Main) {
+                conversationList = recompte
+                orphelinsDernierScan = conversationRepo.derniersOrphelins
+            }
         }
     }
+
+    /** hist-012 — orphelins réconciliés au dernier scan (indicateur visuel de l'historique). */
+    var orphelinsDernierScan by mutableStateOf(0)
+        private set
 
     internal fun setConversationList(list: List<ConversationMeta>) {
         conversationList = list
@@ -138,4 +150,122 @@ class ChatViewModel(
             withContext(Dispatchers.Main) { conversationList = fresh }
         }
     }
+
+    // ── hist-003 : renommer une conversation ────────────────────────────────
+
+    /** hist-003 — Édite le titre persisté d'une conversation (depuis l'historique). */
+    fun renommerConversation(id: String, titre: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val index = conversationRepo.loadIndex().toMutableList()
+            val i = index.indexOfFirst { it.id == id }
+            if (i >= 0) {
+                index[i] = index[i].copy(title = titre.trim().take(64).ifBlank { index[i].title })
+                conversationRepo.saveIndex(index)
+            }
+            val fresh = conversationRepo.loadIndex()
+            withContext(Dispatchers.Main) { conversationList = fresh }
+        }
+    }
+
+    // ── hist-004 : fusionner deux conversations ─────────────────────────────
+
+    /**
+     * hist-004 — Fusionne [idAutre] DANS [idCible] : messages de l'autre
+     * ajoutés après ceux de la cible (ordre chronologique retrié par timestamp),
+     * l'autre passe à la corbeille. Utilisé quand un fil de travail a éclaté.
+     */
+    fun fusionnerConversations(idCible: String, idAutre: String, courantId: String, onClearedCourant: () -> Unit) {
+        if (idCible == idAutre) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val msgsA = conversationRepo.loadMessages(idCible)
+            val msgsB = conversationRepo.loadMessages(idAutre)
+            val fusion = (msgsA + msgsB).sortedBy { if (it.time > 0) it.time else Long.MAX_VALUE }
+            conversationRepo.saveMessages(idCible, fusion)
+            // Les todos des deux fils sont concaténés (l'autre est corbeillé).
+            val tdsA = conversationRepo.loadTodos(idCible)
+            val tdsB = conversationRepo.loadTodos(idAutre)
+            conversationRepo.saveTodos(idCible, tdsA + tdsB)
+            conversationRepo.mettreCorbeille(idAutre)
+            if (idAutre == courantId) withContext(Dispatchers.Main) { onClearedCourant() }
+            val fresh = conversationRepo.loadIndex()
+            withContext(Dispatchers.Main) { conversationList = fresh }
+        }
+    }
+
+    // ── hist-005 : dupliquer une conversation ───────────────────────────────
+
+    /** hist-005 — Duplique une conversation (copie complète, originale intacte). */
+    fun dupliquerConversation(id: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val msgs = conversationRepo.loadMessages(id)
+            if (msgs.isEmpty()) return@launch
+            val nouveau = UUID.randomUUID().toString()
+            conversationRepo.saveMessages(nouveau, msgs)
+            conversationRepo.saveTodos(nouveau, conversationRepo.loadTodos(id))
+            val index = conversationRepo.loadIndex().toMutableList()
+            val origine = index.firstOrNull { it.id == id }
+            index += ConversationMeta(
+                id = nouveau,
+                title = (origine?.title ?: "Conversation") + " — copie",
+                preview = origine?.preview.orEmpty(),
+                updatedAt = System.currentTimeMillis(),
+                messageCount = msgs.size,
+                pinned = false,
+                etiquette = origine?.etiquette.orEmpty()
+            )
+            conversationRepo.saveIndex(index)
+            val fresh = conversationRepo.loadIndex()
+            withContext(Dispatchers.Main) { conversationList = fresh }
+        }
+    }
+
+    // ── hist-009 : corbeille (suppression réversible) ────────────────────────
+
+    /**
+     * hist-009 — Suppression réversible : la conversation part en corbeille
+     * pendant 7 jours (restaurable depuis l'historique), puis purge automatique.
+     */
+    fun supprimerVersCorbeille(id: String, currentId: String, onClearedCurrent: () -> Unit) {
+        if (id == currentId) onClearedCurrent()
+        viewModelScope.launch(Dispatchers.IO) {
+            conversationRepo.mettreCorbeille(id)
+            val fresh = conversationRepo.loadIndex()
+            withContext(Dispatchers.Main) { conversationList = fresh }
+        }
+    }
+
+    fun listerCorbeille(): List<CorbeilleEntree> = conversationRepo.listerCorbeille()
+
+    fun restaurerDeCorbeille(nom: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            conversationRepo.restaurerDeCorbeille(nom)
+            val fresh = conversationRepo.loadIndex()
+            withContext(Dispatchers.Main) { conversationList = fresh }
+        }
+    }
+
+    // ── hist-008 : archivage froid ──────────────────────────────────────────
+
+    /** hist-008 — Compresse les conversations de plus de 30 jours (titre + résumé). */
+    fun archiverFroid(onDone: (Int) -> Unit = {}) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val n = conversationRepo.archiverFroid(30)
+            val fresh = conversationRepo.loadIndex()
+            withContext(Dispatchers.Main) {
+                conversationList = fresh
+                onDone(n)
+            }
+        }
+    }
+
+    fun dearchiver(id: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            conversationRepo.dearchiver(id)
+            val fresh = conversationRepo.loadIndex()
+            withContext(Dispatchers.Main) { conversationList = fresh }
+        }
+    }
+
+    /** hist-011 — Statistiques d'une conversation (lecture du fichier). */
+    fun statistiques(id: String): StatsConversation = conversationRepo.statistiques(id)
 }

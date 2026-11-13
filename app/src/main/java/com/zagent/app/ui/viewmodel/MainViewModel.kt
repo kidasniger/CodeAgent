@@ -34,6 +34,8 @@ import com.zagent.app.data.ActivityRepository
 import com.zagent.app.data.ActivityStatus
 import com.zagent.app.data.ConversationMeta
 import com.zagent.app.data.ConversationRepository
+import com.zagent.app.data.CorbeilleEntree
+import com.zagent.app.data.StatsConversation
 import com.zagent.app.data.StoredMessage
 import com.zagent.app.data.StoredToolCall
 import com.zagent.app.data.UsageEntry
@@ -4693,6 +4695,102 @@ done; } 2>&1 | head -c 50000
     /** feat-020 — Étiquettes existantes, pour les puces de filtrage de l'historique. */
     val etiquettesConversations: List<String>
         get() = chat.conversationList.map { it.etiquette }.filter { it.isNotBlank() }.distinct().sorted()
+
+    /** hist-003 — Renomme une conversation (titre persisté, édité depuis l'historique). */
+    fun renommerConversation(id: String, titre: String) = chat.renommerConversation(id, titre)
+
+    /** hist-004 — Fusionne [idAutre] dans [idCible] (l'autre passe à la corbeille). */
+    fun fusionnerConversations(idCible: String, idAutre: String) =
+        chat.fusionnerConversations(idCible, idAutre, conversationId) { clearConversation() }
+
+    /** hist-005 — Duplique une conversation pour bifurquer sans perdre l'originale. */
+    fun dupliquerConversation(id: String) = chat.dupliquerConversation(id)
+
+    /** hist-009 — Suppression réversible : corbeille de 7 jours au lieu d'un effacement direct. */
+    fun deleteConversation(id: String) {
+        chat.supprimerVersCorbeille(id, conversationId) { clearConversation() }
+    }
+
+    fun listerCorbeilleHistorique(): List<CorbeilleEntree> = chat.listerCorbeille()
+
+    fun restaurerConversationCorbeille(nom: String) = chat.restaurerDeCorbeille(nom)
+
+    /** hist-012 — Orphelins réconciliés au dernier scan (bandeau d'historique). */
+    val orphelinsReconcilies: Int get() = chat.orphelinsDernierScan
+
+    /** hist-008 — Archivage froid des conversations de plus de 30 jours. */
+    fun archiverFroidHistorique(onDone: (Int) -> Unit = {}) = chat.archiverFroid(onDone)
+
+    /** hist-008 — Rouvre une conversation froide (contenu plein restauré). */
+    fun dearchiverConversation(id: String) = chat.dearchiver(id)
+
+    /** hist-011 — Statistiques d'une conversation (messages, outils, tokens estimés). */
+    fun statistiquesConversation(id: String): StatsConversation = chat.statistiques(id)
+
+    /**
+     * hist-010 — Export global de TOUT l'historique : un ZIP contenant
+     * historique.json (données complètes réimportables par conversation) et
+     * historique.md (lecture humaine, une section par conversation).
+     */
+    fun exporterHistoriqueGlobal(uri: android.net.Uri, onDone: (Boolean) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val ok = runCatching {
+                val index = conversationRepo.loadIndex()
+                getApplication<Application>().contentResolver.openOutputStream(uri, "wt")?.use { flux ->
+                    java.util.zip.ZipOutputStream(flux).use { zip ->
+                        // historique.json — index + messages de chaque conversation.
+                        val obj = buildString {
+                            append("{\"exporteLe\":").append(System.currentTimeMillis())
+                            append(",\"conversations\":[")
+                            index.forEachIndexed { i, meta ->
+                                if (i > 0) append(",")
+                                append("{\"meta\":")
+                                append(Json.encodeToString(ConversationMeta.serializer(), meta))
+                                append(",\"messages\":")
+                                append(Json.encodeToString(
+                                    kotlinx.serialization.builtins.ListSerializer(StoredMessage.serializer()),
+                                    conversationRepo.loadMessages(meta.id)
+                                ))
+                                append("}")
+                            }
+                            append("]}")
+                        }
+                        zip.putNextEntry(java.util.zip.ZipEntry("historique.json"))
+                        zip.write(obj.toByteArray(Charsets.UTF_8))
+                        zip.closeEntry()
+                        // historique.md — lecture humaine.
+                        val md = buildString {
+                            append("# Historique complet ZAgent\n\n")
+                            index.forEach { meta ->
+                                append("## ").append(meta.title.replace('\n', ' ')).append('\n')
+                                append("_Dernière activité : ")
+                                append(java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
+                                    .format(java.util.Date(meta.updatedAt)))
+                                append(" · ").append(meta.messageCount).append(" messages_\n\n")
+                                conversationRepo.loadMessages(meta.id).forEach { m ->
+                                    val qui = when (m.role) {
+                                        "user" -> "Moi"
+                                        "assistant" -> "ZAgent"
+                                        else -> m.role
+                                    }
+                                    append("**").append(qui).append("** · ")
+                                    append(java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+                                        .format(java.util.Date(if (m.time > 0) m.time else meta.updatedAt)))
+                                    append("\n\n").append((m.content ?: m.toolLog ?: "").take(4000)).append("\n\n")
+                                }
+                                append("---\n\n")
+                            }
+                        }
+                        zip.putNextEntry(java.util.zip.ZipEntry("historique.md"))
+                        zip.write(md.toByteArray(Charsets.UTF_8))
+                        zip.closeEntry()
+                    }
+                    true
+                } ?: false
+            }.getOrDefault(false)
+            withContext(Dispatchers.Main) { onDone(ok) }
+        }
+    }
 
     // ── MA57 : projets favoris + racine publique ─────────────────────────────
     fun projectsRootPublic(): java.io.File = projectsRoot()

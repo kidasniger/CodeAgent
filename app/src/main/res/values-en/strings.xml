@@ -800,4 +800,23 @@
     <string name="tool_env_connect">Connecting environment %1$s</string>
     <string name="tool_env_statut">Reading environment status</string>
     <string name="tool_env_sync">Syncing environment with GitHub</string>
+    <!-- Session 17 — wave A (hist-001..012) -->
+    <string name="history_orphan_message">%1$d orphaned conversation(s) recovered and re-added to history.</string>
+    <string name="history_exporter_global">Export all history (ZIP)</string>
+    <string name="history_archiver_froid">Compress conversations &gt; 30 days old</string>
+    <string name="history_archive_fait">%1$s conversation(s) compressed.</string>
+    <string name="history_corbeille">Trash (7 days)</string>
+    <string name="history_restaurer">Restore</string>
+    <string name="history_renommer">Rename</string>
+    <string name="history_renommer_hint">New title…</string>
+    <string name="history_dupliquer">Duplicate</string>
+    <string name="history_fusionner">Merge another conversation here</string>
+    <string name="history_fusionner_hint">Pick the conversation to merge into this one; its content is appended, the other thread goes to the trash.</string>
+    <string name="history_statistiques">Statistics</string>
+    <string name="history_dearchiver">Reopen (unarchive)</string>
+    <string name="history_froid_badge">cold</string>
+    <string name="history_stats_messages">Messages</string>
+    <string name="history_stats_tokens">Estimated tokens</string>
+    <string name="history_stats_outils">Tool calls</string>
+    <string name="history_stats_modeles">Models used</string>
 </resources>

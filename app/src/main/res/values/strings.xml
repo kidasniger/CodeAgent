@@ -804,4 +804,23 @@
     <string name="tool_env_connect">Connexion de l\'environnement %1$s</string>
     <string name="tool_env_statut">Lecture de l\'état de l\'environnement</string>
     <string name="tool_env_sync">Synchronisation de l\'environnement avec GitHub</string>
+    <!-- Session 17 — vague A (hist-001..012) -->
+    <string name="history_orphan_message">%1$d conversation(s) orpheline(s) récupérée(s) et réintégrée(s) à l\'historique.</string>
+    <string name="history_exporter_global">Exporter tout l\'historique (ZIP)</string>
+    <string name="history_archiver_froid">Compresser les conversations &gt; 30 jours</string>
+    <string name="history_archive_fait">%1$s conversation(s) compressée(s).</string>
+    <string name="history_corbeille">Corbeille (7 jours)</string>
+    <string name="history_restaurer">Restaurer</string>
+    <string name="history_renommer">Renommer</string>
+    <string name="history_renommer_hint">Nouveau titre…</string>
+    <string name="history_dupliquer">Dupliquer</string>
+    <string name="history_fusionner">Fusionner une autre conversation ici</string>
+    <string name="history_fusionner_hint">Choisis la conversation à fusionner dans celle-ci ; son contenu est ajouté à la fin, l\'autre fil part à la corbeille.</string>
+    <string name="history_statistiques">Statistiques</string>
+    <string name="history_dearchiver">Rouvrir (désarchiver)</string>
+    <string name="history_froid_badge">froid</string>
+    <string name="history_stats_messages">Messages</string>
+    <string name="history_stats_tokens">Tokens estimés</string>
+    <string name="history_stats_outils">Appels d\'outils</string>
+    <string name="history_stats_modeles">Modèles utilisés</string>
 </resources>
