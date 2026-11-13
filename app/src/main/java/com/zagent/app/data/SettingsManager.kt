@@ -893,6 +893,40 @@ class SettingsManager(context: Context) {
     // sec-021 — liste blanche de domaines pour fetch_url (vide = tout autorisé).
     private val KEY_DOMAINES_AUTORISES = "domaines_autorises"
 
+    // ── Session 17 / vague C — IA & outils (ia-028..040) ────────────────────
+
+    // ia-037 — mode « relire avant d'envoyer » : l'IA propose, l'utilisateur valide.
+    private val KEY_RELIRE = "relire_avant_envoyer"
+
+    var relireAvantEnvoyer: Boolean
+        get() = prefs.getBoolean(KEY_RELIRE, false)
+        set(value) = prefs.edit().putBoolean(KEY_RELIRE, value).apply()
+
+    // ia-039 — plafond de taille d'un résultat d'outil (au-delà : [tronqué]).
+    private val KEY_LIMITE_OUTIL = "limite_resultat_outil"
+
+    var limiteResultatOutil: Int
+        get() = prefs.getInt(KEY_LIMITE_OUTIL, 20000).coerceIn(2000, 100_000)
+        set(value) = prefs.edit().putInt(KEY_LIMITE_OUTIL, value.coerceIn(2000, 100_000)).apply()
+
+    // ia-038 — verrou de tour : persisté au début d'un tour, effacé à la fin ;
+    // s'il survit au processus (crash), le redémarrage libère les outils bloqués.
+    private val KEY_TOUR_EN_COURS = "tour_en_cours"
+
+    var tourEnCours: Boolean
+        get() = prefs.getBoolean(KEY_TOUR_EN_COURS, false)
+        set(value) = prefs.edit().putBoolean(KEY_TOUR_EN_COURS, value).apply()
+
+    // ia-035 — confiance des confirmations (SESSION seule, jamais persistée) :
+    // un même outil avec les mêmes arguments confirmé récemment est auto-approuvé.
+    private val confianceSession = HashSet<String>()
+
+    fun outilFiable(empreinte: String): Boolean = confianceSession.contains(empreinte)
+
+    fun marquerOutilFiable(empreinte: String) {
+        if (confianceSession.size < 50) confianceSession.add(empreinte)
+    }
+
     var domainesAutorises: List<String>
         get() = (prefs.getString(KEY_DOMAINES_AUTORISES, "") ?: "")
             .split(",").map { it.trim().lowercase() }.filter { it.isNotBlank() }

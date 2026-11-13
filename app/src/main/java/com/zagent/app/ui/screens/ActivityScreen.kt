@@ -124,8 +124,35 @@ fun ActivityScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         }
 
         val df = remember { SimpleDateFormat("d MMM · HH:mm:ss", Locale.getDefault()) }
+        // ia-036 — vue « par tour » : un entête sépare les paquets d'événements
+        // espacés de plus de 90 s (chaque tour de l'agent).
+        var parTour by remember { mutableStateOf(false) }
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(50))
+                .background(if (parTour) c.cyanBg else c.surface2)
+                .clickable { parTour = !parTour }
+                .padding(horizontal = 12.dp, vertical = 7.dp)
+        ) {
+            Text(
+                stringResource(R.string.outils_par_tour),
+                style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
+                color = if (parTour) c.cyan else c.text2
+            )
+        }
+        Spacer(Modifier.height(10.dp))
         Column {
-            filtered.forEach { e ->
+            filtered.forEachIndexed { i, e ->
+                val nouveauTour = parTour && (i == 0 || e.ts - filtered[i - 1].ts > 90_000)
+                if (nouveauTour) {
+                    Text(
+                        "Tour · " + df.format(Date(e.ts)),
+                        style = TextStyle(fontFamily = JetBrainsMono, fontSize = 10.5.sp, fontWeight = FontWeight.SemiBold),
+                        color = c.text3,
+                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                    )
+                }
                 // resp-07 — IntrinsicSize.Min : le connecteur suit la hauteur
                 // réelle de la ligne (échelle de police agrandie incluse).
                 Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {

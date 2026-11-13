@@ -468,3 +468,45 @@ internal fun WriteConfirmSheet(
         }
     }
 }
+// ─────────────────────────────────────────────────────────────────────────────
+// ia-037 — bandeau « relire avant d'envoyer » : l'utilisateur valide ou annule
+// le message exact qui partirait au modèle.
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+internal fun RelireBandeau(
+    texte: String,
+    onValider: () -> Unit,
+    onAnnuler: () -> Unit
+) {
+    val c = Zcolors
+    GlassAlertDialog(
+        onDismissRequest = onAnnuler,
+        title = { Text(stringResource(R.string.relire_titre), fontFamily = SpaceGrotesk, color = c.text) },
+        text = {
+            Column(Modifier.fillMaxWidth()) {
+                Text(
+                    stringResource(R.string.relire_note),
+                    style = TextStyle(fontFamily = Inter, fontSize = 12.sp),
+                    color = c.text2
+                )
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    texte.take(600) + if (texte.length > 600) "…" else "",
+                    style = TextStyle(fontFamily = Inter, fontSize = 13.sp, lineHeight = 18.sp),
+                    color = c.text
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onValider) {
+                Text(stringResource(R.string.relire_valider), color = c.cyan)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onAnnuler) {
+                Text(stringResource(R.string.relire_annuler), color = c.text2)
+            }
+        }
+    )
+}

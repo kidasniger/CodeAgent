@@ -117,6 +117,14 @@ fun PermissionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 checked = viewModel.smartModeInput,
                 onToggle = { viewModel.setSmartMode(it) }
             )
+            // ia-037 — mode « relire avant d'envoyer » (option).
+            var relire by remember { mutableStateOf(viewModel.settingsManager.relireAvantEnvoyer) }
+            ModeRow(
+                title = stringResource(R.string.relire_titre),
+                subtitle = stringResource(R.string.relire_note),
+                checked = relire,
+                onToggle = { viewModel.settingsManager.relireAvantEnvoyer = it; relire = it }
+            )
         }
         Spacer(Modifier.height(16.dp))
 

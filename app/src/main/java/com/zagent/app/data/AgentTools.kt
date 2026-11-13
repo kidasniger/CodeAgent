@@ -987,6 +987,63 @@ object AgentTools {
                 })
             })
         })
+        // ── Session 17 / vague C — outils IA supplémentaires (ia-028..034) ──
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "project_plan")
+                put("description", "Plan de travail persisté PAR conversation. action=read (retriever), write (plan complet, remplace), append (une étape de plus), clear (vider). Le plan survit au redémarrage et est rechargé à la réouverture de la conversation.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {
+                        put("action", buildJsonObject { put("type", "string"); put("description", "read | write | append | clear") })
+                        put("plan", buildJsonObject { put("type", "string"); put("description", "Contenu du plan (write) ou étape à ajouter (append)") })
+                    })
+                    put("required", buildJsonArray { add("action") })
+                })
+            })
+        })
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "context_usage")
+                put("description", "Renvoie ton usage de contexte estimé : nombre de messages, tokens estimés (≈ chars/4), budget quotidien configuré. Utilise-le pour décider de compacter volontairement (résumés, lectures par plages) avant de saturer la fenêtre.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {})
+                    put("required", buildJsonArray {})
+                })
+            })
+        })
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "screenshot_project")
+                put("description", "Capture un aperçu PNG d'un fichier HTML/MDX du projet rendu par un WebView hors écran. Écrit <chemin>.png à côté du fichier et renvoie le chemin.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {
+                        put("path", buildJsonObject { put("type", "string"); put("description", "Chemin relatif du fichier .html/.mdx à rendre") })
+                    })
+                    put("required", buildJsonArray { add("path") })
+                })
+            })
+        })
+        add(buildJsonObject {
+            put("type", "function")
+            put("function", buildJsonObject {
+                put("name", "image_describe")
+                put("description", "Décris une image locale du projet (png/jpg/webp) via le modèle vision actif. Renvoie la description textuelle. Nécessite un modèle à capacité vision.")
+                put("parameters", buildJsonObject {
+                    put("type", "object")
+                    put("properties", buildJsonObject {
+                        put("path", buildJsonObject { put("type", "string"); put("description", "Chemin relatif de l'image") })
+                        put("prompt", buildJsonObject { put("type", "string"); put("description", "Question ou consigne d'analyse (optionnel)") })
+                    })
+                    put("required", buildJsonArray { add("path") })
+                })
+            })
+        })
         // ── feat-033/034 : run_tests et lint_code ───────────────────────────
         add(buildJsonObject {
             put("type", "function")
@@ -1094,7 +1151,9 @@ object AgentTools {
         // Session 16 — environnement : dépôt GitHub complet, hors ligne.
         "env_connect", "env_statut", "env_sync",
         // Session 17 / vague B — coffre d'alias secrets (sec-013).
-        "secret_list", "secret_read"
+        "secret_list", "secret_read",
+        // Session 17 / vague C — IA & outils (ia-028..034).
+        "project_plan", "context_usage", "screenshot_project", "image_describe"
     )
 
     /**
@@ -1180,13 +1239,22 @@ object AgentTools {
                     // offset_line (1-based) + lines (nombre) optionnels.
                     val offset = jsonObject["offset_line"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 0
                     val nb = jsonObject["lines"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 0
-                    if (tout.startsWith("Erreur") || (offset <= 1 && nb <= 0)) tout
+                    val brut = if (tout.startsWith("Erreur") || (offset <= 1 && nb <= 0)) tout
                     else {
                         val lignes = tout.lines()
                         val debut = (offset.coerceAtLeast(1) - 1).coerceAtMost(lignes.lastIndex.coerceAtLeast(0))
                         val fin = if (nb > 0) (debut + nb).coerceAtMost(lignes.size) else lignes.size
                         "[lignes " + (debut + 1) + "-" + fin + " sur " + lignes.size + "]\n" +
                             lignes.subList(debut, fin).joinToString("\n")
+                    }
+                    // ia-031 — résumé automatique des GROS read_file : extrait tête
+                    // + queue avec compteur, la relecture par plages reste possible.
+                    if (brut.startsWith("Erreur") || brut.length <= 8000) brut
+                    else {
+                        val tete = brut.take(4000)
+                        val queue = brut.takeLast(2000)
+                        val saut = brut.length - 6000
+                        tete + "\n[… résumé auto : " + saut + " caractères sautés — relis avec offset_line/lines pour voir cette zone …]\n" + queue
                     }
                 }
                 "make_dir" -> {

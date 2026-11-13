@@ -963,6 +963,15 @@ fun ChatScreen(
         )
     }
 
+    // ia-037 — bandeau « relire avant d'envoyer » : le message attend validation.
+    viewModel.pendingRelire?.let { texte ->
+        RelireBandeau(
+            texte = texte,
+            onValider = { viewModel.validerRelire() },
+            onAnnuler = { viewModel.annulerRelire() }
+        )
+    }
+
     // Feuille de confirmation d'une commande (hors mode Auto)
     viewModel.pendingCommand?.let { pc ->
         CommandConfirmSheet(

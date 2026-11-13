@@ -857,4 +857,12 @@
     <string name="sec_purger_memoire">Purger les clés de la mémoire (verrou)</string>
     <string name="sec_purger_ok">Clés purgées de la mémoire d\'exécution.</string>
     <string name="err_pin_exige">Session des clés expirée : re-entre ton code PIN dans Permissions &amp; sécurité pour continuer.</string>
+    <!-- Session 17 — vague C (ia-028..040) -->
+    <string name="statut_verrous_liberes">Le dernier tour a été interrompu : verrous d\'outils libérés au redémarrage.</string>
+    <string name="statut_relire_attente">Relecture : valide ou annule ton message ci-dessus avant l\'envoi.</string>
+    <string name="relire_titre">Relire avant d\'envoyer</string>
+    <string name="relire_note">Ton message s\'affiche avec boutons Valider / Annuler avant de partir au modèle.</string>
+    <string name="relire_valider">Valider et envoyer</string>
+    <string name="relire_annuler">Annuler</string>
+    <string name="outils_par_tour">Grouper par tour</string>
 </resources>

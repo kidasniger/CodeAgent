@@ -457,6 +457,22 @@ class ConversationRepository private constructor(private val dir: File) : Conver
         )
     }
 
+    // ── ia-028 : plan de projet par conversation ────────────────────────────
+
+    /** ia-028 — Sauvegarde le plan de projet attaché à cette conversation. */
+    fun savePlan(id: String, plan: String) {
+        runCatching { File(dir, "$id.plan.txt").writeText(plan.take(100_000)) }
+    }
+
+    /** ia-028 — Charge le plan de projet de la conversation ("" = aucun). */
+    fun loadPlan(id: String): String =
+        File(dir, "$id.plan.txt").let { if (it.exists()) runCatching { it.readText() }.getOrDefault("") else "" }
+
+    /** ia-028 — Supprime le plan (action clear). */
+    fun deletePlan(id: String) {
+        runCatching { File(dir, "$id.plan.txt").delete() }
+    }
+
     /**
      * corr-077 — Liste de tâches (update_todos) persistée PAR conversation :
      * rouvrir la conversation restaure sa liste, et une autre conversation ne

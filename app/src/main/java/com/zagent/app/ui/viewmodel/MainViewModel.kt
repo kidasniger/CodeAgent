@@ -204,6 +204,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         GitHubApi.surJetonRevoque = { container.settingsManager.signalerJetonRevoque() }
         // sec-021 — liste blanche de domaines branchée sur fetch_url.
         AgentTools.domaineAutoriseFiltre = container.settingsManager::domaineAutorise
+        // ia-038 — stale-lock : si le processus est mort pendant un tour, le
+        // verrou persisté survit ; au démarrage on libère les outils bloqués.
+        if (container.settingsManager.tourEnCours) {
+            container.settingsManager.tourEnCours = false
+            container.settingsManager.journalerAccesSecret("stale_lock_libere", "tour_crash")
+            statusMessage = sm(R.string.statut_verrous_liberes)
+        }
     }
     private val conversationRepo: ConversationRepository get() = container.conversationRepo
     private val usageRepo: UsageRepository get() = container.usageRepo
@@ -739,6 +746,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     /** Résumé de la demande en cours : fichiers touchés et commandes lancées. */
     val summaryFiles = mutableStateListOf<String>()
     val summaryCommands = mutableStateListOf<String>()
+    // ia-040 — URLs consultées via fetch_url dans le tour courant (annexe sources).
+    val summaryUrls = mutableStateListOf<String>()
 
     /** Compteurs de diff par fichier touché pendant la demande : chemin → (ajoutées, supprimées) — MA41. */
     val fileDiffCounts = mutableStateMapOf<String, Pair<Int, Int>>()
@@ -2282,10 +2291,23 @@ done; } 2>&1 | head -c 50000
             return
         }
         isOffline = false
+        // ia-038 — verrou de tour : persisté maintenant, effacé à la fin du tour.
+        settingsManager.tourEnCours = true
+        // ia-032 — le cache des outils lecture seule est valable UN tour.
+        cacheOutilsTour.clear()
+        // ia-037 — mode « relire avant d'envoyer » : le message attend la
+        // validation de l'utilisateur avant de partir au modèle.
+        if (settingsManager.relireAvantEnvoyer && !relireBypass) {
+            pendingRelire = userText
+            statusMessage = sm(R.string.statut_relire_attente)
+            settingsManager.tourEnCours = false
+            return
+        }
         // sec-015 — expiration de session : si activé, les clés exigent une
         // reverification du PIN après 24 h (non bloquant pour la saisie).
         if (settingsManager.clesExigentReverification()) {
             statusMessage = sm(R.string.err_pin_exige)
+            settingsManager.tourEnCours = false
             return
         }
         // feat-098 — budget quotidien : alerte (non bloquante) si dépassé.
@@ -2941,7 +2963,18 @@ done; } 2>&1 | head -c 50000
 
                     if (toolCalls.isNullOrEmpty()) {
                         val reasoning = liveReasoning.ifBlank { result.reasoningContent ?: "" }
-                        val assistantMsg = ChatMessage("assistant", content ?: "", reasoning = reasoning.ifBlank { null })
+                        // ia-038 — le tour se termine proprement : libère le verrou.
+                        settingsManager.tourEnCours = false
+                        // ia-040 — annexe « sources » : fichiers et URL consultés.
+                        var contenuFinal = content ?: ""
+                        val annexe = buildString {
+                            val fichiers = summaryFiles.distinct()
+                            if (fichiers.isNotEmpty()) append("\n\nSources fichiers : " + fichiers.take(8).joinToString(", ") + (if (fichiers.size > 8) " (+" + (fichiers.size - 8) + ")" else ""))
+                            val urls = summaryUrls.distinct()
+                            if (urls.isNotEmpty()) append("\nSources web : " + urls.take(5).joinToString(", "))
+                        }
+                        if (annexe.isNotBlank()) contenuFinal += annexe
+                        val assistantMsg = ChatMessage("assistant", contenuFinal, reasoning = reasoning.ifBlank { null })
                         alertUser(sm(R.string.vm_agent_termine), (content ?: sm(R.string.vm_tache_terminee)).trim().take(140))
                         withContext(Dispatchers.Main) {
                             chat.edit.value = chat.edit.value + assistantMsg
@@ -2977,6 +3010,7 @@ done; } 2>&1 | head -c 50000
                                         name = tc.name, toolLog = tc.name
                                     )
                                     isLoading = false
+                                    settingsManager.tourEnCours = false // ia-038
                                     statusMessage = sm(R.string.err_boucle_outils)
                                 }
                                 alertUser(sm(R.string.vm_agent_arrete), sm(R.string.vm_outils_repetes))
@@ -3015,6 +3049,7 @@ done; } 2>&1 | head -c 50000
             alertUser(sm(R.string.vm_agent_arrete), sm(R.string.vm_limite_etapes, maxSteps))
             withContext(Dispatchers.Main) {
                 isLoading = false
+                settingsManager.tourEnCours = false // ia-038
                 stepLimitReached = true
                 statusMessage = sm(R.string.err_limite_etapes, maxSteps)
             }
@@ -3094,6 +3129,7 @@ done; } 2>&1 | head -c 50000
         liveText = ""
         liveReasoning = ""
         isLoading = false
+        settingsManager.tourEnCours = false // ia-038 — arrêt manuel : libère le verrou
         statusMessage = sm(R.string.statut_generation_interrompue)
         persistCurrentConversation()
     }
@@ -3392,8 +3428,16 @@ done; } 2>&1 | head -c 50000
                         val actuel = fileRepo.readFile(chemin).let { if (it.startsWith("Erreur")) "" else it }
                         if (actuel.contains(fait)) "Déjà en mémoire : " + fait
                         else {
-                            val nouveau = (if (actuel.isBlank()) "# Mémoire du projet\n" else actuel.trimEnd() + "\n") +
+                            var nouveau = (if (actuel.isBlank()) "# Mémoire du projet\n" else actuel.trimEnd() + "\n") +
                                 "- " + fait.replace('\n', ' ').take(300)
+                            // ia-029 — auto-compaction : au-delà de 8000 caractères, on
+                            // garde l'entête (contexte) et les faits récents (queue).
+                            if (nouveau.length > 8000) {
+                                nouveau = nouveau.take(2000) +
+                                    "\n… [mémoire compactée automatiquement — " + (nouveau.length - 6000) +
+                                    " caractères anciens résumés ; reconsigne si un fait ancien redevient utile …]\n" +
+                                    nouveau.takeLast(4000)
+                            }
                             applyWrite(fileRepo, tc.id, chemin, nouveau, isEdit = true)
                         }
                     }
@@ -3677,7 +3721,12 @@ done; } 2>&1 | head -c 50000
                 else -> null
             }
             val allowed = (outilAutoriseForce || autoModeInput || settingsManager.allowExecute) && !isPush && !isCommit && !isDangerous ||
-                waitForCommandConfirmation(command, tc.id, note, changes, footer)
+                waitForCommandConfirmation(
+                    command, tc.id, note, changes, footer,
+                    // ia-035 — les commandes non dangereuses seules gagnent en confiance.
+                    empreinteConfiance = if (!isPush && !isCommit && !isDangerous)
+                        "cmd|" + command.trim().hashCode().toString() else null
+                )
             if (!allowed) return "Refusé par l'utilisateur: la commande a été annulée."
             return executerCommandeAgent(command, tc.id, timeout)
         }
@@ -3778,8 +3827,92 @@ done; } 2>&1 | head -c 50000
             )
             return resSecret
         }
+        // ── Session 17 / vague C — outils IA (ia-028..034) ──────────────────
+        if (tc.name == "project_plan" || tc.name == "context_usage" ||
+            tc.name == "screenshot_project" || tc.name == "image_describe") {
+            val t0VagueC = System.currentTimeMillis()
+            val resVagueC = when (tc.name) {
+                "project_plan" -> {
+                    val action = argumentsOutil(tc)["action"]?.trim().orEmpty()
+                    val texte = argumentsOutil(tc)["plan"]?.trim().orEmpty()
+                    val idConv = conversationId
+                    when (action) {
+                        "read" -> {
+                            val plan = conversationRepo.loadPlan(idConv)
+                            if (plan.isBlank()) "Plan vide pour cette conversation — crée-le avec action=write."
+                            else "Plan de travail de la conversation :\n" + plan.take(4000)
+                        }
+                        "write" -> {
+                            if (texte.isEmpty()) "Erreur: project_plan action=write demande un contenu (plan)."
+                            else {
+                                conversationRepo.savePlan(idConv, texte)
+                                chat.planCourant = texte
+                                "Plan enregistré (" + texte.length + " caractères) ; il sera rechargé à la réouverture de la conversation."
+                            }
+                        }
+                        "append" -> {
+                            if (texte.isEmpty()) "Erreur: project_plan action=append demande une étape (plan)."
+                            else {
+                                val actuel = conversationRepo.loadPlan(idConv)
+                                val nouveau = if (actuel.isBlank()) "- " + texte else actuel.trimEnd() + "\n- " + texte
+                                conversationRepo.savePlan(idConv, nouveau)
+                                chat.planCourant = nouveau
+                                "Étape ajoutée au plan."
+                            }
+                        }
+                        "clear" -> {
+                            conversationRepo.deletePlan(idConv)
+                            chat.planCourant = ""
+                            "Plan effacé."
+                        }
+                        else -> "Erreur: action inconnue '$action' (read | write | append | clear)."
+                    }
+                }
+                "context_usage" -> {
+                    val msgs = chat.edit.value
+                    val chars = msgs.sumOf { (it.content?.length ?: 0) + (it.reasoning?.length ?: 0) + (it.toolLog?.length ?: 0) }
+                    val budget = settingsManager.budgetTokensJour
+                    "Contexte : " + msgs.size + " messages, ~" + (chars / 4) + " tokens estimés (≈chars/4, " + chars + " caractères). " +
+                        "Ce tour : prompt " + promptTokens + ", completion " + completionTokens + " tokens. " +
+                        "Budget quotidien : " + (if (budget <= 0) "illimité" else budget.toString() + " tokens") + ". " +
+                        "Si le contexte grossit trop : résume tes découvertes dans project_memory, lis les gros fichiers par plages (offset_line/lines) et évite de répéter de longues sorties."
+                }
+                "screenshot_project" -> captureApercuProjet(
+                    argumentsOutil(tc)["path"].orEmpty()
+                )
+                else -> decrireImageLocale(
+                    argumentsOutil(tc)["path"].orEmpty(),
+                    argumentsOutil(tc)["prompt"].orEmpty()
+                )
+            }
+            logActivity(
+                tc.name,
+                describeTool(tc.name, tc.arguments).removeSuffix("…"),
+                resVagueC.lineSequence().firstOrNull().orEmpty().take(160),
+                if (resVagueC.startsWith("Erreur")) ActivityStatus.ERREUR else ActivityStatus.OK,
+                System.currentTimeMillis() - t0VagueC
+            )
+            return resVagueC
+        }
         val t0Tool = System.currentTimeMillis()
-        val toolRes = AgentTools.executeTool(fileRepo, tc.name, tc.arguments)
+        // ia-032 — cache des résultats d'outils IDENTIQUES dans le même tour
+        // (lecture seule) : même nom + mêmes arguments = réponse du cache.
+        val outilsLectureSeule = setOf(
+            "list_dir", "read_file", "file_info", "search_in_files", "find_files",
+            "diff_files", "git_status", "git_diff", "search_symbols", "get_project_info"
+        )
+        val cleCache = tc.name + "|" + tc.arguments.hashCode()
+        if (tc.name in outilsLectureSeule) {
+            cacheOutilsTour[cleCache]?.let {
+                return it
+            }
+        }
+        val toolRes = plafonnerResultat(AgentTools.executeTool(fileRepo, tc.name, tc.arguments)) // ia-039
+        if (tc.name in outilsLectureSeule) cacheOutilsTour[cleCache] = toolRes
+        if (tc.name == "fetch_url") {
+            val u = argumentsOutil(tc)["url"]?.jsonPrimitive?.contentOrNull
+            if (u != null && !toolRes.startsWith("Erreur")) summaryUrls.add(u.take(120))
+        }
         logActivity(
             tc.name,
             describeTool(tc.name, tc.arguments).removeSuffix("…"),
@@ -4349,7 +4482,9 @@ done; } 2>&1 | head -c 50000
         toolCallId: String,
         note: String? = null,
         changes: GitChanges? = null,
-        footer: String? = null
+        footer: String? = null,
+        /** ia-035 — empreinte de confiance (null = jamais auto-approuvable). */
+        empreinteConfiance: String? = null
     ): Boolean {
         if (autoApprouverTour) {
             // ux-019 — ce tour est en mode « tout autoriser » : exécution directe.
@@ -4357,13 +4492,21 @@ done; } 2>&1 | head -c 50000
             statusMessage = sm(R.string.statut_execution_auto)
             return true
         }
-        return suspendCancellableCoroutine { continuation ->
+        // ia-035 — mêmes arguments déjà confirmés récemment (session) : auto.
+        if (empreinteConfiance != null && settingsManager.outilFiable(empreinteConfiance)) {
+            summaryCommands.add(command.take(100))
+            statusMessage = sm(R.string.statut_execution_auto)
+            return true
+        }
+        val autorise = suspendCancellableCoroutine { continuation ->
             statusMessage = sm(R.string.statut_attente_confirmation)
             alertUser(sm(R.string.vm_confirmation_requise), sm(R.string.vm_lancer, command.take(100)))
             pendingCommand = PendingCommand(command, toolCallId, note, changes, footer)
             onCommandConfirmed = { allowed ->
                 pendingCommand = null
                 statusMessage = sm(R.string.statut_execution)
+                // ia-035 — une confirmation humaine rend l'identique fiable pour le tour.
+                if (allowed && empreinteConfiance != null) settingsManager.marquerOutilFiable(empreinteConfiance)
                 continuation.resume(allowed, null)
             }
             continuation.invokeOnCancellation {
@@ -4371,6 +4514,7 @@ done; } 2>&1 | head -c 50000
                 onCommandConfirmed = null
             }
         }
+        return autorise
     }
 
     /**
@@ -4378,6 +4522,115 @@ done; } 2>&1 | head -c 50000
      * affichage live, journal d'activité. Extraite de run_command pour être
      * partagée par git_commit, run_tests et lint_code.
      */
+    // ── Session 17 / vague C — helpers outils IA (ia-028..034) ──────────────
+
+    /** Parse tolérant des arguments d'un tool call. */
+    private fun argumentsOutil(tc: AiRepository.ToolCallData): JsonObject = runCatching {
+        AgentTools.argumentsLenients(tc.arguments)
+    }.getOrDefault(JsonObject(emptyMap()))
+
+    /**
+     * ia-039 — plafonne un résultat d'outil à [SettingsManager.limiteResultatOutil]
+     * avec un suffixe explicite « [tronqué] » (l'IA sait qu'il manque des données).
+     */
+    private fun plafonnerResultat(res: String): String {
+        val limite = settingsManager.limiteResultatOutil
+        return if (res.length <= limite) res
+        else res.take(limite) + "\n[tronqué — " + res.length + " caractères au total, plafond " + limite + " ; précise ta demande ou lis par plages]"
+    }
+
+    /**
+     * ia-033 — capture un aperçu PNG d'un fichier HTML/MDX via WebView hors
+     * écran (rendu réel du moteur système), écrit <chemin>.png dans le projet.
+     */
+    private suspend fun captureApercuProjet(chemin: String): String = withContext(Dispatchers.Main) {
+        if (chemin.isBlank()) return@withContext "Erreur: screenshot_project demande le chemin du fichier à rendre (path)."
+        val html = fileRepo.readFile(chemin)
+        if (html.startsWith("Erreur")) return@withContext html
+        if (!chemin.lowercase().endsWith(".html") && !chemin.lowercase().endsWith(".mdx") && !chemin.lowercase().endsWith(".htm"))
+            return@withContext "Erreur: screenshot_project rend uniquement du HTML/MDX ($chemin)."
+        val ok = runCatching {
+            suspendCancellableCoroutine<Boolean> { cont ->
+                val wv = android.webkit.WebView(getApplication())
+                wv.measure(
+                    android.view.View.MeasureSpec.makeMeasureSpec(1024, android.view.View.MeasureSpec.EXACTLY),
+                    android.view.View.MeasureSpec.makeMeasureSpec(1400, android.view.View.MeasureSpec.EXACTLY)
+                )
+                wv.layout(0, 0, 1024, 1400)
+                wv.webViewClient = object : android.webkit.WebViewClient() {
+                    override fun onPageFinished(view: android.webkit.WebView, url: String?) {
+                        view.postDelayed({
+                            try {
+                                val bmp = android.graphics.Bitmap.createBitmap(1024, 1400, android.graphics.Bitmap.Config.ARGB_8888)
+                                val canvas = android.graphics.Canvas(bmp)
+                                view.draw(canvas)
+                                val flux = java.io.ByteArrayOutputStream()
+                                bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 90, flux)
+                                val sortie = fileRepo.writeBytes(chemin + ".png", flux.toByteArray())
+                                view.destroy()
+                                cont.resume(sortie.startsWith("OK") || !sortie.startsWith("Erreur"), null)
+                            } catch (e: Exception) {
+                                cont.resume(false, null)
+                            }
+                        }, 400)
+                    }
+                }
+                wv.loadDataWithBaseURL(null, html, "text/html", "utf-8", null)
+            }
+        }.getOrDefault(false)
+        if (ok) "Aperçu capturé : " + chemin + ".png (1024×1400, rendu WebView)."
+        else "Erreur: la capture WebView a échoué pour $chemin."
+    }
+
+    /**
+     * ia-034 — passe une image locale au modèle actif (capacité vision) et
+     * renvoie la description textuelle.
+     */
+    private suspend fun decrireImageLocale(chemin: String, prompt: String): String {
+        if (chemin.isBlank()) return "Erreur: image_describe demande le chemin de l'image (path)."
+        val donnees = fileRepo.readBytes(chemin)
+        if (donnees == null || donnees.isEmpty()) return "Erreur: image introuvable ou vide ($chemin)."
+        val extension = chemin.substringAfterLast('.', "").lowercase()
+        val mime = when (extension) {
+            "png" -> "image/png"; "jpg", "jpeg" -> "image/jpeg"; "webp" -> "image/webp"; "gif" -> "image/gif"
+            else -> return "Erreur: format non géré pour image_describe ($extension) — png/jpg/webp/gif."
+        }
+        if (donnees.size > 4_000_000) return "Erreur: image trop grande (" + donnees.size + " octets) — réduis-la sous 4 Mo."
+        val dataUrl = "data:$mime;base64," + android.util.Base64.encodeToString(donnees, android.util.Base64.NO_WRAP)
+        val message = buildJsonObject {
+            put("role", JsonPrimitive("user"))
+            put("content", buildJsonArray {
+                add(buildJsonObject {
+                    put("type", JsonPrimitive("text"))
+                    put("text", JsonPrimitive(prompt.ifBlank {
+                        "Décris cette image de façon utile pour un agent de code : contenu, texte visible, anomalies."
+                    }))
+                })
+                add(buildJsonObject {
+                    put("type", JsonPrimitive("image_url"))
+                    put("image_url", buildJsonObject { put("url", JsonPrimitive(dataUrl)) })
+                })
+            })
+        }
+        val cle = clePourModele(effectiveModel)
+        if (cle.isBlank()) return "Erreur: aucune clé configurée pour décrire l'image."
+        val reponse = aiRepository.callChatCompletions(
+            baseUrl = settingsManager.baseUrl,
+            apiKey = cle,
+            model = effectiveModel,
+            messages = JsonArray(listOf(message)),
+            onRetryUpdate = { },
+            onDelta = { },
+            onReasoningDelta = { },
+            avecOutils = false,
+            generation = null
+        )
+        return when (reponse) {
+            is AiRepository.ApiResponse.Success -> "Description de $chemin :\n" + (reponse.messageContent ?: "(réponse vide)")
+            is AiRepository.ApiResponse.Error -> "Erreur: le modèle actif a refusé l'image : " + (reponse.errorMessage ?: "?").take(200)
+        }
+    }
+
     private suspend fun executerCommandeAgent(commandBrute: String, toolCallId: String, timeout: Int = Constants.TEMPS_MAX_COMMANDE_S): String {
         // sec-013 — substitution des {{secret:alias}} AU DERNIER MOMENT : la
         // commande montrée en confirmation garde le marqueur, jamais la valeur.
@@ -4695,6 +4948,32 @@ done; } 2>&1 | head -c 50000
      */
     private var persistJob: Job? = null
 
+    // ia-032 — cache de tour pour les outils lecture seule (nom|args → résultat).
+    private val cacheOutilsTour = HashMap<String, String>()
+
+    // ia-037 — message en attente de relecture (mode « relire avant d'envoyer »).
+    var pendingRelire: String? by mutableStateOf(null)
+        private set
+    private var relireBypass = false
+
+    /** ia-037 — l'utilisateur valide le message relu : envoi immédiat. */
+    fun validerRelire() {
+        val texte = pendingRelire ?: return
+        pendingRelire = null
+        relireBypass = true
+        try {
+            sendMessage(texte)
+        } finally {
+            relireBypass = false
+        }
+    }
+
+    /** ia-037 — l'utilisateur annule la relecture. */
+    fun annulerRelire() {
+        pendingRelire = null
+        statusMessage = ""
+    }
+
     fun persistCurrentConversation(immediate: Boolean = false) {
         val msgs = chat.edit.value
         val id = conversationId
@@ -4795,6 +5074,8 @@ done; } 2>&1 | head -c 50000
                 chat.cancelDraftSave()
                 // corr-077 : chaque conversation possède sa liste de tâches.
                 todos = conversationRepo.loadTodos(id)
+                // ia-028 : chaque conversation possède aussi son plan de projet.
+                planCourant = conversationRepo.loadPlan(id)
             }
         }
     }

@@ -853,4 +853,12 @@
     <string name="sec_purger_memoire">Purge keys from memory (lock)</string>
     <string name="sec_purger_ok">Keys purged from runtime memory.</string>
     <string name="err_pin_exige">Key session expired: re-enter your PIN in Permissions &amp; security to continue.</string>
+    <!-- Session 17 — wave C (ia-028..040) -->
+    <string name="statut_verrous_liberes">The last turn was interrupted: tool locks released on restart.</string>
+    <string name="statut_relire_attente">Review: validate or cancel your message above before sending.</string>
+    <string name="relire_titre">Review before sending</string>
+    <string name="relire_note">Your message shows Validate / Cancel buttons before going to the model.</string>
+    <string name="relire_valider">Validate and send</string>
+    <string name="relire_annuler">Cancel</string>
+    <string name="outils_par_tour">Group by turn</string>
 </resources>
