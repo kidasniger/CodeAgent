@@ -5393,7 +5393,6 @@ done; } 2>&1 | head -c 50000
             val depense = (depensesMoisFournisseur[idFournisseur] ?: 0.0) + cost
             depensesMoisFournisseur[idFournisseur] = depense
             if (depense >= quota) {
-                hasBlockingError = false
                 statusMessage = sm(R.string.err_quota_atteint, idFournisseur, depense, quota)
             } else if (depense >= quota * 0.8) {
                 statusMessage = sm(R.string.warn_quota_80, idFournisseur, depense, quota)
