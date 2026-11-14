@@ -165,6 +165,16 @@ internal fun AmbientTopBar(
                     )
                 }
                 UsageLine(viewModel.totalTokens, viewModel.tokensEstimated, viewModel.estimatedCost)
+                // git-079 — badge de statut CI quand un push est en vol / suivi.
+                viewModel.statutActionsCi?.let { ci ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            ci,
+                            style = TextStyle(fontFamily = com.zagent.app.ui.theme.JetBrainsMono, fontSize = 10.sp),
+                            color = c.amber
+                        )
+                    }
+                }
             }
             Spacer(Modifier.width(10.dp))
             // Groupe d'actions (48 dp par icône, MàJ 96) dans une pilule de verre.

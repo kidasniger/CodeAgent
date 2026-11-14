@@ -4116,8 +4116,10 @@ done; } 2>&1 | head -c 50000
                     onSuccess = { runs ->
                         if (runs.isEmpty()) "Aucun run GitHub Actions pour ce dépôt."
                         else runs.joinToString("\n") { r ->
+                            // git-078 — lien direct « voir les logs » inclus.
                             "run #" + r.runNumber + " " + r.name + " — branche " + r.branch +
-                                " : " + r.libelle + " (" + r.createdAt + ")"
+                                " : " + r.libelle + " (" + r.createdAt + ")" +
+                                (if (r.url.isNotBlank()) "\n   logs: " + r.url else "")
                         }
                     },
                     onFailure = { "Erreur: " + (it.message ?: "GitHub indisponible") }
@@ -4135,9 +4137,16 @@ done; } 2>&1 | head -c 50000
                     if (branche.isBlank() || branche == "main" || branche == "master") {
                         "Erreur: branche courante invalide pour une PR ($branche) — crée une branche et committe d'abord."
                     } else {
+                        // git-077 — le diff de la branche est résumé AVANT création.
+                        val changements = readGitChanges()
+                        val fichiers = changements.diff.lineSequence().count { it.startsWith("diff --git") }
+                        val plus = changements.diff.lineSequence().count { it.startsWith("+") && !it.startsWith("+++") }
+                        val moins = changements.diff.lineSequence().count { it.startsWith("-") && !it.startsWith("---") }
+                        val resumeDiff = "Une pull request $branche → branche par défaut sera créée sur GitHub. " +
+                            "Diff de la branche : " + fichiers + " fichier(s), +" + plus + "/-" + moins + " lignes."
                         val refus = porteEcriture(
                             "Créer la pull request « " + titre.take(60) + " »",
-                            "Une pull request $branche → branche par défaut sera créée sur GitHub."
+                            resumeDiff
                         )
                         if (refus != null) refus
                         else GitHubApi.createPullRequest(depotVise(), jeton, branche, titre.take(120), argStr("body").take(2000)).fold(
@@ -5480,6 +5489,7 @@ done; } 2>&1 | head -c 50000
     var isGeneratingCommitMsg by mutableStateOf(false)
 
     fun refreshGitLog() {
+        lireCommitsEnAttente() // git-075 — liste des commits locaux non poussés
         viewModelScope.launch(Dispatchers.IO) {
             val res = terminal.runCommand(
                 "git log --pretty=format:%h|%an|%at|%s -30 2>&1",
@@ -5543,6 +5553,19 @@ done; } 2>&1 | head -c 50000
         if (msg.isEmpty()) return
         viewModelScope.launch(Dispatchers.IO) {
             val quoted = msg.replace("\"", "'")
+            // git-082 — ignore automatiquement les secrets dans git add : les
+            // fichiers à motifs sensibles déjà indexés bloquent le commit.
+            val stages = terminal.runCommand("git diff --cached --name-only 2>&1", workingFolderUriString, 10, silent = true) { }
+            val secrets = listOf(".env", "secrets", "credentials", "id_rsa", ".pem", ".key", "token")
+                .flatMap { motif -> stages.lineSequence().filter { it.lowercase().contains(motif) }.toList() }
+            if (secrets.isNotEmpty()) {
+                withContext(Dispatchers.Main) {
+                    gitBranchBusy = false
+                    statusMessage = "Commit refusé : fichiers sensibles en staging (" +
+                        secrets.take(3).joinToString(", ") + ") — retire-les : git reset -- <fichier>"
+                }
+                return@launch
+            }
             val res = terminal.runCommand(
                 "git commit -m \"" + quoted + "\" 2>&1",
                 workingFolderUriString, 60, silent = true
@@ -5676,27 +5699,102 @@ done; } 2>&1 | head -c 50000
     fun gitPush() {
         if (gitBranchBusy) return
         gitBranchBusy = true
-        statusMessage = sm(R.string.statut_git_push)
         viewModelScope.launch(Dispatchers.IO) {
             val jeton = settingsManager.jetonGitHub
             val remote = gitRemoteOrigin()
             val cible = urlAvecJeton(remote, jeton)
             val branch = terminal.runCommand("git rev-parse --abbrev-ref HEAD", workingFolderUriString, 10, silent = true) { }
                 .lineSequence().firstOrNull()?.trim().orEmpty()
+            withContext(Dispatchers.Main) {
+                // git-076 — le nom de branche est affiché en gros AVANT le push.
+                statusMessage = sm(R.string.statut_git_push) +
+                    "  →  origin/" + (branch.ifBlank { "HEAD" })
+            }
+            // git-073 — fetch origin avant push : alerte si divergence (rebase nécessaire).
+            if (cible != remote && jeton.isNotBlank()) {
+                terminal.runCommand("git fetch \"" + cible.replace("\"", "'") + "\" \"" + branch + "\" 2>&1", workingFolderUriString, 60, silent = true) { }
+            } else {
+                terminal.runCommand("git fetch origin 2>&1", workingFolderUriString, 60, silent = true) { }
+            }
+            val divergence = terminal.runCommand(
+                "git rev-list --count HEAD..origin/" + branch + " 2>&1",
+                workingFolderUriString, 15, silent = true
+            ) { }.trim().toIntOrNull() ?: 0
+            if (divergence > 0) {
+                withContext(Dispatchers.Main) {
+                    statusMessage = sm(R.string.warn_divergence_push, divergence, branch)
+                }
+            }
             val cmd = if (branch.isBlank() || branch == "HEAD") "git push 2>&1"
             else "git push -u origin \"" + branch + "\" 2>&1"
             val res = terminal.runCommand(cmd, workingFolderUriString, 120, silent = true) { }
+            val reussi = res.contains("->") || res.contains("up to date") || res.contains("Everything up-to-date")
             withContext(Dispatchers.Main) {
-                statusMessage = if (res.contains("->") || res.contains("up to date") || res.contains("Everything up-to-date"))
+                statusMessage = if (reussi)
                     if (branch.isNotBlank()) sm(R.string.statut_push_reussi_branche, branch)
                     else sm(R.string.statut_push_reussi)
                 else messageGitSimple(res)
                 gitBranchBusy = false
             }
+            // git-079 — push réussi : badge Actions « en vol » puis sondage différé.
+            if (reussi) suivreActionsApresPush(remote)
             // Le jeton n'est jamais laissé dans la config du dépôt.
             if (cible != remote && jeton.isNotBlank()) {
                 terminal.runCommand("git config --unset-all credential.helper 2>/dev/null", workingFolderUriString, 5, silent = true) { }
             }
+        }
+    }
+
+    // git-079 — état CI affiché dans la barre du chat après un push.
+    var statutActionsCi by mutableStateOf<String?>(null)
+        private set
+
+    private fun suivreActionsApresPush(remote: String) {
+        statutActionsCi = "Actions : en vol…"
+        viewModelScope.launch(Dispatchers.IO) {
+            kotlinx.coroutines.delay(40_000)
+            val jeton = settingsManager.jetonGitHub
+            val depot = remote.substringAfterLast("/").removeSuffix(".git").ifBlank { return@launch }
+            val owner = remote.removeSuffix(".git").substringBeforeLast("/").substringAfterLast("/").ifBlank { return@launch }
+            GitHubApi.actionsRuns("$owner/$depot", jeton, 1).fold(
+                onSuccess = { runs ->
+                    val dernier = runs.firstOrNull()
+                    withContext(Dispatchers.Main) {
+                        statutActionsCi = dernier?.let { "CI #" + it.runNumber + " · " + it.libelle }
+                    }
+                },
+                onFailure = {
+                    withContext(Dispatchers.Main) { statutActionsCi = null }
+                }
+            )
+        }
+    }
+
+    /** git-075 — commits locaux non poussés (origin/branche..HEAD). */
+    var commitsEnAttente by mutableStateOf<List<String>>(emptyList())
+        private set
+
+    private fun lireCommitsEnAttente() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val res = terminal.runCommand("git log --oneline @{u}..HEAD -20 2>&1", workingFolderUriString, 10, silent = true) { }
+            val liste = res.lineSequence()
+                .filter { it.isNotBlank() && !it.contains("fatal") && !it.contains("no upstream") }
+                .map { it.trim().take(80) }
+                .toList()
+            withContext(Dispatchers.Main) { commitsEnAttente = liste }
+        }
+    }
+
+    /** git-081 — crée un dépôt GitHub depuis l'app (jeton interne, jamais exposé). */
+    fun creerDepotGitHub(nom: String, prive: Boolean) {
+        if (nom.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val jeton = settingsManager.jetonGitHub
+            val res = GitHubApi.creerDepot(jeton, nom.trim().take(80), prive).fold(
+                onSuccess = { it },
+                onFailure = { "Erreur: " + (it.message ?: "création impossible") }
+            )
+            withContext(Dispatchers.Main) { statusMessage = res }
         }
     }
 

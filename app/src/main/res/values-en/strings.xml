@@ -890,4 +890,10 @@
     <string name="ter_paysage">Wide screen mode (landscape)</string>
     <string name="ter_police">Terminal font size</string>
     <string name="ter_hist_projet">Project history</string>
+    <!-- Session 17 — wave G (git-073..082) -->
+    <string name="warn_divergence_push">Warning: your branch %2$s is %1$d commit(s) behind origin — pull/rebase before pushing.</string>
+    <string name="git_nouveau_depot">New GitHub repository</string>
+    <string name="git_nouveau_depot_nom">Repository name</string>
+    <string name="git_nouveau_depot_prive">Private</string>
+    <string name="git_commits_attente">Waiting to push</string>
 </resources>

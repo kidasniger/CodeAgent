@@ -87,7 +87,8 @@ object GitHubApi {
                             status = o.string("status"),
                             conclusion = o.string("conclusion"),
                             runNumber = (o["run_number"] as? JsonPrimitive)?.intOrNull ?: 0,
-                            createdAt = o.string("created_at").take(10)
+                            createdAt = o.string("created_at").take(10),
+                            url = o.string("html_url")
                         )
                     }.orEmpty()
                     Result.success(runs)
@@ -627,7 +628,9 @@ object GitHubApi {
         val status: String,
         val conclusion: String,
         val runNumber: Int,
-        val createdAt: String
+        val createdAt: String,
+        /** git-078 — lien direct vers les logs du run sur github.com. */
+        val url: String = ""
     ) {
         /** Libellé FR court : succès / échec / en cours / annulé. */
         val libelle: String

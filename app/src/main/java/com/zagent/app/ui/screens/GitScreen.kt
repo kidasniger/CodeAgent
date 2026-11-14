@@ -258,6 +258,44 @@ private fun ChangesTab(viewModel: MainViewModel) {
 
     // ── feat-085/086 : pull, push, stash + feat-088 : PR ─────────────────────
     var showPrDialog by remember { mutableStateOf(false) }
+    // git-081 — création d'un dépôt GitHub depuis l'app (jeton interne).
+    var showDepotDialog by remember { mutableStateOf(false) }
+    if (showDepotDialog) {
+        var nomDepot by remember { mutableStateOf("") }
+        var prive by remember { mutableStateOf(false) }
+        GlassAlertDialog(
+            onDismissRequest = { showDepotDialog = false },
+            title = { Text(stringResource(R.string.git_nouveau_depot), fontFamily = com.zagent.app.ui.theme.SpaceGrotesk, color = c.text) },
+            text = {
+                Column {
+                    androidx.compose.material3.OutlinedTextField(
+                        value = nomDepot,
+                        onValueChange = { nomDepot = it },
+                        placeholder = { Text(stringResource(R.string.git_nouveau_depot_nom), color = c.text3) },
+                        textStyle = TextStyle(fontFamily = com.zagent.app.ui.theme.JetBrainsMono, fontSize = 13.sp, color = c.text),
+                        singleLine = true
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        androidx.compose.material3.Switch(checked = prive, onCheckedChange = { prive = it })
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.git_nouveau_depot_prive), color = c.text2, style = TextStyle(fontSize = 12.5.sp))
+                    }
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    viewModel.creerDepotGitHub(nomDepot, prive)
+                    showDepotDialog = false
+                }) { Text(stringResource(R.string.action_enregistrer), color = c.cyan) }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showDepotDialog = false }) {
+                    Text(stringResource(R.string.action_annuler), color = c.text2)
+                }
+            }
+        )
+    }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         SecondaryButton(
             "Pull",
@@ -284,6 +322,24 @@ private fun ChangesTab(viewModel: MainViewModel) {
             leading = { Icon(Icons.Default.ContentCopy, null, tint = c.amber, modifier = Modifier.size(15.dp)) }
         )
     }
+    // git-075 — commits locaux non poussés, listés sous les boutons.
+    if (viewModel.commitsEnAttente.isNotEmpty()) {
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "En attente de push (" + viewModel.commitsEnAttente.size + ")",
+            style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.sp),
+            color = c.amber
+        )
+        viewModel.commitsEnAttente.take(10).forEach { ligne ->
+            Text(
+                ligne,
+                style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.sp),
+                color = c.text2,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
     Spacer(Modifier.height(8.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         SecondaryButton(
@@ -293,6 +349,12 @@ private fun ChangesTab(viewModel: MainViewModel) {
             modifier = Modifier.weight(1f),
             height = 42.dp,
             leading = { Icon(Icons.AutoMirrored.Filled.Undo, null, tint = c.text2, modifier = Modifier.size(15.dp)) }
+        )
+        SecondaryButton(
+            "Nouveau dépôt",
+            onClick = { showDepotDialog = true },
+            enabled = !viewModel.gitBranchBusy,
+            height = 42.dp
         )
         SecondaryButton(
             "Créer une PR",
