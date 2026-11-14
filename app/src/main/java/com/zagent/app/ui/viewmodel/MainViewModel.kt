@@ -5085,7 +5085,7 @@ done; } 2>&1 | head -c 50000
                 // corr-077 : chaque conversation possède sa liste de tâches.
                 todos = conversationRepo.loadTodos(id)
                 // ia-028 : chaque conversation possède aussi son plan de projet.
-                planCourant = conversationRepo.loadPlan(id)
+                chat.planCourant = conversationRepo.loadPlan(id)
             }
         }
     }
