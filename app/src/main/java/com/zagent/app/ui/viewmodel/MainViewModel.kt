@@ -215,6 +215,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 statusMessage = sm(R.string.statut_verrous_liberes)
             }
         }
+        // mod-042 — rafraîchissement périodique silencieux (démarrage différé 8 s
+        // pour ne pas ralentir l'ouverture ; fournisseurs non sondés depuis 7 j).
+        viewModelScope.launch(Dispatchers.IO) {
+            kotlinx.coroutines.delay(8_000)
+            rafraichirModelesPerime()
+        }
     }
     private val conversationRepo: ConversationRepository get() = container.conversationRepo
     private val usageRepo: UsageRepository get() = container.usageRepo
@@ -460,6 +466,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     if (modeles.isEmpty()) "Connecté — le serveur ne liste aucun modèle."
                     else {
                         enregistrerModelesDetectes(f.id, modeles)
+                        // mod-042/044 — horodatage de la détection + fenêtres de contexte.
+                        settingsManager.detectionModelesLe =
+                            settingsManager.detectionModelesLe + (f.id to System.currentTimeMillis())
+                        if (aiRepository.fenetresDerniereDetection.isNotEmpty()) {
+                            settingsManager.fenetresContexte =
+                                settingsManager.fenetresContexte + aiRepository.fenetresDerniereDetection
+                        }
                         "Connecté — " + modeles.size + " modèles détectés et intégrés aux options."
                     }
                 } catch (e: Exception) {
@@ -477,6 +490,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 resultatsTestConnexion = resultatsTestConnexion + (id to message)
             }
         }
+    }
+
+    /** mod-042 — détection silencieuse des fournisseurs non sondés depuis 7 jours. */
+    fun rafraichirModelesPerime() {
+        val seuil = System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000
+        fournisseurs.forEach { f ->
+            if (f.cle.isNotBlank() && (settingsManager.detectionModelesLe[f.id] ?: 0L) < seuil) {
+                testerFournisseur(f.id) // silencieux : résultat dans resultatsTestConnexion
+            }
+        }
+    }
+
+    /** mod-043 — enregistre un prix saisi pour un modèle détecté. */
+    fun definirPrixDetecte(modelId: String, prixIn: Float, prixOut: Float) {
+        settingsManager.definirPrixModeleDetecte(modelId, prixIn, prixOut)
     }
 
     // ── MàJ 103 : favoris (modèles épinglés en tête du sélecteur) ────────────
@@ -500,6 +528,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var dernierTourEnEchec = false
 
     fun reglerDuo(mode: String?, modeleB: String?) {
+        // mod-048 — deux fournisseurs sans clé configurée : refus clair, pas de
+        // duo silencieusement cassé au premier message.
+        if (mode != null && !modeleB.isNullOrBlank() && clePourModele(modeleB!!).isBlank()) {
+            statusMessage = sm(R.string.err_duo_sans_cle, modeleB)
+            return
+        }
         duoMode = mode
         duoModeleB = modeleB
     }
@@ -975,6 +1009,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun saveSettings(key: String, model: String, baseUrl: String, auto: Boolean) {
+        val ancienneCle = settingsManager.apiKey
         settingsManager.apiKey = key
         settingsManager.model = model
         settingsManager.baseUrl = baseUrl
@@ -984,6 +1019,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         baseUrlInput = baseUrl
         autoModeInput = auto
         if (key.isNotBlank()) isKeyInvalid = false
+        // mod-041 — détection automatique au premier enregistrement d'une clé :
+        // le fournisseur identifié par la clé (ou l'URL) est sondé immédiatement.
+        if (key.isNotBlank() && key != ancienneCle) {
+            val idDetecte = Fournisseurs.detecter(key.ifBlank { baseUrl })
+            val cible = idDetecte
+                ?: fournisseurs.firstOrNull { it.baseUrl == baseUrl.trim() && it.cle.isBlank() }?.id
+            if (cible != null) testerFournisseur(cible)
+        }
     }
 
 
@@ -1485,7 +1528,8 @@ done; } 2>&1 | head -c 50000
     fun switchToOtherModel() {
         // MàJ 103 — maillon suivant de la chaîne de repli (même fournisseur, puis autre),
         // limité aux modèles dont la clé est disponible.
-        val next = ModelCatalog.chaineRepli(effectiveModel)
+        // mod-049 — la chaîne inclut aussi les modèles détectés du même fournisseur.
+        val next = chaineRepliEtendue(effectiveModel)
             .firstOrNull { clePourModele(it).isNotBlank() }
             ?: return
         if (chatModel != null) {
@@ -1497,6 +1541,56 @@ done; } 2>&1 | head -c 50000
         isCode1305Error = false
         showFallbackModelButton = false
         statusMessage = ""
+    }
+
+    /** mod-049 — chaîne de repli étendue : catalogue + modèles détectés du même fournisseur. */
+    private fun chaineRepliEtendue(modele: String): List<String> {
+        val cat = ModelCatalog.chaineRepli(modele)
+        val idFournisseur = ModelCatalog.find(modele)?.fournisseurId
+        val baseUrl = fournisseurs.firstOrNull { it.id == idFournisseur }?.baseUrl
+            ?: ModelCatalog.find(modele)?.baseUrl
+        val detectes = if (baseUrl != null) {
+            modelesDetectes
+                .filter { fournisseurs.firstOrNull { f -> f.id == it.key }?.baseUrl == baseUrl }
+                .flatMap { it.value }
+                .filter { it != modele && it !in cat }
+        } else emptyList()
+        return cat + detectes
+    }
+
+    // mod-046 — latence réelle mesurée par modèle (id → ms ; -1 = échec).
+    var latences by mutableStateOf<Map<String, Long>>(emptyMap())
+        private set
+    var latencesEnCours by mutableStateOf<Set<String>>(emptySet())
+        private set
+
+    /** mod-046 — ping minimal (max_tokens=1) chronométré pour un modèle. */
+    fun mesurerLatence(modelId: String) {
+        if (modelId in latencesEnCours) return
+        val cle = clePourModele(modelId)
+        if (cle.isBlank()) return
+        latencesEnCours = latencesEnCours + modelId
+        viewModelScope.launch(Dispatchers.IO) {
+            val debut = System.currentTimeMillis()
+            val rep = runCatching {
+                aiRepository.callChatCompletions(
+                    baseUrl = settingsManager.baseUrl,
+                    apiKey = cle,
+                    model = modelId,
+                    messages = JsonArray(listOf(buildJsonObject {
+                        put("role", JsonPrimitive("user"))
+                        put("content", JsonPrimitive("ping"))
+                    })),
+                    onRetryUpdate = { }, onDelta = { }, onReasoningDelta = { },
+                    avecOutils = false, generation = null
+                )
+            }.getOrNull()
+            val ms = if (rep is AiRepository.ApiResponse.Success) System.currentTimeMillis() - debut else -1L
+            withContext(Dispatchers.Main) {
+                latencesEnCours = latencesEnCours - modelId
+                latences = latences + (modelId to ms)
+            }
+        }
     }
 
     /** Relance la boucle de l'agent sur l'historique courant (après une erreur). */
@@ -2076,7 +2170,7 @@ done; } 2>&1 | head -c 50000
     private suspend fun runDebat() {
         val modeleA = effectiveModel
         val modeleB = duoModeleB?.takeIf { it.isNotBlank() && it != modeleA }
-            ?: ModelCatalog.chaineRepli(modeleA).firstOrNull { clePourModele(it).isNotBlank() }
+            ?: chaineRepliEtendue(modeleA).firstOrNull { clePourModele(it).isNotBlank() }
         if (modeleB == null || clePourModele(modeleA).isBlank() || clePourModele(modeleB).isBlank()) {
             withContext(Dispatchers.Main) {
                 statusMessage = sm(R.string.err_duo_cle_manquante)
@@ -2223,7 +2317,7 @@ done; } 2>&1 | head -c 50000
     private suspend fun runCompare() {
         val modeleA = effectiveModel
         val modeleB = duoModeleB?.takeIf { it.isNotBlank() && it != modeleA }
-            ?: ModelCatalog.chaineRepli(modeleA).firstOrNull { clePourModele(it).isNotBlank() }
+            ?: chaineRepliEtendue(modeleA).firstOrNull { clePourModele(it).isNotBlank() }
         if (modeleB == null || clePourModele(modeleB).isBlank()) {
             withContext(Dispatchers.Main) {
                 statusMessage = sm(R.string.err_duo_choisir_b)
@@ -5281,10 +5375,34 @@ done; } 2>&1 | head -c 50000
     }
 
     private fun recordUsage(inTok: Int, outTok: Int, model: String) {
-        val cost = if (priceInInput <= 0f && priceOutInput <= 0f) 0.0
-        else inTok * priceInInput / 1_000_000.0 + outTok * priceOutInput / 1_000_000.0
+        // mod-043 — prix effectif : saisie par modèle détecté d'abord, sinon global.
+        val (pIn, pOut) = settingsManager.prixEffectif(model, priceInInput, priceOutInput)
+        val cost = if (pIn <= 0f && pOut <= 0f) 0.0
+        else inTok * pIn / 1_000_000.0 + outTok * pOut / 1_000_000.0
         usageRepo.add(UsageEntry(System.currentTimeMillis(), model, folderLabel, inTok, outTok, cost))
+        // mod-050 — quota mensuel par fournisseur : alerte à 80 %.
+        val idFournisseur = ModelCatalog.find(model)?.fournisseurId
+            ?: Fournisseurs.detecter(model) ?: ""
+        val quota = settingsManager.quotaParFournisseur[idFournisseur] ?: 0f
+        if (quota > 0f) {
+            val cleMois = java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.ROOT).format(java.util.Date())
+            if (cleMois != moisQuotaCourant) {
+                moisQuotaCourant = cleMois
+                depensesMoisFournisseur.clear()
+            }
+            val depense = (depensesMoisFournisseur[idFournisseur] ?: 0.0) + cost
+            depensesMoisFournisseur[idFournisseur] = depense
+            if (depense >= quota) {
+                hasBlockingError = false
+                statusMessage = sm(R.string.err_quota_atteint, idFournisseur, depense, quota)
+            } else if (depense >= quota * 0.8) {
+                statusMessage = sm(R.string.warn_quota_80, idFournisseur, depense, quota)
+            }
+        }
     }
+
+    private var moisQuotaCourant = ""
+    private val depensesMoisFournisseur = HashMap<String, Double>()
 
     // ── MA61 : Git plein écran ───────────────────────────────────────────────
     data class GitCommit(val hash: String, val author: String, val date: Long, val subject: String)

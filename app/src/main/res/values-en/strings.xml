@@ -861,4 +861,21 @@
     <string name="relire_valider">Validate and send</string>
     <string name="relire_annuler">Cancel</string>
     <string name="outils_par_tour">Group by turn</string>
+    <!-- Session 17 — wave D (mod-041..052) -->
+    <string name="err_duo_sans_cle">Duo mode refused: model %1$s has no configured key — set that provider key first.</string>
+    <string name="err_quota_atteint">Provider quota exceeded for %1$s: %2$.2f € / %3$.2f € this month. Raise the quota or switch provider.</string>
+    <string name="warn_quota_80">Quota alert %1$s: %2$.2f € spent (≥ 80 %% of %3$.2f €).</string>
+    <string name="mod_prix_edit">Price for this model (€/M tokens)</string>
+    <string name="mod_prix_in">Input €/M</string>
+    <string name="mod_prix_out">Output €/M</string>
+    <string name="mod_badge_gratuit">free</string>
+    <string name="mod_badge_payant">paid</string>
+    <string name="mod_fenetre">Window: %1$s tokens</string>
+    <string name="mod_latence_test">Measure latency</string>
+    <string name="mod_latence_val">%1$d ms</string>
+    <string name="mod_latence_echec">failed</string>
+    <string name="usage_export_csv">Export usage CSV</string>
+    <string name="usage_sante">Provider health</string>
+    <string name="usage_quota_hint">Monthly quota € (0 = none):</string>
+    <string name="usage_quota_save">Save</string>
 </resources>

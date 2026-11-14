@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,6 +45,7 @@ import com.zagent.app.data.Capacite
 import com.zagent.app.data.Fournisseur
 import com.zagent.app.data.ModelCatalog
 import com.zagent.app.data.ModelInfo
+import com.zagent.app.ui.components.common.GlassAlertDialog
 import com.zagent.app.ui.components.common.OverlayScreen
 import com.zagent.app.ui.components.common.OverlaySection
 import com.zagent.app.ui.components.common.SpeedDots
@@ -152,11 +154,30 @@ fun ModelsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 )
                 Spacer(Modifier.height(8.dp))
                 detectesSupp.take(24).forEach { idDetecte ->
+                    // mod-043/044/045 — fenêtre détectée, prix saisi, badge gratuit/payant.
+                    val fenetre = viewModel.settingsManager.fenetresContexte[idDetecte]
+                    val prixSaisi = viewModel.settingsManager.prixModelesDetectes[idDetecte]
+                    val badge = when {
+                        prixSaisi != null && prixSaisi.first <= 0f && prixSaisi.second <= 0f ->
+                            stringResource(R.string.mod_badge_gratuit)
+                        prixSaisi != null -> stringResource(R.string.mod_badge_payant)
+                        idDetecte in viewModel.settingsManager.idsGratuitsConnus ->
+                            stringResource(R.string.mod_badge_gratuit)
+                        else -> null
+                    }
                     val info = ModelInfo(
                         id = idDetecte,
-                        label = idDetecte.substringAfterLast('/').ifEmpty { idDetecte },
-                        description = "Détecté via la clé — fenêtre de contexte et prix à confirmer",
-                        contextWindow = "—",
+                        label = idDetecte.substringAfterLast('/').ifEmpty { idDetecte } +
+                            (if (badge != null) "  · " + badge else ""),
+                        description = buildString {
+                            append("Détecté via la clé — ")
+                            if (fenetre != null && fenetre > 0) {
+                                append(stringResource(R.string.mod_fenetre, fenetre.toString()))
+                                append(" · ")
+                            }
+                            append("prix " + (if (prixSaisi == null) "à confirmer" else "saisi"))
+                        },
+                        contextWindow = fenetre?.toString() ?: "—",
                         speed = 2,
                         recommended = false
                     )
@@ -168,6 +189,43 @@ fun ModelsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                         onSelect = { viewModel.selectGlobalModel(idDetecte) },
                         onFavori = { viewModel.basculeFavori(idDetecte) }
                     )
+                    // mod-043/046 — actions par modèle détecté : prix + latence.
+                    var prixOuvert by remember { mutableStateOf(false) }
+                    if (prixOuvert) {
+                        PrixDetecteDialog(viewModel, idDetecte) { prixOuvert = false }
+                    }
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            stringResource(R.string.mod_prix_edit),
+                            style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 11.5.sp),
+                            color = c.cyan,
+                            modifier = Modifier
+                                .clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
+                                .background(c.surface2)
+                                .clickable { prixOuvert = true }
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        )
+                        val latence = viewModel.latences[idDetecte]
+                        val latenceEnCours = idDetecte in viewModel.latencesEnCours
+                        Text(
+                            when {
+                                latenceEnCours -> "…"
+                                latence == null -> stringResource(R.string.mod_latence_test)
+                                latence >= 0 -> stringResource(R.string.mod_latence_val, latence.toInt())
+                                else -> stringResource(R.string.mod_latence_echec)
+                            },
+                            style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold),
+                            color = c.amber,
+                            modifier = Modifier
+                                .clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
+                                .background(c.surface2)
+                                .clickable(enabled = !latenceEnCours) { viewModel.mesurerLatence(idDetecte) }
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        )
+                    }
                     Spacer(Modifier.height(10.dp))
                 }
             }
@@ -418,3 +476,61 @@ private fun MonoLabel(text: String) {
 
 private fun formatPrice(v: Float): String =
     if (v <= 0f) "—" else "$" + String.format(Locale.US, "%.2f", v)
+/** mod-043 — dialogue de saisie du prix d'un modèle détecté (€/M in/out). */
+@Composable
+private fun PrixDetecteDialog(
+    viewModel: MainViewModel,
+    modelId: String,
+    onDismiss: () -> Unit
+) {
+    val c = Zcolors
+    val actuel = viewModel.settingsManager.prixModelesDetectes[modelId]
+    var prixIn by remember { mutableStateOf(actuel?.first?.toString() ?: "") }
+    var prixOut by remember { mutableStateOf(actuel?.second?.toString() ?: "") }
+    GlassAlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.mod_prix_edit), fontFamily = com.zagent.app.ui.theme.SpaceGrotesk, color = c.text) },
+        text = {
+            Column {
+                Text(
+                    modelId,
+                    style = TextStyle(fontFamily = JetBrainsMono, fontSize = 11.5.sp),
+                    color = c.text2,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(8.dp))
+                androidx.compose.material3.OutlinedTextField(
+                    value = prixIn,
+                    onValueChange = { prixIn = it },
+                    placeholder = { Text(stringResource(R.string.mod_prix_in), fontFamily = JetBrainsMono, fontSize = 12.sp, color = c.text3) },
+                    textStyle = TextStyle(fontFamily = JetBrainsMono, fontSize = 13.sp, color = c.text),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(6.dp))
+                androidx.compose.material3.OutlinedTextField(
+                    value = prixOut,
+                    onValueChange = { prixOut = it },
+                    placeholder = { Text(stringResource(R.string.mod_prix_out), fontFamily = JetBrainsMono, fontSize = 12.sp, color = c.text3) },
+                    textStyle = TextStyle(fontFamily = JetBrainsMono, fontSize = 13.sp, color = c.text),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                viewModel.definirPrixDetecte(
+                    modelId,
+                    prixIn.replace(',', '.').toFloatOrNull() ?: 0f,
+                    prixOut.replace(',', '.').toFloatOrNull() ?: 0f
+                )
+                onDismiss()
+            }) { Text(stringResource(R.string.action_enregistrer), color = c.cyan) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_annuler), color = c.text2) }
+        }
+    )
+}

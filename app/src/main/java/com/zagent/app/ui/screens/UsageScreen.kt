@@ -221,6 +221,70 @@ fun UsageScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 }
             }
         }
+
+        // ── mod-052 — santé agrégée des fournisseurs (vert/rouge par clé) ──
+        OverlaySection(stringResource(R.string.usage_sante))
+        GlassCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp)) {
+            viewModel.fournisseurs.forEach { f ->
+                val etat = when {
+                    f.cle.isBlank() -> c.text3 to "sans clé"
+                    (viewModel.resultatsTestConnexion[f.id] ?: "").startsWith("Échec") -> c.red to "échec du dernier test"
+                    else -> c.green to "clé présente"
+                }
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(etat.first)
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    MonoLine(f.nom, c.text, Modifier.weight(1f))
+                    Text(
+                        etat.second,
+                        style = TextStyle(fontFamily = JetBrainsMono, fontSize = 10.5.sp),
+                        color = etat.first
+                    )
+                }
+            }
+        }
+
+        // ── mod-050 — quota mensuel € par fournisseur (alerte à 80 %) ──────
+        OverlaySection(stringResource(R.string.usage_quota_hint))
+        GlassCard(contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp)) {
+            var quotas by remember { mutableStateOf(viewModel.settingsManager.quotaParFournisseur) }
+            viewModel.fournisseurs.forEach { f ->
+                var valeur by remember(f.id, quotas) { mutableStateOf((quotas[f.id] ?: 0f).let { if (it == 0f) "" else it.toString() }) }
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    MonoLine(f.nom, c.text2, Modifier.weight(1f))
+                    androidx.compose.material3.OutlinedTextField(
+                        value = valeur,
+                        onValueChange = { valeur = it },
+                        textStyle = TextStyle(fontFamily = JetBrainsMono, fontSize = 12.sp, color = c.text),
+                        singleLine = true,
+                        modifier = Modifier.width(110.dp)
+                    )
+                }
+                // Sauvegarde en continu dès qu'une valeur valide est saisie.
+                valeur.replace(',', '.').toFloatOrNull()?.let { v ->
+                    if ((quotas[f.id] ?: 0f) != v) {
+                        quotas = quotas + (f.id to v)
+                        viewModel.settingsManager.quotaParFournisseur = quotas
+                    }
+                }
+            }
+            Text(
+                stringResource(R.string.usage_quota_save),
+                style = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 11.5.sp),
+                color = c.cyan
+            )
+        }
     }
 }
 

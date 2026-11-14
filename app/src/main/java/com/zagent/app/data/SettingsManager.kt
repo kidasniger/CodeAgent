@@ -927,6 +927,81 @@ class SettingsManager(context: Context) {
         if (confianceSession.size < 50) confianceSession.add(empreinte)
     }
 
+    // ── Session 17 / vague D — modèles & coûts (mod-041..052) ───────────────
+
+    private val KEY_DETECTION_LE = "detection_modeles_le"
+    private val KEY_FENETRES = "fenetres_contexte"
+    private val KEY_PRIX_DETE = "prix_modeles_detectes"
+    private val KEY_QUOTA = "quota_par_fournisseur"
+
+    /** mod-042 — dernier test /models réussi par fournisseur (ms, 0 = jamais). */
+    var detectionModelesLe: Map<String, Long>
+        get() = lireMapLong(KEY_DETECTION_LE)
+        set(value) = ecrireMapLong(KEY_DETECTION_LE, value)
+
+    /** mod-044 — fenêtre de contexte détectée par modèle (id → tokens, 0 = inconnue). */
+    var fenetresContexte: Map<String, Long>
+        get() = lireMapLong(KEY_FENETRES)
+        set(value) = ecrireMapLong(KEY_FENETRES, value)
+
+    private fun lireMapLong(cle: String): Map<String, Long> = runCatching {
+        val o = org.json.JSONObject(prefs.getString(cle, "{}") ?: "{}")
+        val noms = o.names() ?: return@runCatching emptyMap<String, Long>()
+        (0 until noms.length()).associate { noms.getString(it) to o.getLong(noms.getString(it)) }
+    }.getOrDefault(emptyMap())
+
+    private fun ecrireMapLong(cle: String, valeur: Map<String, Long>) {
+        val o = org.json.JSONObject()
+        valeur.forEach { (k, v) -> o.put(k, v) }
+        prefs.edit().putString(cle, o.toString()).apply()
+    }
+
+    /** mod-043 — prix saisis pour un modèle détecté (id → "prixIn|prixOut" en €/M). */
+    var prixModelesDetectes: Map<String, Pair<Float, Float>>
+        get() = runCatching {
+            val o = org.json.JSONObject(prefs.getString(KEY_PRIX_DETE, "{}") ?: "{}")
+            val noms = o.names() ?: return@runCatching emptyMap<String, Pair<Float, Float>>()
+            (0 until noms.length()).associate {
+                val parties = o.getString(noms.getString(it)).split("|")
+                noms.getString(it) to Pair(
+                    parties.getOrNull(0)?.toFloatOrNull() ?: 0f,
+                    parties.getOrNull(1)?.toFloatOrNull() ?: 0f
+                )
+            }
+        }.getOrDefault(emptyMap())
+        private set(value) {
+            val o = org.json.JSONObject()
+            value.forEach { (k, v) -> o.put(k, "${v.first}|${v.second}") }
+            prefs.edit().putString(KEY_PRIX_DETE, o.toString()).apply()
+        }
+
+    /** mod-043 — fixe le prix d'un modèle détecté (valeurs ≤ 0 = retire). */
+    fun definirPrixModeleDetecte(modelId: String, prixIn: Float, prixOut: Float) {
+        val m = if (prixIn <= 0f && prixOut <= 0f) prixModelesDetectes - modelId
+        else prixModelesDetectes + (modelId to Pair(prixIn, prixOut))
+        prixModelesDetectes = m
+    }
+
+    /** mod-043 — prix effectif d'un modèle : saisie détectée d'abord, sinon réglage global. */
+    fun prixEffectif(modelId: String, prixInGlobal: Float, prixOutGlobal: Float): Pair<Float, Float> =
+        prixModelesDetectes[modelId] ?: Pair(prixInGlobal, prixOutGlobal)
+
+    /** mod-045 — ids connus comme gratuits (badge « gratuit » des cartes détectées). */
+    val idsGratuitsConnus: Set<String> = setOf("glm-4.5-flash")
+
+    /** mod-050 — quota mensuel en € par fournisseur (0 = pas de quota). */
+    var quotaParFournisseur: Map<String, Float>
+        get() = runCatching {
+            val o = org.json.JSONObject(prefs.getString(KEY_QUOTA, "{}") ?: "{}")
+            val noms = o.names() ?: return@runCatching emptyMap<String, Float>()
+            (0 until noms.length()).associate { noms.getString(it) to (o.getDouble(noms.getString(it)).toFloat()) }
+        }.getOrDefault(emptyMap())
+        set(value) {
+            val o = org.json.JSONObject()
+            value.forEach { (k, v) -> o.put(k, v.toDouble()) }
+            prefs.edit().putString(KEY_QUOTA, o.toString()).apply()
+        }
+
     var domainesAutorises: List<String>
         get() = (prefs.getString(KEY_DOMAINES_AUTORISES, "") ?: "")
             .split(",").map { it.trim().lowercase() }.filter { it.isNotBlank() }

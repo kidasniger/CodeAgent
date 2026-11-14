@@ -865,4 +865,21 @@
     <string name="relire_valider">Valider et envoyer</string>
     <string name="relire_annuler">Annuler</string>
     <string name="outils_par_tour">Grouper par tour</string>
+    <!-- Session 17 — vague D (mod-041..052) -->
+    <string name="err_duo_sans_cle">Mode Duo refusé : le modèle %1$s n\'a pas de clé configurée — renseigne d\'abord la clé de son fournisseur.</string>
+    <string name="err_quota_atteint">Quota du fournisseur %1$s dépassé : %2$.2f € / %3$.2f € ce mois. Élève le quota ou change de fournisseur.</string>
+    <string name="warn_quota_80">Alerte quota %1$s : %2$.2f € consommés (≥ 80 %% de %3$.2f €).</string>
+    <string name="mod_prix_edit">Prix de ce modèle (€/M tokens)</string>
+    <string name="mod_prix_in">Entrée €/M</string>
+    <string name="mod_prix_out">Sortie €/M</string>
+    <string name="mod_badge_gratuit">gratuit</string>
+    <string name="mod_badge_payant">payant</string>
+    <string name="mod_fenetre">Fenêtre : %1$s tokens</string>
+    <string name="mod_latence_test">Mesurer la latence</string>
+    <string name="mod_latence_val">%1$d ms</string>
+    <string name="mod_latence_echec">échec</string>
+    <string name="usage_export_csv">Exporter usage CSV</string>
+    <string name="usage_sante">Santé des fournisseurs</string>
+    <string name="usage_quota_hint">Quota mensuel € (0 = aucun) :</string>
+    <string name="usage_quota_save">Enregistrer</string>
 </resources>

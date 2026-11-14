@@ -134,6 +134,9 @@ class AiRepository : AiRepositoryApi {
      * « Tester la connexion » des Réglages et à l'import des modèles d'un
      * fournisseur personnalisé. Retourne les identifiants renvoyés par le serveur.
      */
+    /** mod-044 — fenêtres de contexte de la DERNIÈRE détection (id → tokens). */
+    var fenetresDerniereDetection: Map<String, Long> = emptyMap()
+
     override suspend fun listerModeles(baseUrl: String, apiKey: String): List<String> {
         val url = (if (baseUrl.isBlank()) ModelCatalog.URL_ZAI else baseUrl)
             .replace("chat/completions", "models")
@@ -150,6 +153,18 @@ class AiRepository : AiRepositoryApi {
             }
             val root = Json.parseToJsonElement(bodyStr).jsonObject
             val data = (root["data"] as? JsonArray) ?: JsonArray(emptyList())
+            // mod-044 — capture context_length quand l'endpoint l'expose.
+            val fenetres = LinkedHashMap<String, Long>()
+            data.forEach { el ->
+                val o = el as? JsonObject ?: return@forEach
+                val id = (o["id"] as? JsonPrimitive)?.contentOrNull ?: return@forEach
+                if (id.isBlank()) return@forEach
+                val ctx = (o["context_length"] as? JsonPrimitive)?.contentOrNull?.toLongOrNull()
+                    ?: (o["context_length"] as? JsonPrimitive)?.longOrNull
+                    ?: (o["max_context_length"] as? JsonPrimitive)?.contentOrNull?.toLongOrNull()
+                if (ctx != null && ctx > 0) fenetres[id] = ctx
+            }
+            fenetresDerniereDetection = fenetres
             data.mapNotNull { el ->
                 (el as? JsonObject)?.get("id")?.let { (it as? JsonPrimitive)?.contentOrNull }
             }.filter { it.isNotBlank() }
