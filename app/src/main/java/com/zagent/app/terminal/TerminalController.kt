@@ -144,17 +144,29 @@ class TerminalController(
     var historiqueCommandes by mutableStateOf(lireHistoriqueCommandes())
         private set
 
+    // ter-053 — historique PAR PROJET : la clé prefs porte le nom du dossier
+    // actif (fallback "defaut") ; l'ancienne clé globale reste migrée en lecture.
+    private fun cleHistorique(): String {
+        val projet = projectDir?.trim('/')?.substringAfterLast('/')?.take(40).orEmpty()
+        return if (projet.isBlank()) "cmd_history" else "cmd_history_$projet"
+    }
+
     private fun lireHistoriqueCommandes(): List<String> = runCatching {
-        val arr = org.json.JSONArray(prefs.getString("cmd_history", "[]") ?: "[]")
+        val arr = org.json.JSONArray(prefs.getString(cleHistorique(), "[]") ?: "[]")
         (0 until arr.length()).map { arr.getString(it) }
     }.getOrDefault(emptyList())
 
     fun ajouterHistorique(commande: String) {
         val c = commande.trim().take(300)
         if (c.isEmpty()) return
-        historiqueCommandes = ((historiqueCommandes - c) + c).takeLast(100)
-        prefs.edit().putString("cmd_history", org.json.JSONArray(historiqueCommandes).toString()).apply()
+        // ter-053 — recharge l'historique du projet courant avant l'ajout.
+        val existant = lireHistoriqueCommandes()
+        historiqueCommandes = ((existant - c) + c).takeLast(100)
+        prefs.edit().putString(cleHistorique(), org.json.JSONArray(historiqueCommandes).toString()).apply()
     }
+
+    /** ter-053 — historique indexé du projet courant (flèche haut du terminal). */
+    fun historiqueProjet(): List<String> = lireHistoriqueCommandes()
 
     fun viderHistorique() {
         historiqueCommandes = emptyList()
@@ -610,6 +622,11 @@ class TerminalController(
             val i = e.indexOf('=')
             pb.environment()[e.substring(0, i)] = e.substring(i + 1)
         }
+        // ter-055 — profil de variables d'environnement du projet (API_URL du
+        // dev server, clés locales…) injecté avant chaque commande.
+        envProfilPaires().forEach { (k, v) ->
+            pb.environment()[k] = v
+        }
         val p = try {
             pb.start()
         } catch (e: Exception) {
@@ -656,6 +673,11 @@ class TerminalController(
         buildEnv().forEach { e ->
             val i = e.indexOf('=')
             pb.environment()[e.substring(0, i)] = e.substring(i + 1)
+        }
+        // ter-055 — profil de variables d'environnement du projet (API_URL du
+        // dev server, clés locales…) injecté avant chaque commande.
+        envProfilPaires().forEach { (k, v) ->
+            pb.environment()[k] = v
         }
         if (!silent) {
             agentBase = (agentLog + "\n$ " + command + "\n").takeLast(Constants.JOURNAL_AGENT_MAX)
@@ -1005,12 +1027,94 @@ class TerminalController(
         if (!text.isNullOrEmpty()) session?.emulator?.paste(text)
     }
 
-    /** Copie tout l'historique de l'onglet affiché (les 50 000 derniers caractères). */
+    /**
+     * Copie tout l'historique de l'onglet affiché (50 000 derniers caractères).
+     * ter-058 — copie intelligente : les séquences ANSI sont retirées, le
+     * presse-papiers reçoit du TEXTE PUR (prêt pour un coller ailleurs).
+     */
     fun copyAll() {
-        val text = session?.emulator?.screen?.transcriptText?.trimEnd() ?: return
+        val brut = session?.emulator?.screen?.transcriptText?.trimEnd() ?: return
+        val texte = brut
+            .replace(Regex("\u001b\\[[0-9;?]*[A-Za-z]"), "")
+            .replace(Regex("\u001b\\][^\u0007]*\u0007"), "")
+            .replace(Regex("[\u0000-\u0008\u000B\u000C\u000E-\u001F]"), "")
         val cm = app.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        cm.setPrimaryClip(ClipData.newPlainText("terminal", text.takeLast(Constants.TERMINAL_COPIE_MAX)))
-        com.zagent.app.ui.components.common.ZEphemeral.show("Terminal copié")
+        cm.setPrimaryClip(ClipData.newPlainText("terminal", texte.takeLast(Constants.TERMINAL_COPIE_MAX)))
+        com.zagent.app.ui.components.common.ZEphemeral.show("Terminal copié (texte pur)")
+    }
+
+    // ── ter-055 : profils de variables d'environnement par projet ───────────
+
+    /** Lit le profil env du projet courant (lignes « K=V », vide = aucun). */
+    fun profilEnvProjet(): String {
+        val projet = projectDir?.trim('/')?.substringAfterLast('/')?.take(40).orEmpty()
+        if (projet.isBlank()) return ""
+        return runCatching {
+            val obj = org.json.JSONObject(prefs.getString("env_profils", "{}") ?: "{}")
+            obj.optString(projet, "")
+        }.getOrDefault("")
+    }
+
+    /** Écrit le profil env du projet courant (chaîne vide = supprime). */
+    fun ecrireProfilEnvProjet(contenu: String) {
+        val projet = projectDir?.trim('/')?.substringAfterLast('/')?.take(40).orEmpty()
+        if (projet.isBlank()) return
+        val obj = runCatching { org.json.JSONObject(prefs.getString("env_profils", "{}") ?: "{}") }
+            .getOrDefault(org.json.JSONObject())
+        if (contenu.isBlank()) obj.remove(projet) else obj.put(projet, contenu.take(2000))
+        prefs.edit().putString("env_profils", obj.toString()).apply()
+    }
+
+    /** ter-055 — paires K=V valides du profil (injectées avant chaque commande). */
+    fun envProfilPaires(): List<Pair<String, String>> = profilEnvProjet().lineSequence()
+        .map { it.trim() }
+        .filter { it.contains('=') && !it.startsWith("#") }
+        .map { ligne ->
+            val i = ligne.indexOf('=')
+            ligne.substring(0, i).trim() to ligne.substring(i + 1).trim()
+        }
+        .filter { (k, _) -> k.isNotEmpty() && Regex("[A-Za-z_][A-Za-z0-9_]*").matches(k) }
+        .toList()
+
+    // ── ter-056 : snippets de commandes par projet ──────────────────────────
+
+    /** Snippets enregistrés pour le projet courant (menu ⌗ du terminal). */
+    fun snippetsProjet(): List<String> {
+        val projet = projectDir?.trim('/')?.substringAfterLast('/')?.take(40).orEmpty()
+        if (projet.isBlank()) return emptyList()
+        return runCatching {
+            val obj = org.json.JSONObject(prefs.getString("snippets", "{}") ?: "{}")
+            val arr = obj.optJSONArray(projet) ?: return@runCatching emptyList()
+            (0 until arr.length()).map { arr.getString(it) }
+        }.getOrDefault(emptyList())
+    }
+
+    /** Enregistre un snippet pour le projet courant (plafond 20). */
+    fun ajouterSnippet(commande: String) {
+        val c = commande.trim().take(200)
+        val projet = projectDir?.trim('/')?.substringAfterLast('/')?.take(40).orEmpty()
+        if (c.isEmpty() || projet.isBlank()) return
+        val obj = runCatching { org.json.JSONObject(prefs.getString("snippets", "{}") ?: "{}") }
+            .getOrDefault(org.json.JSONObject())
+        val arr = obj.optJSONArray(projet) ?: org.json.JSONArray()
+        val liste = (0 until arr.length()).map { arr.getString(it) }.toMutableList()
+        liste.remove(c)
+        liste.add(0, c)
+        while (liste.size > 20) liste.removeAt(liste.lastIndex)
+        val nouveau = org.json.JSONArray(liste)
+        obj.put(projet, nouveau)
+        prefs.edit().putString("snippets", obj.toString()).apply()
+    }
+
+    /** ter-061 — taille de police du terminal (sp, persistée). */
+    var taillePoliceTerminal by mutableStateOf(prefs.getInt("terminal_font_size", 13))
+        private set
+
+    fun reglerTaillePolice(sp: Int) {
+        val v = sp.coerceIn(9, 22)
+        taillePoliceTerminal = v
+        prefs.edit().putInt("terminal_font_size", v).apply()
+        view?.setTextSize(v.toFloat())
     }
 
     private var colorBg = 0xFF0B0F17.toInt()

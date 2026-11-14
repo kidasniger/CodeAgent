@@ -160,6 +160,7 @@
     <string name="about_verif_en_cours">Vérification en cours…</string>
     <string name="about_version_dispo">Version %1$s disponible</string>
     <string name="action_aller">Aller</string>
+    <string name="action_ouvrir">Ouvrir</string>
     <string name="action_annuler">Annuler</string>
     <string name="action_appliquer">Appliquer</string>
     <string name="action_arreter">Arrêter</string>
@@ -882,4 +883,15 @@
     <string name="usage_sante">Santé des fournisseurs</string>
     <string name="usage_quota_hint">Quota mensuel € (0 = aucun) :</string>
     <string name="usage_quota_save">Enregistrer</string>
+    <!-- Session 17 — vague E (ter-053..062) -->
+    <string name="notif_commande_finie">Commande terminée</string>
+    <string name="statut_serveur_detecte">Serveur local détecté : %1$s</string>
+    <string name="ter_serveur_ouvrir">Ouvrir %1$s dans le navigateur</string>
+    <string name="ter_snips">Snippets</string>
+    <string name="ter_snips_hint">Snippets du projet — tap pour insérer dans la saisie, long-press (Maintenir) pour enregistrer la commande courante.</string>
+    <string name="ter_snips_ajouter">Enregistrer la commande courante comme snippet</string>
+    <string name="ter_env_profil">Profil env du projet (K=V par ligne)</string>
+    <string name="ter_paysage">Mode écran large (paysage)</string>
+    <string name="ter_police">Taille de la police du terminal</string>
+    <string name="ter_hist_projet">Historique du projet</string>
 </resources>

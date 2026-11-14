@@ -92,6 +92,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -969,6 +970,31 @@ fun ChatScreen(
             texte = texte,
             onValider = { viewModel.validerRelire() },
             onAnnuler = { viewModel.annulerRelire() }
+        )
+    }
+
+    // ter-057 — serveur local détecté via run_command : lien ouvrable en un tap.
+    viewModel.urlServeurDetectee?.let { url ->
+        AlertDialog(
+            onDismissRequest = { viewModel.urlServeurDetectee = null },
+            title = { Text(stringResource(R.string.statut_serveur_detecte, url), fontFamily = androidx.compose.ui.text.font.FontFamily.Serif, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface) },
+            text = {
+                Text(
+                    stringResource(R.string.ter_serveur_ouvrir, url),
+                    fontFamily = com.zagent.app.ui.theme.JetBrainsMono,
+                    fontSize = 12.sp
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.ouvrirServeurDetecte(); viewModel.urlServeurDetectee = null }) {
+                    Text(stringResource(R.string.action_ouvrir), color = androidx.compose.material3.MaterialTheme.colorScheme.primary)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.urlServeurDetectee = null }) {
+                    Text(stringResource(R.string.action_annuler))
+                }
+            }
         )
     }
 

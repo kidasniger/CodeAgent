@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -89,6 +90,24 @@ fun TerminalScreen(
     var showPaquets by rememberSaveable { mutableStateOf(false) } // feat-052
     var showBashrc by rememberSaveable { mutableStateOf(false) } // feat-054
     var ongletARenommer by rememberSaveable { mutableStateOf(-1) } // feat-048
+    // Session 17 / vague E — snippets (ter-056), profil env (ter-055),
+    // taille de police (ter-061), mode paysage (ter-060).
+    var showSnips by rememberSaveable { mutableStateOf(false) }
+    var showEnvProfil by rememberSaveable { mutableStateOf(false) }
+    var showPolice by rememberSaveable { mutableStateOf(false) }
+    var paysage by rememberSaveable { mutableStateOf(false) }
+
+    // ter-060 — mode écran large : l'activité passe en paysage tant que
+    // l'option est active (et restitue à la sortie de l'écran).
+    val activite = LocalContext.current as? android.app.Activity
+    DisposableEffect(paysage) {
+        activite?.requestedOrientation = if (paysage)
+            android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        onDispose {
+            activite?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+    }
 
     // MA84 : fond, texte et palette ANSI alignés sur le thème clair/sombre.
     LaunchedEffect(termBg, termFg, c.isDark, controller.session) {
@@ -240,6 +259,21 @@ fun TerminalScreen(
                             containerColor = c.surface2
                         )
                     } else ongletARenommer = -1
+                }
+                // Session 17 / vague E — dialogues Snips / Env / Police.
+                if (showSnips) {
+                    SnipsDialog(
+                        controller,
+                        commandeCourante = controller.historiqueProjet().lastOrNull().orEmpty(),
+                        onInserer = { controller.send(it) },
+                        onFermer = { showSnips = false }
+                    )
+                }
+                if (showEnvProfil) {
+                    EnvProfilDialog(controller) { showEnvProfil = false }
+                }
+                if (showPolice) {
+                    PoliceTerminalDialog(controller) { showPolice = false }
                 }
             }
         }
@@ -612,6 +646,11 @@ private fun ExtraKeys(controller: TerminalController, onHisto: () -> Unit = {}, 
         Key("^C", onClick = { controller.send("\u0003") })
         // feat-047 — historique des commandes.
         Key("Histo", active = histoActif, onClick = { onHisto() })
+        // Session 17 / vague E — outils projet du terminal.
+        Key("Snips", onClick = { showSnips = true })
+        Key("Env", onClick = { showEnvProfil = true })
+        Key("Aa", onClick = { showPolice = true })
+        Key("Paysage", active = paysage, onClick = { paysage = !paysage })
     }
 }
 
@@ -947,4 +986,136 @@ private fun BashrcPane(controller: TerminalController, modifier: Modifier) {
             }
         }
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Session 17 / vague E — dialogues Snips (ter-056), profil env (ter-055) et
+// taille de police (ter-061) du terminal.
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+internal fun SnipsDialog(
+    controller: TerminalController,
+    commandeCourante: String,
+    onInserer: (String) -> Unit,
+    onFermer: () -> Unit
+) {
+    val c = Zcolors
+    var snippets by remember { mutableStateOf(controller.snippetsProjet()) }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onFermer,
+        title = { Text(stringResource(R.string.ter_snips), fontFamily = com.zagent.app.ui.theme.SpaceGrotesk, color = c.text) },
+        text = {
+            Column {
+                Text(
+                    stringResource(R.string.ter_snips_hint),
+                    style = TextStyle(fontSize = 11.5.sp, lineHeight = 16.sp),
+                    color = c.text2
+                )
+                Spacer(Modifier.height(8.dp))
+                if (snippets.isEmpty()) {
+                    Text("(aucun snippet pour ce projet)", style = TextStyle(fontSize = 12.sp), color = c.text3)
+                }
+                snippets.take(12).forEach { s ->
+                    Text(
+                        s,
+                        style = TextStyle(fontFamily = com.zagent.app.ui.theme.JetBrainsMono, fontSize = 12.sp),
+                        color = c.cyan,
+                        maxLines = 2,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(MaterialTheme.shapes.small)
+                            .clickable { onInserer(s); onFermer() }
+                            .padding(vertical = 8.dp)
+                    )
+                }
+                if (commandeCourante.isNotBlank()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        stringResource(R.string.ter_snips_ajouter),
+                        style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold),
+                        color = c.amber,
+                        modifier = Modifier
+                            .clip(MaterialTheme.shapes.small)
+                            .clickable {
+                                controller.ajouterSnippet(commandeCourante)
+                                snippets = controller.snippetsProjet()
+                            }
+                            .padding(vertical = 8.dp)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onFermer) { Text(stringResource(R.string.action_fermer), color = c.cyan) }
+        }
+    )
+}
+
+@Composable
+internal fun EnvProfilDialog(
+    controller: TerminalController,
+    onFermer: () -> Unit
+) {
+    val c = Zcolors
+    var valeur by remember { mutableStateOf(controller.profilEnvProjet()) }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onFermer,
+        title = { Text(stringResource(R.string.ter_env_profil), fontFamily = com.zagent.app.ui.theme.SpaceGrotesk, color = c.text) },
+        text = {
+            androidx.compose.material3.TextField(
+                value = valeur,
+                onValueChange = { valeur = it },
+                placeholder = { Text("API_URL=http://10.0.2.2:8080\nNO_COLOR=1", fontFamily = com.zagent.app.ui.theme.JetBrainsMono, fontSize = 11.5.sp, color = c.text3) },
+                textStyle = TextStyle(fontFamily = com.zagent.app.ui.theme.JetBrainsMono, fontSize = 12.5.sp, color = c.text),
+                colors = androidx.compose.material3.TextFieldDefaults.colors(
+                    focusedContainerColor = c.surface2,
+                    unfocusedContainerColor = c.surface2,
+                    focusedIndicatorColor = c.cyan,
+                    unfocusedIndicatorColor = c.border2,
+                    cursorColor = c.cyan
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { controller.ecrireProfilEnvProjet(valeur); onFermer() }) {
+                Text(stringResource(R.string.action_enregistrer), color = c.cyan)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onFermer) { Text(stringResource(R.string.action_annuler), color = c.text2) }
+        }
+    )
+}
+
+@Composable
+internal fun PoliceTerminalDialog(
+    controller: TerminalController,
+    onFermer: () -> Unit
+) {
+    val c = Zcolors
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onFermer,
+        title = { Text(stringResource(R.string.ter_police), fontFamily = com.zagent.app.ui.theme.SpaceGrotesk, color = c.text) },
+        text = {
+            Column {
+                Text(
+                    controller.taillePoliceTerminal.toString() + " sp",
+                    style = TextStyle(fontFamily = com.zagent.app.ui.theme.JetBrainsMono, fontSize = 14.sp),
+                    color = c.text,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                androidx.compose.material3.Slider(
+                    value = controller.taillePoliceTerminal.toFloat(),
+                    onValueChange = { controller.reglerTaillePolice(it.toInt()) },
+                    valueRange = 9f..22f,
+                    steps = 12
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onFermer) { Text(stringResource(R.string.action_fermer), color = c.cyan) }
+        }
+    )
 }

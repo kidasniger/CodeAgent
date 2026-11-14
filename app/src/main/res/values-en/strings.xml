@@ -156,6 +156,7 @@
     <string name="about_verif_en_cours">Checking…</string>
     <string name="about_version_dispo">Version %1$s available</string>
     <string name="action_aller">Go</string>
+    <string name="action_ouvrir">Open</string>
     <string name="action_annuler">Cancel</string>
     <string name="action_appliquer">Apply</string>
     <string name="action_arreter">Stop</string>
@@ -878,4 +879,15 @@
     <string name="usage_sante">Provider health</string>
     <string name="usage_quota_hint">Monthly quota € (0 = none):</string>
     <string name="usage_quota_save">Save</string>
+    <!-- Session 17 — wave E (ter-053..062) -->
+    <string name="notif_commande_finie">Command finished</string>
+    <string name="statut_serveur_detecte">Local server detected: %1$s</string>
+    <string name="ter_serveur_ouvrir">Open %1$s in browser</string>
+    <string name="ter_snips">Snippets</string>
+    <string name="ter_snips_hint">Project snippets — tap to insert into the input, long-press to save the current command.</string>
+    <string name="ter_snips_ajouter">Save current command as a snippet</string>
+    <string name="ter_env_profil">Project env profile (K=V per line)</string>
+    <string name="ter_paysage">Wide screen mode (landscape)</string>
+    <string name="ter_police">Terminal font size</string>
+    <string name="ter_hist_projet">Project history</string>
 </resources>

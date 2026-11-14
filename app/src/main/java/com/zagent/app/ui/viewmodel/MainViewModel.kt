@@ -787,6 +787,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // ia-040 — URLs consultées via fetch_url dans le tour courant (annexe sources).
     val summaryUrls = mutableStateListOf<String>()
 
+    // ter-057 — serveur local détecté via run_command (lien « ouvrir »).
+    var urlServeurDetectee: String? by mutableStateOf(null)
+
+    /** ter-057 — ouvre le serveur détecté dans le navigateur (action utilisateur). */
+    fun ouvrirServeurDetecte() {
+        val url = urlServeurDetectee ?: return
+        runCatching {
+            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(url))
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            getApplication<Application>().startActivity(intent)
+        }
+    }
+
     /** Compteurs de diff par fichier touché pendant la demande : chemin → (ajoutées, supprimées) — MA41. */
     val fileDiffCounts = mutableStateMapOf<String, Pair<Int, Int>>()
 
@@ -4750,13 +4763,36 @@ done; } 2>&1 | head -c 50000
         val t0Cmd = System.currentTimeMillis()
         try {
             val out = terminal.runCommand(command, workingFolderUriString, timeout) { out -> liveOutput = out }
+            val duree = System.currentTimeMillis() - t0Cmd
             // MA64/MA65 : la commande est consignée dans l'activité.
             logActivity(
                 "commande", command,
                 out.lineSequence().firstOrNull().orEmpty().take(160),
                 if (out.startsWith("Erreur")) ActivityStatus.ERREUR else ActivityStatus.OK,
-                System.currentTimeMillis() - t0Cmd
+                duree
             )
+            // ter-059 — une commande longue qui se termine (≥ 10 s) déclenche une
+            // notification : l'utilisateur peut quitter l'écran en confiance.
+            if (duree >= 10_000) {
+                alertUser(
+                    sm(R.string.notif_commande_finie),
+                    command.take(120) + " — " + (duree / 1000) + " s"
+                )
+            }
+            // ter-057 — détection d'un serveur local lancé via run_command :
+            // port explicite dans la sortie (localhost:PORT / 127.0.0.1:PORT /
+            // 0.0.0.0:PORT) ou options connues (--port, -p, :PORT connu).
+            val portDetecte = Regex("(?:localhost|127\\.0\\.0\\.1|0\\.0\\.0\\.0):([0-9]{2,5})")
+                .find(out)?.groupValues?.get(1)
+                ?: Regex("--port[= ]([0-9]{2,5})").find(out)?.groupValues?.get(1)
+                ?: Regex("\\b(3000|3001|4000|5000|5173|5174|8000|8080|8081|8888|9000)\\b")
+                    .find(out)?.groupValues?.get(1)
+            if (portDetecte != null && out.lowercase().contains("http") ||
+                portDetecte != null && Regex("listen|running|serving|dev|serveur|server").containsMatchIn(out.lowercase())
+            ) {
+                urlServeurDetectee = "http://127.0.0.1:" + portDetecte
+                statusMessage = sm(R.string.statut_serveur_detecte, urlServeurDetectee ?: "")
+            }
             return out
         } finally {
             withContext(NonCancellable + Dispatchers.Main) {
