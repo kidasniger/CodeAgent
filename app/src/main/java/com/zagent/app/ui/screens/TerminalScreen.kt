@@ -226,7 +226,12 @@ fun TerminalScreen(
                             ExtraKeys(
                                 controller,
                                 onHisto = { showHisto = !showHisto; if (showHisto) { showPaquets = false; showBashrc = false } },
-                                histoActif = showHisto
+                                histoActif = showHisto,
+                                onSnips = { showSnips = true },
+                                onEnv = { showEnvProfil = true },
+                                onPolice = { showPolice = true },
+                                onPaysage = { paysage = !paysage },
+                                paysageActif = paysage
                             )
                         }
                     }
@@ -609,7 +614,16 @@ private fun RowScope.IconKey(icon: ImageVector, description: String, onClick: ()
 }
 
 @Composable
-private fun ExtraKeys(controller: TerminalController, onHisto: () -> Unit = {}, histoActif: Boolean = false) {
+private fun ExtraKeys(
+    controller: TerminalController,
+    onHisto: () -> Unit = {},
+    histoActif: Boolean = false,
+    onSnips: () -> Unit = {},
+    onEnv: () -> Unit = {},
+    onPolice: () -> Unit = {},
+    onPaysage: () -> Unit = {},
+    paysageActif: Boolean = false
+) {
     val c = Zcolors
     Row(
         Modifier
@@ -647,10 +661,10 @@ private fun ExtraKeys(controller: TerminalController, onHisto: () -> Unit = {}, 
         // feat-047 — historique des commandes.
         Key("Histo", active = histoActif, onClick = { onHisto() })
         // Session 17 / vague E — outils projet du terminal.
-        Key("Snips", onClick = { showSnips = true })
-        Key("Env", onClick = { showEnvProfil = true })
-        Key("Aa", onClick = { showPolice = true })
-        Key("Paysage", active = paysage, onClick = { paysage = !paysage })
+        Key("Snips", onClick = onSnips)
+        Key("Env", onClick = onEnv)
+        Key("Aa", onClick = onPolice)
+        Key("Paysage", active = paysageActif, onClick = onPaysage)
     }
 }
 

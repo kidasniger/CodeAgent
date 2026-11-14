@@ -1114,7 +1114,7 @@ class TerminalController(
         val v = sp.coerceIn(9, 22)
         taillePoliceTerminal = v
         prefs.edit().putInt("terminal_font_size", v).apply()
-        view?.setTextSize(v.toFloat())
+        view?.setTextSize(v)
     }
 
     private var colorBg = 0xFF0B0F17.toInt()
