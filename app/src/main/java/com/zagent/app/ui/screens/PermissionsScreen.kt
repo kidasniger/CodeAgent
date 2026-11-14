@@ -125,6 +125,14 @@ fun PermissionsScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 checked = relire,
                 onToggle = { viewModel.settingsManager.relireAvantEnvoyer = it; relire = it }
             )
+            // edt-065 — format à l'enregistrement par extension (JSON/MD).
+            var formatOnSave by remember { mutableStateOf(viewModel.settingsManager.formatOnSave) }
+            ModeRow(
+                title = "Format à l'enregistrement",
+                subtitle = "JSON ré-indenté et Markdown nettoyé à chaque sauvegarde de l'éditeur",
+                checked = formatOnSave,
+                onToggle = { viewModel.settingsManager.formatOnSave = it; formatOnSave = it }
+            )
         }
         Spacer(Modifier.height(16.dp))
 

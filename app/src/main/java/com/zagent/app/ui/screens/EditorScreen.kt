@@ -305,7 +305,7 @@ fun EditorScreen(
             // edt-064 — recherche/remplacement MULTI-FICHIERS : expose la
             // recherche globale (SearchScreen) depuis l'éditeur.
             CircleIconButton(
-                Icons.Default.ManageSearch, stringResource(R.string.cd_open_search),
+                Icons.Default.FindInPage, stringResource(R.string.cd_open_search),
                 onClick = { viewModel.openSearchScreen() }, size = 36.dp
             )
             Spacer(Modifier.width(6.dp))
