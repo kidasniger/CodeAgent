@@ -8,6 +8,9 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -216,6 +219,8 @@ fun FileBrowserScreen(
     var menuNew by remember { mutableStateOf(false) }
     var renameTarget by remember { mutableStateOf<FileRepository.Entry?>(null) }
     var deleteTarget by remember { mutableStateOf<FileRepository.Entry?>(null) }
+    // edt-067 — lecteur d'images intégré (png/jpg/webp/gif, zoom pinch).     
+    var imageCible by remember { mutableStateOf<String?>(null) }
 
     // ── feat-071/073/074/075/079 : déplacer, zipper, importer, exporter, corbeille ──
     var moveDialogOpen by remember { mutableStateOf(false) }
@@ -250,6 +255,11 @@ fun FileBrowserScreen(
             toggleSelection(e.path)
         } else if (e.isDir) {
             if (gridMode) gridDir = e.path else viewModel.toggleDir(e.path)
+        } else if (e.path.substringAfterLast('.', "").lowercase() in
+            setOf("png", "jpg", "jpeg", "webp", "gif")
+        ) {
+            // edt-067 — les images s'ouvrent dans le lecteur intégré (zoom).
+            imageCible = e.path
         } else {
             viewModel.openBrowserFile(e.path)
         }
@@ -947,6 +957,11 @@ fun FileBrowserScreen(
         )
     }
 
+    // edt-067 — lecteur d'images intégré (zoom pinch, fermeture au tap).
+    imageCible?.let { chemin ->
+        ImagePreviewDialog(viewModel, chemin) { imageCible = null }
+    }
+
     renameTarget?.let { e ->
         var name by remember(e.path) { mutableStateOf(e.name) }
         GlassAlertDialog(
@@ -964,6 +979,19 @@ fun FileBrowserScreen(
                 TextButton(onClick = {
                     viewModel.renameBrowserPath(e.path, name.trim())
                     renameTarget = null
+                    // edt-069 — après renommage : comptage des références à
+                    // l'ancien nom dans le code (le chemin a peut-être changé).
+                    if (name.isNotBlank() && e.name != name) {
+                        scope.launch(Dispatchers.IO) {
+                            val refs = viewModel.compterReferences(e.name)
+                            if (refs > 0) {
+                                withContext(Dispatchers.Main) {
+                                    viewModel.editor.info = "Renommé — " + refs +
+                                        " référence(s) à l'ancien nom « " + e.name + " » dans le code"
+                                }
+                            }
+                        }
+                    }
                 }) { Text(stringResource(R.string.action_renommer), color = c.cyan) }
             },
             dismissButton = {
@@ -1683,4 +1711,74 @@ private fun ChipFavoriRecent(
             )
         }
     }
+}
+/** edt-067 — lecteur d'images intégré : zoom pinch + double-tap, tap hors image ferme. */
+@Composable
+internal fun ImagePreviewDialog(
+    viewModel: MainViewModel,
+    chemin: String,
+    onFermer: () -> Unit
+) {
+    val c = Zcolors
+    var fichier by remember(chemin) {
+        mutableStateOf<java.io.File?>(null)
+    }
+    LaunchedEffect(chemin) {
+        withContext(Dispatchers.IO) {
+            fichier = viewModel.getFileRepoPublic()?.racineAbsolue()?.let { racine ->
+                val f = java.io.File(racine, chemin.removePrefix("./"))
+                if (f.exists()) f else null
+            }
+        }
+    }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onFermer,
+        confirmButton = {
+            TextButton(onClick = onFermer) { Text(stringResource(R.string.action_fermer), color = c.cyan) }
+        },
+        title = {
+            Text(
+                chemin.substringAfterLast('/'),
+                fontFamily = JetBrainsMono, fontSize = 13.sp, color = c.text,
+                maxLines = 1, overflow = TextOverflow.Ellipsis
+            )
+        },
+        text = {
+            val f = fichier
+            if (f == null) {
+                Text("(chargement…)", fontFamily = JetBrainsMono, fontSize = 12.sp, color = c.text3)
+            } else {
+                val bmp = remember(f.path) {
+                    runCatching {
+                        android.graphics.BitmapFactory.decodeFile(f.absolutePath)
+                    }.getOrNull()
+                }
+                if (bmp == null) {
+                    Text("(image illisible)", fontFamily = JetBrainsMono, fontSize = 12.sp, color = c.red)
+                } else {
+                    var echelle by remember { mutableStateOf(1f) }
+                    var offset by remember { mutableStateOf(Offset.Zero) }
+                    androidx.compose.foundation.Image(
+                        bitmap = bmp.asImageBitmap(),
+                        contentDescription = chemin.substringAfterLast('/'),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(320.dp)
+                            .clip(MaterialTheme.shapes.small)
+                            .graphicsLayer(
+                                scaleX = echelle, scaleY = echelle,
+                                translationX = offset.x, translationY = offset.y
+                            )
+                            .pointerInput(f.path) {
+                                detectTransformGestures { _, pan, zoom, _ ->
+                                    echelle = (echelle * zoom).coerceIn(1f, 8f)
+                                    offset = if (echelle > 1f) offset + pan else Offset.Zero
+                                }
+                            }
+                            .clickable { echelle = 1f; offset = Offset.Zero }
+                    )
+                }
+            }
+        }
+    )
 }

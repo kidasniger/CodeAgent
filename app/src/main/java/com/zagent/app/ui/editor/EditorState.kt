@@ -178,7 +178,9 @@ class EditorController(
     private val scope: CoroutineScope,
     private val repo: () -> FileRepository,
     /** Appelé à chaque changement d'onglets (chemins ouverts + index actif) pour les mémoriser (MA79). */
-    private val persistSession: (List<String>, Int) -> Unit = { _, _ -> }
+    private val persistSession: (List<String>, Int) -> Unit = { _, _ -> },
+    /** edt-065 — accès aux réglages (format à l'enregistrement par extension). */
+    private val prefs: com.zagent.app.data.SettingsManager? = null
 ) {
     val tabs = mutableStateListOf<EditorTab>()
     var activeIndex by mutableIntStateOf(0)
@@ -298,13 +300,26 @@ class EditorController(
 
     fun save(tab: EditorTab, onDone: (Boolean) -> Unit = {}) {
         val text = tab.value.text
-        val out = if (tab.crlf) text.replace("\n", "\r\n") else text
+        // edt-065 — format à l'enregistrement : JSON ré-indenté (2 espaces) et
+        // Markdown nettoyé (espaces de fin de ligne) quand l'option est active.
+        val formate = if (prefs?.formatOnSave == true) {
+            when (tab.path.substringAfterLast('.', "").lowercase()) {
+                "json" -> runCatching {
+                    org.json.JSONObject(text).toString(2)
+                }.getOrElse {
+                    runCatching { org.json.JSONArray(text).toString(2) }.getOrDefault(text)
+                }
+                "md", "markdown", "txt" -> text.lines().joinToString("\n") { it.trimEnd() } + if (text.endsWith("\n")) "\n" else ""
+                else -> text
+            }
+        } else text
+        val out = if (tab.crlf) formate.replace("\n", "\r\n") else formate
         scope.launch(Dispatchers.IO) {
             val res = repo().writeFile(tab.path, out)
             withContext(Dispatchers.Main) {
                 val ok = res.startsWith("Succès")
                 if (ok) {
-                    tab.markSaved(text)
+                    tab.markSaved(formate)
                     saveCount++
                     info = "Enregistré · ${tab.name}"
                 } else {

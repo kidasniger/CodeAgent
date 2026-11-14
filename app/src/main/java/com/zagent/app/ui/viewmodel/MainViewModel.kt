@@ -507,6 +507,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         settingsManager.definirPrixModeleDetecte(modelId, prixIn, prixOut)
     }
 
+    /**
+     * edt-069 — compte les références à une chaîne (nom de fichier renommé)
+     * dans les fichiers texte du projet (plafond 400 fichiers).
+     */
+    fun compterReferences(texte: String): Int {
+        val repo = getFileRepo()
+        val racine = repo.racineAbsolue() ?: return 0
+        var compteur = 0
+        var vus = 0
+        racine.walkTopDown()
+            .onEnter { it.isDirectory && it.name !in setOf(".git", "node_modules", "build", ".gradle", "__pycache__") }
+            .filter { it.isFile && it.length() in 1..1_000_000 }
+            .take(400)
+            .forEach { f ->
+                vus++
+                runCatching {
+                    if (f.readText().contains(texte)) compteur++
+                }
+            }
+        return compteur
+    }
+
+    /** edt-067 — accès public au FileRepository (lecteur d'images intégré). */
+    fun getFileRepoPublic(): FileRepository = getFileRepo()
+
     // ── MàJ 103 : favoris (modèles épinglés en tête du sélecteur) ────────────
     private val favorisState = mutableStateOf(settingsManager.modelesFavoris)
     val modelesFavoris: Set<String> get() = favorisState.value
@@ -1640,7 +1665,8 @@ done; } 2>&1 | head -c 50000
     val editor = EditorController(
         viewModelScope,
         { getFileRepo() },
-        { paths, active -> workingFolderUriString?.let { settingsManager.saveEditorSession(it, paths, active) } }
+        { paths, active -> workingFolderUriString?.let { settingsManager.saveEditorSession(it, paths, active) } },
+        settingsManager
     )
 
     // ── Explorateur de fichiers ─────────────────────────────────────────────

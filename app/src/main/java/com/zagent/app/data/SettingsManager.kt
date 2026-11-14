@@ -902,6 +902,14 @@ class SettingsManager(context: Context) {
         get() = prefs.getBoolean(KEY_RELIRE, false)
         set(value) = prefs.edit().putBoolean(KEY_RELIRE, value).apply()
 
+    // edt-065 — format à l'enregistrement par extension (JSON ré-indenté,
+    // Markdown nettoyé) quand activé.
+    private val KEY_FORMAT_ON_SAVE = "format_on_save"
+
+    var formatOnSave: Boolean
+        get() = prefs.getBoolean(KEY_FORMAT_ON_SAVE, false)
+        set(value) = prefs.edit().putBoolean(KEY_FORMAT_ON_SAVE, value).apply()
+
     // ia-039 — plafond de taille d'un résultat d'outil (au-delà : [tronqué]).
     private val KEY_LIMITE_OUTIL = "limite_resultat_outil"
 

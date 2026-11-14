@@ -501,6 +501,12 @@ class FileRepository(private val context: Context?, private val rootPath: String
     }
 
     /**
+     * edt-069 — racine absolue du dossier de travail (null si aucun).
+     * Expose [getRootFolder] pour les compteurs de références côté VM.
+     */
+    fun racineAbsolue(): File? = getRootFolder()
+
+    /**
      * feat-079 — Déplace le chemin vers la corbeille au lieu de le supprimer.
      * L'entrée est préfixée par un horodatage pour restaurer le nom d'origine.
      */

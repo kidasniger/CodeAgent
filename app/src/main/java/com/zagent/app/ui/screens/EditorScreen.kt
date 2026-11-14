@@ -302,6 +302,13 @@ fun EditorScreen(
                 iconTint = if (showSearch) c.cyan else c.text
             )
             Spacer(Modifier.width(6.dp))
+            // edt-064 — recherche/remplacement MULTI-FICHIERS : expose la
+            // recherche globale (SearchScreen) depuis l'éditeur.
+            CircleIconButton(
+                Icons.Default.ManageSearch, stringResource(R.string.cd_open_search),
+                onClick = { viewModel.openSearchScreen() }, size = 36.dp
+            )
+            Spacer(Modifier.width(6.dp))
             CircleIconButton(
                 Icons.Default.PlayArrow, stringResource(R.string.content_apercu),
                 onClick = {
@@ -337,6 +344,34 @@ fun EditorScreen(
         // ── Onglets ─────────────────────────────────────────────────────────
         if (!fs && editor.tabs.isNotEmpty()) {
             EditorTabBar(editor = editor, onRequestClose = { confirmClose = it })
+        }
+
+        // edt-066/072 — indicateur de fin de ligne + compteur lignes/caractères.
+        tab?.let { t ->
+            val nbLignes = t.value.text.count { it == '\n' } + 1
+            val nbCars = t.value.text.length
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    if (t.crlf) "CRLF" else "LF",
+                    style = TextStyle(fontFamily = com.zagent.app.ui.theme.JetBrainsMono, fontSize = 10.sp, fontWeight = FontWeight.SemiBold),
+                    color = if (t.crlf) c.amber else c.text3,
+                    modifier = Modifier
+                        .clip(MaterialTheme.shapes.small)
+                        .background(if (t.crlf) c.amber.copy(alpha = 0.12f) else c.surface2)
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    "$nbLignes lignes · $nbCars caractères",
+                    style = TextStyle(fontFamily = com.zagent.app.ui.theme.JetBrainsMono, fontSize = 10.5.sp),
+                    color = c.text3
+                )
+            }
         }
 
         // ── Recherche / remplacement ────────────────────────────────────────
