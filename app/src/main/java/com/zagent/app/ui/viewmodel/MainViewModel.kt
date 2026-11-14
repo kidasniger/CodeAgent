@@ -5790,7 +5790,7 @@ done; } 2>&1 | head -c 50000
         if (nom.isBlank()) return
         viewModelScope.launch(Dispatchers.IO) {
             val jeton = settingsManager.jetonGitHub
-            val res = GitHubApi.creerDepot(jeton, nom.trim().take(80), prive).fold(
+            val res = GitHubApi.creerDepot(jeton, nom.trim().take(80), prive, "", true).fold(
                 onSuccess = { it },
                 onFailure = { "Erreur: " + (it.message ?: "création impossible") }
             )
